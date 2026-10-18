@@ -1,0 +1,307 @@
+[
+  {
+    "id": "native:SPECIAL:1:0",
+    "name": "SPECIAL / PLCC [1:0]",
+    "category": "controls",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 16,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "",
+    "description": "SPECIAL: PLCC",
+    "importedGraphics": [
+      {
+        "kind": "rect",
+        "x": 0,
+        "y": 0,
+        "width": 16,
+        "height": 8,
+        "color": "currentColor",
+        "lineWidth": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 1,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:13:1",
+    "name": "SPECIAL / PLCCP [13:1]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 10,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "left",
+        "labelPosition": {
+          "x": 3.4000000000000004,
+          "y": -1.1702545229760002,
+          "fontSize": 4.4712000000000005,
+          "alignment": "start",
+          "rotation": 0
+        }
+      }
+    ],
+    "svgContent": "",
+    "description": "SPECIAL: PLCCP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 5.999999999999999,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "circle",
+        "x": 8,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 13,
+      "variant": 1
+    },
+    "insertionPoint": {
+      "x": 8,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:13:3",
+    "name": "SPECIAL / PLCCP [13:3]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 10,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 5.999999999999999,
+        "y": 2,
+        "direction": "right",
+        "labelPosition": {
+          "x": 6.6,
+          "y": -1.1702545229760002,
+          "fontSize": 4.4712000000000005,
+          "alignment": "start",
+          "rotation": 0
+        }
+      }
+    ],
+    "svgContent": "",
+    "description": "SPECIAL: PLCCP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 2,
+        "x2": 4,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "circle",
+        "x": 2,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 13,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:65:0",
+    "name": "SPECIAL / TLRO_1 [65:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 4,
+        "direction": "top"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 4,
+        "direction": "left"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 8,
+        "y": 4,
+        "direction": "right"
+      }
+    ],
+    "svgContent": "",
+    "description": "SPECIAL: TLRO_1",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 4,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 8,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 65,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4
+    },
+    "connectionGraphic": true
+  },
+  {
+    "id": "native:IEC_symbol:20:0",
+    "name": "IEC_symbol / K [20:0]",
+    "category": "relays",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 16,
+    "height": 16,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 8,
+        "y": 0,
+        "direction": "top",
+        "labelPosition": {
+          "x": 9.2,
+          "y": 2.2297454770239993,
+          "fontSize": 4.4712,
+          "alignment": "start",
+          "rotation": 0
+        }
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 8,
+        "y": 16,
+        "direction": "bottom",
+        "labelPosition": {
+          "x": 9.2,
+          "y": 18.029544905256,
+          "fontSize": 4.4712,
+          "alignment": "start",
+          "rotation": 0
+        }
+      }
+    ],
+    "svgContent": "",
+    "description": "IEC_symbol: K",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 11.999999999999998,
+        "x2": 8,
+        "y2": 16,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "rect",
+        "x": 0,
+        "y": 4,
+        "width": 16,
+        "height": 8,
+        "color": "currentColor",
+        "lineWidth": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 4,
+        "x2": 8,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "IEC_symbol",
+      "number": 20,
+      "variant": 0
+    },
+    "isMaster": true,
+    "insertionPoint": {
+      "x": 8,
+      "y": 8
+    }
+  }
+]

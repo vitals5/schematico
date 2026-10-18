@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { legacyVendorToken,legacyEditionToken,legacyExchangeRoot,legacyAppName,legacyAppTitle,legacySourceFormat,isNativeExchangeXml,migrateLegacyData,readAppSetting } from './LegacyCompatibility';
+import { MacroManager } from './MacroManager';
+import { PackageHandler } from '../packages/PackageHandler';
+import { setProjectSymbolLibrary,getSymbolForComponent } from './symbols';
+import type { Project } from './types';
+
+const prefix=legacyVendorToken.toLowerCase(),id=prefix+'_1_17_1',symbolId=prefix+':TEST:1:0',wireId=prefix+'_wire_1';
+const original={id:'project',name:'Privat',description:'',author:'',company:'',created:'',modified:'',version:'1',standard:'DIN EN 81346-2 / IEC 60617',activePageId:'page',symbolLibrary:[{id:symbolId,name:'Test',category:'controls',standard:'IEC',defaultBmkPrefix:'',defaultFunctionText:'',description:'',width:20,height:20,pins:[],svgContent:'<rect width="20" height="20"/>'}],pages:[{id:'page',pageNumber:'1',pageType:'schematic',title:'Seite',higherLevel:'',location:'',components:[{id,symbolId,source:{format:legacySourceFormat,objectType:17,objectId:1},x:0,y:0,rotation:0,bmk:'-'+legacyEditionToken,functionText:legacyVendorToken,pins:{'0':{wireIds:[wireId]}}}],wires:[{id:wireId,from:{componentId:id,pinId:'0'},to:{componentId:id,pinId:'0'},potential:'Signal'}],groups:[{id:'group',members:[{kind:'component',id},{kind:'wire',id:wireId}]}],importedDrawing:{source:legacySourceFormat,graphics:[],diagnostics:[]},plotFrame:{type:'DIN_A3_LANDSCAPE',width:840,height:594,columns:10,rows:['A'],titleBlock:{projectTitle:'Privat',commission:'',company:'',author:'',date:'',revision:'',sheetNumber:'1',totalSheets:'1'}}}]} as unknown as Project;
+const migrated=migrateLegacyData(structuredClone(original)),page=migrated.pages[0],component=page.components[0];
+assert.equal(migrateLegacyData({id:prefix+'-frame-7'}).id,'native-frame-7');
+assert.equal(component.id,'native_1_17_1');assert.equal(component.symbolId,'native:TEST:1:0');assert.equal(component.source!.format,'NATIVE_CAD');assert.equal(page.importedDrawing!.source,'NATIVE_CAD');
+assert.equal(page.wires[0].from.componentId,component.id);assert.deepEqual(component.pins['0'].wireIds,[page.wires[0].id]);assert.equal(page.groups![0].members[0].id,component.id);assert.equal(migrated.symbolLibrary![0].id,component.symbolId);
+assert.equal(component.bmk,'-'+legacyEditionToken);assert.equal(component.functionText,legacyVendorToken,'User-entered labels must remain data');
+const stable=JSON.stringify(migrated);migrateLegacyData(migrated);assert.equal(JSON.stringify(migrated),stable);
+setProjectSymbolLibrary(migrated);assert(getSymbolForComponent(component,migrated));
+const saved=await PackageHandler.inspectFile(new File([JSON.stringify(original)],'old.json'));assert.deepEqual(saved.extractedProject!.pages,migrated.pages);
+const oldXml=PackageHandler.generateProjectXml(original).replaceAll('SchematicoData',legacyAppTitle+'Data').replace('application="Schematico"',`application="${legacyAppTitle}"`);
+assert.equal((await PackageHandler.inspectFile(new File([oldXml],'old.xml'))).extractedProject!.pages[0].components[0].id,component.id);
+// Original XML protocol spelling is accepted without reintroducing it into source literals.
+const fixture=fs.readFileSync(new URL('./fixtures/contactor_simple.ema',import.meta.url),'utf8').replaceAll('CadExchangeRoot',legacyExchangeRoot);
+assert(isNativeExchangeXml(fixture));const macro=await MacroManager.parseMacroFile(new File([fixture],'legacy.ema'),{allowHeuristic:false});assert.equal(macro.type,'ema');assert.equal(macro.type==='ema'&&macro.components.length,2);
+const imported=await MacroManager.parseMacroFile(new File([JSON.stringify({id:'old',name:'Alt',type:'ema',components:original.pages[0].components,wires:original.pages[0].wires,groups:original.pages[0].groups,symbolLibrary:original.symbolLibrary,width:20,height:20})],'old.ema'),{allowHeuristic:false});
+assert.equal(imported.type==='ema'&&imported.components[0].source!.format,'NATIVE_CAD');assert.equal(imported.type==='ema'&&imported.groups![0].members[0].id,component.id);
+const values=new Map<string,string>();Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k)}});
+values.set(legacyAppName+'_left_w','345');assert.equal(readAppSetting('left_w'),'345');assert.equal(values.get('schematico_left_w'),'345');assert(!values.has(legacyAppName+'_left_w'));
+values.set(legacyAppName+'_left_w','200');assert.equal(readAppSetting('left_w'),'345','An existing new preference takes precedence');
+values.set(legacyAppName+'_user_macros',JSON.stringify([imported]));assert.equal(MacroManager.getUserMacros().length,1);MacroManager.saveUserMacros([]);assert.deepEqual(MacroManager.getUserMacros(),[],'An emptied migrated library must stay empty');
+delete (globalThis as {localStorage?:unknown}).localStorage;
+console.log('✓ Legacy JSON/XML/macros, linked identifiers, native protocol, neutral source format and durable setting migration');

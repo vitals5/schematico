@@ -1,0 +1,16 @@
+node_modules/
+dist/
+release/
+*.log
+npm-debug.log*
+.DS_Store
+.agents/
+scratch/
+
+artifacts/
+
+# Private source projects and generated archives
+*.zip
+*.zip.[0-9][0-9][0-9]
+*.zw1
+test-data/private/
