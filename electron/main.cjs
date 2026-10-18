@@ -5,6 +5,8 @@ const fs = require('fs');
 const { migrateMacroSettings } = require('./settings-migration.cjs');
 const { createMacroLibrary } = require('./macro-library.cjs');
 const macroLibrary = () => createMacroLibrary(path.join(app.getPath('userData'), 'macro-library.json'));
+const brandIcon = path.join(__dirname, app.isPackaged
+  ? '../dist/branding/icon-256.png' : '../public/branding/icon-256.png');
 
 let mainWindow = null;
 
@@ -15,6 +17,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'Schematico',
+    icon: brandIcon,
     backgroundColor: '#12161f',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -149,6 +152,7 @@ function createMenu() {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'Über Schematico',
+              icon: brandIcon,
               message: 'Schematico '+app.getVersion()+' (Windows)',
               detail: 'Professionelle Schematico-Software mit Projektarchiv-Unterstützung (.zw1, .edz, .xml) und normgerechter Schaltungsplanung nach DIN EN 81346 / IEC 60617.'
             });
@@ -205,6 +209,7 @@ ipcMain.handle('macroLibrary:list', () => macroLibrary().list());
 ipcMain.handle('macroLibrary:read', (_event, relativePath) => macroLibrary().read(relativePath));
 
 app.whenReady().then(() => {
+  if (process.platform === 'win32') app.setAppUserModelId('de.schematico.cae');
   migrateMacroSettings(app.getPath('appData'),app.getPath('userData'));
   createWindow();
 });

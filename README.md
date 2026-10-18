@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/branding/logo-dark.png">
+    <img src="public/branding/logo.png" alt="Schematico" width="640">
+  </picture>
+</p>
+
 # Schematico
 
 Schematico ist ein Editor für Stromlaufpläne für **Windows und den Browser**. Projekte bestehen aus bearbeitbaren Bibliothekselementen, Verbindungen, Texten, Grafiken und Seitenformularen. Kennzeichnungsstruktur, Symbole und Schriftfelder orientieren sich an DIN EN 81346, IEC 60617 und DIN EN ISO 7200.
@@ -42,6 +49,8 @@ Die obere Menüzeile enthält **Projekt**, **Bearbeiten**, **Einfügen**, **Ansi
 In Textfeldern bleibt die normale Textbearbeitung aktiv.
 
 Weitere Anleitungen: [Menüs](docs/menues.md), [Gruppen](docs/gruppierung.md), [Gerätekästen](docs/geraetekaesten.md), [Elementbibliothek](docs/elementbibliothek.md), [Makrobibliothek](docs/makrobibliothek.md).
+
+Logos, App-Icons und Hinweise zur Verwendung: [Branding](docs/branding/README.md).
 
 ## Dateiformate und Grenzen
 

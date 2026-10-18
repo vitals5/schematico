@@ -706,8 +706,18 @@ button:disabled { opacity: .4; cursor: default; }
 .app-chrome .header-icon { width: 18px; height: 18px; flex: 0 0 18px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .app-chrome .ecad-menubar { display: flex; align-items: center; background: #171b24; border-bottom: 1px solid #30394a; font-size: 12px; user-select: none; position: relative; z-index: 1100; height: 38px; flex-shrink: 0; gap: 18px; padding: 0 14px; border-bottom-color: #30394a; }
-.app-chrome .brand-logo { display: flex; align-items: center; flex-shrink: 0; font-weight: 700; color: var(--accent-bright); white-space: nowrap; font-size: 14px; letter-spacing: .15px; gap: 7px; }
-.app-chrome .brand-logo .header-icon { width: 16px; height: 18px; flex-basis: 16px; }
+.app-chrome .brand-logo { display: flex; align-items: center; flex-shrink: 0; font-weight: 700; color: #edf2f7; white-space: nowrap; font-size: 14px; letter-spacing: .15px; gap: 7px; }
+.app-chrome .brand-icon { display: block; width: 28px; height: 28px; object-fit: contain; flex: 0 0 28px; }
+.about-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: auto; border: 1px solid #43506a; border-radius: 10px; color: #edf2f7; background: #171b24; box-shadow: 0 20px 60px #0008; }
+.about-dialog::backdrop { background: #000b; }
+.about-heading { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid #30394a; }
+.about-heading h2 { margin: 0; font-size: 15px; }
+.about-heading .btn { font-size: 22px; line-height: 1; padding: 4px 10px; }
+.about-body { padding: 20px 24px 24px; font-size: 13px; line-height: 1.6; }
+.about-logo { display: block; width: 100%; height: auto; margin: 0 auto 12px; }
+.about-version { color: #71ccff; text-align: center; }
+.about-body ul { margin: 12px 0; padding-left: 20px; }
+.about-standards { color: #a0aec0; font-size: 12px; }
 .main-menu-list { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .app-chrome .menu-item { padding: 0; border-radius: 4px; }
 .menu-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid transparent; background: transparent; color: #cbd5e0; font: inherit; cursor: pointer; white-space: nowrap; }

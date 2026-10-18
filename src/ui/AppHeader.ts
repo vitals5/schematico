@@ -31,7 +31,7 @@ const proxy=(id:string,label:string,key='')=>`<button type="button" class="menu-
 export function renderAppHeader(projectName:string):string {
   return `<div class="app-chrome">
     <nav class="ecad-menubar" id="ecadMenubar" aria-label="Hauptmenü">
-      <div class="brand-logo">${headerIcon('bolt')}Schematico</div>
+      <div class="brand-logo"><img class="brand-icon" src="${import.meta.env.BASE_URL}branding/icon-64.png" width="28" height="28" alt="" draggable="false" />Schematico</div>
       <button type="button" class="menu-trigger compact-menu-toggle" id="btnCompactMenu" aria-expanded="false" aria-controls="mainMenuList">${headerIcon('menu')} Menü</button>
       <div class="main-menu-list" id="mainMenuList">
         ${menu('menuProjectTrigger','Projekt',

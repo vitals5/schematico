@@ -1,5 +1,6 @@
 import { readAppSetting } from '../model/LegacyCompatibility';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
+import { AboutDialog } from './AboutDialog';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 import { renderDeviceBoxProperties } from './DeviceBoxProperties';
 import { externalMacroLibrary } from '../model/ExternalMacroLibrary';
@@ -864,21 +865,7 @@ export class App {
         '• Esc: Modus / Platzierung abbrechen'
       );
     });
-    bindMenuOpt('menuAbout', () => {
-      alert(
-        'Schematico - CAE & Elektro-CAD\n' +
-        'Version 1.2.4 (Windows & Web)\n\n' +
-        'Unterstützte Standards:\n' +
-        '• Projektarchive (.zw1) (Backup/Restore)\n' +
-        '• Artikel- und Makropakete (.edz)\n' +
-        '• XML Schaltplan-Schemata\n' +
-        '• DIN EN 81346 Strukturierung (=Anlage +Ort -BMK :Pin)\n' +
-        '• IEC 60617 genormte elektrotechnische Symbole\n' +
-        '• Automatische Querverweisberechnung & Kontaktspiegel\n' +
-        '• Klemmenpläne (-X1) und automatisierte Stücklisten\n' +
-        '• Windows Desktop (Electron) & Mobile/PWA Web App'
-      );
-    });
+    bindMenuOpt('menuAbout', () => AboutDialog.show());
   }
 
   private updateToolButtons(activeId: string): void {
