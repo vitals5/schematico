@@ -135,7 +135,7 @@ const custom = structuredClone(coil.symbolLibrary!.find(s => s.source?.library =
 custom.id = 'custom:coil'; custom.source = { library: 'MyLibrary', number: 900, variant: 0 };
 const customXml = coilXml.replace('Name="IEC_symbol"', 'Name="MyLibrary"').replace('A1262="20"', 'A1262="900"');
 const customMacro = parseNativeXmlMacro(customXml, 'custom.ema', [custom]);
-assert(customMacro.components.some(c => c.symbolId === custom.id));
+assert(customMacro.type === 'ema' && customMacro.components.some(c => c.symbolId === custom.id));
 for (const strict of [true, false]) {
   await assert.rejects(() => load(coilXml.replace('A1262="20"', 'A1262="9999"'), 'missing.ema', strict), /Bibliothekssymbol nicht verfügbar/);
   await assert.rejects(() => load(coilXml.replace('Name="IEC_symbol"', 'Name="Missing"'), 'missing.ema', strict), /Bibliothekssymbol nicht verfügbar/);

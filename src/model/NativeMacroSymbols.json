@@ -23372,5 +23372,1607 @@
       "x": 2,
       "y": 11.999999999999998
     }
+  },
+  {
+    "id": "native:SPECIAL:341:0",
+    "name": "SPECIAL / PID1 [341:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 20.06,
+    "height": 20,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "<g transform=\"scale(0.84)\"><polyline points=\"11.90476190476187,0 11.281714806631582,0.016315062445551476 10.660375437289808,0.0652155313300824 10.042446844759123,0.1465673738674127 9.429622728359972,0.2601476103118454 8.82358279639853,0.40564492513014905 8.225988162202972,0.5826605202958017 7.638476791127351,0.7907092083666569 7.062659011002349,1.0292207423500024 6.500113098338701,1.297541378709921 5.952380952380928,1.5949356692328873 5.420963868868703,1.920588476840205 4.907318425089585,2.273607209822069 4.412852487501912,2.6530242683694123 3.938921352870712,3.0577996966977103 3.4868240334934644,3.4868240334935 3.0577996966976713,3.9389213528707536 2.6530242683693803,4.412852487501952 2.2736072098220426,4.907318425089621 1.9205884768401784,5.420963868868745 1.5949356692328625,5.952380952380971 1.297541378709898,6.500113098338747 1.029220742349981,7.0626590110024 0.7907092083666374,7.638476791127398 0.582660520295784,8.22598816220303 0.40564492513013306,8.823582796398586 0.260147610311833,9.42962272836003 0.1465673738674056,10.042446844759171 0.06521553133007707,10.660375437289858 0.016315062445547923,11.281714806631637 0,11.904761904761914 0.0163150624455497,12.527809002892202 0.06521553133008062,13.14914837223398 0.14656737386740915,13.767076964764662 0.2601476103118401,14.379901081163814 0.40564492513014194,14.985941013125258 0.5826605202957946,15.583535647320812 0.790709208366648,16.17104701839644 1.0292207423499917,16.746864798521436 1.2975413787099086,17.309410711185084 1.594935669232873,17.857142857142858 1.9205884768401926,18.38855994065509 2.2736072098220568,18.902205384434208 2.6530242683693963,19.396671322021877 3.0577996966976873,19.870602456653074 3.4868240334934804,20.322699776030326 3.9389213528707323,20.751724112826118 4.41285248750194,21.156499541154417 4.9073184250896045,21.535916599701757 5.420963868868727,21.888935332683623 5.952380952380947,22.214588140290935 6.500113098338727,22.5119824308139 7.06265901100238,22.780303067173822 7.638476791127372,23.01881460115716 8.225988162203006,23.22686328922802 8.823582796398565,23.40387888439367 9.429622728360002,23.54937619921197 10.042446844759155,23.6629564356564 10.660375437289842,23.74430827819373 11.281714806631616,23.79320874707826 11.904761904761893,23.80952380952381\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/><polyline points=\"11.976190476190474,23.80952380952381 12.589032794885071,23.7937391652956 13.200249965920957,23.74642709064987 13.808221151238836,23.6677130487033 14.411334120550011,23.557805774944736 15.007989526681293,23.4169967237062 15.596605146756168,23.245659295278365 16.175620077965423,23.04424784572016 16.743498876800796,22.81329648198815 17.298735630775155,22.553417645580904 17.839857951831718,22.26530048845423 18.365430880852387,21.949709045514112 18.87406069291148,21.607480208533463 19.364398593183616,21.239521506865593 19.83514429370515,20.846808700839517 20.2850494615041,20.430383194218955 20.712921028954753,19.99134927258682 21.117624357578578,19.53087117497827 21.49808624690143,19.050170006528184 21.853297780388324,18.55052050031981 22.182317000908732,18.033247637021773 22.48427140863747,17.49972313127762 22.75836027476752,16.951361794165003 23.00385676489875,16.38961778137125 23.220109866472164,15.815980737033728 23.40654611513812,15.231971843471527 23.562671115480747,14.63913978728326 23.688070852065675,14.03905665250874 23.782412787334543,13.433313751744631 23.84544674343484,12.82351740626958 23.877005565646584,12.211284686368897 23.877005565646584,11.598239123154878 23.84544674343484,10.986006403254194 23.782412787334543,10.376210057779144 23.68807085206567,9.770467157015045 23.56267111548074,9.170384022240505 23.406546115138113,8.577551966052248 23.22010986647215,7.993543072490038 23.003856764898735,7.419906028152528 22.758360274767504,6.858162015358776 22.484271408637447,6.30980067824615 22.182317000908707,5.776276172501998 21.853297780388306,5.25900330920397 21.49808624690141,4.759353802995599 21.11762435757855,4.278652634545504 20.712921028954728,3.8181745369369615 20.28504946150407,3.37914061530482 19.835144293705113,2.9627151086842627 19.36439859318358,2.570002302658189 18.874060692911442,2.2020436009903186 18.365430880852358,1.859814764009677 17.839857951831675,1.5442233210695555 17.298735630775145,1.2561061639428992 16.743498876800743,0.996227327535637 16.17562007796537,0.7652759638036297 15.596605146756124,0.5638645142454326 15.007989526681257,0.39252708581760487 14.411334120549975,0.2517180345790653 13.80822115123879,0.14181076082050303 13.200249965920921,0.0630967188739362 12.589032794885036,0.0157846442282068 11.976190476190437,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/><line x1=\"11.904761904761905\" y1=\"0\" x2=\"11.976190476190476\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"23.80952380952381\" x2=\"11.976190476190476\" y2=\"23.80952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"11.904761904761905\" x2=\"23.88095238095238\" y2=\"11.904761904761905\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PID1",
+    "importedGraphics": [
+      {
+        "kind": "arc",
+        "x": 10,
+        "y": 10,
+        "radius": 10,
+        "startAngle": -90.00000000000018,
+        "endAngle": -270,
+        "counterClockwise": true,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "arc",
+        "x": 10.06,
+        "y": 10,
+        "radius": 10,
+        "startAngle": -270,
+        "endAngle": -450.0000000000002,
+        "counterClockwise": true,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 0,
+        "x2": 10.06,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 20,
+        "x2": 10.06,
+        "y2": 20,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 10,
+        "x2": 20.06,
+        "y2": 10,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 341,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:104:1",
+    "name": "SPECIAL / PICP [104:1]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 10,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "left"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><circle cx=\"9.523809523809524\" cy=\"2.380952380952381\" r=\"2.380952380952381\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/><line x1=\"0\" y1=\"2.380952380952381\" x2=\"7.142857142857142\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PICP",
+    "importedGraphics": [
+      {
+        "kind": "circle",
+        "x": 8,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 5.999999999999999,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 104,
+      "variant": 1
+    },
+    "insertionPoint": {
+      "x": 8,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:106:2",
+    "name": "SPECIAL / TPIDL [106:2]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 4.000000000000001,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 8,
+        "y": 9.797174393178837e-16,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 0,
+        "y": 0,
+        "direction": "left"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 3.999999999999999,
+        "y": 4.000000000000001,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"9.523809523809524\" y1=\"1.1663302849022427e-15\" x2=\"0\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"4.761904761904762\" y1=\"5.831651424511213e-16\" x2=\"4.761904761904761\" y2=\"4.761904761904763\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"4.761904761904762\" y1=\"1.1904761904761911\" x2=\"5.9523809523809526\" y2=\"3.5714285714285716\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"4.761904761904762\" y1=\"1.1904761904761911\" x2=\"3.571428571428571\" y2=\"3.5714285714285716\" stroke=\"currentColor\" stroke-width=\"0.55\" /></g>",
+    "description": "SPECIAL: TPIDL",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 9.797174393178837e-16,
+        "x2": 0,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4.898587196589419e-16,
+        "x2": 3.999999999999999,
+        "y2": 4.000000000000001,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 1.0000000000000004,
+        "x2": 5,
+        "y2": 3,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 1.0000000000000004,
+        "x2": 2.9999999999999996,
+        "y2": 3,
+        "color": "currentColor",
+        "width": 0.462
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 106,
+      "variant": 2
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4.898587196589419e-16
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:2",
+    "name": "SPECIAL / BP [8:2]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 2,
+        "direction": "right"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"6.5476190476190474\" y1=\"0\" x2=\"0\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"2.380952380952381\" x2=\"6.5476190476190474\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"9.523809523809524\" y1=\"2.380952380952381\" x2=\"6.5476190476190474\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 5.5,
+        "y1": 0,
+        "x2": 0,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 5.5,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 2,
+        "x2": 5.5,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 2
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:0",
+    "name": "SPECIAL / BP [8:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 2,
+        "direction": "left"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"2.9761904761904763\" y1=\"0\" x2=\"9.523809523809524\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"9.523809523809524\" y1=\"2.380952380952381\" x2=\"2.9761904761904763\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"2.380952380952381\" x2=\"2.9761904761904763\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 2.5,
+        "y1": 0,
+        "x2": 8,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 2,
+        "x2": 2.5,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 2.5,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:82:0",
+    "name": "SPECIAL / PIDBP1 [82:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 20,
+    "height": 20,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 20,
+        "y": 10,
+        "direction": "right"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"11.904761904761905\" y1=\"23.80952380952381\" x2=\"23.80952380952381\" y2=\"11.904761904761905\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"23.80952380952381\" y1=\"11.904761904761905\" x2=\"11.904761904761905\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"0\" x2=\"11.904761904761905\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"5.9523809523809526\" x2=\"0\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"5.9523809523809526\" x2=\"0\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"17.857142857142858\" x2=\"11.904761904761905\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"17.857142857142858\" x2=\"11.904761904761905\" y2=\"23.80952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PIDBP1",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 20,
+        "x2": 20,
+        "y2": 10,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 20,
+        "y1": 10,
+        "x2": 10,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 0,
+        "x2": 10,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 5,
+        "x2": 0,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 5,
+        "x2": 0,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 15,
+        "x2": 10,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 15,
+        "x2": 10,
+        "y2": 20,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 82,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 20,
+      "y": 10
+    }
+  },
+  {
+    "id": "native:SPECIAL:82:2",
+    "name": "SPECIAL / PIDBP1 [82:2]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 20,
+    "height": 20,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 0,
+        "y": 10,
+        "direction": "left"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"23.80952380952381\" y1=\"17.857142857142858\" x2=\"23.80952380952381\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"23.80952380952381\" y1=\"5.9523809523809526\" x2=\"11.904761904761905\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"5.9523809523809526\" x2=\"11.904761904761905\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"0\" x2=\"0\" y2=\"11.904761904761905\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"11.904761904761905\" x2=\"11.904761904761905\" y2=\"23.80952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"23.80952380952381\" x2=\"11.904761904761905\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"17.857142857142858\" x2=\"23.80952380952381\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PIDBP1",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 20,
+        "y1": 15,
+        "x2": 20,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 20,
+        "y1": 5,
+        "x2": 10,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 5,
+        "x2": 10,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 0,
+        "x2": 0,
+        "y2": 10,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 10,
+        "x2": 10,
+        "y2": 20,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 20,
+        "x2": 10,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 15,
+        "x2": 20,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 82,
+      "variant": 2
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 10
+    }
+  },
+  {
+    "id": "native:SPECIAL:83:0",
+    "name": "SPECIAL / PIDBP2 [83:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 20,
+    "height": 20,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 0,
+        "y": 10,
+        "direction": "left"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"11.904761904761905\" y1=\"23.80952380952381\" x2=\"23.80952380952381\" y2=\"11.904761904761905\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"23.80952380952381\" y1=\"11.904761904761905\" x2=\"11.904761904761905\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"0\" x2=\"11.904761904761905\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"5.9523809523809526\" x2=\"0\" y2=\"5.9523809523809526\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"5.9523809523809526\" x2=\"0\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"17.857142857142858\" x2=\"11.904761904761905\" y2=\"17.857142857142858\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"11.904761904761905\" y1=\"17.857142857142858\" x2=\"11.904761904761905\" y2=\"23.80952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PIDBP2",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 20,
+        "x2": 20,
+        "y2": 10,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 20,
+        "y1": 10,
+        "x2": 10,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 0,
+        "x2": 10,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 5,
+        "x2": 0,
+        "y2": 5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 5,
+        "x2": 0,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 15,
+        "x2": 10,
+        "y2": 15,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 15,
+        "x2": 10,
+        "y2": 20,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 83,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 10
+    }
+  },
+  {
+    "id": "native:SPECIAL:103:0",
+    "name": "SPECIAL / PIDP [103:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"0\" x2=\"4.761904761904762\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PIDP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 0,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 103,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:270:0",
+    "name": "SPECIAL / SCSS [270:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 16,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "<g transform=\"scale(0.84)\"><rect x=\"0\" y=\"0\" width=\"19.047619047619047\" height=\"9.523809523809524\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.55\" /></g>",
+    "description": "SPECIAL: SCSS",
+    "importedGraphics": [
+      {
+        "kind": "rect",
+        "x": 0,
+        "y": 0,
+        "width": 16,
+        "height": 8,
+        "color": "currentColor",
+        "lineWidth": 0.462
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 270,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:271:0",
+    "name": "SPECIAL / SCSS2 [271:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 16,
+    "height": 11.999999999999998,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"0\" x2=\"19.047619047619047\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"19.047619047619047\" y1=\"0\" x2=\"19.047619047619047\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"19.047619047619047\" y1=\"4.761904761904762\" x2=\"9.523809523809524\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"9.523809523809524\" y1=\"4.761904761904762\" x2=\"9.523809523809524\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"9.523809523809524\" y1=\"9.523809523809524\" x2=\"14.285714285714285\" y2=\"14.285714285714285\" stroke=\"currentColor\" stroke-width=\"0.55\" /><line x1=\"14.285714285714285\" y1=\"14.285714285714285\" x2=\"0\" y2=\"14.285714285714285\" stroke=\"currentColor\" stroke-width=\"0.55\" /></g>",
+    "description": "SPECIAL: SCSS2",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 0,
+        "x2": 16,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 16,
+        "y1": 0,
+        "x2": 16,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 16,
+        "y1": 4,
+        "x2": 8,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 4,
+        "x2": 8,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 8,
+        "x2": 11.999999999999998,
+        "y2": 11.999999999999998,
+        "color": "currentColor",
+        "width": 0.462
+      },
+      {
+        "kind": "line",
+        "x1": 11.999999999999998,
+        "y1": 11.999999999999998,
+        "x2": 0,
+        "y2": 11.999999999999998,
+        "color": "currentColor",
+        "width": 0.462
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 271,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:280:0",
+    "name": "SPECIAL / DCPLO [280:0]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 16,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [],
+    "svgContent": "<g transform=\"scale(0.84)\"><rect x=\"0\" y=\"0\" width=\"19.047619047619047\" height=\"9.523809523809524\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.55\" /></g>",
+    "description": "SPECIAL: DCPLO",
+    "importedGraphics": [
+      {
+        "kind": "rect",
+        "x": 0,
+        "y": 0,
+        "width": 16,
+        "height": 8,
+        "color": "currentColor",
+        "lineWidth": 0.462
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 280,
+      "variant": 0
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:3",
+    "name": "SPECIAL / BP [8:3]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 2,
+        "y": 5.999999999999999,
+        "direction": "bottom"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 2,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"2.9761904761904763\" x2=\"2.380952380952381\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"9.523809523809524\" x2=\"4.761904761904762\" y2=\"2.9761904761904763\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"0\" x2=\"2.380952380952381\" y2=\"2.9761904761904763\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2.5,
+        "x2": 2,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 8,
+        "x2": 4,
+        "y2": 2.5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 0,
+        "x2": 2,
+        "y2": 2.5,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:6",
+    "name": "SPECIAL / BP [8:6]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 2,
+        "direction": "right"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"6.5476190476190474\" y1=\"0\" x2=\"0\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"2.380952380952381\" x2=\"6.5476190476190474\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"9.523809523809524\" y1=\"2.380952380952381\" x2=\"6.5476190476190474\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 5.5,
+        "y1": 0,
+        "x2": 0,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 5.5,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 8,
+        "y1": 2,
+        "x2": 5.5,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 6
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:77:3",
+    "name": "SPECIAL / CRST [77:3]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 4,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 4,
+        "direction": "bottom"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 4,
+        "y": 4,
+        "direction": "left"
+      },
+      {
+        "id": "3",
+        "name": "4",
+        "x": 4,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"0\" x2=\"4.761904761904762\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"0\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"9.523809523809524\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: CRST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 4,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 0,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 8,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 77,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:78:3",
+    "name": "SPECIAL / TST [78:3]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 0,
+        "y": 4,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 0,
+        "y": 4,
+        "direction": "bottom"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 0,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"0\" y1=\"4.761904761904762\" x2=\"4.761904761904762\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: TST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 0,
+        "x2": 0,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 4,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 78,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:75:3",
+    "name": "SPECIAL / COST [75:3]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 0,
+        "y": 0,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 0,
+        "y": 0,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"0\" x2=\"0\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /></g>",
+    "description": "SPECIAL: COST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 0,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 0,
+        "x2": 0,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 2
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 75,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:75:7",
+    "name": "SPECIAL / COST [75:7]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 0,
+        "y": 4,
+        "direction": "right"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 0,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"0\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"0\" y1=\"4.761904761904762\" x2=\"0\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /></g>",
+    "description": "SPECIAL: COST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 0,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 4,
+        "x2": 0,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 2
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 75,
+      "variant": 7
+    },
+    "insertionPoint": {
+      "x": 0,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:5",
+    "name": "SPECIAL / BP [8:5]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 2,
+        "y": 5.999999999999999,
+        "direction": "top"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 2,
+        "y": 5.999999999999999,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"6.5476190476190474\" x2=\"2.380952380952381\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"0\" x2=\"4.761904761904762\" y2=\"6.5476190476190474\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"9.523809523809524\" x2=\"2.380952380952381\" y2=\"6.5476190476190474\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 5.5,
+        "x2": 2,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 0,
+        "x2": 4,
+        "y2": 5.5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 8,
+        "x2": 2,
+        "y2": 5.5,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 5
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:77:5",
+    "name": "SPECIAL / CRST [77:5]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 8,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 4,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 4,
+        "direction": "bottom"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 4,
+        "y": 4,
+        "direction": "right"
+      },
+      {
+        "id": "3",
+        "name": "4",
+        "x": 4,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"0\" x2=\"4.761904761904762\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"9.523809523809524\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"0\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: CRST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 4,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 8,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 0,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 77,
+      "variant": 5
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:78:5",
+    "name": "SPECIAL / TST [78:5]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 4,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 4,
+        "direction": "bottom"
+      },
+      {
+        "id": "2",
+        "name": "3",
+        "x": 4,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"0\" x2=\"4.761904761904762\" y2=\"9.523809523809524\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"0\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: TST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 4,
+        "y2": 8,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 0,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 78,
+      "variant": 5
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:75:5",
+    "name": "SPECIAL / COST [75:5]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 0,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 0,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"4.761904761904762\" x2=\"4.761904761904762\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"0\" y1=\"0\" x2=\"4.761904761904762\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: COST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 4,
+        "x2": 4,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 0,
+        "x2": 4,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 75,
+      "variant": 5
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 0
+    }
+  },
+  {
+    "id": "native:SPECIAL:75:1",
+    "name": "SPECIAL / COST [75:1]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 4,
+        "direction": "left"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 4,
+        "y": 4,
+        "direction": "top"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"4.761904761904762\" y1=\"0\" x2=\"4.761904761904762\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"2.380952380952381\" /><line x1=\"0\" y1=\"4.761904761904762\" x2=\"4.761904761904762\" y2=\"4.761904761904762\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: COST",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 4,
+        "y1": 0,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 2
+      },
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 4,
+        "x2": 4,
+        "y2": 4,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 75,
+      "variant": 1
+    },
+    "insertionPoint": {
+      "x": 4,
+      "y": 4
+    }
+  },
+  {
+    "id": "native:SPECIAL:8:1",
+    "name": "SPECIAL / BP [8:1]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 8,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 2,
+        "y": 5.999999999999999,
+        "direction": "top"
+      },
+      {
+        "id": "1",
+        "name": "2",
+        "x": 2,
+        "y": 5.999999999999999,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"6.5476190476190474\" x2=\"2.380952380952381\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"0\" x2=\"4.761904761904762\" y2=\"6.5476190476190474\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><line x1=\"2.380952380952381\" y1=\"9.523809523809524\" x2=\"2.380952380952381\" y2=\"6.5476190476190474\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: BP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 5.5,
+        "x2": 2,
+        "y2": 0,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 0,
+        "x2": 4,
+        "y2": 5.5,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 8,
+        "x2": 2,
+        "y2": 5.5,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 8,
+      "variant": 1
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 4
+    }
   }
 ]

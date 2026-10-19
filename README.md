@@ -23,7 +23,7 @@ Dieses Repository startet mit einem eigenständigen ersten Commit des aktuellen 
 - **Seiten und Titelseiten:** Bearbeitbare Projekt- und Kundendaten, Logos, Normblätter und Schriftfelder; importierte unterstützte Formulare bleiben erhalten.
 - **Querverweise:** Gegenstellen im Editor anklicken und anspringen. Verweise und Kontaktspiegel aus den Projektobjekten berechnen.
 - **Rückgängig/Wiederholen:** Änderungen an Objekten, Verdrahtung, Eigenschaften und Seiten innerhalb der Sitzung zurücknehmen oder wiederholen.
-- **Makros:** `.ema` und `.ems` aus einer eigenen Ordnerbibliothek suchen, in der Vorschau betrachten und als Objekte auf der aktuellen Seite platzieren. Eigene Makros erhalten Bibliothek, Beschriftungen, Verbindungen und Gruppen.
+- **Makros:** `.ema`, `.ems`, Seitenmakros `.emp` und Konturen `.fp1` aus einer eigenen Ordnerbibliothek suchen, in der Vorschau betrachten und als Objekte auf der aktuellen Seite platzieren. Variablen vor dem Einfügen konfigurieren; Seitenmakros auch als neue Seiten hinzufügen. Eingebettete Bilder und gespeicherte 2D-Ansichten übernehmen. Eigene Makros erhalten Bibliothek, Beschriftungen, Verbindungen und Gruppen.
 - **Auswertungen und PDF:** Projektprüfung, Klemmenplan und Artikelstückliste. Vektor-PDF in A3/A4 mit Farbe oder Schwarz-Weiß, anklickbaren Verweisen und optionalen Auswertungsseiten. Lange Stücklistentexte werden umgebrochen.
 - **Touch-Bedienung:** Verschieben und Platzieren per Touch, Zoomen mit zwei Fingern und einklappbare Seitenleisten.
 
@@ -54,7 +54,7 @@ Logos, App-Icons und Hinweise zur Verwendung: [Branding](docs/branding/README.md
 
 ## Dateiformate und Grenzen
 
-Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems` werden für unterstützte Paket- und Makrostrukturen gelesen.
+Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems`/`.emp`/`.fp1` werden für unterstützte Paket- und Makrostrukturen gelesen.
 
 Die Erweiterung allein garantiert keine Importierbarkeit. Der native Import unterstützt die untersuchten Datenbanklayouts, Bibliotheken und XML-Objekttypen. Unbekannte Varianten und unauflösbare Daten werden gemeldet. Befunde und verbleibende Grenzen stehen unter [docs/reverse-engineering](docs/reverse-engineering/).
 

@@ -112,7 +112,7 @@ export class MacroSelectionDialog {
 
           <label class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; cursor: pointer; display: flex; align-items: center; gap: 5px;">
             <span>📂 Makro importieren</span>
-            <input type="file" id="macroDialogFileInput" accept=".ema,.ems,.edz,.xml,.json" style="display: none;">
+            <input type="file" id="macroDialogFileInput" accept=".ema,.ems,.emp,.fp1,.edz,.xml,.json" style="display: none;">
           </label>
 
           <span style="font-size: 11px; color: #a0aec0;" id="macroCountBadge">
@@ -379,6 +379,7 @@ export class MacroSelectionDialog {
       <div>
         <div style="font-size: 13px; font-weight: 600; color: #edf2f7;">${escapeSvg(m.name)}</div>
         <div style="font-size: 11px; color: #a0aec0; margin-top: 3px; line-height: 1.4;">${escapeSvg(m.description || '')}</div>
+        ${m.importDiagnostics?.length?`<details><summary>${m.importDiagnostics.length} Importhinweise</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
       </div>
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px;">
@@ -580,7 +581,7 @@ export class MacroSelectionDialog {
 
   private async handleImport(file: File, modal: HTMLElement): Promise<void> {
     try {
-      const imported = await MacroManager.parseMacroFile(file);
+      const imported = await MacroManager.parseMacroFile(file,{allowMissingDependencies:true});
       MacroManager.addMacro(imported);
       this.selectedMacroId = imported.id;
       this.updateGrid(modal);

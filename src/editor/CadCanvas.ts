@@ -21,6 +21,7 @@ import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { AutoconnectEngine, AutoconnectPreviewSegment } from '../model/AutoconnectEngine';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition } from '../model/LabelLayout';
 import { WindowMacro, MacroManager } from '../model/MacroManager';
+import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
@@ -248,6 +249,8 @@ export class CadCanvas {
     if(res.boxes.length)(this.activePage.boxes ??= []).push(...res.boxes);
     if (res.images.length) (this.activePage.images ??= []).push(...res.images);
     if (res.cables.length) (this.activePage.cables ??= []).push(...res.cables);
+    this.activePage.nativeData=mergeNativeMacroData(this.activePage.nativeData,res.nativeData);
+    if(res.importDiagnostics?.length)this.activePage.importDiagnostics=[...new Set([...(this.activePage.importDiagnostics??[]),...res.importDiagnostics])];
     if (this.autoconnectEnabled) {
       AutoconnectEngine.updatePageAutoconnections(this.activePage);
     }

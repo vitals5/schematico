@@ -50,7 +50,7 @@ export function nativeXmlGraphics(node: Element, units: number): DrawingPrimitiv
       ...(node.getAttribute('A623') === '1' ? { fill: color } : {}) }];
     return points.slice(1).map((p, i) => ({ kind: 'line', x1: points[i].x, y1: points[i].y, x2: p.x, y2: p.y, color, width }));
   }
-  if (kind === 'O30' || kind === 'O83') {
+  if (kind === 'O30' || kind === 'O83' || kind === 'O52') {
     const text = nativeXmlText(node.getAttribute('A511') ?? '');
     if (!text) return [];
     const format = xmlChildren(node).find(n => xmlTag(n) === 'S54x505');

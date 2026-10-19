@@ -1,6 +1,7 @@
 import { readAppSetting } from '../model/LegacyCompatibility';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { AboutDialog } from './AboutDialog';
+import { macroWithVariables } from '../model/NativeMacroVariables';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 import { renderDeviceBoxProperties } from './DeviceBoxProperties';
 import { externalMacroLibrary } from '../model/ExternalMacroLibrary';
@@ -1170,7 +1171,7 @@ export class App {
           <button class="btn" id="btnOpenMacroDialog" style="padding: 2px 7px; font-size: 11px;" title="Große Makro-Bibliothek öffnen">🔍 Groß</button>
           <label class="btn btn-primary" style="padding: 2px 7px; font-size: 11px; margin: 0; cursor: pointer;" title="Makrodatei (.ema, .ems, .edz, .xml, .json) importieren">
             + Import
-            <input type="file" id="macroTabFileInput" accept=".ema,.ems,.edz,.xml,.json" style="display: none;">
+            <input type="file" id="macroTabFileInput" accept=".ema,.ems,.emp,.fp1,.edz,.xml,.json" style="display: none;">
           </label>
         </div>
       </div>
@@ -1270,9 +1271,11 @@ export class App {
             <div style="font-size: 9px; font-family: monospace; color: #f6e05e;">
               ${compCount} Bauteile: ${escapeSvg(bmkSummary || '–')}
             </div>
+            ${m.importDiagnostics?.length?`<details class="macro-import-notes"><summary>${m.importDiagnostics.length} Importhinweise</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
 
             <div style="display: flex; gap: 4px; margin-top: 2px;">
               <button class="btn btn-primary btn-tab-place-macro" data-macro-id="${m.id}" style="flex:1;padding:3px 6px;font-size:11px;justify-content:center">⚡ Platzieren</button>
+              ${m.type==='ems'&&m.nativeData?.kind==='PageMacro'?`<button class="btn btn-tab-add-page-macro" data-macro-id="${m.id}" style="padding:3px 6px;font-size:11px">Seite(n) hinzufügen</button>`:''}
               <button class="btn btn-tab-export-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px;" title="Als .ema/.ems exportieren">💾</button>
               ${!m.isBuiltIn && !m.externalPath ? `
                 <button class="btn btn-tab-delete-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px; color: #fc8181; border-color: #e53e3e;" title="Löschen">🗑️</button>
@@ -1338,6 +1341,12 @@ export class App {
     }
 
     // Place window macro buttons
+    container.querySelectorAll<HTMLElement>('.btn-tab-add-page-macro').forEach(button=>button.addEventListener('click',()=>{
+      const macro=MacroManager.getAllMacros().find(m=>m.id===button.dataset.macroId);
+      if(macro?.type==='ems'){
+        if(macro.nativeData?.variables.length)this.configureMacro(macro,true);else this.addMacroPages(macro);
+      }
+    }));
     container.querySelectorAll('.btn-tab-place-macro').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = (e.currentTarget as HTMLElement).dataset.macroId!;
@@ -1384,8 +1393,40 @@ export class App {
   }
 
   public startPlacingMacro(macro: MacroItem): void {
+    if((macro.nativeData?.variables.length??0)>0 || macro.type==='ems'&&(macro.pages?.length??0)>1){
+      this.configureMacro(macro);return;
+    }
     try { this.startPlacingWindowMacro(MacroManager.forPlacement(macro)); }
     catch (error) { alert(error instanceof Error ? error.message : 'Das Makro kann nicht platziert werden.'); }
+  }
+
+  private configureMacro(macro:MacroItem,asPages=false):void {
+    document.getElementById('macroConfigureDialog')?.remove();
+    const dialog=document.createElement('dialog');dialog.id='macroConfigureDialog';dialog.className='about-dialog modal-backdrop';
+    const variables=macro.nativeData?.variables??[],pages=macro.type==='ems'?macro.pages??[macro.page]:[];
+    dialog.innerHTML=`<div class="about-heading"><h2>Makro konfigurieren</h2><button class="btn" data-close aria-label="Schließen">×</button></div>
+      <div class="about-body"><p>${escapeSvg(macro.name)}</p>${pages.length>1&&!asPages?`<label class="form-label">Quellseite<select class="form-input" data-source-page>${pages.map((p,i)=>`<option value="${i}">${escapeSvg(p.title)}</option>`).join('')}</select></label>`:''}
+      ${variables.map((v,i)=>`<label class="form-label" style="display:block;margin:10px 0">${escapeSvg(v.name.replace(/_/g,' '))}<input class="form-input" data-variable="${i}" value="${escapeSvg(v.value)}"></label>`).join('')}
+      <button class="btn btn-primary" data-apply>${asPages?'Seite(n) hinzufügen':'Platzieren'}</button></div>`;
+    document.body.appendChild(dialog);dialog.querySelector('[data-close]')!.addEventListener('click',()=>dialog.close());
+    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    dialog.querySelector('[data-apply]')!.addEventListener('click',()=>{
+      const values=Object.fromEntries([...dialog.querySelectorAll<HTMLInputElement>('[data-variable]')].filter(input=>input.value!==variables[Number(input.dataset.variable)].value)
+        .map(input=>[variables[Number(input.dataset.variable)].name,input.value]));
+      const configured=macroWithVariables(macro,values);dialog.close();
+      if(asPages&&configured.type==='ems')this.addMacroPages(configured);
+      else{
+        if(configured.type==='ems'){const index=Number(dialog.querySelector<HTMLSelectElement>('[data-source-page]')?.value??0);configured.page=configured.pages?.[index]??configured.page;}
+        try{this.startPlacingWindowMacro(MacroManager.forPlacement(configured));}catch(e){alert(e instanceof Error?e.message:'Das Makro kann nicht platziert werden.');}
+      }
+    });dialog.showModal();
+  }
+
+  private addMacroPages(macro:PageMacro):void {
+    const sources=macro.pages??[macro.page],added=sources.map(page=>{
+      const copy=MacroManager.instantiatePageMacro({...macro,page},this.project);this.project.pages.push(copy);return copy;
+    });
+    if(added.length){this.canvas.setPage(added[0].id);this.notifyChange();this.updateUI();this.canvas.fitToScreen();}
   }
 
   public startPlacingWindowMacro(macro: WindowMacro): void {
@@ -1406,7 +1447,7 @@ export class App {
 
   public async importMacroFile(file: File): Promise<void> {
     try {
-      const imported = await MacroManager.parseMacroFile(file);
+      const imported = await MacroManager.parseMacroFile(file,{allowMissingDependencies:true});
       MacroManager.addMacro(imported);
       if (this.activeLeftTab === 'macros') {
         const container = document.getElementById('leftTabContent');
@@ -1494,7 +1535,7 @@ export class App {
 
   private async handleMacroFileDrop(file: File, clientX: number, clientY: number): Promise<void> {
     try {
-      const imported = await MacroManager.parseMacroFile(file);
+      const imported = await MacroManager.parseMacroFile(file,{allowMissingDependencies:true});
       MacroManager.addMacro(imported);
       const placement = MacroManager.forPlacement(imported);
       mergeProjectSymbolLibrary(this.project, placement.symbolLibrary ?? [], placement.components);
@@ -1710,7 +1751,8 @@ export class App {
     const units=getDrawingUnitsPerMm(this.project),ratio=image.width/image.height;
     container.innerHTML=`<h3>Bild</h3><p>${escapeSvg(image.caption || 'Grafik')}</p>
       ${[['X','Position X',image.x],['Y','Position Y',image.y],['Width','Breite',image.width],['Height','Höhe',image.height]].map(([id,label,n])=>`<label class="form-label">${label} (mm)<input class="form-input" id="image${id}" type="number" step="any" ${id==='Width'||id==='Height'?'min="0.1"':''} value="${Number((Number(n)/units).toFixed(4))}"></label>`).join('')}
-      <p style="font-size:12px;color:var(--text-muted)">Breite und Höhe werden proportional geändert.</p><button class="btn" id="applyImageProperties">Übernehmen</button> <button class="btn" id="deleteImage">Bild löschen</button>`;
+      ${image.missing?'<p style="color:#f6ad55">Die referenzierte Bilddatei fehlt. Hier kann die Originalgrafik zugeordnet werden.</p>':''}
+      <p style="font-size:12px;color:var(--text-muted)">Breite und Höhe werden proportional geändert.</p><button class="btn" id="applyImageProperties">Übernehmen</button> <button class="btn" id="replaceImage">Bild ersetzen…</button> <button class="btn" id="deleteImage">Bild löschen</button>`;
     let editedSize:'Width'|'Height'|undefined;
     for(const key of ['Width','Height'] as const)container.querySelector('#image'+key)?.addEventListener('input',()=>{editedSize=key;const input=container.querySelector('#image'+key) as HTMLInputElement,other=container.querySelector('#image'+(key==='Width'?'Height':'Width')) as HTMLInputElement;if(input.value&&input.validity.valid)other.value=String(key==='Width'?Number(input.value)/ratio:Number(input.value)*ratio);});
     container.querySelector('#applyImageProperties')?.addEventListener('click',()=>{
@@ -1721,6 +1763,16 @@ export class App {
       if(JSON.stringify(image)!==before)this.notifyChange();this.renderRightTab();
     });
     container.querySelector('#deleteImage')?.addEventListener('click',()=>this.canvas.deleteSelected());
+    container.querySelector('#replaceImage')?.addEventListener('click',()=>{
+      const input=document.createElement('input');input.type='file';input.accept='image/*,.svg,.bmp';input.hidden=true;document.body.appendChild(input);
+      input.addEventListener('cancel',()=>input.remove(),{once:true});
+      input.addEventListener('change',async()=>{
+        const file=input.files?.[0];input.remove();if(!file)return;
+        try{const replacement=await readImageFile(file,units);if(!page?.images?.includes(image))return;
+          image.dataUrl=replacement.dataUrl;image.caption=file.name;image.missing=false;this.notifyChange();this.renderRightTab();
+        }catch(error){alert(error instanceof Error?error.message:'Das Bild kann nicht gelesen werden.');}
+      },{once:true});input.click();
+    });
   }
 
   private renderSelectionProperties(container:HTMLElement):void {

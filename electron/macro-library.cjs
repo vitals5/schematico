@@ -2,7 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const MAX_FILE_SIZE = 32 * 1024 * 1024;
 const MAX_FILES = 5000;
-const supported = name => /\.(ema|ems)$/i.test(name);
+const supported = name => /\.(ema|ems|emp|fp1)$/i.test(name);
 
 /** User-selected library only; settings live beside the app's other user data. */
 function createMacroLibrary(settingsFile) {

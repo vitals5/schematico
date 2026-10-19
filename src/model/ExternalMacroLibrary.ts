@@ -18,8 +18,8 @@ export interface NativeMacroLibrary {
 }
 type SavedFolder = { name: string; handle?: MacroDirectory };
 export interface FolderStore { get(): Promise<SavedFolder | undefined>; put(value?: SavedFolder): Promise<void> }
-export type MacroFolderState = { path: string; busy: boolean; needsAccess: boolean; fileCount: number; macroCount: number; issues: string[]; error: string };
-const supported = (name: string) => /\.(ema|ems)$/i.test(name);
+export type MacroFolderState = { path: string; busy: boolean; needsAccess: boolean; fileCount: number; macroCount: number; issues: string[]; warnings?: string[]; error: string };
+const supported = (name: string) => /\.(ema|ems|emp|fp1)$/i.test(name);
 const maxSize = 32 * 1024 * 1024;
 
 /** Structured cloning in IndexedDB retains a browser directory grant, not just its name. */
@@ -135,7 +135,7 @@ export class ExternalMacroLibrary {
   }
   async refresh(requestAccess = true): Promise<void> {
     const revision = ++this.revision;
-    this.state = { ...this.state, busy: true, needsAccess: false, issues: [], error: '', fileCount: 0, macroCount: 0 };
+    this.state = { ...this.state, busy: true, needsAccess: false, issues: [], warnings:[], error: '', fileCount: 0, macroCount: 0 };
     MacroManager.setExternalMacros([]); this.emit();
     try {
       let source: { files: SourceFile[]; issues: string[] };
@@ -155,19 +155,20 @@ export class ExternalMacroLibrary {
       } else if (this.files) {
         source = { files: this.files.filter(f => supported(f.name)).map(file => ({ relativePath: file.webkitRelativePath.split('/').slice(1).join('/') || file.name, getFile: async () => file })), issues: [] };
       } else { this.state.needsAccess = true; this.state.busy = false; this.emit(); return; }
-      const macros: MacroItem[] = [], issues = [...source.issues];
+      const macros: MacroItem[] = [], issues = [...source.issues], warnings: string[] = [];
       for (const entry of source.files) {
         if (revision !== this.revision) return;
         try {
           const file = await entry.getFile(); if (file.size > maxSize) throw new Error('Datei ist größer als 32 MB.');
-          const macro = await MacroManager.parseMacroFile(file, { allowHeuristic: false });
+          const macro = await MacroManager.parseMacroFile(file, { allowHeuristic: false, allowMissingDependencies: true });
           this.validate(macro);
+          for(const message of macro.importDiagnostics??[])warnings.push(`${entry.relativePath}: ${message}`);
           macros.push({ ...macro, id: `external:${encodeURIComponent(entry.relativePath)}`, externalPath: entry.relativePath, isBuiltIn: false });
         } catch (error) { issues.push(`${entry.relativePath}: ${error instanceof Error ? error.message : 'Datei nicht lesbar.'}`); }
       }
       if (revision !== this.revision) return;
       MacroManager.setExternalMacros(macros);
-      this.state = { ...this.state, busy: false, fileCount: source.files.length, macroCount: macros.length, issues }; this.emit();
+      this.state = { ...this.state, busy: false, fileCount: source.files.length, macroCount: macros.length, issues, warnings }; this.emit();
     } catch (error) { if (revision === this.revision) this.fail(error); }
   }
   private validate(macro: MacroItem): void {
@@ -178,7 +179,7 @@ export class ExternalMacroLibrary {
     if (macro.type === 'ems' && (!macro.page || !Array.isArray(macro.page.wires) || !Number.isFinite(macro.page.plotFrame?.width)
       || !Number.isFinite(macro.page.plotFrame?.height))) throw new Error('Ungültige Seitendaten im Makro.');
     const hasPageGraphics = macro.type === 'ems' ? (macro.page.images?.length || macro.page.texts?.length || macro.page.boxes?.length || macro.page.cables?.length) : macro.images?.length || macro.cables?.length || macro.boxes?.length;
-    if (!Array.isArray(components) || !components.length && !hasPageGraphics) throw new Error('Das Makro enthält keine unterstützten Elemente.');
+    if (!Array.isArray(components) || !components.length && !hasPageGraphics && macro.nativeData?.kind!=='PageMacro') throw new Error('Das Makro enthält keine unterstützten Elemente.');
     const ids = new Set<string>();
     for (const c of components) {
       if (!c || typeof c.bmk !== 'string' || typeof c.functionText !== 'string' || typeof c.id !== 'string' || typeof c.symbolId !== 'string' || !Number.isFinite(c.x) || !Number.isFinite(c.y)

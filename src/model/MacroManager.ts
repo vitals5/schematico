@@ -14,8 +14,12 @@ import { computeFunctionTextPosition } from './LabelLayout';
 import { drawingToSvg, escapeSvg } from './ImportedDrawing';
 import { componentInsertionPoint, scalePlacedComponent } from './SymbolGeometry';
 import { parseNativeXmlMacro } from './NativeXmlMacro';
+import { remapNativeMacroData } from './NativeMacroData';
+import type { NativeMacroData } from './NativeMacroData';
 
 export interface WindowMacro {
+  nativeData?: NativeMacroData;
+  importDiagnostics?: string[];
   id: string;
   name: string;
   type: 'ema';
@@ -40,6 +44,9 @@ export interface WindowMacro {
 }
 
 export interface PageMacro {
+  nativeData?: NativeMacroData;
+  importDiagnostics?: string[];
+  pages?: Page[];
   id: string;
   name: string;
   type: 'ems';
@@ -561,7 +568,7 @@ export class MacroManager {
    * Parses an uploaded macro file (.ema, .ems, .edz, .xml, .json).
    * Robust multi-format parser supporting XML, JSON, ZIP and binary fallback.
    */
-  public static async parseMacroFile(file: File, options: { allowHeuristic?: boolean } = {}): Promise<MacroItem> {
+  public static async parseMacroFile(file: File, options: { allowHeuristic?: boolean; allowMissingDependencies?: boolean } = {}): Promise<MacroItem> {
     const filename = file.name;
     const lowerName = filename.toLowerCase();
     const isPageMacro = lowerName.endsWith('.ems');
@@ -569,7 +576,7 @@ export class MacroManager {
     // 1. Try parsing as ZIP archive (many .edz and modern packed .ema/.ems are ZIPs)
     let zip: JSZip | undefined;
     try { zip = await JSZip.loadAsync(file); } catch { /* Continue with text formats. */ }
-    if (zip) return this.parseZipMacro(zip, filename, isPageMacro, options.allowHeuristic !== false);
+    if (zip) return this.parseZipMacro(zip, filename, isPageMacro, options.allowHeuristic !== false, options.allowMissingDependencies);
 
     // 2. Read as text
     const text = await file.text();
@@ -587,7 +594,7 @@ export class MacroManager {
     // 2b. Check if XML
     if (text.includes('<') && text.includes('>')) {
       // A recognized native document must never degrade into a guessed device.
-      if (isNativeExchangeXml(text)) return parseNativeXmlMacro(text, filename, getSymbolDefinitions());
+      if (isNativeExchangeXml(text)) return parseNativeXmlMacro(text, filename, getSymbolDefinitions(), {allowMissing:options.allowMissingDependencies});
       try {
         return this.parseXmlMacro(text, filename, isPageMacro, options.allowHeuristic !== false);
       } catch (xmlErr) {
@@ -604,7 +611,7 @@ export class MacroManager {
   /**
    * Parses macro content inside a ZIP container (.edz or zipped .ema/.ems).
    */
-  private static async parseZipMacro(zip: JSZip, filename: string, isPageMacro: boolean, allowHeuristic = true): Promise<MacroItem> {
+  private static async parseZipMacro(zip: JSZip, filename: string, isPageMacro: boolean, allowHeuristic = true, allowMissing = false): Promise<MacroItem> {
     // Look for XML or JSON entries
     let xmlContent = '';
     let jsonContent = '';
@@ -614,7 +621,7 @@ export class MacroManager {
       const entry = zip.files[path];
       if (entry.dir) continue;
       const lower = path.toLowerCase();
-      if (lower.endsWith('.xml') || lower.endsWith('.ema') || lower.endsWith('.ems')) {
+      if (/\.(xml|ema|ems|emp|fp1)$/.test(lower)) {
         const content = await entry.async('text');
         if (content.includes('<') && content.includes('>')) {
           xmlContent = content;
@@ -634,7 +641,7 @@ export class MacroManager {
     }
 
     if (xmlContent) {
-      if (isNativeExchangeXml(xmlContent)) return parseNativeXmlMacro(xmlContent, filename, getSymbolDefinitions());
+      if (isNativeExchangeXml(xmlContent)) return parseNativeXmlMacro(xmlContent, filename, getSymbolDefinitions(), {allowMissing});
       return this.parseXmlMacro(xmlContent, filename, isPageMacro, allowHeuristic);
     }
 
@@ -961,6 +968,7 @@ export class MacroManager {
         category: parsed.category || 'Importierte Seitenmakros',
         description: parsed.description || `Seitenmakro aus ${filename}`,
         symbolLibrary: parsed.symbolLibrary,
+        nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics, pages: parsed.pages,
         unitsPerMm: parsed.unitsPerMm,
         page: parsed.page || {
           id: 'page_' + Math.random().toString(36).substring(2, 9),
@@ -984,6 +992,7 @@ export class MacroManager {
       category: parsed.category || 'Importierte Fenstermakros',
       description: parsed.description || `Fenstermakro aus ${filename}`,
       symbolLibrary: parsed.symbolLibrary,
+      nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics,
       unitsPerMm: parsed.unitsPerMm,
       components: parsed.components || [],
       wires: parsed.wires || [],
@@ -1163,6 +1172,7 @@ export class MacroManager {
       isBuiltIn: false,
       created: new Date().toISOString().split('T')[0],
       page: pageClone,
+      nativeData:remapNativeMacroData(page.nativeData,new Map(page.components.map(c=>[c.id,c.id])),pageClone.id,page.id),importDiagnostics:page.importDiagnostics,
       unitsPerMm: getDrawingUnitsPerMm(),
       symbolLibrary: getComponentSymbolLibrary(page.components)
     };
@@ -1178,7 +1188,7 @@ export class MacroManager {
     targetY: number,
     existingComponents: PlacedComponent[],
     project?: Project
-  ): { components: PlacedComponent[]; wires: Wire[]; images: PageImage[]; cables: CableDefinition[]; boxes: PageBox[]; groups: ElementGroup[] } {
+  ): { components: PlacedComponent[]; wires: Wire[]; images: PageImage[]; cables: CableDefinition[]; boxes: PageBox[]; groups: ElementGroup[]; nativeData?: NativeMacroData; importDiagnostics?: string[] } {
     const factor = this.getMacroScale(macro, project);
     // 1. Calculate next available numbers for each BMK prefix
     const bmkMap = new Map<string, string>(); // old BMK -> new BMK
@@ -1271,7 +1281,8 @@ export class MacroManager {
       image:new Map((macro.images??[]).map((item,i)=>[item.id,images[i].id])),
       cable:new Map((macro.cables??[]).map((item,i)=>[item.id,cables[i].id])),
       box:new Map((macro.boxes??[]).map((item,i)=>[item.id,boxes[i].id]))});
-    return { components: newComponents, wires: newWires, images, cables, boxes, groups };
+    return { components: newComponents, wires: newWires, images, cables, boxes, groups,
+      nativeData:remapNativeMacroData(macro.nativeData,idMap),importDiagnostics:macro.importDiagnostics };
   }
 
   public static getMacroScale(macro: WindowMacro | PageMacro, project?: Project): number {
@@ -1320,7 +1331,7 @@ export class MacroManager {
     }
     const nextNum = (maxPageNum + 1).toString();
     pageClone.pageNumber = nextNum;
-    pageClone.title = `${macro.name} (Seite ${nextNum})`;
+    pageClone.title = macro.page.title || macro.name;
 
     if (pageClone.plotFrame?.titleBlock) {
       pageClone.plotFrame.titleBlock.sheetNumber = nextNum;
@@ -1352,6 +1363,7 @@ export class MacroManager {
     }
     for(const cable of pageClone.cables??[])for(const core of cable.cores)if(core.wireIds)core.wireIds=core.wireIds.flatMap(id=>wireIds.has(id)?[wireIds.get(id)!]:[]);
     pageClone.groups=remapElementGroups(pageClone.groups,{component:idMap,wire:wireIds,image:imageIds,box:boxIds,text:textIds,cable:cableIds});
+    pageClone.nativeData=remapNativeMacroData(macro.nativeData??pageClone.nativeData,idMap,newPageId,macro.page.id);
     return pageClone;
   }
 

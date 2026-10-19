@@ -16,7 +16,7 @@ async function collect(data: Uint8Array, prefix = '', depth = 0): Promise<void> 
   const zip = await JSZip.loadAsync(data);
   for (const entry of Object.values(zip.files)) {
     if (entry.dir) continue;
-    if (/\.(ema|ems)$/i.test(entry.name)) {
+    if (/\.(ema|ems|emp|fp1)$/i.test(entry.name)) {
       const name = entry.name.split('/').at(-1)!;
       files.push(Object.defineProperty(new File([new Uint8Array(await entry.async('uint8array'))], name),
         'webkitRelativePath', { value: prefix + entry.name }));
@@ -25,9 +25,28 @@ async function collect(data: Uint8Array, prefix = '', depth = 0): Promise<void> 
 }
 await collect(fs.readFileSync(fixture));
 assert(files.length, 'Keine Makrodateien im Archiv');
-let components = 0, connections = 0, groups = 0;
+let components = 0, connections = 0, groups = 0, pages = 0, embeddedImages = 0, missingImages = 0, unresolvedMacros = 0, projectedMacros = 0;
+const unresolvedIdentities=new Set<string>();
 for (const file of files) {
-  const macro = MacroManager.forPlacement(await MacroManager.parseMacroFile(file, { allowHeuristic: false }));
+  const raw=await MacroManager.parseMacroFile(file,{allowHeuristic:false,allowMissingDependencies:true});
+  const unresolved=raw.symbolLibrary?.filter(s=>s.unresolved)??[];
+  if(unresolved.length)unresolvedMacros++;
+  for(const symbol of unresolved){unresolvedIdentities.add(symbol.source!.library+':'+symbol.source!.number+':'+symbol.source!.variant);assert.equal(symbol.pins.length,0);}
+  if(raw.importDiagnostics?.some(d=>d.includes('XY-Kantenprojektion')))projectedMacros++;
+  const sources=raw.type==='ems'?raw.pages??[raw.page]:[];
+  if(raw.type==='ems'){
+    const project={drawingUnitsPerMm:3,symbolLibrary:[],pages:[]}as unknown as Project;
+    for(const page of sources){const placed=MacroManager.instantiatePageMacro({...raw,page},project);project.pages.push(placed);pages++;
+      assert.equal(placed.components.length,page.components.length);assert.notEqual(placed.id,page.id);
+      for(const variable of placed.nativeData?.variables??[])for(const binding of variable.bindings)assert(binding.componentId?placed.components.some(c=>c.id===binding.componentId):binding.pageId===placed.id);
+    }
+  }
+  const portable=MacroManager.exportMacro(raw),roundTrip=await MacroManager.parseMacroFile(new File([portable.blob],portable.filename),{allowHeuristic:false});
+  assert.deepEqual(roundTrip.nativeData,raw.nativeData,file.name);
+  if(raw.type==='ems')assert.equal(JSON.stringify(roundTrip.type==='ems'&&roundTrip.pages),JSON.stringify(raw.pages),file.name);
+  const images=raw.type==='ema'?raw.images??[]:sources.flatMap(p=>p.images??[]);
+  embeddedImages+=images.filter(i=>!i.missing).length;missingImages+=images.filter(i=>i.missing).length;
+  const macro = MacroManager.forPlacement(raw);
   assert(macro.width > 0 && macro.height > 0 && Number.isFinite(macro.width) && Number.isFinite(macro.height), file.name);
   assert(macro.components.every(c => Number.isFinite(c.x) && Number.isFinite(c.y)
     && macro.symbolLibrary?.some(s => s.id === c.symbolId)), file.name);
@@ -36,13 +55,15 @@ for (const file of files) {
   const placed = MacroManager.instantiateWindowMacro(macro, 240, 320, [], target);
   assert.equal(JSON.stringify(macro), before, file.name);
   assert.equal(placed.components.length, macro.components.length, file.name);
+  for(const variable of placed.nativeData?.variables??[])for(const binding of variable.bindings)assert(placed.components.some(c=>c.id===binding.componentId),file.name);
   for (const wire of placed.wires) for (const end of [wire.from, wire.to]) {
     const c = placed.components.find(c => c.id === end.componentId);
     assert(c?.pins[end.pinId]?.wireIds?.includes(wire.id), file.name);
   }
   for (const group of placed.groups) for (const member of group.members) {
     assert(member.kind === 'group' ? placed.groups.some(g => g.id === member.id)
-      : member.kind === 'component' && placed.components.some(c => c.id === member.id), file.name);
+      : member.kind === 'component' ? placed.components.some(c => c.id === member.id)
+      : member.kind === 'image' && placed.images.some(i=>i.id===member.id), file.name);
   }
   const exported = MacroManager.exportMacro(macro);
   const restored = await MacroManager.parseMacroFile(new File([exported.blob], exported.filename), { allowHeuristic: false });
@@ -56,4 +77,5 @@ assert.equal(library.state.macroCount, files.length);
 assert.deepEqual(library.state.issues, []);
 await library.disconnect();
 console.log(JSON.stringify({ macros: files.length, components, connections, groups,
-  strictImport: true, externalLibrary: true, scaledPlacement: true, roundTrip: true }));
+  pages,embeddedImages,missingImages,unresolvedMacros,unresolvedIdentities:unresolvedIdentities.size,projectedMacros,
+  heuristicFallback: false, externalLibrary: true, scaledPlacement: true, roundTrip: true }));

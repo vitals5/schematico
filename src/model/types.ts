@@ -27,6 +27,7 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  unresolved?: boolean;
   id: string;
   name: string;
   category: 'supply' | 'protection' | 'relays' | 'controls' | 'terminals' | 'motors' | 'sensors' | 'automation' | 'installation' | 'structure' | 'connections';
@@ -78,6 +79,7 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  nativeProperties?: Record<string,string>;
   deviceBox?: DeviceBoxGeometry;
   id: string;
   symbolId: string;
@@ -196,6 +198,8 @@ export interface PageBox {
 }
 
 export interface PageImage {
+  sourcePath?: string;
+  missing?: boolean;
   id: string;
   dataUrl: string;
   x: number;
@@ -215,6 +219,7 @@ export interface ElementGroup {
 }
 
 export interface Page {
+  nativeData?: import('./NativeMacroData').NativeMacroData;
   id: string;
   pageNumber: string;           // e.g. "1", "2", "3"
   pageType: PageType;

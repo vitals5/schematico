@@ -15,37 +15,54 @@ REA belegt Container und Inventar. Die XML-Feldbedeutungen wurden durch eigene F
 
 ## Fehler und Korrektur
 
-Im ersten Korpus ließen sich vor der Änderung nur 9 von 36 Makros streng importieren. Die übrigen 27 scheiterten an unbekannten Grafikobjekten oder fehlenden Bibliotheksdefinitionen.
+Der erste Importausbau (Version 1.2.6) las alle 36 Hilfsgeräte, aber nur 24 der 137 Fensterdateien aus dem gemischten Archiv. Die Folgeuntersuchung erklärt die weiteren Daten anhand ihrer XML-Struktur:
 
-| Datentyp | Inhalt | Übernahme |
-| --- | --- | --- |
-| `O31`, `O89` | Linie, Rechteck | Bestehender Grafikimport |
-| `O32` | Kreis oder Kreisbogen | Mittelpunkt `A555`, Radiusvektor `A556`, Parameter `A553`/`A554` in Radiant; Y-Spiegelung einschließlich Bogenrichtung |
-| `O30`, `O83` | Text, Pfadfunktionstext | Position `A501`, Inhalt `A511`, Schriftgröße `S54x505/A961`; eine Übersetzung statt verketteter Sprachfassungen |
-| `O34` | Linienzug/Polygon | Punkte `A621`, gefüllte Polygone mit `A623=1`; offene Linienzüge bleiben offen |
-| `O17`, `O42` | Funktion, Verbindungselement | Bibliotheksauflösung nach Bibliothek, Symbolnummer und Variante |
-| `O59`, `O88`, `O93` | Verbindungsannotation, Strukturkasten, Potenzialdefinition | Explizite Bibliotheksreferenz und Platzierung; variable Kastenabmessungen und Potenzialbeschriftung |
-| `O26`, `O37` | Gruppe, Makrodefinition | Gruppen bleiben bearbeitbar; der Definitionsrahmen ist Metadatum |
+| Datentyp | Nachgewiesener Inhalt und Umsetzung |
+| --- | --- |
+| `O30/O52/O83`, `O31/O32/O34/O89` | Texte, Linien, Kreise/Bögen, Linienzüge/Polygone und Rechtecke; Koordinaten in Millimetern, Y-Spiegelung und Sprachauflösung |
+| `O17/O42/O59/O70/O88/O93/O130/O231/O234/O241` | Bibliotheksreferenzen und Platzierungen; Unterbrechungen, Potenziale und variable Kästen bleiben normale Bibliotheksobjekte |
+| `O26/O132/O169/O200` | Gruppen und Konturcontainer; verschachtelte Zuordnung einschließlich Bilder bleibt erhalten |
+| `O106` | Nichtdruckende Platzhalterkonfiguration; `S109x1895/R1906` verweist auf das Zielobjekt, `S115x1904` ordnet Feld und Variablentext zu |
+| `O5` mit `O144/O191` | Tatsächlich gespeicherte Vektoransichten; Zuordnung über `R9` oder `A65`, Transformation aus `S40x1201` |
+| `O3/O190` | Bericht-/Ansichtscontainer und ihre Grafikunterobjekte; keine zusätzliche elektrische Funktion |
+| `O97` | Messpunkte, Hilfslinien, Maßlinie, Pfeile und gespeicherter Maßtext |
+| `O91/ExternalFile` | Bildbereich und eingebettete hex-kodierte Bilddatei; Zuordnung über normalisierte Pfade |
+| `O37/O98/O161/O212/O217/O218/O219` | Nichtdruckende Konfigurations-/Geometriedaten, getrennt erhalten |
+| `O174/O176/O180` mit `O161/Stream 62491` | Dreidimensionale Mesh-Körper; das untersuchte Textprofil enthält Vertexlisten, Normalen, Dreiecke und indizierte Flächenrandkurven |
+| `O170/R2481` | Bezugssysteme für räumliche Platzierungen; Transformationen entlang der expliziten Elternreferenzen |
 
-Neuere 2D-Dateien speichern Punkte als `x/y/0`. Diese Form wird ebenso wie `x/y` gelesen. Ein tatsächlich räumlicher Punkt mit Z ungleich null wird ausdrücklich abgelehnt und nicht stillschweigend auf die Ebene projiziert.
+Die vorherige Vermutung über fehlende Bilder war unvollständig: Die zugehörigen Bilddateien sind in diesem Archiv als `ExternalFile Coding="Hex"` eingebettet. Alle 57 verwendeten Bilder werden jetzt aufgelöst; es bleiben in diesem Korpus keine fehlenden Bilddateien. Die drei `.fp1`-Dateien haben den XML-Typ `ContourDefinition`; sie sind Konturen und keine Formulare.
 
-Die geprüften Standarddefinitionen wurden über den vorhandenen Leser aus bereits verfügbaren eingebetteten Bibliotheksstammdaten gewonnen. Die Sammlung umfasst nun 226 Identitäten. Maßstab, Einfügepunkt, Anschlusspositionen und Anschlussrichtungen stammen aus diesen Definitionen. Passende Projektstammdaten haben Vorrang. Fehlende Identitäten bleiben ein Fehler; es werden keine geratenen Ersatzgeräte angelegt.
+Die Standardbibliothek umfasst 250 aus verfügbaren Originalstammdaten dekodierte Identitäten. Die zusätzlichen 24 Definitionen übernehmen tatsächliche Geometrie, Einfügepunkte und Anschlüsse. Es wurden keine Anschlussbilder aus Gerätenamen abgeleitet. Projektstammdaten haben Vorrang. `PID_ESS` fehlt weiterhin in den vorhandenen Stammdaten: Diese 13 Identitäten werden ausdrücklich markiert, ohne elektrische Anschlüsse zu erfinden.
 
-Normale Texte werden als bearbeitbare Komponentenbeschriftungen übernommen. Grafikobjekte bleiben über eigene Bibliotheksdefinitionen referenziert und erhalten keine erfundenen elektrischen Anschlüsse. Die Vorschau zeichnet alle Komponenten statt nur der ersten acht und erhält mehrzeilige Beschriftungen.
+## Verifikation
 
-## Ergebnisse und Grenzen
+Die vollständigen privaten Archive wurden ohne heuristische Geräteerzeugung durch Import, externe Ordnerbibliothek, skaliertes Platzieren, Export und Wiederöffnen geprüft. Bei fehlenden Abhängigkeiten ist die ausdrückliche Übernahme markierter Objekte aktiviert.
 
-- **Hilfsgeräte:** 35 direkte Makros und ein Makro in einem verschachtelten ZIP. Alle 36 bestehen strengen Import, externe Bibliothek, skaliertes Platzieren und Export/Wiederöffnen: 565 Komponenten, 17 interne Verbindungen und 51 übernommene Gruppen.
-- **Gemischte Sammlung:** 137 Fenster-/Symbolmakros, 35 native Seitenmakros und 3 Formulardateien. Vor der Änderung konnte keines der 172 Makros vollständig eingelesen werden; nach der Erweiterung bestehen 24 Fenster-/Symbolmakros den Import. Die 35 Seitenmakros werden noch nicht unterstützt; die Formulardateien sind keine `.ema`-/`.ems`-Makros.
-- **Verbleibende erste Importfehler der gemischten Sammlung:** 58 Makros mit `O106`, 19 mit `O91`, 13 mit `O70`, 9 mit `O212`, 6 mit `O5`, 7 mit fehlenden `PID_ESS`-Definitionen sowie ein Makro mit mehreren Zeichenbereichen. Hinzu kommen die 35 Seitenmakros. Diese Zahlen nennen jeweils den ersten Fehler je Datei, nicht sämtliche darin enthaltenen Hindernisse.
-- `O91` verweist in dieser Sammlung unter anderem auf Bilddateien außerhalb des Archivs. Diese Bilder lassen sich aus dem ZIP allein nicht wiederherstellen. `PID_ESS` ist in den vorhandenen Stammdaten nicht enthalten. Platzhalter-, Prozessplanungs- und Seitenmakroobjekte benötigen zusätzliche Decoder; die bloße Ergänzung der Symbolbibliothek reicht dafür nicht.
+| Korpus | Dateien geladen | Komponenten bei Inhaltsplatzierung | Interne Verbindungen | Gruppen |
+| --- | ---: | ---: | ---: | ---: |
+| Hilfsgeräte einschließlich verschachteltem ZIP | 36/36 | 565 | 17 | 51 |
+| Gemischte Sammlung | 175/175 | 11.364 | 2.072 | 295 |
 
-Die Regressionen verwenden auf Zeichen- und Platzierungsdaten reduzierte Beispiele. Sie prüfen Kreise/Bögen, gefüllte Polygone, mehrzeilige und übersetzte Texte, vollständige Vorschauen, Anschlusskästen, Ordnerimport, Maßstabswechsel und Speichern/Wiederöffnen. Unbekannte Objekttypen, ungültige Koordinaten und fehlende Bibliothekssymbole werden weiterhin gemeldet.
+Die gemischte Sammlung enthält 137 Fensterdateien, 35 Seitenmakrodateien mit insgesamt 43 Seiten und drei Konturdateien. Ein Fenster enthält ausschließlich 3D-Körper und wird als gekennzeichnete 2D-Kantenprojektion gelesen. **Sieben geladene Dateien benötigen für die vollständige Symbolgrafik 13 fehlende `PID_ESS`-Definitionen.** Erfolgreiches Laden bedeutet bei diesen Dateien keine vollständige elektrische Rekonstruktion.
 
-Der vollständige private Hilfsgeräte-Korpus kann zusätzlich geprüft werden:
+Komponenten- und Gruppenzahlen beziehen sich auf die standardmäßig gewählte Inhaltsseite je Datei; die gesonderte Seitenprüfung durchläuft alle 43 enthaltenen Seiten. Die Prüfung kontrolliert frische Objektkennungen, gültige Anschluss-/Gruppenreferenzen, Variablenzuordnungen, unveränderte Quelldaten, eingebettete Bilder und portable Makro-Roundtrips. Synthetische Regressionen prüfen zusätzlich leere Seiten, fehlende Bilder und Symboldefinitionen, Koordinaten mit ausgelassenen Nullwerten, gecachte Skalierung/Drehung sowie ungültige Mesh-Indizes und zyklische 3D-Bezüge.
 
 ```bash
-SCHEMATICO_MACRO_FIXTURE=/pfad/zu/Auxiliary.zip npx tsx scripts/test-macro-corpus.ts
+SCHEMATICO_MACRO_FIXTURE=/pfad/zu/makros.zip npx tsx scripts/test-macro-corpus.ts
 ```
 
-Es wird die bisherige Standarddarstellung gewählt; andere Darstellungen werden nicht darübergelegt. Erfolgreiche Korpustests sind keine Zusage für beliebige andere XML-Objekte, Bibliotheksversionen oder Binärformate.
+Die XML-Feldanalyse und Regressionen sind statische Daten- und Anwendungstests. Es fand kein visueller Vergleich gegen eine laufende Quellsystem-Installation statt. REA-Evidenz belegt die Archive, nicht eine solche Laufzeitbeobachtung.
+
+Die Produktions-Web-App wurde zusätzlich in Chromium geprüft: externe Ordner mit 36 bzw. 175 Dateien, Vorschau, Platzierung, mehrzeilige Textbearbeitung, Rückgängig/Wiederholen, Variablenkonfiguration, Quellseitenauswahl, Hinzufügen aller Seiten mit einem Rückgängig-Schritt, Ersetzen eines fehlenden Bildes sowie Platzieren der 14 Objekte aus der gekennzeichneten 3D-Projektion. Dabei traten keine Browserfehler auf. Ein echter Windows-Systemdialog und eine laufende Quellsystem-Installation wurden nicht geprüft.
+
+## Grenzen
+
+- Eine vollständige Symbolgrafik benötigt die passende Definition. Markierte fehlende Symbole sind ausdrücklich keine Ersatzschaltung.
+- 3D-Unterstützung bedeutet hier eine XY-Kantenprojektion des geprüften Mesh-Profils; keine räumliche Bearbeitung oder allgemeine BRep-Dekodierung.
+- Bemaßungen bleiben Grafik und Text; Änderungen lösen keine parametrische Neuberechnung aus.
+- Gespeicherte Berichtsvektoren werden importiert; Berichte werden nicht aus Quelldatenbanken neu berechnet.
+- Quellkonfiguration bleibt erhalten, wird aber nicht vollständig durch einen Wertesatz-/Prozessplanungseditor bedient.
+- Standardmäßig wird eine Darstellungsvariante gewählt; weitere werden nicht darübergelegt. Unbekannte Objektprofile und Transformationen bleiben explizite Importfehler.
+
+Die Originalarchive, ihre vollständigen Projektmetadaten und zugehörige Bildsammlungen bleiben außerhalb des Repositorys.

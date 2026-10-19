@@ -3,6 +3,7 @@ import type { MacroItem, WindowMacro } from './MacroManager';
 import type { PlacedComponent, SymbolDefinition, TextFormatConfig } from './types';
 import { SYMBOL_DEFINITIONS } from './symbols';
 import { componentInsertionPoint, rotatedLocalPoint, scaleSymbolDefinition } from './SymbolGeometry';
+import { remapNativeMacroData } from './NativeMacroData';
 
 /** Both file types become a movable collection of ordinary drawing objects.
  * A page's frame, title block, page number and settings are not drawing content. */
@@ -71,5 +72,5 @@ export function macroForPlacement(macro: MacroItem): WindowMacro {
   const first = firstSource ?? components[0], firstSymbol = first && definition(first);
   const handlePoint = first && firstSymbol ? componentInsertionPoint(first, firstSymbol) : cables[0]?.start ?? { x: 0, y: 0 };
   const { page: _page, type: _type, ...metadata } = copy;
-  return { ...metadata, type: 'ema', components, wires: page.wires, groups: page.groups, images, cables, boxes, width, height, handlePoint, unitsPerMm: units, symbolLibrary: library };
+  return { ...metadata, nativeData:remapNativeMacroData(copy.nativeData??page.nativeData,new Map(components.map(c=>[c.id,c.id]))), type: 'ema', components, wires: page.wires, groups: page.groups, images, cables, boxes, width, height, handlePoint, unitsPerMm: units, symbolLibrary: library };
 }
