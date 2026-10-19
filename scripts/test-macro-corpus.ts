@@ -11,6 +11,7 @@ if (!fixture) {
   process.exit(0);
 }
 const files: File[] = [];
+const requireComplete=process.env.SCHEMATICO_MACRO_REQUIRE_COMPLETE==='1';
 async function collect(data: Uint8Array, prefix = '', depth = 0): Promise<void> {
   assert(depth <= 3, 'Zu viele verschachtelte Archive');
   const zip = await JSZip.loadAsync(data);
@@ -28,7 +29,7 @@ assert(files.length, 'Keine Makrodateien im Archiv');
 let components = 0, connections = 0, groups = 0, pages = 0, embeddedImages = 0, missingImages = 0, unresolvedMacros = 0, projectedMacros = 0;
 const unresolvedIdentities=new Set<string>();
 for (const file of files) {
-  const raw=await MacroManager.parseMacroFile(file,{allowHeuristic:false,allowMissingDependencies:true});
+  const raw=await MacroManager.parseMacroFile(file,{allowHeuristic:false,allowMissingDependencies:!requireComplete});
   const unresolved=raw.symbolLibrary?.filter(s=>s.unresolved)??[];
   if(unresolved.length)unresolvedMacros++;
   for(const symbol of unresolved){unresolvedIdentities.add(symbol.source!.library+':'+symbol.source!.number+':'+symbol.source!.variant);assert.equal(symbol.pins.length,0);}

@@ -1,15 +1,16 @@
 # XML-Makros: Grafik- und Bibliotheksimport
 
-Stand: 19.10.2026. Die beiden bereitgestellten Makroarchive wurden als Daten untersucht. Mitgelieferte Dokumente wurden weder ausgeführt noch als Arbeitsanweisungen verwendet. Vollständige Originalarchive bleiben außerhalb des Repositorys.
+Stand: 19.10.2026. Die drei bereitgestellten Makroarchive wurden als Daten untersucht. Mitgelieferte Dokumente wurden weder ausgeführt noch als Arbeitsanweisungen verwendet. Vollständige Originalarchive bleiben außerhalb des Repositorys.
 
 ## REA-Evidenz
 
-Beide Inventare wurden mit `rea-agents@6.5.0 inspect-artifact … --format json` erstellt, Provider `rea-artifact-graph`, Version 1.
+Die Inventare wurden mit `rea-agents@6.5.0 inspect-artifact … --format json` erstellt, Provider `rea-artifact-graph`, Version 1.
 
 | Korpus | SHA-256 | Evidence |
 | --- | --- | --- |
 | Hilfsgeräte | `398c3e400cf0693cacb00241c3a5d3a485dbf6546dadc40d8f4407da63b530aa` | `ev_24a87c46963e2297f744c7c9db2956bfe54ed04e3a35887f79d4a4edeeeec19f` |
 | Gemischte Makros und Vorlagen | `55081ec0fd4ed37be9663e8168014c8c1e7d01eae3e8a0fa569487ef1d5b131b` | `ev_1a2567228ae75cff0d83655342b8b79287aa647b42b3f233c88934e64e871a82` |
+| ABB-Makros | `ebcdbe8d64cef9716676272450af2ddd12900a2f299b3e60d892f687691e0c76` | `ev_d6c79a613efb574f99f29a480a5cd03a33617796976b5b87accb571aa0b28205` |
 
 REA belegt Container und Inventar. Die XML-Feldbedeutungen wurden durch eigene Feldproben und den Abgleich mit dem vorhandenen Datenbankleser untersucht. Es wurde keine Quellsystem-Installation ausgeführt.
 
@@ -43,6 +44,7 @@ Die vollständigen privaten Archive wurden ohne heuristische Geräteerzeugung du
 | --- | ---: | ---: | ---: | ---: |
 | Hilfsgeräte einschließlich verschachteltem ZIP | 36/36 | 565 | 17 | 51 |
 | Gemischte Sammlung | 175/175 | 11.364 | 2.072 | 295 |
+| ABB-Makros | 306/306 | 39.147 | 0 | 1.862 |
 
 Die gemischte Sammlung enthält 137 Fensterdateien, 35 Seitenmakrodateien mit insgesamt 43 Seiten und drei Konturdateien. Ein Fenster enthält ausschließlich 3D-Körper und wird als gekennzeichnete 2D-Kantenprojektion gelesen. **Sieben geladene Dateien benötigen für die vollständige Symbolgrafik 13 fehlende `PID_ESS`-Definitionen.** Erfolgreiches Laden bedeutet bei diesen Dateien keine vollständige elektrische Rekonstruktion.
 
@@ -66,3 +68,23 @@ Die Produktions-Web-App wurde zusätzlich in Chromium geprüft: externe Ordner m
 - Standardmäßig wird eine Darstellungsvariante gewählt; weitere werden nicht darübergelegt. Unbekannte Objektprofile und Transformationen bleiben explizite Importfehler.
 
 Die Originalarchive, ihre vollständigen Projektmetadaten und zugehörige Bildsammlungen bleiben außerhalb des Repositorys.
+
+
+## ABB-Sammlung: Ergänzung in Version 1.2.8
+
+Das zusätzliche Archiv enthält 306 XML-Fenstermakros. Die bisherige Version konnte 301 Dateien laden, davon 227 nur mit markierten fehlenden Anschlussdefinitionen. Vier Dateien scheiterten an `O44`, eine reine 3D-Datei am abweichenden Klassenkennzeichen im Geometriestream.
+
+- **Originale Anschlussdefinitionen:** `SPECIAL` 17:1, 17:3 und 35:2 wurden über den vorhandenen Bibliotheksleser aus verfügbaren Originalstammdaten gewonnen. Die Bibliothek enthält damit 253 Definitionen. Die Quellvarianten geben Geometrie, Anschlussposition und Richtung vor; sie werden nicht aus dem Makronamen erraten. Quellbezeichnungen wie DC-Anschlussnamen bleiben am richtigen Port erhalten.
+- **Kurven `O44`:** Vier Kontrollpunkte stehen in `A621`; das untersuchte offene kubische Profil wird mit De-Casteljau-Unterteilung und einer physikalischen Fehlerschranke von 0,01 mm in Vektoren umgewandelt. Es wird keine Verbindung entlang des Kontrollpolygons gezeichnet. Originale Kurvenkoordinaten bleiben als Quelldaten erhalten. Andere Kurvenprofile werden ausdrücklich abgelehnt. Die offizielle API-/Bedienungsdokumentation bestätigt das kubische Modell aus zwei Endpunkten und zwei Tangenten-Kontrollpunkten; die konkrete XML-Feldzuordnung beruht auf der Archivprobe, ohne Quellsystem-Laufzeitvergleich.
+- **Dokumentlokale Mesh-Klassen:** Dasselbe Mesh-Profil mit Versionsnummer 2 hat hier Kennung 33 statt 20. Die Zuordnung kommt aus `StreamSchema` und dem Eintrag `Mesh3dX@W3D`, statt beliebige Streamkennungen freizugeben. Eine abweichende Versionsnummer oder ein widersprüchlicher Tabellenverweis bleibt ein Fehler.
+- **Globale Konfiguration:** Nichtdruckende Variantenobjekte `O6`, `O14` und `O76` bleiben getrennt von sichtbaren Elementen als Konfiguration erhalten.
+
+Die vollständige Sammlung besteht den **strengen Import ohne fehlende Abhängigkeiten**, externe Ordnerbibliothek, skaliertes Platzieren sowie Export/Wiederöffnen: **306/306 Dateien, 39.147 Komponenten, 1.862 Gruppen und 297 eingebettete Bilder**. Es gibt in dieser Sammlung keine fehlenden Bibliothekssymbole oder Bilder. Interne Verbindungen zwischen den getrennten Makroobjekten entstehen in der gewählten Standarddarstellung nicht. Ein Makro wird ausdrücklich als XY-Kantenprojektion der gespeicherten 3D-Geometrie übernommen; es gibt weiterhin keine 3D-Bearbeitung.
+
+Zusätzliche Regressionen vergleichen 1.001 analytische Kurvenpunkte mit den importierten Vektoren, prüfen Anschlussrichtungen und Bezeichnungen sowie gültige und widersprüchliche Klassenkennungen. Die vollständigen Originaldateien bleiben außerhalb des Repositorys.
+
+Chromium lädt die echte externe Ordnerbibliothek mit allen 306 Dateien und meldet genau den Hinweis zur 3D-Projektion. An einem Antriebsmakro wurden echte Anschlussbezeichnungen, Platzieren auf derselben Seite und Rückgängig/Wiederholen geprüft; an einem Filtermakro die Kurvenvektoren und das eingebettete Bild. Auch die 3D-Datei wurde im Editor platziert. Es traten keine Browserfehler auf. Dies ist eine Prüfung der Schematico-Web-App und kein visueller Vergleich mit einer laufenden Quellsystem-Installation.
+
+```bash
+SCHEMATICO_MACRO_REQUIRE_COMPLETE=1 SCHEMATICO_MACRO_FIXTURE=/pfad/zu/ABB.zip npx tsx scripts/test-macro-corpus.ts
+```

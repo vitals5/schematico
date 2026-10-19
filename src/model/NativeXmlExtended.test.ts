@@ -6,6 +6,7 @@ import { parseNativeXmlMacro } from './NativeXmlMacro';
 import { macroWithVariables } from './NativeMacroVariables';
 import { mergeNativeMacroData } from './NativeMacroData';
 import { meshBoundaryLoops, projectedXmlMesh } from './NativeXmlMesh';
+import { nativeXmlSpline } from './NativeXmlSpline';
 import { ExternalMacroLibrary } from './ExternalMacroLibrary';
 import type { Project } from './types';
 
@@ -86,4 +87,48 @@ const nodes=Array.from(new DOMParser().parseFromString(meshXml,'application/xml'
 const projected=projectedXmlMesh(byId.get('part')!,byId,2);
 assert.equal(projected.length,3);assert.deepEqual(projected[0],{kind:'line',x1:14,y1:-26,x2:34,y2:-26,color:'currentColor',width:.36});
 byId.get('parent')!.setAttribute('R2481','part');assert.throws(()=>projectedXmlMesh(byId.get('part')!,byId,2),/3D-Geometrie/);
+
+// The class ID is declared by the document. The same mesh layout occurs with
+// both IDs 20 and 33; accepting an arbitrary unbound ID would hide format errors.
+const otherMesh=new DOMParser().parseFromString(meshXml.replace('{20,2,16','{33,2,16'),'application/xml');
+otherMesh.documentElement.setAttribute('StreamSchema','Color@W3D, ,0,29,2;Mesh3dX@W3D, ,2,33,2');
+const otherIds=new Map(Array.from(otherMesh.getElementsByTagName('*')).map(n=>[n.getAttribute('A1')??'',n]));
+assert.deepEqual(projectedXmlMesh(otherIds.get('part')!,otherIds,2),projected);
+otherMesh.documentElement.setAttribute('StreamSchema','Mesh3dX@W3D, ,2,99,2');assert.throws(()=>projectedXmlMesh(otherIds.get('part')!,otherIds,2),/3D-Geometrie/);
+otherMesh.documentElement.setAttribute('StreamSchema','Mesh3dX@W3D, ,3,33,2');assert.throws(()=>projectedXmlMesh(otherIds.get('part')!,otherIds,2),/3D-Geometrie/);
+
+// Smooth native cubic curves must not become the straight control polygon.
+// Compare sampled analytic points to the imported physical vectors.
+const curveNode=new DOMParser().parseFromString('<O44 A621="0/0;8/6;8/-6;16/0" A622="0;0;0;0" A623="0" A624="0"/>','application/xml').documentElement;
+const curve=nativeXmlSpline(curveNode,2,.26);assert(curve.length>8);assert(curve.length<512);
+assert(curve.every(g=>g.kind==='line'));assert(curve[0].kind==='line'&&curve[0].x1===0&&curve[0].y1===0);
+const last=curve.at(-1)!;assert(last.kind==='line'&&last.x2===32&&last.y2===0);
+for(let i=0;i<=1000;i++){
+  const t=i/1000,u=1-t,p={x:48*u*u*t+48*u*t*t+32*t*t*t,y:-36*u*u*t+36*u*t*t};
+  const distance=Math.min(...curve.map(g=>{
+    if(g.kind!=='line')throw new Error();const dx=g.x2-g.x1,dy=g.y2-g.y1,length2=dx*dx+dy*dy;
+    const f=length2?Math.max(0,Math.min(1,((p.x-g.x1)*dx+(p.y-g.y1)*dy)/length2)):0;
+    return Math.hypot(p.x-g.x1-f*dx,p.y-g.y1-f*dy);
+  }));assert(distance<=.02,`Spline error ${distance} exceeds 0.01 mm`);
+}
+const curveMacro=load(page('<O44 A621="0/0;8/6;8/-6;16/0" A414=".13"/>'));
+assert(curveMacro.type==='ema'&&curveMacro.components.length===1&&curveMacro.width===32);
+assert(curveMacro.nativeData!.metadata.some(m=>m.type==='O44'&&m.xml.includes('A621')));
+curveNode.setAttribute('A623','1');assert.throws(()=>nativeXmlSpline(curveNode,2,.26),/Spline-Struktur/);
+curveNode.setAttribute('A623','0');curveNode.setAttribute('A622','0;1;0;0');assert.throws(()=>nativeXmlSpline(curveNode,2,.26),/Spline-Struktur/);
+const cachedCurve=load(page('<O5 A1="5/1"><S44x5 A621="0/0;8/6;8/-6;16/0"/></O5>'));
+assert(cachedCurve.type==='ema'&&cachedCurve.width===32&&cachedCurve.components.length===1);
+assert(cachedCurve.symbolLibrary![0].importedGraphics!.length>8);
+
+// Missing lateral device ports resolve to original masters with real pins,
+// outward directions and the source's custom terminal designation.
+for(const [number,variant,direction]of [[17,1,'left'],[17,3,'right'],[35,2,'bottom']]as const){
+  const port=parseNativeXmlMacro(document('<ESymLib ID="0" Name="SPECIAL"/>'+page(`<O17 A1261="0" A1262="${number}" A1263="${variant}" A185="DC+"><S40x1201 A762="0/0"/></O17>`)),'port.ema');
+  assert(port.type==='ema');if(port.type!=='ema')throw new Error();
+  assert(!port.symbolLibrary![0].unresolved);assert.equal(port.symbolLibrary![0].pins[0].direction,direction);
+  assert.equal(port.components[0].pins['0'].customLabel,'DC+');assert.deepEqual(port.importDiagnostics,[]);
+}
+const configuration=load(document('<O6 A1="6/1" A82="Example"/><O76 A1="76/1" A1422="1"/>'+page(line)));
+assert(configuration.nativeData!.metadata.some(m=>m.type==='O76'));assert(configuration.nativeData!.metadata.some(m=>m.type==='O6'));
 console.log('✓ Extended native macros: cached transforms, embedded/missing images, multiple and empty pages, contours, editable variables, metadata remapping, missing masters and bounded 3D projection');
+console.log('✓ Native cubic curve accuracy, schema-bound mesh IDs, original lateral ports and variant configuration');

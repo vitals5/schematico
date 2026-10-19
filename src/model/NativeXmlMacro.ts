@@ -1,6 +1,6 @@
 import { isNativeExchangeRoot } from './LegacyCompatibility';
 import { pruneElementGroups } from './ElementGroups';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import type { MacroItem, WindowMacro, PageMacro } from './MacroManager';
 import type { DrawingPrimitive, PlacedComponent, SymbolDefinition, Project, Wire, ElementGroup, Page } from './types';
 import { drawingToSvg } from './ImportedDrawing';
@@ -39,6 +39,11 @@ export function parseNativeXmlMacro(xml: string, filename: string, available: re
   const name = root.getAttribute('Name') || filename.replace(/\.[^.]+$/, '');
   const description = nativeXmlText(variant.getAttribute('Description') || root.getAttribute('Description') || '');
   const nativeData: NonNullable<WindowMacro['nativeData']> = { kind, metadata: [], variables: [] };
+  if(!projection){
+    const serializer=new XMLSerializer();
+    for(const node of children(variant).filter(n=>['O6','O14','O76'].includes(tag(n))))
+      nativeData.metadata.push({id:node.getAttribute('A1')??'',type:tag(node),xml:serializer.serializeToString(node)});
+  }
   const importPage = (page: Element, pageIndex: number): WindowMacro => {
     const records = readXmlRecords(root,page,units,diagnostics,options.allowMissing === true);
     nativeData.metadata.push(...records.metadata);

@@ -9,7 +9,7 @@ import { embeddedXmlImages } from './NativeXmlAssets';
 import { projectedXmlMesh } from './NativeXmlMesh';
 
 export const xmlSymbolTypes = new Set(['O17','O42','O59','O70','O88','O93','O130','O231','O234','O241']);
-const graphicTypes = new Set(['O30','O31','O32','O34','O52','O83','O89']);
+const graphicTypes = new Set(['O30','O31','O32','O34','O44','O52','O83','O89']);
 const metadataTypes = new Set(['O37','O98','O106','O161','O212','O217','O218','O219']);
 type Transform = { x: number; y: number; angle: number; scale: number };
 const identity: Transform = { x: 0, y: 0, angle: 0, scale: 1 };
@@ -94,7 +94,7 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
       retain(node);const local=placement(node,units,t,'S40x21');
       for(const child of children(node)){
         if(/^O\d+$/.test(tag(child)))visit(child,local);
-        else if(/^S(?:30|31|32|34|52|83|89)x/.test(tag(child))){
+        else if(/^S(?:30|31|32|34|44|52|83|89)x/.test(tag(child))){
           const copy=child.ownerDocument!.createElement('O'+tag(child).match(/^S(\d+)/)![1]);
           for(const attr of Array.from(child.attributes))copy.setAttribute(attr.name,attr.value);
           for(const nested of children(child))copy.appendChild(nested.cloneNode(true));
@@ -103,7 +103,7 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
       }return;
     }
     if(xmlSymbolTypes.has(kind)){electrical.push(node);return;}
-    if(graphicTypes.has(kind)){drawings.push({node,graphics:transformed(nativeXmlGraphics(node,units),t)});return;}
+    if(graphicTypes.has(kind)){drawings.push({node,graphics:transformed(nativeXmlGraphics(node,units),t)});if(kind==='O44')retain(node);return;}
     if(metadataTypes.has(kind)){retain(node);return;}
     if(kind==='O97'){drawings.push({node,graphics:transformed(dimension(node,units),t)});retain(node);return;}
     if(kind==='O91'){
@@ -125,7 +125,7 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
       const local=owner?placement(owner,units,t):t;
       const graphics:DrawingPrimitive[]=[];
       for(const child of children(node)){
-        if(!/^S(?:30|31|32|34|52|83|89)x/.test(tag(child)))continue;
+        if(!/^S(?:30|31|32|34|44|52|83|89)x/.test(tag(child)))continue;
         const copy=child.ownerDocument!.createElement('O'+tag(child).match(/^S(\d+)/)![1]);
         for(const attr of Array.from(child.attributes))copy.setAttribute(attr.name,attr.value);
         for(const nested of children(child))copy.appendChild(nested.cloneNode(true));

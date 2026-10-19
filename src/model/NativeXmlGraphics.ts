@@ -2,6 +2,7 @@ import { arcPoints } from './ImportedDrawing';
 import type { DrawingPrimitive } from './types';
 import { xmlChildren, xmlPoint, xmlTag } from './NativeXmlSymbol';
 import { nativeXmlText } from './NativeXmlText';
+import { nativeXmlSpline } from './NativeXmlSpline';
 
 const numeric = (node: Element, field: string, fallback: number) => {
   const text = node.getAttribute(field);
@@ -16,6 +17,7 @@ export function nativeXmlGraphics(node: Element, units: number): DrawingPrimitiv
   const kind = xmlTag(node), point = (attribute: string) => xmlPoint(node, attribute, units);
   const color = 'currentColor', width = numeric(node, 'A414', .25) * units;
   if (width < 0) throw new Error('Ungültige Linienbreite im Makro.');
+  if (kind === 'O44') return nativeXmlSpline(node,units,width);
   if (kind === 'O31') {
     const a = point('A531'), b = point('A532');
     return [{ kind: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, width }];

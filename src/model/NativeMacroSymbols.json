@@ -24974,5 +24974,155 @@
       "x": 2,
       "y": 4
     }
+  },
+  {
+    "id": "native:SPECIAL:17:3",
+    "name": "SPECIAL / DCP [17:3]",
+    "category": "terminals",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 10,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 5.999999999999999,
+        "y": 2,
+        "direction": "right"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"11.904761904761905\" y1=\"2.380952380952381\" x2=\"4.761904761904762\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><circle cx=\"2.380952380952381\" cy=\"2.380952380952381\" r=\"2.380952380952381\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/></g>",
+    "description": "SPECIAL: DCP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 10,
+        "y1": 2,
+        "x2": 4,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "circle",
+        "x": 2,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 17,
+      "variant": 3
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:17:1",
+    "name": "SPECIAL / DCP [17:1]",
+    "category": "terminals",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 10,
+    "height": 4,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 4,
+        "y": 2,
+        "direction": "left"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><line x1=\"0\" y1=\"2.380952380952381\" x2=\"7.142857142857142\" y2=\"2.380952380952381\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /><circle cx=\"9.523809523809524\" cy=\"2.380952380952381\" r=\"2.380952380952381\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/></g>",
+    "description": "SPECIAL: DCP",
+    "importedGraphics": [
+      {
+        "kind": "line",
+        "x1": 0,
+        "y1": 2,
+        "x2": 5.999999999999999,
+        "y2": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "circle",
+        "x": 8,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 17,
+      "variant": 1
+    },
+    "insertionPoint": {
+      "x": 8,
+      "y": 2
+    }
+  },
+  {
+    "id": "native:SPECIAL:35:2",
+    "name": "SPECIAL / PLCBCP [35:2]",
+    "category": "connections",
+    "standard": "DIN EN 60617",
+    "defaultBmkPrefix": "",
+    "defaultFunctionText": "",
+    "width": 4,
+    "height": 10,
+    "unitsPerMm": 2,
+    "pins": [
+      {
+        "id": "0",
+        "name": "1",
+        "x": 2,
+        "y": 10,
+        "direction": "bottom"
+      }
+    ],
+    "svgContent": "<g transform=\"scale(0.84)\"><circle cx=\"2.380952380952381\" cy=\"2.380952380952381\" r=\"2.380952380952381\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\"/><line x1=\"2.380952380952381\" y1=\"4.761904761904762\" x2=\"2.380952380952381\" y2=\"11.904761904761905\" stroke=\"currentColor\" stroke-width=\"0.5952380952380952\" /></g>",
+    "description": "SPECIAL: PLCBCP",
+    "importedGraphics": [
+      {
+        "kind": "circle",
+        "x": 2,
+        "y": 2,
+        "radius": 2,
+        "color": "currentColor",
+        "width": 0.5
+      },
+      {
+        "kind": "line",
+        "x1": 2,
+        "y1": 4,
+        "x2": 2,
+        "y2": 10,
+        "color": "currentColor",
+        "width": 0.5
+      }
+    ],
+    "source": {
+      "library": "SPECIAL",
+      "number": 35,
+      "variant": 2
+    },
+    "insertionPoint": {
+      "x": 2,
+      "y": 2
+    }
   }
 ]
