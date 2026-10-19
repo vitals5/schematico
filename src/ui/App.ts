@@ -23,7 +23,7 @@ import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectS
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
 import { ELEMENT_CATEGORIES, symbolMatchesQuery } from '../model/SymbolCatalogue';
-import { isConnectionSymbol, connectionFamily } from '../model/ConnectionSymbols';
+import { isConnectionSymbol, isInterruptionSymbol, connectionFamily } from '../model/ConnectionSymbols';
 import { drawingToSvg, escapeSvg } from '../model/ImportedDrawing';
 import { CadCanvas } from '../editor/CadCanvas';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -100,6 +100,27 @@ export class App {
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         this.saveActiveProject();
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.defaultPrevented) return;
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement
+          || (e.target as HTMLElement)?.isContentEditable || (e.target as Element)?.closest?.('.modal-backdrop')) return;
+        if (e.ctrlKey || e.metaKey) {
+          const key = e.key.toLowerCase();
+          if (key === 's') {
+            e.preventDefault();
+            this.saveProjectJson();
+          } else if (key === 'o') {
+            e.preventDefault();
+            document.getElementById('menuFileInput')?.click();
+          } else if (key === 'p') {
+            e.preventDefault();
+            new PdfExportDialog(this.project, this.project.activePageId).show();
+          } else if (key === 'n') {
+            e.preventDefault();
+            this.createNewProject();
+          }
+        }
       });
     }
   }
@@ -895,6 +916,7 @@ export class App {
     });
     bindMenuOpt('menuNewPage', () => this.addNewPage());
     bindMenuOpt('menuNewCoverPage',()=>this.addCoverPage());
+    bindMenuOpt('menuDeletePage', () => this.deletePage(this.project.activePageId));
     bindMenuOpt('menuInsertPageMacro', () => {
       this.openMacroSelectionDialog('page');
     });
@@ -1133,15 +1155,21 @@ export class App {
       <div class="page-tree">
     `;
 
-    for (const page of this.project.pages) {
+    for (let idx = 0; idx < this.project.pages.length; idx++) {
+      const page = this.project.pages[idx];
       const isActive = page.id === this.project.activePageId;
       const icon = page.pageType === 'cover' ? '📄' : (page.pageType === 'schematic' ? '⚡' : '📋');
       html += `
-        <div class="tree-node ${isActive ? 'active' : ''}" data-page-id="${page.id}">
-          <span>${icon}</span>
-          <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <div style="font-weight: 500;">Blatt ${page.pageNumber}: ${page.title}</div>
-            <div style="font-size: 10px; color: ${isActive ? '#e2e8f0' : 'var(--text-muted)'};">${page.higherLevel}${page.location}</div>
+        <div class="tree-node page-tree-item ${isActive ? 'active' : ''}" data-page-id="${page.id}" data-page-index="${idx}" draggable="true" style="user-select: none;">
+          <span style="cursor: grab;" title="Ziehen zum Neuanordnen">${icon}</span>
+          <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 4px;">
+            <div style="font-weight: 500;">Blatt ${escapeSvg(page.pageNumber)}: ${escapeSvg(page.title)}</div>
+            <div style="font-size: 10px; color: ${isActive ? '#e2e8f0' : 'var(--text-muted)'};">${escapeSvg(page.higherLevel)}${escapeSvg(page.location)}</div>
+          </div>
+          <div class="page-item-actions" style="display: flex; gap: 2px; align-items: center;">
+            <button type="button" class="btn btn-page-action btn-move-page-up" data-page-id="${page.id}" title="Nach oben verschieben" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px"' : 'style="padding:2px 4px;font-size:10px"'}>▲</button>
+            <button type="button" class="btn btn-page-action btn-move-page-down" data-page-id="${page.id}" title="Nach unten verschieben" ${idx === this.project.pages.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px"' : 'style="padding:2px 4px;font-size:10px"'}>▼</button>
+            <button type="button" class="btn btn-page-action btn-delete-page" data-page-id="${page.id}" title="Seite löschen" ${this.project.pages.length <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px;color:var(--danger)"' : 'style="padding:2px 4px;font-size:10px;color:var(--danger)"'}>🗑️</button>
           </div>
         </div>
       `;
@@ -1151,8 +1179,9 @@ export class App {
     container.innerHTML = html;
 
     // Events
-    container.querySelectorAll('[data-page-id]').forEach(node => {
+    container.querySelectorAll('.tree-node').forEach(node => {
       node.addEventListener('click', (e) => {
+        if ((e.target as Element)?.closest?.('.page-item-actions')) return;
         const id = (e.currentTarget as HTMLElement).dataset.pageId!;
         this.canvas.setPage(id);
         if (window.innerWidth <= 960) {
@@ -1162,15 +1191,132 @@ export class App {
       });
     });
 
+    container.querySelectorAll('.btn-move-page-up').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
+        this.movePage(id, 'up');
+      });
+    });
+
+    container.querySelectorAll('.btn-move-page-down').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
+        this.movePage(id, 'down');
+      });
+    });
+
+    container.querySelectorAll('.btn-delete-page').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
+        this.deletePage(id);
+      });
+    });
+
+    // Drag & Drop
+    let draggedPageId: string | null = null;
+    container.querySelectorAll('.page-tree-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        draggedPageId = (e.currentTarget as HTMLElement).dataset.pageId!;
+        (e as DragEvent).dataTransfer?.setData('text/plain', draggedPageId);
+        (e.currentTarget as HTMLElement).style.opacity = '0.5';
+      });
+      item.addEventListener('dragend', (e) => {
+        (e.currentTarget as HTMLElement).style.opacity = '1';
+        draggedPageId = null;
+      });
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        (e as DragEvent).dataTransfer!.dropEffect = 'move';
+        (e.currentTarget as HTMLElement).classList.add('drag-over');
+      });
+      item.addEventListener('dragleave', (e) => {
+        (e.currentTarget as HTMLElement).classList.remove('drag-over');
+      });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).classList.remove('drag-over');
+        const targetId = (e.currentTarget as HTMLElement).dataset.pageId!;
+        const fromId = draggedPageId || (e as DragEvent).dataTransfer?.getData('text/plain');
+        if (fromId && fromId !== targetId) {
+          const targetIdx = Number((e.currentTarget as HTMLElement).dataset.pageIndex);
+          if (Number.isFinite(targetIdx)) {
+            this.movePageToIndex(fromId, targetIdx);
+          }
+        }
+      });
+    });
+
     document.getElementById('btnAddPage')?.addEventListener('click', () => {
       this.addNewPage();
     });
     document.getElementById('btnAddCoverPage')?.addEventListener('click',()=>this.addCoverPage());
   }
 
+  public updateTotalSheets(): void {
+    const total = String(this.project.pages.length);
+    for (const page of this.project.pages) {
+      if (page.plotFrame?.titleBlock) {
+        page.plotFrame.titleBlock.totalSheets = total;
+      }
+    }
+  }
+
+  public movePage(pageId: string, direction: 'up' | 'down'): void {
+    const idx = this.project.pages.findIndex(p => p.id === pageId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= this.project.pages.length) return;
+
+    const [moved] = this.project.pages.splice(idx, 1);
+    this.project.pages.splice(targetIdx, 0, moved);
+    this.updateTotalSheets();
+    this.notifyChange();
+    this.updateUI();
+  }
+
+  public movePageToIndex(pageId: string, targetIdx: number): void {
+    const idx = this.project.pages.findIndex(p => p.id === pageId);
+    if (idx === -1 || targetIdx < 0 || targetIdx >= this.project.pages.length || idx === targetIdx) return;
+
+    const [moved] = this.project.pages.splice(idx, 1);
+    this.project.pages.splice(targetIdx, 0, moved);
+    this.updateTotalSheets();
+    this.notifyChange();
+    this.updateUI();
+  }
+
+  public deletePage(pageId: string): void {
+    if (this.project.pages.length <= 1) {
+      alert('Das Projekt muss mindestens eine Seite enthalten.');
+      return;
+    }
+    const page = this.project.pages.find(p => p.id === pageId);
+    if (!page) return;
+
+    const confirmMsg = `Möchten Sie die Seite "Blatt ${page.pageNumber}: ${page.title}" wirklich löschen?`;
+    if (!confirm(confirmMsg)) return;
+
+    const idx = this.project.pages.findIndex(p => p.id === pageId);
+    this.project.pages.splice(idx, 1);
+
+    if (this.project.activePageId === pageId) {
+      const newIdx = Math.min(idx, this.project.pages.length - 1);
+      const newActive = this.project.pages[newIdx];
+      this.project.activePageId = newActive.id;
+      this.canvas.setPage(newActive.id);
+    }
+
+    this.updateTotalSheets();
+    this.notifyChange();
+    this.updateUI();
+  }
+
   private addCoverPage():void {
     const page=createCoverPage(this.project);
-    this.project.pages.unshift(page);this.canvas.setPage(page.id);this.updateUI();this.openCoverPage(page);
+    this.project.pages.unshift(page);this.canvas.setPage(page.id);this.updateTotalSheets();this.updateUI();this.openCoverPage(page);
   }
 
   private openCoverPage(page:Page):void {
@@ -1211,6 +1357,7 @@ export class App {
 
     this.project.pages.push(newPage);
     this.canvas.setPage(newPage.id);
+    this.updateTotalSheets();
     this.updateUI();
   }
 
@@ -2084,14 +2231,21 @@ export class App {
       // Form bindings
       document.getElementById('btnPropApply')?.addEventListener('click', () => {
         if(!collectDeviceBoxFields(container,comp,units))return;
+        const isInterruption = sym && isInterruptionSymbol(sym);
         const bmkInput = document.getElementById('propBmk') as HTMLInputElement;
-        if (bmkInput) comp.bmk = bmkInput.value.trim();
+        if (bmkInput) {
+          comp.bmk = bmkInput.value.trim();
+          if (isInterruption) comp.functionText = comp.bmk;
+        }
 
         const devInput = document.getElementById('propDeviceTag') as HTMLInputElement;
         if (devInput) setComponentLabelText(comp, 'deviceTag', devInput.value.trim());
 
         const fnInput = document.getElementById('propFunctionText') as HTMLTextAreaElement;
-        if (fnInput) setComponentLabelText(comp, 'functionText', fnInput.value.trim());
+        if (fnInput) {
+          setComponentLabelText(comp, 'functionText', fnInput.value.trim());
+          if (isInterruption && (!bmkInput || !bmkInput.value.trim())) comp.bmk = comp.functionText;
+        }
 
         const additionalInput = document.getElementById('propAdditionalText') as HTMLInputElement;
         if(additionalInput)setComponentLabelText(comp,'additionalText',additionalInput.value.trim());
@@ -2128,6 +2282,11 @@ export class App {
 
       document.getElementById('propBmk')?.addEventListener('input', (e) => {
         comp.bmk = (e.target as HTMLInputElement).value;
+        if (sym && isInterruptionSymbol(sym)) {
+          comp.functionText = comp.bmk;
+          const fnInput = document.getElementById('propFunctionText') as HTMLTextAreaElement;
+          if (fnInput) fnInput.value = comp.bmk;
+        }
         this.notifyChange();
       });
       for (const [key,property] of [['Bmk','bmkPosition'],['Fn','functionTextPosition'],['Additional','additionalTextPosition'],['Tech','technicalDataPosition']] as const) {
@@ -2171,6 +2330,11 @@ export class App {
       });
       document.getElementById('propFunctionText')?.addEventListener('input', (e) => {
         setComponentLabelText(comp, 'functionText', (e.target as HTMLTextAreaElement).value);
+        if (sym && isInterruptionSymbol(sym)) {
+          comp.bmk = comp.functionText || '';
+          const bmkInput = document.getElementById('propBmk') as HTMLInputElement;
+          if (bmkInput) bmkInput.value = comp.bmk;
+        }
         this.notifyChange();
       });
       document.getElementById('propTechnical')?.addEventListener('input', (e) => {
@@ -2248,11 +2412,21 @@ export class App {
     } else {
       // Project / Page properties
       const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
+      const activeIdx = this.project.pages.findIndex(p => p.id === this.project.activePageId);
+      const canMoveUp = activeIdx > 0;
+      const canMoveDown = activeIdx >= 0 && activeIdx < this.project.pages.length - 1;
+      const canDelete = this.project.pages.length > 1;
+
       container.innerHTML = `
         <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
           Seiteneigenschaften (Blatt ${activePage?.pageNumber || '1'})
         </div>
         ${activePage?.pageType==='cover'?'<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">Titelblatt bearbeiten…</button>':''}
+
+        <div class="form-group">
+          <label class="form-label">Blattnummer</label>
+          <input class="form-input" id="pageNumberInput" value="${escapeSvg(activePage?.pageNumber || '')}">
+        </div>
 
         <div class="form-group">
           <label class="form-label">Seitentitel</label>
@@ -2267,6 +2441,12 @@ export class App {
         <div class="form-group">
           <label class="form-label">Ortskennzeichen (+Ort)</label>
           <input class="form-input" id="pageLocationInput" value="${activePage?.location || '+S1'}">
+        </div>
+
+        <div style="display: flex; gap: 6px; margin: 12px 0 16px 0;">
+          <button class="btn" id="btnMovePageUp" style="flex: 1;" ${canMoveUp ? '' : 'disabled'} title="Seite nach oben verschieben">▲ Nach oben</button>
+          <button class="btn" id="btnMovePageDown" style="flex: 1;" ${canMoveDown ? '' : 'disabled'} title="Seite nach unten verschieben">▼ Nach unten</button>
+          <button class="btn" id="btnDeleteCurrentPage" style="flex: 1; border-color: var(--danger); color: var(--danger);" ${canDelete ? '' : 'disabled'} title="Aktuelle Seite löschen">🗑️ Löschen</button>
         </div>
 
         <div style="margin-top: 20px; font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
@@ -2290,9 +2470,21 @@ export class App {
       `;
 
       document.getElementById('btnEditCoverPage')?.addEventListener('click',()=>{if(activePage)this.openCoverPage(activePage);});
+      document.getElementById('pageNumberInput')?.addEventListener('input', (e) => {
+        if (activePage) {
+          const val = (e.target as HTMLInputElement).value;
+          activePage.pageNumber = val;
+          if (activePage.plotFrame?.titleBlock) {
+            activePage.plotFrame.titleBlock.sheetNumber = val;
+          }
+          this.notifyChange();
+          this.renderLeftTab();
+        }
+      });
       document.getElementById('pageTitleInput')?.addEventListener('input', (e) => {
         if (activePage) activePage.title = (e.target as HTMLInputElement).value;
         this.notifyChange();
+        this.renderLeftTab();
       });
       document.getElementById('pageHigherLevelInput')?.addEventListener('input', (e) => {
         if (activePage) activePage.higherLevel = (e.target as HTMLInputElement).value;
@@ -2301,6 +2493,15 @@ export class App {
       document.getElementById('pageLocationInput')?.addEventListener('input', (e) => {
         if (activePage) activePage.location = (e.target as HTMLInputElement).value;
         this.notifyChange();
+      });
+      document.getElementById('btnMovePageUp')?.addEventListener('click', () => {
+        if (activePage) this.movePage(activePage.id, 'up');
+      });
+      document.getElementById('btnMovePageDown')?.addEventListener('click', () => {
+        if (activePage) this.movePage(activePage.id, 'down');
+      });
+      document.getElementById('btnDeleteCurrentPage')?.addEventListener('click', () => {
+        if (activePage) this.deletePage(activePage.id);
       });
       document.getElementById('projNameInput')?.addEventListener('input', (e) => {
         this.project.name = (e.target as HTMLInputElement).value;

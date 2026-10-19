@@ -4,6 +4,7 @@
 import { Project, PlacedComponent, Page } from './types';
 import { getSymbolForComponent } from './symbols';
 import { componentInsertionPoint } from './SymbolGeometry';
+import { isInterruptionSymbol } from './ConnectionSymbols';
 
 export interface ContactMirrorItem {
   type: 'PowerNO' | 'NO' | 'NC' | 'Changeover';
@@ -62,12 +63,18 @@ export class CrossReferenceEngine {
       }
     }
 
-    // Group by BMK
+    // Group by BMK (or interruption name for interruption points)
     const bmkGroups = new Map<string, typeof componentLocations>();
     for (const item of componentLocations) {
-      const bmk = item.comp.bmk.trim();
+      const sym = getSymbolForComponent(item.comp, project);
+      const isInterruption = sym && isInterruptionSymbol(sym);
+      const bmk = isInterruption
+        ? (item.comp.bmk.trim() && !item.comp.bmk.startsWith('PF') && item.comp.bmk !== '/' ? item.comp.bmk.trim() : (item.comp.functionText?.trim() || item.comp.bmk.trim()))
+        : item.comp.bmk.trim();
       if (!bmk) continue;
-      const key = `${item.comp.higherLevelFunction ?? item.page.higherLevel}${item.comp.mountingLocation ?? item.page.location}${bmk}`;
+      const key = isInterruption
+        ? `__interruption__:${item.comp.higherLevelFunction ?? ''}:${bmk}`
+        : `${item.comp.higherLevelFunction ?? item.page.higherLevel}${item.comp.mountingLocation ?? item.page.location}${bmk}`;
       if (!bmkGroups.has(key)) {
         bmkGroups.set(key, []);
       }

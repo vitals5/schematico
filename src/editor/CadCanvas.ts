@@ -872,8 +872,8 @@ export class CadCanvas {
     if (!this.activeSymbolToPlace) return null;
     const sym = getSymbolById(this.activeSymbolToPlace, this.project);
     if (!sym) return null;
-
-    const bmk = nextDeviceTag(this.project, sym.defaultBmkPrefix);
+    const isInterruption = isInterruptionSymbol(sym);
+    const bmk = isInterruption ? (sym.defaultFunctionText || 'L1') : nextDeviceTag(this.project, sym.defaultBmkPrefix);
 
     const newComp: PlacedComponent = {
       id: 'comp_' + Math.random().toString(36).substring(2, 9),
@@ -882,7 +882,7 @@ export class CadCanvas {
       bmk,
       higherLevelFunction: this.activePage.higherLevel,
       mountingLocation: this.activePage.location,
-      functionText: sym.defaultFunctionText,
+      functionText: sym.defaultFunctionText || (isInterruption ? bmk : ''),
       technicalCharacteristics: sym.technicalCharacteristics || '',
       articleNumber: sym.articleNumber || '',
       manufacturer: sym.manufacturer || '',
@@ -2004,7 +2004,8 @@ export class CadCanvas {
 
     const { x: gx, y: gy } = this.placementPosition(this.currentMousePos.x, this.currentMousePos.y, sym);
 
-    const bmk = nextDeviceTag(this.project, sym.defaultBmkPrefix) || sym.name;
+    const isInterruption = isInterruptionSymbol(sym);
+    const bmk = isInterruption ? (sym.defaultFunctionText || 'L1') : (nextDeviceTag(this.project, sym.defaultBmkPrefix) || sym.name);
 
     return `
       <g id="ghostLayer" transform="translate(${gx}, ${gy}) rotate(${this.ghostRotation || 0}, ${sym.width / 2}, ${sym.height / 2})" opacity="0.75" pointer-events="none">

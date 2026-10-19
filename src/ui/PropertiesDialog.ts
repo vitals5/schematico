@@ -9,6 +9,7 @@ import { getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { MANUFACTURER_PARTS } from '../model/PartCatalogue';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
+import { isInterruptionSymbol } from '../model/ConnectionSymbols';
 
 export interface PropertiesDialogCallbacks {
   onSave: (updated: PlacedComponent) => void;
@@ -757,16 +758,24 @@ export class PropertiesDialog {
   }
 
   private collectFormData(modal: HTMLElement): boolean | void {
-    if(!collectDeviceBoxFields(modal,this.component,getDrawingUnitsPerMm(this.project)))return false;
+    const sym = getSymbolForComponent(this.component, this.project);
+    const isInterruption = sym && isInterruptionSymbol(sym);
+
     // Symbol tab fields
     const bmk = modal.querySelector('#propBmk') as HTMLInputElement;
-    if (bmk) this.component.bmk = bmk.value.trim();
+    if (bmk) {
+      this.component.bmk = bmk.value.trim();
+      if (isInterruption) this.component.functionText = this.component.bmk;
+    }
 
     const deviceTag = modal.querySelector('#propDeviceTag') as HTMLInputElement;
     if (deviceTag) setComponentLabelText(this.component, 'deviceTag', deviceTag.value.trim());
 
     const fnText = modal.querySelector('#propFunctionText') as HTMLInputElement;
-    if (fnText) setComponentLabelText(this.component, 'functionText', fnText.value.trim());
+    if (fnText) {
+      setComponentLabelText(this.component, 'functionText', fnText.value.trim());
+      if (isInterruption && (!bmk || !bmk.value.trim())) this.component.bmk = this.component.functionText;
+    }
 
     const additionalText = modal.querySelector('#propAdditionalText') as HTMLInputElement;
     if (additionalText) setComponentLabelText(this.component, 'additionalText', additionalText.value.trim());

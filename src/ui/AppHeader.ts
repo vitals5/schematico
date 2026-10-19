@@ -50,7 +50,7 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuInsertTrigger','Einfügen',
           opt('menuInsertSym','Element…','Einfg')+opt('menuInsertConnections','Verbindungselement…')+opt('menuWire','Verbindungslinie','D')+opt('menuInsertCable','Kabelbeschriftung…')+opt('menuInsertBox','Gerätekasten zeichnen')+opt('menuInsertImage','Bilddatei…')+separator+
           heading('Makros')+opt('menuInsertMacro','Fenstermakro (.ema)…')+opt('menuInsertPageMacro','Makro platzieren (.ems)…')+separator+
-          heading('Seiten')+opt('menuNewPage','Neue Seite…')+opt('menuNewCoverPage','Titelblatt…'),'menu-item')}
+          heading('Seiten')+opt('menuNewPage','Neue Seite…')+opt('menuNewCoverPage','Titelblatt…')+opt('menuDeletePage','Aktuelle Seite löschen…'),'menu-item')}
         ${menu('menuViewTrigger','Ansicht',
           opt('menuFit','Ganzes Blatt','F')+opt('menuZoom100','Originalgröße (100 %)')+opt('menuZoomIn','Vergrößern')+opt('menuZoomOut','Verkleinern')+separator+
           heading('Rasterfang')+opt('menuGridFull','Vollraster','Alt+1')+opt('menuGridHalf','Halbraster','H / Alt+2')+opt('menuGridFine','Feinraster','Alt+3')+opt('menuGridOff','Rasterfang aus','Alt+0')+separator+

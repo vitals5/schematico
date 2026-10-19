@@ -38,4 +38,35 @@ contact.crossRef = '/1.0'; contact.bmk = '-K1'; coil.bmk = '-K1';
 assert.equal(referenceTargets(project, contact)[0].componentId, 'coil', 'Contact navigates back to its coil');
 contact.source = { format: 'NATIVE_CAD', objectType: 17, objectId: 1 };
 contact.x = 200; assert.equal(CrossReferenceEngine.componentPath(contact, targetPage, project), 2, 'Native column uses its source insertion');
-console.log('✓ Reference links: split pages, structure, per-contact targets, reverse navigation, fallback and escaping');
+
+// Test interruption symbol cross-reference calculation and bidirectional navigation
+const intSymRight = { id: 'potential_arrow_right', width: 20, height: 20, pins: [], category: 'connections', isInterruption: true };
+const intSymLeft = { id: 'potential_arrow_left', width: 20, height: 20, pins: [], category: 'connections', isInterruption: true };
+(project.symbolLibrary as any[]).push(intSymRight, intSymLeft);
+
+const pArrow1 = placed('p-arrow-1', 'potential_arrow_right', 150, 'L1');
+pArrow1.functionText = 'L1';
+pArrow1.mountingLocation = '+S1';
+
+const pArrow2 = placed('p-arrow-2', 'potential_arrow_left', 350, '');
+pArrow2.functionText = 'L1';
+pArrow2.mountingLocation = '+S2'; // Different location still pairs
+
+sourcePage.components.push(pArrow1);
+targetPage.components.push(pArrow2);
+
+CrossReferenceEngine.updateProjectCrossReferences(project);
+assert.equal(pArrow1.crossRef, '/21-3.3', 'Interruption point 1 points to target page and column');
+assert.equal(pArrow2.crossRef, '/1.1', 'Interruption point 2 points to source page and column');
+
+const targets1 = referenceTargets(project, pArrow1);
+assert.equal(targets1.length, 1);
+assert.equal(targets1[0].pageId, 'target');
+assert.equal(targets1[0].componentId, 'p-arrow-2');
+
+const targets2 = referenceTargets(project, pArrow2);
+assert.equal(targets2.length, 1);
+assert.equal(targets2[0].pageId, 'source');
+assert.equal(targets2[0].componentId, 'p-arrow-1');
+
+console.log('✓ Reference links: split pages, structure, per-contact targets, reverse navigation, interruption points across locations, fallback and escaping');
