@@ -33,17 +33,28 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist:win
 
+      - name: Create Web Distribution Archive
+        run: Compress-Archive -Path dist/* -DestinationPath release/schematico-web.zip
+
       - name: Upload Windows Installer & Portable Binary
         uses: actions/upload-artifact@v4
         with:
           name: Schematico-Windows-x64
           path: release/*.exe
 
+      - name: Upload Web Distribution Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: Schematico-Web
+          path: release/schematico-web.zip
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          files: |
+            release/*.exe
+            release/*.zip
           generate_release_notes: true
           draft: false
           prerelease: false

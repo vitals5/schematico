@@ -39,4 +39,10 @@ export function readAppSetting(suffix:string):string|null {
   const oldKey=legacyAppName+'_'+suffix,old=localStorage.getItem(oldKey);
   if(old!==null){localStorage.setItem(key,old);localStorage.removeItem(oldKey);}return old;
 }
+export function clearAppSetting(suffix:string):void {
+  if(typeof localStorage==='undefined')return;
+  localStorage.removeItem('schematico_'+suffix);
+  localStorage.removeItem(legacyAppName+'_'+suffix);
+}
 export const legacyMacroDatabase=legacyAppName+'-macro-library';
+

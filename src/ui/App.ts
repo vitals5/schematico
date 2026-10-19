@@ -1,4 +1,5 @@
 import { readAppSetting } from '../model/LegacyCompatibility';
+import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { AboutDialog } from './AboutDialog';
 import { macroWithVariables } from '../model/NativeMacroVariables';
@@ -64,6 +65,7 @@ export class App {
   private rightSidebarWidth: number = 300;
   private isLeftCollapsed: boolean = false;
   private isRightCollapsed: boolean = false;
+  private autoSaveTimer: any = null;
 
   constructor() {
     const savedLeftW = readAppSetting('left_w');
@@ -77,7 +79,9 @@ export class App {
       this.isRightCollapsed = true;
     }
 
-    this.initDefaultProject();
+    if (!this.loadInitialProject()) {
+      this.initDefaultProject();
+    }
     this.renderLayout();
     this.initCanvas();
     this.history.reset(this.project);
@@ -92,6 +96,55 @@ export class App {
 
     if (this.isLeftCollapsed) this.setLeftPanelCollapsed(true);
     if (this.isRightCollapsed) this.setRightPanelCollapsed(true);
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        this.saveActiveProject();
+      });
+    }
+  }
+
+  private loadInitialProject(): boolean {
+    const project = loadLastProject();
+    if (!project) return false;
+    this.project = project;
+    prepareProjectPresentation(this.project);
+    revealImportedComponentLabels(this.project);
+    setProjectSymbolLibrary(this.project);
+    for (const p of this.project.pages) {
+      AutoconnectEngine.updatePageAutoconnections(p);
+    }
+    CrossReferenceEngine.updateProjectCrossReferences(this.project);
+    return true;
+  }
+
+  private loadDemoProject(): void {
+    this.initDefaultProject();
+    this.selectedComponent = null;
+    this.selectedWire = null;
+    this.selectedCable = null;
+    this.canvas.setProject(this.project);
+    if (this.project.activePageId) {
+      this.canvas.setPage(this.project.activePageId);
+    }
+    this.canvas.fitToScreen();
+    this.history.reset(this.project);
+    this.updateUI();
+    this.saveActiveProject();
+  }
+
+  private triggerAutoSave(): void {
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+    }
+    this.autoSaveTimer = setTimeout(() => {
+      this.saveActiveProject();
+    }, 400);
+  }
+
+  private saveActiveProject(): void {
+    if (!this.project) return;
+    saveLastProject(this.project);
   }
 
   private initDefaultProject(): void {
@@ -756,6 +809,11 @@ export class App {
         this.createNewProject();
       }
     });
+    bindMenuOpt('menuLoadDemo', () => {
+      if (confirm('Möchten Sie das Standard-Beispielprojekt laden? Nicht gespeicherte Änderungen am aktuellen Projekt gehen verloren.')) {
+        this.loadDemoProject();
+      }
+    });
 
     const menuFileInput = document.getElementById('menuFileInput') as HTMLInputElement;
     menuFileInput?.addEventListener('change', async (e) => {
@@ -944,16 +1002,33 @@ export class App {
     const modal = document.createElement('div'); modal.id = 'settingsModal'; modal.className = 'modal-backdrop';
     modal.style.cssText = 'position:fixed;inset:0;background:#000b;z-index:2200;display:flex;align-items:center;justify-content:center';
     const selected = this.project.settings?.interruptionLabelSide ?? 'source';
+    const autoLoad = isAutoLoadProjectEnabled();
     modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:440px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
-      <h3>Einstellungen</h3><div id="settingsMacroFolder"></div><p style="font-size:12px;color:#a0aec0">Der Makroordner wird als Programmeinstellung unabhängig vom Projekt gespeichert.</p><label for="interruptionLabelSide">Beschriftung der Abbruchstellen</label>
-      <select id="interruptionLabelSide" class="form-input">${[['source','Wie importiert / Standard'],['before','Vor dem Pfeil (Leitungsseite)'],['after','Nach dem Pfeil (Spitzenseite)']].map(([id,label]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${label}</option>`).join('')}</select>
-      <p style="font-size:12px;color:#a0aec0">Die Position der Bezeichnung bezieht sich auf die Pfeilrichtung. Querverweise erscheinen automatisch gegenüber der angeschlossenen Seite, solange keine eigene Position gewählt ist. Die Einstellung wird mit dem Projekt gespeichert.</p>
+      <h3>Einstellungen</h3>
+      <div id="settingsMacroFolder"></div>
+      <p style="font-size:12px;color:#a0aec0">Der Makroordner wird als Programmeinstellung unabhängig vom Projekt gespeichert.</p>
+      
+      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#e2e8f0;">
+          <input type="checkbox" id="settingAutoLoadProject" ${autoLoad ? 'checked' : ''} style="width:16px;height:16px;accent-color:#3182ce;" />
+          <span>Zuletzt geöffnetes Projekt beim Start automatisch laden</span>
+        </label>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 24px;">Wenn aktiviert, öffnet Schematico beim Programmstart direkt das zuletzt bearbeitete Projekt.</p>
+      </div>
+
+      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
+        <label for="interruptionLabelSide">Beschriftung der Abbruchstellen</label>
+        <select id="interruptionLabelSide" class="form-input">${[['source','Wie importiert / Standard'],['before','Vor dem Pfeil (Leitungsseite)'],['after','Nach dem Pfeil (Spitzenseite)']].map(([id,label]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${label}</option>`).join('')}</select>
+        <p style="font-size:12px;color:#a0aec0">Die Position der Bezeichnung bezieht sich auf die Pfeilrichtung. Querverweise erscheinen automatisch gegenüber der angeschlossenen Seite, solange keine eigene Position gewählt ist. Die Einstellung wird mit dem Projekt gespeichert.</p>
+      </div>
       <button class="btn btn-primary" id="saveSettings">Übernehmen</button> <button class="btn" id="cancelSettings">Abbrechen</button></div>`;
     document.body.appendChild(modal);
     modal.querySelector('#settingsMacroFolder')!.appendChild(createMacroFolderPanel());
     modal.querySelector('#cancelSettings')!.addEventListener('click', () => modal.remove());
     modal.querySelector('#saveSettings')!.addEventListener('click', () => {
       const value = (modal.querySelector('select') as HTMLSelectElement).value as 'source' | 'before' | 'after';
+      const chkAutoLoad = (modal.querySelector('#settingAutoLoadProject') as HTMLInputElement)?.checked;
+      if (chkAutoLoad !== undefined) setAutoLoadProjectEnabled(chkAutoLoad);
       this.project.settings = { ...this.project.settings, interruptionLabelSide: value };
       modal.remove(); this.notifyChange();
     });
@@ -1026,6 +1101,7 @@ export class App {
     this.updateGridButtonState();
     this.renderLeftTab();
     if (!editing) this.renderRightTab();
+    this.triggerAutoSave();
   }
 
   private renderLeftTab(): void {
@@ -2309,6 +2385,7 @@ export class App {
         this.canvas.fitToScreen();
         this.history.reset(this.project);
         this.updateUI();
+        this.saveActiveProject();
       }
 
       // Display inspection findings
@@ -2395,6 +2472,7 @@ export class App {
     this.canvas.setProject(this.project);
     this.history.reset(this.project);
     this.updateUI();
+    this.saveActiveProject();
   }
 
   private saveProjectJson(): void {

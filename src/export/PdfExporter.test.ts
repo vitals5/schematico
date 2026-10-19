@@ -1,0 +1,231 @@
+import assert from 'node:assert/strict';
+import { jsPDF } from 'jspdf';
+import { PdfExporter } from './PdfExporter';
+import { getSymbolById } from '../model/symbols';
+import type { Project, Page, PlacedComponent, Wire } from '../model/types';
+
+// Verify that connection elements (potential arrows, tees, corners, crossings)
+// are rendered as proper vector geometry and NOT as fallback rectangular blocks (doc.rect).
+
+const connectionSymbolIds = [
+  'potential_arrow',
+  'potential_arrow_down',
+  'potential_arrow_up',
+  'potential_arrow_right',
+  'potential_arrow_left',
+  't_piece_down',
+  't_piece_up',
+  't_piece_right',
+  't_piece_left',
+  'corner_top_right',
+  'corner_top_left',
+  'corner_bottom_right',
+  'corner_bottom_left',
+  'cross_junction',
+  'cross_bridge',
+];
+
+for (const symbolId of connectionSymbolIds) {
+  const sym = getSymbolById(symbolId);
+  assert(sym, `Symbol ${symbolId} must exist in the library`);
+
+  const component: PlacedComponent = {
+    id: `comp_${symbolId}`,
+    symbolId,
+    x: 100,
+    y: 100,
+    rotation: 0,
+    bmk: 'X1',
+    functionText: '',
+    pins: {},
+  };
+
+  const page: Page = {
+    id: 'test_page',
+    pageNumber: '1',
+    title: 'Test',
+    pageType: 'schematic',
+    higherLevel: '',
+    location: '',
+    components: [component],
+    wires: [],
+    plotFrame: {
+      type: 'DIN_A3_LANDSCAPE',
+      width: 1000,
+      height: 700,
+      columns: 10,
+      rows: ['A'],
+      titleBlock: {
+        projectTitle: '',
+        commission: '',
+        company: '',
+        author: '',
+        date: '',
+        revision: '',
+        sheetNumber: '1',
+        totalSheets: '1',
+      },
+    },
+  };
+
+  const project: Project = {
+    id: 'test_proj',
+    name: 'Test',
+    description: '',
+    author: '',
+    company: '',
+    standard: 'DIN EN 81346-2 / IEC 60617',
+    version: '1.0',
+    created: '2026-01-01',
+    modified: '2026-01-01',
+    pages: [page],
+    activePageId: 'test_page',
+  };
+
+  const rects: number[][] = [];
+  const lines: number[][] = [];
+  const triangles: number[][] = [];
+  const circles: number[][] = [];
+
+  const mockPdf: any = {};
+  for (const name of [
+    'setLineWidth', 'setLineDashPattern', 'setTextColor', 'setFillColor',
+    'setDrawColor', 'setFont', 'setFontSize', 'path', 'fill', 'fillStroke', 'stroke',
+  ]) {
+    mockPdf[name] = () => undefined;
+  }
+
+  mockPdf.rect = (...args: number[]) => { rects.push(args); };
+  mockPdf.line = (...args: number[]) => { lines.push(args); };
+  mockPdf.triangle = (...args: number[]) => { triangles.push(args); };
+  mockPdf.circle = (...args: number[]) => { circles.push(args); };
+  mockPdf.text = () => undefined;
+
+  (PdfExporter as any).renderComponents(mockPdf, page, project, 420, 297, { colorMode: 'color' }, new Map());
+
+  // Connection elements must NEVER draw an empty bounding box rectangle
+  assert.equal(
+    rects.length,
+    0,
+    `Connection symbol ${symbolId} must NOT render as an empty fallback rectangle in PDF export`
+  );
+
+  // Must render either lines, triangles, or circles representing the connection symbol
+  const totalVectors = lines.length + triangles.length + circles.length;
+  assert(
+    totalVectors > 0,
+    `Connection symbol ${symbolId} must render vector elements (lines/triangles/circles), got ${totalVectors}`
+  );
+}
+
+// Test potential color matching on connection elements
+{
+  const nArrow: PlacedComponent = {
+    id: 'comp_n',
+    symbolId: 'potential_arrow',
+    x: 50,
+    y: 50,
+    rotation: 0,
+    bmk: 'PF1',
+    functionText: 'N',
+    pins: {},
+  };
+
+  const nWire: Wire = {
+    id: 'wire_n',
+    from: { componentId: 'comp_n', pinId: 'IN' },
+    to: { componentId: 'other', pinId: '1' },
+    potential: 'N',
+  };
+
+  const peArrow: PlacedComponent = {
+    id: 'comp_pe',
+    symbolId: 'potential_arrow',
+    x: 80,
+    y: 50,
+    rotation: 0,
+    bmk: 'PF2',
+    functionText: 'PE',
+    pins: {},
+  };
+
+  const peWire: Wire = {
+    id: 'wire_pe',
+    from: { componentId: 'comp_pe', pinId: 'IN' },
+    to: { componentId: 'other', pinId: '2' },
+    potential: 'PE',
+  };
+
+  const page: Page = {
+    id: 'page_colors',
+    pageNumber: '1',
+    title: 'Colors',
+    pageType: 'schematic',
+    higherLevel: '',
+    location: '',
+    components: [nArrow, peArrow],
+    wires: [nWire, peWire],
+    plotFrame: {
+      type: 'DIN_A3_LANDSCAPE',
+      width: 1000,
+      height: 700,
+      columns: 10,
+      rows: ['A'],
+      titleBlock: {
+        projectTitle: '',
+        commission: '',
+        company: '',
+        author: '',
+        date: '',
+        revision: '',
+        sheetNumber: '1',
+        totalSheets: '1',
+      },
+    },
+  };
+
+  const project: Project = {
+    id: 'p_colors',
+    name: 'Colors',
+    description: '',
+    author: '',
+    company: '',
+    standard: 'DIN EN 81346-2 / IEC 60617',
+    version: '1.0',
+    created: '2026-01-01',
+    modified: '2026-01-01',
+    pages: [page],
+    activePageId: 'page_colors',
+  };
+
+  const drawColors: number[][] = [];
+  const fillColors: number[][] = [];
+  const rects: number[][] = [];
+
+  const mockPdf: any = {};
+  for (const name of [
+    'setLineWidth', 'setLineDashPattern', 'setTextColor', 'setFont', 'setFontSize',
+    'path', 'fill', 'fillStroke', 'stroke', 'line', 'triangle', 'circle', 'text',
+  ]) {
+    mockPdf[name] = () => undefined;
+  }
+  mockPdf.setDrawColor = (...args: number[]) => { drawColors.push(args); };
+  mockPdf.setFillColor = (...args: number[]) => { fillColors.push(args); };
+  mockPdf.rect = (...args: number[]) => { rects.push(args); };
+
+  (PdfExporter as any).renderComponents(mockPdf, page, project, 420, 297, { colorMode: 'color' }, new Map());
+
+  assert.equal(rects.length, 0, 'No bounding boxes for potential arrows');
+  // N wire potential RGB is blue: [37, 99, 235]
+  assert(
+    fillColors.some(c => c[0] === 37 && c[1] === 99 && c[2] === 235),
+    'N potential arrow must be filled with N blue color'
+  );
+  // PE wire potential RGB is green: [22, 163, 74]
+  assert(
+    fillColors.some(c => c[0] === 22 && c[1] === 163 && c[2] === 74),
+    'PE potential arrow must be filled with PE green color'
+  );
+}
+
+console.log('✓ Connection elements render as vector arrows/junctions in PDF without placeholder blocks');

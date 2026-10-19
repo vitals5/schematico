@@ -39,6 +39,7 @@ export function renderAppHeader(projectName:string):string {
       <div class="main-menu-list" id="mainMenuList">
         ${menu('menuProjectTrigger','Projekt',
           opt('menuNew','Neues Projekt…')+opt('menuOpen','Projekt öffnen…')+opt('menuSave','Speichern','Strg+S')+
+          separator+opt('menuLoadDemo','Standard-Projekt laden…')+
           separator+heading('Export')+opt('menuExportPdf','PDF exportieren…','Strg+P')+opt('menuExportZw1','Projektarchiv (.zw1)…')+opt('menuExportXml','Projekt-XML…')+opt('menuExportPageMacro','Seite als Makro (.ems)…')+opt('menuPrint','Drucken…')+
           separator+opt('menuSettings','Einstellungen…'),'menu-item')}
         ${menu('menuEditTrigger','Bearbeiten',

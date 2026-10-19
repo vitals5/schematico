@@ -3,7 +3,7 @@ import { cableDrawing } from '../model/CableDefinition';
 import { coverPageTemplate, coverPageTextRuns, coverPageLogo } from '../model/CoverPage';
 import { prepareProjectPresentation } from '../model/PresentationNaming';
 import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '../model/PlotFrame';
-import { interruptionLabelPosition, isInterruptionSymbol } from '../model/ConnectionSymbols';
+import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
@@ -19,7 +19,7 @@ import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, superse
 import { arcPoints, rotateDrawing } from '../model/ImportedDrawing';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition } from '../model/LabelLayout';
 import { jsPDF } from 'jspdf';
-import { Project, Page, PlacedComponent, Wire, DrawingPrimitive } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, DrawingPrimitive, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
 import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
 import { PartsListGenerator } from '../reports/PartsList';
@@ -335,9 +335,16 @@ export class PdfExporter {
       const compW = sym.width * sx, compH = sym.height * sy;
 
       const routingGlyph = isConnectionGraphic(comp, sym);
-      const connectedWire = graphicWires.get(comp.id);
-      const rgb = this.getPotentialRgb(connectedWire?.potential ?? 'Signal', connectedWire?.color);
-      const foreground = comp.deviceBox?.color??(routingGlyph ? '#' + [rgb.r, rgb.g, rgb.b].map(c => c.toString(16).padStart(2, '0')).join('') : '#000000');
+      const isConnection = !sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
+      const isTerminal = sym.id === 'terminal_single' || sym.id === 'terminal_pe';
+
+      const connectedWire = graphicWires.get(comp.id)
+        ?? page.wires.find(w => w.from.componentId === comp.id || w.to.componentId === comp.id);
+      const potHint = connectedWire?.potential || comp.functionText || 'Signal';
+      const rgb = options.colorMode === 'color'
+        ? this.getPotentialRgb(potHint, connectedWire?.color)
+        : { r: 0, g: 0, b: 0 };
+      const foreground = comp.deviceBox?.color??((routingGlyph || isConnection) ? '#' + [rgb.r, rgb.g, rgb.b].map(c => c.toString(16).padStart(2, '0')).join('') : '#000000');
       if (superseded.has(comp.id) || comp.source?.routingUsed === false) {
         // Functional source object is retained in the model; its co-located
         // explicit routing symbol supplies the visible connection geometry.
@@ -345,14 +352,18 @@ export class PdfExporter {
         this.renderImportedGraphics(doc, rotateDrawing(sym.importedGraphics, comp.rotation, sym.width, sym.height), wMm / page.plotFrame.width, hMm / page.plotFrame.height,
           options.colorMode, comp.x, comp.y, foreground);
       } else {
-      // Draw Symbol Vector Outline
-      doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.35);
-      this.drawVectorSymbol(this.rotatedSymbolDocument(doc, compX, compY, compW, compH, comp.rotation, sx, sy), sym.id, compX, compY, compW, compH);
+        // Draw Symbol Vector Outline
+        if (isConnection) {
+          doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+          doc.setFillColor(rgb.r, rgb.g, rgb.b);
+          doc.setLineWidth(connectedWire?.lineWidth === undefined ? 0.35 : connectedWire.lineWidth * sx);
+        } else {
+          doc.setDrawColor(0, 0, 0);
+          doc.setFillColor(0, 0, 0);
+          doc.setLineWidth(0.35);
+        }
+        this.drawVectorSymbol(this.rotatedSymbolDocument(doc, compX, compY, compW, compH, comp.rotation, sx, sy), sym.id, compX, compY, compW, compH, sym);
       }
-
-      const isConnection = !sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
-      const isTerminal = sym.id === 'terminal_single';
 
       // Label anchors are library data for imported and built-in symbols alike.
       for (const pin of sym.pins) {
@@ -381,8 +392,8 @@ export class PdfExporter {
 
       // Draw Labels according to component type
       const arrowPos = interruptionLabelPosition(project, comp, sym);
-      if (isInterruptionSymbol(sym) && (isConnection || arrowPos)) {
-        const local = arrowPos!;
+      if (isInterruptionSymbol(sym) && arrowPos) {
+        const local = arrowPos;
         const point = rotatedLocalPoint(local, sym, comp.rotation);
         doc.setFont('helvetica', 'normal'); doc.setFontSize((sym.source ? computeFunctionTextPosition(comp, sym).fontSize : (comp.functionTextPosition?.fontSize ?? 8.5)) * sy * 72 / 25.4);
         doc.setTextColor(0, 0, 0);
@@ -397,7 +408,7 @@ export class PdfExporter {
           doc.text(comp.functionText || comp.bmk, compX + compW + 1.5, compY + compH * 0.5 + 1.2, { align: 'left' });
         } else if (sym.id === 'potential_arrow_left') {
           doc.text(comp.functionText || comp.bmk, compX - 1.5, compY + compH * 0.5 + 1.2, { align: 'right' });
-        } else if (sym.id === 'potential_arrow_down') {
+        } else if (sym.id === 'potential_arrow_down' || sym.id === 'potential_arrow') {
           doc.text(comp.functionText || comp.bmk, compX + compW * 0.5, compY + compH + 3.0, { align: 'center' });
         } else if (sym.id === 'potential_arrow_up') {
           doc.text(comp.functionText || comp.bmk, compX + compW * 0.5, compY - 1.5, { align: 'center' });
@@ -504,7 +515,7 @@ export class PdfExporter {
   /**
    * Vector drawing commands for DIN EN 60617 symbols in PDF
    */
-  private static drawVectorSymbol(doc: jsPDF, symId: string, x: number, y: number, w: number, h: number): void {
+  private static drawVectorSymbol(doc: jsPDF, symId: string, x: number, y: number, w: number, h: number, sym?: SymbolDefinition): void {
     switch (symId) {
       case 'contactor_coil': {
         doc.rect(x + w * 0.2, y + h * 0.25, w * 0.6, h * 0.5);
@@ -701,33 +712,142 @@ export class PdfExporter {
         doc.text('4-Kanal Multifunktion', x + w * 0.5, y + h * 0.62, { align: 'center' });
         break;
       }
-      case 'potential_arrow_right': {
-        doc.setFillColor(220, 38, 38);
-        doc.line(x, y + h * 0.5, x + w * 0.4, y + h * 0.5);
-        doc.triangle(x + w * 0.4, y + h * 0.2, x + w, y + h * 0.5, x + w * 0.4, y + h * 0.8, 'FD');
-        break;
-      }
-      case 'potential_arrow_left': {
-        doc.setFillColor(220, 38, 38);
-        doc.line(x + w, y + h * 0.5, x + w * 0.6, y + h * 0.5);
-        doc.triangle(x + w * 0.6, y + h * 0.2, x, y + h * 0.5, x + w * 0.6, y + h * 0.8, 'FD');
-        break;
-      }
+      case 'potential_arrow':
       case 'potential_arrow_down': {
-        doc.setFillColor(220, 38, 38);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.4);
-        doc.triangle(x + w * 0.2, y + h * 0.4, x + w * 0.5, y + h, x + w * 0.8, y + h * 0.4, 'FD');
+        const cx = x + w * 0.5;
+        doc.line(cx, y, cx, y + h * 0.45);
+        doc.triangle(cx - w * 0.25, y + h * 0.45, cx, y + h * 0.92, cx + w * 0.25, y + h * 0.45, 'FD');
         break;
       }
       case 'potential_arrow_up': {
-        doc.setFillColor(220, 38, 38);
-        doc.line(x + w * 0.5, y + h, x + w * 0.5, y + h * 0.6);
-        doc.triangle(x + w * 0.2, y + h * 0.6, x + w * 0.5, y, x + w * 0.8, y + h * 0.6, 'FD');
+        const cx = x + w * 0.5;
+        doc.line(cx, y + h, cx, y + h * 0.55);
+        doc.triangle(cx - w * 0.25, y + h * 0.55, cx, y + h * 0.08, cx + w * 0.25, y + h * 0.55, 'FD');
+        break;
+      }
+      case 'potential_arrow_right': {
+        const cy = y + h * 0.5;
+        doc.line(x, cy, x + w * 0.45, cy);
+        doc.triangle(x + w * 0.45, cy - h * 0.25, x + w * 0.92, cy, x + w * 0.45, cy + h * 0.25, 'FD');
+        break;
+      }
+      case 'potential_arrow_left': {
+        const cy = y + h * 0.5;
+        doc.line(x + w, cy, x + w * 0.55, cy);
+        doc.triangle(x + w * 0.55, cy - h * 0.25, x + w * 0.08, cy, x + w * 0.55, cy + h * 0.25, 'FD');
+        break;
+      }
+      case 't_piece_down': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x, cy, x + w, cy);
+        doc.line(cx, cy, cx, y + h);
+        doc.circle(cx, cy, 0.8, 'FD');
+        break;
+      }
+      case 't_piece_up': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x, cy, x + w, cy);
+        doc.line(cx, y, cx, cy);
+        doc.circle(cx, cy, 0.8, 'FD');
+        break;
+      }
+      case 't_piece_right': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(cx, y, cx, y + h);
+        doc.line(cx, cy, x + w, cy);
+        doc.circle(cx, cy, 0.8, 'FD');
+        break;
+      }
+      case 't_piece_left': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(cx, y, cx, y + h);
+        doc.line(x, cy, cx, cy);
+        doc.circle(cx, cy, 0.8, 'FD');
+        break;
+      }
+      case 'corner_top_right': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x, cy, cx, cy);
+        doc.line(cx, cy, cx, y + h);
+        break;
+      }
+      case 'corner_top_left': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x + w, cy, cx, cy);
+        doc.line(cx, cy, cx, y + h);
+        break;
+      }
+      case 'corner_bottom_right': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x, cy, cx, cy);
+        doc.line(cx, cy, cx, y);
+        break;
+      }
+      case 'corner_bottom_left': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x + w, cy, cx, cy);
+        doc.line(cx, cy, cx, y);
+        break;
+      }
+      case 'cross_junction': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(x, cy, x + w, cy);
+        doc.line(cx, y, cx, y + h);
+        doc.circle(cx, cy, 0.9, 'FD');
+        break;
+      }
+      case 'cross_bridge': {
+        const cx = x + w * 0.5, cy = y + h * 0.5;
+        doc.line(cx, y, cx, y + h);
+        const br = w * 0.2;
+        doc.line(x, cy, cx - br, cy);
+        doc.line(cx + br, cy, x + w, cy);
+        for (let i = 0; i < 6; i++) {
+          const a1 = Math.PI - (i / 6) * Math.PI, a2 = Math.PI - ((i + 1) / 6) * Math.PI;
+          doc.line(cx + br * Math.cos(a1), cy - br * Math.sin(a1), cx + br * Math.cos(a2), cy - br * Math.sin(a2));
+        }
         break;
       }
       case 'potential_rail_source': {
         doc.circle(x + w * 0.5, y + h * 0.5, 0.9, 'S');
         doc.line(x + w * 0.5 + 0.9, y + h * 0.5, x + w, y + h * 0.5);
+        break;
+      }
+      case 'terminal_pe': {
+        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.4);
+        doc.circle(x + w * 0.5, y + h * 0.5, 1.0, 'FD');
+        doc.line(x + w * 0.5, y + h * 0.6, x + w * 0.5, y + h);
+        break;
+      }
+      case 'ground_pe': {
+        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.5);
+        doc.line(x + w * 0.1, y + h * 0.5, x + w * 0.9, y + h * 0.5);
+        doc.line(x + w * 0.25, y + h * 0.75, x + w * 0.75, y + h * 0.75);
+        doc.line(x + w * 0.4, y + h, x + w * 0.6, y + h);
+        break;
+      }
+      case 'power_supply_dc': {
+        doc.rect(x + w * 0.1, y + h * 0.15, w * 0.8, h * 0.7);
+        doc.line(x + w * 0.1, y + h * 0.85, x + w * 0.9, y + h * 0.15);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('~', x + w * 0.3, y + h * 0.45, { align: 'center' });
+        doc.text('=', x + w * 0.7, y + h * 0.7, { align: 'center' });
+        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.15);
+        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.15);
+        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.15);
+        doc.line(x + w * 0.35, y + h * 0.85, x + w * 0.35, y + h);
+        doc.line(x + w * 0.65, y + h * 0.85, x + w * 0.65, y + h);
+        break;
+      }
+      case 'socket_switch': {
+        doc.rect(x + w * 0.1, y + h * 0.25, w * 0.8, h * 0.65);
+        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.25);
+        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.25);
+        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.25);
+        const radius = Math.min(w, h) * 0.2;
+        doc.circle(x + w * 0.5, y + h * 0.58, radius);
+        doc.line(x + w * 0.5 - radius * 0.7, y + h * 0.58 - radius * 0.7, x + w * 0.5 + radius * 0.7, y + h * 0.58 + radius * 0.7);
         break;
       }
       case 'fuse_1p': {
@@ -809,8 +929,80 @@ export class PdfExporter {
         break;
       }
       default: {
-        doc.rect(x, y, w, h);
+        if (sym?.svgContent) {
+          this.renderSvgContent(doc, sym.svgContent, x, y, w, h, sym.width, sym.height);
+        } else if (!sym || (!isConnectionSymbol(sym) && sym.category !== 'connections')) {
+          doc.rect(x, y, w, h);
+        }
         break;
+      }
+    }
+  }
+
+  /**
+   * Fallback renderer that translates symbol svgContent into PDF vector primitives
+   */
+  private static renderSvgContent(doc: jsPDF, svg: string, x: number, y: number, w: number, h: number, symWidth: number, symHeight: number): void {
+    const scaleX = w / (symWidth || 1), scaleY = h / (symHeight || 1);
+    const toX = (val: number) => x + val * scaleX;
+    const toY = (val: number) => y + val * scaleY;
+
+    const tagRegex = /<([a-zA-Z]+)\b([^>]*)\/?>/g;
+    let match: RegExpExecArray | null;
+    while ((match = tagRegex.exec(svg)) !== null) {
+      const tagName = match[1];
+      const attrsStr = match[2];
+      const getAttr = (name: string): string | undefined => {
+        const m = new RegExp(`\\b${name}="([^"]*)"`).exec(attrsStr);
+        return m ? m[1] : undefined;
+      };
+      const getNum = (name: string, def = 0): number => {
+        const v = getAttr(name);
+        return v !== undefined ? parseFloat(v) : def;
+      };
+
+      if (tagName === 'line') {
+        doc.line(toX(getNum('x1')), toY(getNum('y1')), toX(getNum('x2')), toY(getNum('y2')));
+      } else if (tagName === 'rect') {
+        const rx = toX(getNum('x')), ry = toY(getNum('y'));
+        const rw = getNum('width') * scaleX, rh = getNum('height') * scaleY;
+        const fill = getAttr('fill');
+        const isFilled = fill && fill !== 'none';
+        doc.rect(rx, ry, rw, rh, isFilled ? 'FD' : 'S');
+      } else if (tagName === 'circle') {
+        const cx = toX(getNum('cx')), cy = toY(getNum('cy'));
+        const r = getNum('r') * scaleX;
+        const fill = getAttr('fill');
+        const isFilled = fill && fill !== 'none';
+        doc.circle(cx, cy, r, isFilled ? 'FD' : 'S');
+      } else if (tagName === 'ellipse') {
+        const cx = toX(getNum('cx')), cy = toY(getNum('cy'));
+        const rx = getNum('rx') * scaleX, ry = getNum('ry') * scaleY;
+        const fill = getAttr('fill');
+        const isFilled = fill && fill !== 'none';
+        doc.ellipse(cx, cy, rx, ry, isFilled ? 'FD' : 'S');
+      } else if (tagName === 'polygon' || tagName === 'polyline') {
+        const pointsStr = getAttr('points') || '';
+        const pts = pointsStr.trim().split(/[\s,]+/).reduce((acc, val, i, arr) => {
+          if (i % 2 === 0 && i + 1 < arr.length) {
+            acc.push([toX(parseFloat(val)), toY(parseFloat(arr[i + 1]))]);
+          }
+          return acc;
+        }, [] as [number, number][]);
+        if (pts.length >= 2) {
+          const fill = getAttr('fill');
+          const isFilled = tagName === 'polygon' && fill && fill !== 'none';
+          if (pts.length === 3) {
+            doc.triangle(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1], isFilled ? 'FD' : 'S');
+          } else {
+            for (let i = 1; i < pts.length; i++) {
+              doc.line(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+            }
+            if (tagName === 'polygon') {
+              doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
+            }
+          }
+        }
       }
     }
   }
