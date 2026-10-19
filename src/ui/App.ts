@@ -1842,7 +1842,7 @@ export class App {
 
         <div class="form-group">
           <label class="form-label">Funktionstext</label>
-          <input class="form-input" id="propFunctionText" value="${escapeSvg(comp.functionText || '')}">
+          <textarea class="form-input" id="propFunctionText" rows="2">${escapeSvg(comp.functionText || '')}</textarea>
         </div>
 
         <div class="form-group"><label class="form-label">Zusatztext / Graviertext</label><textarea class="form-input" id="propAdditionalText">${escapeSvg(comp.additionalText || '')}</textarea></div>
@@ -1928,7 +1928,7 @@ export class App {
         const devInput = document.getElementById('propDeviceTag') as HTMLInputElement;
         if (devInput) setComponentLabelText(comp, 'deviceTag', devInput.value.trim());
 
-        const fnInput = document.getElementById('propFunctionText') as HTMLInputElement;
+        const fnInput = document.getElementById('propFunctionText') as HTMLTextAreaElement;
         if (fnInput) setComponentLabelText(comp, 'functionText', fnInput.value.trim());
 
         const additionalInput = document.getElementById('propAdditionalText') as HTMLInputElement;
@@ -2008,7 +2008,7 @@ export class App {
         setComponentLabelText(comp, 'additionalText', (e.target as HTMLInputElement).value);this.notifyChange();
       });
       document.getElementById('propFunctionText')?.addEventListener('input', (e) => {
-        setComponentLabelText(comp, 'functionText', (e.target as HTMLInputElement).value);
+        setComponentLabelText(comp, 'functionText', (e.target as HTMLTextAreaElement).value);
         this.notifyChange();
       });
       document.getElementById('propTechnical')?.addEventListener('input', (e) => {

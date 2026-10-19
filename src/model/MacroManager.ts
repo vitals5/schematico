@@ -1386,14 +1386,14 @@ export class MacroManager {
     );
 
     let symbolsPreview = (preview.boxes??[]).map(box=>`<g transform="translate(8,8) scale(${scale})">${drawingToSvg(boxDrawing(box))}</g>`).join('');
-    for (const c of components.slice(0, 8)) {
+    for (const c of components) {
       const base = preview.symbolLibrary?.find(symbol => symbol.id === c.symbolId) ?? getSymbolForComponent(c);
       const sym=base && deviceBoxDefinition(c,base);
       if (sym) {
         const fn = computeFunctionTextPosition(c, sym);
         symbolsPreview += `
           <g transform="translate(${c.x * scale + 8}, ${c.y * scale + 8}) scale(${scale})">
-            <g transform="rotate(${c.rotation || 0},${sym.width/2},${sym.height/2})">${sym.importedGraphics ? drawingToSvg(sym.importedGraphics) : sym.svgContent}${fn.visible && c.functionText ? `<text x="${fn.x}" y="${fn.y}" font-size="${fn.fontSize}" fill="currentColor" stroke="none" text-anchor="${fn.anchor}" ${fn.transform}>${escapeSvg(c.functionText)}</text>` : ''}</g>
+            <g transform="rotate(${c.rotation || 0},${sym.width/2},${sym.height/2})">${sym.importedGraphics ? drawingToSvg(sym.importedGraphics) : sym.svgContent}${fn.visible && c.functionText ? `<text x="${fn.x}" y="${fn.y}" font-size="${fn.fontSize}" fill="currentColor" stroke="none" text-anchor="${fn.anchor}" ${fn.transform}>${c.functionText.split(/\r?\n/).map((line, i) => `<tspan x="${fn.x}" dy="${i ? fn.fontSize * 1.2 : 0}">${escapeSvg(line)}</tspan>`).join('')}</text>` : ''}</g>
           </g>
         `;
       }

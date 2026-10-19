@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<CadExchangeRoot Name="thermostat-graphic" Type="WindowMacro">
+  <MacroVariant MacroFuncType="6" VariantId="0" ReferencePoint="100/156">
+    <ESymLib Name="SPECIAL" ID="0" />
+    <ESymLib Name="IEC_symbol" ID="1" />
+    <ESymLib Name="IEC_single_symbol" ID="2" />
+    <ESymLib Name="GRAPHICS" ID="3" />
+    <ESymLib />
+    <O4 A1="4/36" A3="0" A13="0" A14="0" A47="1" A48="1234860745" A50="0" A59="1" A404="1" A405="64" A431="1" A1101="99" A1102="">
+      <P11 P11011="pl_PL@TESTOWY;" P11051="2" P40101="pl_PL@Zasilanie;de_DE@Einspeisung;en_US@Power supply;es_ES@Alimentación;fr_FR@Alimentation;nl_NL@Voeding;sv_SE@Matning;da_DK@Forsyning;ru_RU@Электропитание;zh_CN@电源;pt_BR@Alimentação de entrada;cs_CZ@Napájení;it_IT@Alimentazione;hu_HU@Betáplálás;pt_PT@Alimentação;" />
+      <P49 P1100="PLC" P1200="SA1" P1201="5" P11012="99" />
+      <O26 A1="26/451217" A3="0" A13="0" A14="0" A404="1" A405="64" A431="1">
+        <O89 A1="89/451218" A3="0" A13="0" A14="0" A404="1" A405="64" A411="100" A412="L" A413="L" A414="L" A415="L" A416="0" A1651="100/96" A1652="136/156" A1653="0" A1654="0" A1655="0" A1656="0" A1657="0" />
+        <O32 A1="32/451219" A3="0" A13="0" A14="0" A404="1" A405="64" A411="100" A412="L" A413="L" A414="L" A415="L" A416="0" A553="0" A554="6.28318530717959" A555="124/114" A556="7.21110255092798/0" A557="1" A558="0" A559="0" />
+        <O89 A1="89/451220" A3="0" A13="0" A14="0" A404="1" A405="64" A411="100" A412="L" A413="L" A414="L" A415="L" A416="0" A1651="102/146" A1652="134/154" A1653="0" A1654="0" A1655="0" A1656="0" A1657="0" />
+        <O32 A1="32/451221" A3="0" A13="0" A14="0" A404="1" A405="64" A411="100" A412="L" A413="L" A414="L" A415="L" A416="0" A553="1.19028994968253" A554="2.67794504458899" A555="124/114" A556="10/0" A557="1" A558="0" A559="0" />
+      </O26>
+    </O4>
+  </MacroVariant>
+</CadExchangeRoot>

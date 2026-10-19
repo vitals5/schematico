@@ -3,14 +3,17 @@ import type { PlacedComponent, SymbolDefinition, TextFormatConfig } from './type
 import nativeSymbols from './NativeMacroSymbols.json';
 import { drawingToSvg } from './ImportedDrawing';
 import { positionAtInsertionPoint, scaleSymbolDefinition } from './SymbolGeometry';
+import { nativeXmlText } from './NativeXmlText';
 
 export const xmlChildren = (node: Element): Element[] => Array.from(node.childNodes)
   .filter((child): child is Element => child.nodeType === 1);
 export const xmlTag = (node: Element) => node.localName || node.tagName;
 export function xmlPoint(node: Element, attribute: string, units: number) {
   const parts = (node.getAttribute(attribute) ?? '').split('/');
-  if (parts.length !== 2 || parts.some(p => !p.trim() || !Number.isFinite(Number(p)) || Math.abs(Number(p)) > 10000))
+  if (![2,3].includes(parts.length) || parts.some(p => !p.trim() || !Number.isFinite(Number(p)) || Math.abs(Number(p)) > 10000))
     throw new Error(`Ungültige Koordinate im Makro (${attribute}).`);
+  if (parts.length === 3 && Number(parts[2]) !== 0)
+    throw new Error(`Räumliche Koordinaten werden im 2D-Makro noch nicht unterstützt (${attribute}).`);
   return { x: Number(parts[0]) * units, y: -Number(parts[1]) * units };
 }
 
@@ -46,24 +49,26 @@ export function nativeXmlSymbol(node: Element, variant: Element, available: read
   const rotation = (((angle % 4 + 4) % 4) * 90) as PlacedComponent['rotation'];
   // A variable device box owns local bounds; the enormous sentinel values on
   // ordinary symbols mean "no override" and must not become a giant contour.
-  if (!symbol.pins.length && library === 'SPECIAL' && [0,1].includes(number)) {
+  if (!symbol.pins.length && library === 'SPECIAL' && [0,1,2].includes(number)) {
     const inline = children.find(n => xmlTag(n) === 'S89x5');
-    const a = xmlPoint(inline ?? node, inline ? 'A1651' : 'A190', units);
-    const b = xmlPoint(inline ?? node, inline ? 'A1652' : 'A191', units);
+    const a = xmlPoint(inline ?? node, inline ? 'A1651' : xmlTag(node) === 'O88' ? 'A1631' : 'A190', units);
+    const b = xmlPoint(inline ?? node, inline ? 'A1652' : xmlTag(node) === 'O88' ? 'A1632' : 'A191', units);
     const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
     symbol = { ...symbol,deviceBox:true,category:'structure', id: `${symbol.id}:size:${a.x},${a.y},${b.x},${b.y}`, width: Math.abs(b.x - a.x),
       height: Math.abs(b.y - a.y), insertionPoint: { x: -x || 0, y: -y || 0 },
       importedGraphics: [{ kind: 'rect', x: 0, y: 0, width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), color: 'currentColor', lineWidth: .25 * units }] };
   }
-  if (xmlTag(node) === 'O42') symbol.connectionGraphic = true;
+  if (['O42', 'O93'].includes(xmlTag(node))) symbol.connectionGraphic = true;
   if (symbol.importedGraphics) symbol.svgContent = drawingToSvg(symbol.importedGraphics);
   const own = children.find(n => xmlTag(n) === 'P144'), properties = children.find(n => xmlTag(n) === 'P11');
-  const text = (key: string) => (properties?.getAttribute(key) || '').replace(/(?:^|;)[a-z?]{2}_[A-Z?]{2}@/g, '').replace(/;$/, '');
+  const text = (key: string) => nativeXmlText(properties?.getAttribute(key) || '');
   const bmk = ['P20013', 'P20014', 'P20015'].map(p => own?.getAttribute(p) ?? '').join('');
   const labels = node.hasAttribute('A185') ? node.getAttribute('A185')!.split(';') : undefined;
   const component: PlacedComponent = { id: crypto.randomUUID(), symbolId: symbol.id, bmk: bmk ? '-' + bmk : '',
     ...(symbol.deviceBox?{deviceBox:geometryFromSymbol(symbol)}:{}),
-    functionText: text('P20011'), technicalCharacteristics: text('P20027'), additionalText: text('P20025'), deviceTag: text('P20030'),
+    functionText: text('P20011') || (xmlTag(node) === 'O88' ? nativeXmlText(own?.getAttribute('P1700') ?? '')
+      : xmlTag(node) === 'O93' ? nativeXmlText(node.getAttribute('A1691') ?? text('P33000')) : ''),
+    technicalCharacteristics: text('P20027'), additionalText: text('P20025'), deviceTag: text('P20030'),
     articleNumber: text('P20100_1'), ...positionAtInsertionPoint(point, symbol, rotation), rotation,
     pins: Object.fromEntries(symbol.pins.map((pin, i) => [pin.id, { customLabel: labels?.[i] ?? pin.name, wireIds: [] }])) };
   const origin = symbol.insertionPoint ?? { x: 0, y: 0 };
@@ -77,7 +82,7 @@ export function nativeXmlSymbol(node: Element, variant: Element, available: read
       alignment: 'start', visible: true };
   };
   component.bmkPosition = config(20010, -8);
-  component.functionTextPosition = config(20011, symbol.height + 12);
+  component.functionTextPosition = config(xmlTag(node) === 'O88' ? 20010 : xmlTag(node) === 'O93' ? -32536 : 20011, symbol.height + 12);
   component.additionalTextPosition = config(20025, symbol.height + 34);
   component.technicalDataPosition = config(20027, symbol.height + 22);
   return { symbol, component };
