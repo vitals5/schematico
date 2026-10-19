@@ -7,15 +7,17 @@ import type { DrawingPrimitive, PageImage } from './types';
 import type { NativeMacroData } from './NativeMacroData';
 import { embeddedXmlImages } from './NativeXmlAssets';
 import { projectedXmlMesh } from './NativeXmlMesh';
+import { affineXmlGraphics, type XmlAffine } from './NativeXmlAffine';
 
 export const xmlSymbolTypes = new Set(['O17','O42','O59','O70','O88','O93','O130','O231','O234','O241']);
-const graphicTypes = new Set(['O30','O31','O32','O34','O44','O52','O83','O89']);
-const metadataTypes = new Set(['O37','O98','O106','O161','O212','O217','O218','O219']);
-type Transform = { x: number; y: number; angle: number; scale: number };
+const graphicTypes = new Set(['O30','O31','O32','O34','O44','O52','O83','O89','O122']);
+const metadataTypes = new Set(['O6','O37','O76','O98','O106','O161','O212','O217','O218','O219']);
+type Transform = { x: number; y: number; angle: number; scale: number; affine?:XmlAffine };
 const identity: Transform = { x: 0, y: 0, angle: 0, scale: 1 };
 export interface XmlDrawing { node: Element; aliases?: Element[]; graphics: DrawingPrimitive[] }
 
-function transformed(graphics: DrawingPrimitive[], t: Transform): DrawingPrimitive[] {
+function transformed(graphics: DrawingPrimitive[], t: Transform, units=2): DrawingPrimitive[] {
+  if(t.affine)return affineXmlGraphics(graphics,t.affine,units);
   const scaled = graphics.map(g => {
     if (g.kind === 'polygon') return { ...g, points: g.points.map(p => ({ x: p.x*t.scale, y: p.y*t.scale })),
       ...(g.width !== undefined ? {width:g.width*t.scale}: {}) };
@@ -32,18 +34,21 @@ function transformed(graphics: DrawingPrimitive[], t: Transform): DrawingPrimiti
 }
 
 function placement(node: Element, units: number, parent = identity, field = 'S40x1201'): Transform {
-  const p = children(node).find(n=>tag(n)===field);
-  if (!p) return parent;
-  const local = xmlPoint(p,'A762',units), m = children(p).find(n=>tag(n)==='S39x761');
+  const placementNode = children(node).find(n=>tag(n)===field);
+  if (!placementNode) return parent;
+  const local = xmlPoint(placementNode,'A762',units), m = children(placementNode).find(n=>tag(n)==='S39x761');
   const a = Number(m?.getAttribute('A751') ?? 1), b = Number(m?.getAttribute('A752') ?? 0);
   const c = Number(m?.getAttribute('A753') ?? 0), d = Number(m?.getAttribute('A754') ?? 1);
-  if (![a,b,c,d].every(Number.isFinite) || Math.abs(c+b)>1e-6 || Math.abs(d-a)>1e-6 || !Math.hypot(a,b))
+  if (![a,b,c,d].every(Number.isFinite) || Math.abs(a*d-b*c)<1e-12)
     throw new Error('Ungültige Transformation der gespeicherten Grafik.');
-  const angle = Math.atan2(-b,a)*180/Math.PI;
   const r=parent.angle*Math.PI/180;
-  return {x:parent.x+parent.scale*(local.x*Math.cos(r)-local.y*Math.sin(r)),
-    y:parent.y+parent.scale*(local.x*Math.sin(r)+local.y*Math.cos(r)),
-    angle:parent.angle+angle,scale:parent.scale*Math.hypot(a,b)};
+  const p=parent.affine??{a:parent.scale*Math.cos(r),b:parent.scale*Math.sin(r),c:-parent.scale*Math.sin(r),d:parent.scale*Math.cos(r),x:parent.x,y:parent.y};
+  const result:XmlAffine={a:p.a*a-p.c*b,b:p.b*a-p.d*b,c:-p.a*c+p.c*d,d:-p.b*c+p.d*d,
+    x:p.x+p.a*local.x+p.c*local.y,y:p.y+p.b*local.x+p.d*local.y};
+  if(!Object.values(result).every(Number.isFinite))throw new Error('Ungültige Transformation der gespeicherten Grafik.');
+  if(Math.abs(result.c+result.b)<1e-6&&Math.abs(result.d-result.a)<1e-6)
+    return {x:result.x,y:result.y,angle:Math.atan2(result.b,result.a)*180/Math.PI,scale:Math.hypot(result.a,result.b)};
+  return {x:result.x,y:result.y,angle:0,scale:1,affine:result};
 }
 
 function dimension(node: Element, units: number): DrawingPrimitive[] {
@@ -79,7 +84,7 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
   const visit=(node:Element,t:Transform=identity):void=>{
     const kind=tag(node);
     if(kind==='ExternalFile'||kind==='ESymLib')return;
-    if(kind==='O174'||kind==='O176'||kind==='O180'){
+    if(kind==='O174'||kind==='O176'||kind==='O180'||kind==='O187'){
       drawings.push({node,graphics:projectedXmlMesh(node,byId,units)});retain(node);
       for(const child of children(node).filter(n=>/^O\d+$/.test(tag(n))))visit(child,t);return;
     }
@@ -98,14 +103,19 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
           const copy=child.ownerDocument!.createElement('O'+tag(child).match(/^S(\d+)/)![1]);
           for(const attr of Array.from(child.attributes))copy.setAttribute(attr.name,attr.value);
           for(const nested of children(child))copy.appendChild(nested.cloneNode(true));
-          drawings.push({node:child,graphics:transformed(nativeXmlGraphics(copy,units),local)});
+          drawings.push({node:child,graphics:transformed(nativeXmlGraphics(copy,units),local,units)});
         }
       }return;
     }
     if(xmlSymbolTypes.has(kind)){electrical.push(node);return;}
-    if(graphicTypes.has(kind)){drawings.push({node,graphics:transformed(nativeXmlGraphics(node,units),t)});if(kind==='O44')retain(node);return;}
+    if(graphicTypes.has(kind)){
+      drawings.push({node,graphics:transformed(nativeXmlGraphics(node,units),t,units)});
+      if(kind==='O44'||kind==='O122')retain(node);
+      if(kind==='O122')diagnostics.push('Dokumentverweis als bearbeitbare Beschriftung übernommen; die externe Zieldatei ist nicht Bestandteil der Zeichnung.');
+      return;
+    }
     if(metadataTypes.has(kind)){retain(node);return;}
-    if(kind==='O97'){drawings.push({node,graphics:transformed(dimension(node,units),t)});retain(node);return;}
+    if(kind==='O97'){drawings.push({node,graphics:transformed(dimension(node,units),t,units)});retain(node);return;}
     if(kind==='O91'){
       const a=xmlPoint(node,'A1651',units),b=xmlPoint(node,'A1652',units),sourcePath=node.getAttribute('A1671')??'';
       const actual=resolveImage(sourcePath);
@@ -131,7 +141,7 @@ export function readXmlRecords(root: Element, page: Element, units: number, diag
         for(const nested of children(child))copy.appendChild(nested.cloneNode(true));
         graphics.push(...nativeXmlGraphics(copy,units));
       }
-      if(graphics.length)drawings.push({node,aliases:owner?[owner]:[],graphics:transformed(graphics,local)});
+      if(graphics.length)drawings.push({node,aliases:owner?[owner]:[],graphics:transformed(graphics,local,units)});
       else if(children(node).some(n=>tag(n)==='Stream'))diagnostics.push('Eine gespeicherte Ansicht enthält nur Binärdaten; diese sind als Quelldaten erhalten.');
       retain(node);return;
     }

@@ -15,6 +15,7 @@ export class MacroSelectionDialog {
   private callbacks: MacroSelectionCallbacks;
   private selectedCategory: string = 'all';
   private searchQuery: string = '';
+  private page = 0;
   private selectedMacroId: string = '';
   private unsubscribe?: () => void;
   private keyHandler?: (event: KeyboardEvent) => void;
@@ -265,7 +266,10 @@ export class MacroSelectionDialog {
       `;
     }
 
-    return list.map(m => {
+    const pageSize=48,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
+    this.page=Math.max(0,Math.min(this.page,pageCount-1));
+    const pager=pageCount>1?`<div data-macro-pager style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.page===0?'disabled':''} aria-label="Vorherige Makroseite">←</button><span>${list.length} Makros · ${this.page+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.page===pageCount-1?'disabled':''} aria-label="Nächste Makroseite">→</button></div>`:'';
+    return pager+list.slice(this.page*pageSize,(this.page+1)*pageSize).map(m => {
       const isSelected = m.id === this.selectedMacroId;
       const isWindow = m.type === 'ema';
       const typeBadge = isWindow
@@ -308,7 +312,7 @@ export class MacroSelectionDialog {
           </div>
 
           <div style="font-size: 10px; color: #a0aec0; height: 26px; overflow: hidden; line-height: 1.3;">
-            ${m.description || 'Schaltungsmakro'}
+            ${escapeSvg(m.description || 'Schaltungsmakro')}
           </div>
         </div>
       `;
@@ -431,6 +435,7 @@ export class MacroSelectionDialog {
     const searchInput = modal.querySelector('#macroSearchInput') as HTMLInputElement;
     searchInput?.addEventListener('input', () => {
       this.searchQuery = searchInput.value.trim();
+      this.page=0;
       this.updateGrid(modal);
     });
 
@@ -454,6 +459,7 @@ export class MacroSelectionDialog {
         target.style.background = 'rgba(99, 179, 237, 0.15)';
         target.style.color = '#63b3ed';
         this.selectedCategory = target.dataset.cat || 'all';
+        this.page=0;
         this.updateGrid(modal);
       });
     });
@@ -559,6 +565,11 @@ export class MacroSelectionDialog {
   }
 
   private bindCardClicks(modal: HTMLElement, onDoubleSelect: () => void): void {
+    modal.querySelectorAll<HTMLElement>('[data-macro-page]').forEach(button=>button.addEventListener('click',()=>{
+      this.page+=Number(button.dataset.macroPage);
+      this.selectedMacroId=this.getFilteredMacros()[this.page*48]?.id??'';
+      this.updateGrid(modal);modal.querySelector('#macroGridContainer')?.scrollTo(0,0);
+    }));
     modal.querySelectorAll('.macro-dialog-card').forEach(card => {
       card.addEventListener('click', (e) => {
         modal.querySelectorAll('.macro-dialog-card').forEach(c => (c as HTMLElement).style.borderColor = '#3e4656');

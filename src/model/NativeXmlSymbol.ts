@@ -7,7 +7,11 @@ import { nativeXmlText } from './NativeXmlText';
 
 export const xmlChildren = (node: Element): Element[] => Array.from(node.childNodes)
   .filter((child): child is Element => child.nodeType === 1);
-export const xmlTag = (node: Element) => node.localName || node.tagName;
+const legacyStructureTags:Record<string,string>={S1201:'S40x1201',S761:'S39x761',S505:'S54x505'};
+export const xmlTag = (node: Element) => {
+  const name=node.localName || node.tagName;
+  return legacyStructureTags[name]??name;
+};
 export function xmlPoint(node: Element, attribute: string, units: number) {
   if (!node.hasAttribute(attribute)) return { x: 0, y: 0 };
   const parts = (node.getAttribute(attribute) ?? '').split('/');

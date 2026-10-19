@@ -56,6 +56,7 @@ export class App {
   private connectionSearchQuery = '';
   private macroCategoryFilter: string = 'all';
   private macroSearchQuery: string = '';
+  private macroPage = 0;
   private manufacturerFilter: string = 'all';
   private manufacturerSearchQuery: string = '';
   private leftDrawerOpen: boolean = false;
@@ -1444,7 +1445,7 @@ export class App {
           <option value="external" ${this.macroCategoryFilter === 'external' ? 'selected' : ''}>📁 Externer Ordner</option>
           <option value="user" ${this.macroCategoryFilter === 'user' ? 'selected' : ''}>⭐ Eigene Importe</option>
         </select>
-        <input class="form-input" id="macroTabSearch" placeholder="Suche (z.B. Motor, 24V)..." value="${this.macroSearchQuery}">
+        <input class="form-input" id="macroTabSearch" placeholder="Suche (z.B. Motor, 24V)..." value="${escapeSvg(this.macroSearchQuery)}">
       </div>
 
       <div class="dropzone" id="macroTabDropzone" style="padding: 8px 10px; margin-bottom: 8px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.15); cursor: pointer;" title="Klicken oder Datei (.ema/.ems) hier ablegen">
@@ -1488,6 +1489,9 @@ export class App {
       });
     }
 
+    const pageSize=48,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
+    this.macroPage=Math.max(0,Math.min(this.macroPage,pageCount-1));
+    if(pageCount>1)html+=`<div data-macro-pager style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.macroPage===0?'disabled':''} aria-label="Vorherige Makroseite">←</button><span>${list.length} Makros · ${this.macroPage+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.macroPage===pageCount-1?'disabled':''} aria-label="Nächste Makroseite">→</button></div>`;
     if (list.length === 0) {
       html += `
         <div style="padding: 24px 10px; text-align: center; color: var(--text-muted); font-size: 11px;">
@@ -1496,7 +1500,7 @@ export class App {
         </div>
       `;
     } else {
-      for (const m of list) {
+      for (const m of list.slice(this.macroPage*pageSize,(this.macroPage+1)*pageSize)) {
         const isWindow = m.type === 'ema';
         const typeBadge = isWindow
           ? '<span style="background: rgba(66, 153, 225, 0.25); color: #63b3ed; border: 1px solid #3182ce; font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold;">.EMA</span>'
@@ -1551,18 +1555,25 @@ export class App {
   }
 
   private bindMacrosTabEvents(container: HTMLElement): void {
+    container.querySelectorAll<HTMLElement>('[data-macro-page]').forEach(button=>button.addEventListener('click',()=>{
+      this.macroPage+=Number(button.dataset.macroPage);this.renderMacrosTab(container);container.scrollTop=0;
+    }));
     document.getElementById('btnOpenMacroDialog')?.addEventListener('click', () => {
       this.openMacroSelectionDialog();
     });
 
     document.getElementById('macroCategorySelect')?.addEventListener('change', (e) => {
       this.macroCategoryFilter = (e.target as HTMLSelectElement).value;
+      this.macroPage=0;
       this.renderMacrosTab(container);
     });
 
     document.getElementById('macroTabSearch')?.addEventListener('input', (e) => {
-      this.macroSearchQuery = (e.target as HTMLInputElement).value.trim();
+      const input=e.target as HTMLInputElement,caret=input.selectionStart;
+      this.macroSearchQuery = input.value;
+      this.macroPage=0;
       this.renderMacrosTab(container);
+      const replacement=container.querySelector<HTMLInputElement>('#macroTabSearch');replacement?.focus();replacement?.setSelectionRange(caret,caret);
     });
 
     // File input import

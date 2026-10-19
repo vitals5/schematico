@@ -17,6 +17,11 @@ export function nativeXmlGraphics(node: Element, units: number): DrawingPrimitiv
   const kind = xmlTag(node), point = (attribute: string) => xmlPoint(node, attribute, units);
   const color = 'currentColor', width = numeric(node, 'A414', .25) * units;
   if (width < 0) throw new Error('Ungültige Linienbreite im Makro.');
+  if (kind === 'O122') {
+    const copy=node.cloneNode(true) as Element;
+    copy.setAttribute('A511',node.getAttribute('A2081')??'');
+    return nativeXmlGraphicsText(copy,units);
+  }
   if (kind === 'O44') return nativeXmlSpline(node,units,width);
   if (kind === 'O31') {
     const a = point('A531'), b = point('A532');
@@ -53,6 +58,12 @@ export function nativeXmlGraphics(node: Element, units: number): DrawingPrimitiv
     return points.slice(1).map((p, i) => ({ kind: 'line', x1: points[i].x, y1: points[i].y, x2: p.x, y2: p.y, color, width }));
   }
   if (kind === 'O30' || kind === 'O83' || kind === 'O52') {
+    return nativeXmlGraphicsText(node,units);
+  }
+  throw new Error(`Das XML-Makro enthält einen noch nicht unterstützten Objekttyp (${kind}).`);
+}
+
+function nativeXmlGraphicsText(node:Element,units:number):DrawingPrimitive[] {
     const text = nativeXmlText(node.getAttribute('A511') ?? '');
     if (!text) return [];
     const format = xmlChildren(node).find(n => xmlTag(n) === 'S54x505');
@@ -60,10 +71,8 @@ export function nativeXmlGraphics(node: Element, units: number): DrawingPrimitiv
     if (size <= 0) throw new Error('Ungültige Schriftgröße im Makro.');
     const alignment = numeric(node, 'A503', 0) % 16;
     const anchor = alignment >= 6 ? 'end' : alignment >= 3 ? 'middle' : 'start';
-    return [{ kind: 'text', ...point('A501'), text, size, color, anchor,
+    return [{ kind: 'text', ...xmlPoint(node,'A501',units), text, size, color:'currentColor', anchor,
       rotation: -numeric(node, 'A504', 0) }];
-  }
-  throw new Error(`Das XML-Makro enthält einen noch nicht unterstützten Objekttyp (${kind}).`);
 }
 
 export function graphicBounds(graphics: DrawingPrimitive[]) {
