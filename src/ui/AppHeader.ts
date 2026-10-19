@@ -11,7 +11,10 @@ const paths:Record<string,string>={
   add:'M12 4v16 M4 12h16',
   chevron:'m7 10 5 5 5-5',
   rotate:'M4 10a8 8 0 1 1 2 9 M4 4v6h6',
+  cut:'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M8.12 8.12 20 20 M14.47 14.48 20 4 M8.12 15.88 12 12',
   copy:'M8 8h13v13H8z M16 8V3H3v13h5',
+  paste:'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M9 2h6v4H9z',
+  duplicate:'M9 9h11v11H9z M15 9V4H4v11h5',
   trash:'M3 6h18 M9 6V3h6v3 M6 6l1 15h10l1-15 M10 10v7 M14 10v7',
   fit:'M9 3H3v6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6 M8 8h8v8H8z',
   grid:'M4 4h16v16H4z M4 12h16 M12 4v16',
@@ -40,7 +43,8 @@ export function renderAppHeader(projectName:string):string {
           separator+opt('menuSettings','Einstellungen…'),'menu-item')}
         ${menu('menuEditTrigger','Bearbeiten',
           opt('menuUndo','Rückgängig','Strg+Z')+opt('menuRedo','Wiederholen','Strg+Y')+separator+
-          opt('menuRotate','Um 90° drehen','R')+opt('menuDuplicate','Duplizieren','Strg+D')+opt('menuDelete','Löschen','Entf')+separator+
+          opt('menuCut','Ausschneiden','Strg+X')+opt('menuCopy','Kopieren','Strg+C')+opt('menuPaste','Einfügen','Strg+V')+opt('menuDuplicate','Duplizieren','Strg+D')+separator+
+          opt('menuRotate','Um 90° drehen','R')+opt('menuDelete','Löschen','Entf')+separator+
           opt('menuGroup','Gruppieren','Strg+G')+opt('menuUngroup','Gruppierung auflösen','Strg+Umschalt+G'),'menu-item')}
         ${menu('menuInsertTrigger','Einfügen',
           opt('menuInsertSym','Element…','Einfg')+opt('menuInsertConnections','Verbindungselement…')+opt('menuWire','Verbindungslinie','D')+opt('menuInsertCable','Kabelbeschriftung…')+opt('menuInsertBox','Gerätekasten zeichnen')+opt('menuInsertImage','Bilddatei…')+separator+
@@ -75,7 +79,7 @@ export function renderAppHeader(projectName:string):string {
           </div>
         </div>
         <div class="toolbar-group selection-tools" role="group" aria-label="Auswahl bearbeiten">
-          ${tool('btnToolRotate','Um 90° drehen (R)','rotate')}${tool('btnToolDuplicate','Duplizieren (Strg+D)','copy')}${tool('btnToolDelete','Löschen (Entf)','trash')}
+          ${tool('btnToolRotate','Um 90° drehen (R)','rotate')}${tool('btnToolCopy','Kopieren (Strg+C)','copy')}${tool('btnToolPaste','Einfügen (Strg+V)','paste')}${tool('btnToolDuplicate','Duplizieren (Strg+D)','duplicate')}${tool('btnToolDelete','Löschen (Entf)','trash')}
         </div>
         <div class="toolbar-group view-tools" role="group" aria-label="Ansicht und Fang">
           ${tool('btnZoomFit','Ganzes Blatt (F)','fit')}

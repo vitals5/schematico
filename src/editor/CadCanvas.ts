@@ -3,6 +3,7 @@ import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/Devi
 import { boxDrawing, boxSvg } from '../model/DeviceBox';
 import { nextDeviceTag } from '../model/DeviceTag';
 import { ElementSelection, MoveSnapshot, emptySelection, selectionCount, normalizeSelection, selectionBounds, elementsInWindow, captureSelectionMove, translateSelection } from '../model/ElementSelection';
+import { copySelection, pasteClipboard, getClipboard, setClipboard, hasClipboard, getPasteCounter, incrementPasteCounter, resetPasteCounter } from '../model/Clipboard';
 import { coverPageSvg } from '../model/CoverPage';
 import { cableSvg, cableCrossings } from '../model/CableDefinition';
 // src/editor/CadCanvas.ts
@@ -317,38 +318,85 @@ export class CadCanvas {
     }
   }
 
-  public duplicateSelected(): void {
-    if(this.multipleSelection)return;
-    const cable = this.activePage.cables?.find(c=>c.id===this.selectedCableId);
-    if (cable) {
-      const copy: CableDefinition=JSON.parse(JSON.stringify(cable)); copy.id='cable_'+crypto.randomUUID();delete copy.source;
-      const step=this.activePage.grid?.spacing ?? this.gridSize;
-      copy.start.x+=step;copy.start.y+=step;copy.end.x+=step;copy.end.y+=step;
-      this.activePage.cables!.push(copy);this.selectCable(copy);this.notifyModified();this.render();return;
+  public copySelected(): boolean {
+    const selection = this.getElementSelection();
+    if (selectionCount(selection) === 0) return false;
+    const payload = copySelection(this.activePage, this.project, selection);
+    if (!payload) return false;
+    setClipboard(payload);
+    resetPasteCounter();
+    this.callbacks.onSelectionChanged?.(this.getElementSelection());
+    return true;
+  }
+
+  public cutSelected(): boolean {
+    if (!this.copySelected()) return false;
+    const clip = getClipboard();
+    if (clip) clip.isCut = true;
+    this.deleteSelected();
+    return true;
+  }
+
+  public hasClipboard(): boolean {
+    return hasClipboard();
+  }
+
+  public paste(targetPos?: { x: number; y: number }): boolean {
+    const clip = getClipboard();
+    if (!clip || !hasClipboard()) return false;
+    const step = gridForPage(this.activePage, this.gridSize).spacing * 2;
+    let dx = 0, dy = 0;
+
+    if (targetPos) {
+      const snapX = this.snap(targetPos.x, false, 'x');
+      const snapY = this.snap(targetPos.y, false, 'y');
+      if (clip.bounds) {
+        const origX = this.snap(clip.bounds.left, false, 'x');
+        const origY = this.snap(clip.bounds.top, false, 'y');
+        dx = snapX - origX;
+        dy = snapY - origY;
+      } else {
+        dx = snapX;
+        dy = snapY;
+      }
+    } else if (clip.isCut) {
+      dx = 0;
+      dy = 0;
+      clip.isCut = false;
+    } else {
+      const isSamePage = clip.sourcePageId === this.activePage.id;
+      const count = getPasteCounter();
+      if (!isSamePage && count === 1) {
+        dx = 0;
+        dy = 0;
+      } else {
+        dx = step * count;
+        dy = step * count;
+      }
+      incrementPasteCounter();
     }
-    if (!this.selectedComponentId) return;
-    const comp = this.activePage.components.find(c => c.id === this.selectedComponentId);
-    if (!comp) return;
 
-    const sym = getSymbolForComponent(comp, this.project);
-    const newBmk = nextDeviceTag(this.project, sym?.defaultBmkPrefix ?? '-K');
-
-    const newComp: PlacedComponent = {
-      ...JSON.parse(JSON.stringify(comp)),
-      id: 'comp_' + Math.random().toString(36).substring(2, 9),
-      bmk: newBmk,
-      x: comp.x + gridForPage(this.activePage, this.gridSize).spacing * 4,
-      y: comp.y + gridForPage(this.activePage, this.gridSize).spacing * 4,
-    };
-    delete newComp.source;
-    for (const pin of Object.values(newComp.pins)) pin.wireIds = [];
-
-    this.activePage.components.push(newComp);
-    this.selectedComponentId = newComp.id;
-    this.callbacks.onSelectComponent(newComp);
+    const result = pasteClipboard(this.activePage, this.project, clip, { dx, dy });
     if (this.autoconnectEnabled) {
       AutoconnectEngine.updatePageAutoconnections(this.activePage);
     }
+    this.setElementSelection(result.pastedSelection);
+    this.notifyModified();
+    this.render();
+    return true;
+  }
+
+  public duplicateSelected(): void {
+    const selection = this.getElementSelection();
+    if (selectionCount(selection) === 0) return;
+    const payload = copySelection(this.activePage, this.project, selection);
+    if (!payload) return;
+    const step = gridForPage(this.activePage, this.gridSize).spacing * 4;
+    const result = pasteClipboard(this.activePage, this.project, payload, { dx: step, dy: step });
+    if (this.autoconnectEnabled) {
+      AutoconnectEngine.updatePageAutoconnections(this.activePage);
+    }
+    this.setElementSelection(result.pastedSelection);
     this.notifyModified();
     this.render();
   }
@@ -592,6 +640,9 @@ export class CadCanvas {
         if (key === 'a') { e.preventDefault();this.setMode('select');this.setElementSelection({componentIds:this.activePage.components.filter(c=>c.source?.routingUsed!==false).map(c=>c.id),textIds:(this.activePage.texts??[]).map(t=>t.id),cableIds:(this.activePage.cables ?? []).map(c=>c.id),imageIds:(this.activePage.images ?? []).map(c=>c.id),boxIds:(this.activePage.boxes ?? []).map(c=>c.id)});return; }
         if (key === 'g') { e.preventDefault();if(e.shiftKey)this.ungroupSelected();else this.groupSelected();return; }
         if (key === 'd') { e.preventDefault(); this.duplicateSelected(); return; }
+        if (key === 'c') { e.preventDefault(); this.copySelected(); return; }
+        if (key === 'x') { e.preventDefault(); this.cutSelected(); return; }
+        if (key === 'v') { e.preventDefault(); this.paste(); return; }
       }
       
       if (e.key === 'Tab') {
@@ -728,16 +779,19 @@ export class CadCanvas {
     menu.style.zIndex = '3000';
 
     let items = '';
-    if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} Elemente ausgewählt</div><div class="ctx-item" data-action="properties">Gemeinsame Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Auswahl löschen <span class="ctx-key">Entf</span></div>`;}
-    else if(this.selectedBoxId){items='<div class="ctx-header">Gerätekasten</div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Gerätekasten löschen <span class="ctx-key">Entf</span></div>';}
-    else if(this.selectedImageId){items='<div class="ctx-header">Bild</div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Bild löschen <span class="ctx-key">Entf</span></div>';}
+    if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} Elemente ausgewählt</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Gemeinsame Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Auswahl löschen <span class="ctx-key">Entf</span></div>`;}
+    else if(this.selectedBoxId){items=`<div class="ctx-header">Gerätekasten</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Gerätekasten löschen <span class="ctx-key">Entf</span></div>`;}
+    else if(this.selectedImageId){items=`<div class="ctx-header">Bild</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Bild löschen <span class="ctx-key">Entf</span></div>`;}
     else if (comp) {
       const sym = getSymbolForComponent(comp, this.project);
       items += `
         <div class="ctx-header"><strong>${escapeSvg(comp.bmk)}</strong> (${sym?.name || 'Bauteil'})</div>
         <div class="ctx-item" data-action="properties">⚙️ Eigenschaften... <span class="ctx-key">DblClick</span></div>
         <div class="ctx-item" data-action="rotate">🔄 Um 90° drehen <span class="ctx-key">R</span></div>
-        <div class="ctx-item" data-action="duplicate">📋 Duplizieren <span class="ctx-key">Strg+D</span></div>
+        <div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div>
+        <div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div>
+        <div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>
+        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>' : ''}
         <div class="ctx-item" data-action="export-macro">📦 Als .ema Fenstermakro speichern...</div>
         ${comp.crossRef ? `<div class="ctx-item" data-action="jump-crossref">🔗 Querverweis folgen (${escapeSvg(comp.crossRef)})</div>` : ''}
         <div class="ctx-sep"></div>
@@ -746,10 +800,12 @@ export class CadCanvas {
     } else if (wire) {
       items += `
         <div class="ctx-header">Verbindung: <strong>${wire.potential}</strong></div>
+        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div><div class="ctx-sep"></div>' : ''}
         <div class="ctx-item" data-action="delete">🗑️ Verbindung löschen <span class="ctx-key">Entf</span></div>
       `;
     } else {
       items += `
+        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Hier einfügen <span class="ctx-key">Strg+V</span></div><div class="ctx-sep"></div>' : ''}
         <div class="ctx-item" data-action="insert-sym">⚡ Symbol einfügen... <span class="ctx-key">Einfg</span></div>
         <div class="ctx-item" data-action="insert-macro">📦 Makro aus Bibliothek einfügen (.ema)...</div>
         <div class="ctx-item" data-action="wire">🔌 Verbinden / Verdrahten <span class="ctx-key">D</span></div>
@@ -777,6 +833,9 @@ export class CadCanvas {
         closeMenu();
         if(action==='group'){this.groupSelected();return;}
         if(action==='ungroup'){this.ungroupSelected();return;}
+        if(action==='cut'){this.cutSelected();return;}
+        if(action==='copy'){this.copySelected();return;}
+        if(action==='paste'){this.paste(this.screenToWorld(clientX, clientY));return;}
         if(action==='properties' && (this.multipleSelection || this.selectedImageId || this.selectedBoxId)){this.callbacks.onOpenSelectionProperties?.();}
         else if (action === 'properties' && comp) {
           this.callbacks.onOpenProperties?.(comp);

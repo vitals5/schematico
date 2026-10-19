@@ -41,6 +41,7 @@ Die obere Menüzeile enthält **Projekt**, **Bearbeiten**, **Einfügen**, **Ansi
 | Rückgängig / Wiederholen | Strg+Z / Strg+Y oder Strg+Umschalt+Z |
 | Eigenschaften | F2, Enter oder Doppelklick |
 | Elementauswahl / Verdrahten | Einfg / D oder W |
+| Ausschneiden / Kopieren / Einfügen | Strg+X / Strg+C / Strg+V |
 | Drehen / Duplizieren / Löschen | R / Strg+D / Entf |
 | Ganzes Blatt / Ansicht verschieben | F / Pfeiltasten |
 | Rasterstufe | Alt+1, Alt+2, Alt+3, Alt+0; H schaltet Halb-/Vollraster um |

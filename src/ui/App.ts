@@ -171,6 +171,8 @@ export class App {
             <button class="btn btn-primary" id="btnFloatingEdit" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #3182ce; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
               <span>⚡ BMK & Beschriftung bearbeiten...</span>
             </button>
+            <button class="btn" id="btnFloatingCopy" style="padding: 6px 10px; font-size: 12px;" title="Kopieren (Strg+C)">📋</button>
+            <button class="btn" id="btnFloatingDuplicate" style="padding: 6px 10px; font-size: 12px;" title="Duplizieren (Strg+D)">📑</button>
             <button class="btn" id="btnFloatingExportMacro" style="padding: 6px 10px; font-size: 12px; background: rgba(66, 153, 225, 0.2); border-color: #3182ce;" title="Als .ema Makro speichern">📦 Makro</button>
             <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="90° Drehen">🔄</button>
             <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="Löschen">🗑️</button>
@@ -331,7 +333,12 @@ export class App {
     for(const [id,enabled]of [['menuGroup',this.canvas?.canGroupSelection()],['menuUngroup',this.canvas?.canUngroupSelection()]] as const){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!enabled;}
     const imageSelected=!!this.canvas?.selectedImageId,boxSelected=!!this.canvas?.selectedBoxId;
     const multiple=this.canvas && selectionCount(this.canvas.getElementSelection())>1;
-    for(const id of ['btnToolRotate','btnToolDuplicate','menuRotate','menuDuplicate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!!multiple||imageSelected||boxSelected;}
+    const hasSelection=this.canvas && selectionCount(this.canvas.getElementSelection())>0;
+    const hasClip=this.canvas?.hasClipboard() ?? false;
+    for(const id of ['btnToolCopy','menuCopy','menuCut']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection;}
+    for(const id of ['btnToolPaste','menuPaste']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasClip;}
+    for(const id of ['btnToolDuplicate','menuDuplicate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection;}
+    for(const id of ['btnToolRotate','menuRotate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||!!multiple||imageSelected||boxSelected;}
     const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
     if (bar && tag) {
       if (multiple) {
@@ -667,7 +674,25 @@ export class App {
       }).show();
     });
 
+    document.getElementById('btnToolCopy')?.addEventListener('click', () => {
+      this.canvas.copySelected();
+      this.updateFloatingSelectionBar();
+    });
+
+    document.getElementById('btnToolPaste')?.addEventListener('click', () => {
+      this.canvas.paste();
+    });
+
     document.getElementById('btnToolDuplicate')?.addEventListener('click', () => {
+      this.canvas.duplicateSelected();
+    });
+
+    document.getElementById('btnFloatingCopy')?.addEventListener('click', () => {
+      this.canvas.copySelected();
+      this.updateFloatingSelectionBar();
+    });
+
+    document.getElementById('btnFloatingDuplicate')?.addEventListener('click', () => {
       this.canvas.duplicateSelected();
     });
 
@@ -752,6 +777,12 @@ export class App {
     // Bearbeiten
     bindMenuOpt('menuUndo', () => this.undo());
     bindMenuOpt('menuRedo', () => this.redo());
+    bindMenuOpt('menuCut', () => this.canvas.cutSelected());
+    bindMenuOpt('menuCopy', () => {
+      this.canvas.copySelected();
+      this.updateFloatingSelectionBar();
+    });
+    bindMenuOpt('menuPaste', () => this.canvas.paste());
     bindMenuOpt('menuDuplicate', () => this.canvas.duplicateSelected());
     bindMenuOpt('menuRotate', () => this.canvas.rotateSelected());
     bindMenuOpt('menuGroup', () => this.canvas.groupSelected());
@@ -854,7 +885,10 @@ export class App {
         '• Rechtsklick: Kontextmenü\n' +
         '• Strg+Z: Rückgängig\n' +
         '• Strg+Y / Strg+Umschalt+Z: Wiederholen\n' +
-        '• Strg+D: Ausgewähltes Bauteil duplizieren\n' +
+        '• Strg+C: Auswahl kopieren\n' +
+        '• Strg+X: Auswahl ausschneiden\n' +
+        '• Strg+V: Einfügen\n' +
+        '• Strg+D: Auswahl duplizieren\n' +
         '• R: Ausgewähltes Bauteil um 90° drehen\n' +
         '• Entf / Backspace: Ausgewähltes Element löschen\n' +
         '• F: Ganzes Blatt anzeigen (Fit)\n' +
