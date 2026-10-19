@@ -10,7 +10,9 @@ import { createMacroFolderPanel, refreshMacroFolderPanels } from './MacroFolderP
 import { readImageFile } from './ImageFile';
 import { setComponentLabelText, revealImportedComponentLabels } from '../model/LabelLayout';
 import { selectionCount } from '../model/ElementSelection';
-import { createCoverPage } from '../model/CoverPage';
+import { createCoverPage, defaultCoverPageTemplate } from '../model/CoverPage';
+import { defaultPlotFrame } from '../model/PlotFrame';
+import { t, getUiLanguage, setUiLanguage, Language } from '../i18n';
 import { CoverPageDialog } from './CoverPageDialog';
 import { neutralSourceLabel, prepareProjectPresentation } from '../model/PresentationNaming';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties } from '../model/SelectionProperties';
@@ -49,7 +51,6 @@ export class App {
   private selectedWire: Wire | null = null;
   private selectedCable: CableDefinition | null = null;
   private activeLeftTab: 'pages' | 'symbols' | 'connections' | 'macros' | 'terminals' | 'bom' | 'parts' = 'pages';
-  private activeRightTab: 'properties' | 'archive' = 'properties';
   private symbolCategoryFilter: string = 'all';
   private connectionCategoryFilter: string = 'all';
   private symbolSearchQuery = '';
@@ -196,25 +197,25 @@ export class App {
         <!-- Left Sidebar -->
         <aside class="sidebar" id="leftSidebar" style="width: ${this.leftSidebarWidth}px;">
           <div class="sidebar-top-bar">
-            <span class="sidebar-heading">PROJEKT & SYMBOLE</span>
-            <button class="btn-panel-collapse" id="btnCollapseLeft" title="Linkes Panel einklappen (◀)">◀</button>
+            <span class="sidebar-heading">${t('leftHeading')}</span>
+            <button class="btn-panel-collapse" id="btnCollapseLeft" title="${t('collapseLeftPanel')} (◀)">◀</button>
           </div>
           <div class="tab-nav">
-            <button class="tab-btn active" data-tab="pages">Seiten</button>
-            <button class="tab-btn" data-tab="symbols">Elemente</button>
-            <button class="tab-btn" data-tab="connections">Verbindungen</button>
-            <button class="tab-btn" data-tab="macros">Makros</button>
-            <button class="tab-btn" data-tab="parts">Artikel</button>
-            <button class="tab-btn" data-tab="terminals">Klemmen</button>
-            <button class="tab-btn" data-tab="bom">Stückliste</button>
+            <button class="tab-btn active" data-tab="pages">${t('tabPages')}</button>
+            <button class="tab-btn" data-tab="symbols">${t('tabSymbols')}</button>
+            <button class="tab-btn" data-tab="connections">${t('tabConnections')}</button>
+            <button class="tab-btn" data-tab="macros">${t('tabMacros')}</button>
+            <button class="tab-btn" data-tab="parts">${getUiLanguage() === 'de' ? 'Artikel' : 'Parts'}</button>
+            <button class="tab-btn" data-tab="terminals">${t('tabTerminals')}</button>
+            <button class="tab-btn" data-tab="bom">${t('tabBom')}</button>
           </div>
           <div class="tab-content" id="leftTabContent"></div>
         </aside>
 
         <!-- Left Resizer Splitter -->
-        <div class="sidebar-resizer" id="leftResizer" title="Breite anpassen (ziehen)">
+        <div class="sidebar-resizer" id="leftResizer" title="${t('adjustWidth')}">
           <div class="resizer-handle"></div>
-          <button class="resizer-expand-btn left" id="btnExpandLeft" title="Linkes Panel einblenden" style="display: none;">▶</button>
+          <button class="resizer-expand-btn left" id="btnExpandLeft" title="${t('expandLeftPanel')}" style="display: none;">▶</button>
         </div>
 
         <!-- Center CAD Canvas -->
@@ -265,20 +266,16 @@ export class App {
         </main>
 
         <!-- Right Resizer Splitter -->
-        <div class="sidebar-resizer right" id="rightResizer" title="Breite anpassen (ziehen)">
+        <div class="sidebar-resizer right" id="rightResizer" title="${t('adjustWidth')}">
           <div class="resizer-handle"></div>
-          <button class="resizer-expand-btn right" id="btnExpandRight" title="Rechtes Panel einblenden" style="display: none;">◀</button>
+          <button class="resizer-expand-btn right" id="btnExpandRight" title="${t('expandRightPanel')}" style="display: none;">◀</button>
         </div>
 
         <!-- Right Sidebar -->
         <aside class="sidebar right" id="rightSidebar" style="width: ${this.rightSidebarWidth}px;">
           <div class="sidebar-top-bar">
-            <span class="sidebar-heading">EIGENSCHAFTEN</span>
-            <button class="btn-panel-collapse" id="btnCollapseRight" title="Rechtes Panel einklappen (▶)">▶</button>
-          </div>
-          <div class="tab-nav">
-            <button class="tab-btn active" data-right-tab="properties">Eigenschaften</button>
-            <button class="tab-btn" data-right-tab="archive">Archiv / REA</button>
+            <span class="sidebar-heading" id="rightSidebarHeading">${t('rightHeading')}</span>
+            <button class="btn-panel-collapse" id="btnCollapseRight" title="${t('collapseRightPanel')} (▶)">▶</button>
           </div>
           <div class="tab-content" id="rightTabContent"></div>
         </aside>
@@ -286,12 +283,13 @@ export class App {
 
       <!-- Bottom Status Bar -->
       <footer class="status-bar">
-        <div id="statusLeft">Bereit | DIN EN 81346 / IEC 60617 | Elektro-CAD Modus</div>
-        <div id="statusRight">Seite 1 / 3 | Raster: 10px (4mm) | Querverweise: Aktiv</div>
+        <div id="statusLeft">${t('statusReady')}</div>
+        <div id="statusRight"></div>
       </footer>
     `;
 
     this.bindHeaderEvents();
+    this.updateStatusBar();
   }
 
   private initCanvas(): void {
@@ -315,11 +313,10 @@ export class App {
       },
       onSelectCable: cable => {
         this.selectedCable=cable;
-        if(cable){this.selectedComponent=null;this.selectedWire=null;this.activeRightTab='properties';}
+        if(cable){this.selectedComponent=null;this.selectedWire=null;}
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
       onSelectionChanged: selection => {
-        if(selectionCount(selection)>1 || selection.boxIds?.length)this.activeRightTab='properties';
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
       onOpenSelectionProperties: () => this.openSelectionProperties(),
@@ -638,7 +635,7 @@ export class App {
       if (this.selectedComponent) {
         this.openPropertiesDialog(this.selectedComponent);
       } else if (this.selectedCable) {
-        this.activeRightTab='properties';this.setRightPanelCollapsed(false);this.renderRightTab();
+        this.setRightPanelCollapsed(false);this.renderRightTab();
       } else {
         alert('Bitte tippen Sie zuerst ein Bauteil im Plan an.');
       }
@@ -647,7 +644,7 @@ export class App {
     document.getElementById('btnFloatingEdit')?.addEventListener('click', () => {
       if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties();return;}
       if (this.selectedComponent) this.openPropertiesDialog(this.selectedComponent);
-      else if (this.selectedCable) { this.activeRightTab='properties';this.setRightPanelCollapsed(false);this.renderRightTab(); }
+      else if (this.selectedCable) { this.setRightPanelCollapsed(false);this.renderRightTab(); }
     });
 
     document.getElementById('btnFloatingExportMacro')?.addEventListener('click', () => {
@@ -700,17 +697,6 @@ export class App {
         document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
         target.classList.add('active');
         this.renderLeftTab();
-      });
-    });
-
-    // Right tabs
-    document.querySelectorAll('[data-right-tab]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.currentTarget as HTMLElement;
-        this.activeRightTab = target.dataset.rightTab as any;
-        document.querySelectorAll('[data-right-tab]').forEach(b => b.classList.remove('active'));
-        target.classList.add('active');
-        this.renderRightTab();
       });
     });
 
@@ -836,6 +822,7 @@ export class App {
         this.loadDemoProject();
       }
     });
+    bindMenuOpt('menuProjectSettings', () => this.openProjectSettings());
 
     const menuFileInput = document.getElementById('menuFileInput') as HTMLInputElement;
     menuFileInput?.addEventListener('change', async (e) => {
@@ -1012,7 +999,13 @@ export class App {
     const statusRight = document.getElementById('statusRight');
     const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
     if (statusRight && activePage && this.canvas) {
-      statusRight.textContent = `Seite ${activePage.pageNumber} (${activePage.title}) | Raster: ${this.canvas.getGridLabel()} | Bauteile: ${activePage.components.length} | Leitungen: ${activePage.wires.length} | Kabel: ${activePage.cables?.length ?? 0}`;
+      const isEn = getUiLanguage() === 'en';
+      const pageLabel = isEn ? 'Page' : 'Seite';
+      const gridLabel = isEn ? 'Grid' : 'Raster';
+      const compLabel = isEn ? 'Components' : 'Bauteile';
+      const wireLabel = isEn ? 'Wires' : 'Leitungen';
+      const cableLabel = isEn ? 'Cables' : 'Kabel';
+      statusRight.textContent = `${pageLabel} ${activePage.pageNumber} (${activePage.title}) | ${gridLabel}: ${this.canvas.getGridLabel()} | ${compLabel}: ${activePage.components.length} | ${wireLabel}: ${activePage.wires.length} | ${cableLabel}: ${activePage.cables?.length ?? 0}`;
     }
   }
 
@@ -1024,37 +1017,191 @@ export class App {
     document.getElementById('settingsModal')?.remove();
     const modal = document.createElement('div'); modal.id = 'settingsModal'; modal.className = 'modal-backdrop';
     modal.style.cssText = 'position:fixed;inset:0;background:#000b;z-index:2200;display:flex;align-items:center;justify-content:center';
-    const selected = this.project.settings?.interruptionLabelSide ?? 'source';
     const autoLoad = isAutoLoadProjectEnabled();
+    const currentLang = getUiLanguage();
     modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:440px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
-      <h3>Einstellungen</h3>
-      <div id="settingsMacroFolder"></div>
-      <p style="font-size:12px;color:#a0aec0">Der Makroordner wird als Programmeinstellung unabhängig vom Projekt gespeichert.</p>
-      
-      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#e2e8f0;">
-          <input type="checkbox" id="settingAutoLoadProject" ${autoLoad ? 'checked' : ''} style="width:16px;height:16px;accent-color:#3182ce;" />
-          <span>Zuletzt geöffnetes Projekt beim Start automatisch laden</span>
-        </label>
-        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 24px;">Wenn aktiviert, öffnet Schematico beim Programmstart direkt das zuletzt bearbeitete Projekt.</p>
+      <h3 style="margin-top:0;margin-bottom:16px;">${t('generalSettingsTitle')}</h3>
+
+      <div style="margin: 16px 0;">
+        <label for="settingUiLanguage" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#e2e8f0;">${t('uiLanguageLabel')}</label>
+        <select id="settingUiLanguage" class="form-input" style="width:100%;box-sizing:border-box;">
+          <option value="de" ${currentLang === 'de' ? 'selected' : ''}>${t('langGerman')}</option>
+          <option value="en" ${currentLang === 'en' ? 'selected' : ''}>${t('langEnglish')}</option>
+        </select>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('uiLanguageDesc')}</p>
       </div>
 
       <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
-        <label for="interruptionLabelSide">Beschriftung der Abbruchstellen</label>
-        <select id="interruptionLabelSide" class="form-input">${[['source','Wie importiert / Standard'],['before','Vor dem Pfeil (Leitungsseite)'],['after','Nach dem Pfeil (Spitzenseite)']].map(([id,label]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${label}</option>`).join('')}</select>
-        <p style="font-size:12px;color:#a0aec0">Die Position der Bezeichnung bezieht sich auf die Pfeilrichtung. Querverweise erscheinen automatisch gegenüber der angeschlossenen Seite, solange keine eigene Position gewählt ist. Die Einstellung wird mit dem Projekt gespeichert.</p>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#e2e8f0;">
+          <input type="checkbox" id="settingAutoLoadProject" ${autoLoad ? 'checked' : ''} style="width:16px;height:16px;accent-color:#3182ce;" />
+          <span>${t('autoLoadLabel')}</span>
+        </label>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 24px;">${t('autoLoadDesc')}</p>
       </div>
-      <button class="btn btn-primary" id="saveSettings">Übernehmen</button> <button class="btn" id="cancelSettings">Abbrechen</button></div>`;
+
+      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#e2e8f0;">${t('macroFolderLabel')}</label>
+        <div id="settingsMacroFolder"></div>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('macroFolderDesc')}</p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
+        <button class="btn" id="cancelSettings">${t('btnCancel')}</button>
+        <button class="btn btn-primary" id="saveSettings">${t('btnApply')}</button>
+      </div>
+    </div>`;
     document.body.appendChild(modal);
     modal.querySelector('#settingsMacroFolder')!.appendChild(createMacroFolderPanel());
     modal.querySelector('#cancelSettings')!.addEventListener('click', () => modal.remove());
     modal.querySelector('#saveSettings')!.addEventListener('click', () => {
-      const value = (modal.querySelector('select') as HTMLSelectElement).value as 'source' | 'before' | 'after';
+      const selectedLang = (modal.querySelector('#settingUiLanguage') as HTMLSelectElement).value as Language;
       const chkAutoLoad = (modal.querySelector('#settingAutoLoadProject') as HTMLInputElement)?.checked;
       if (chkAutoLoad !== undefined) setAutoLoadProjectEnabled(chkAutoLoad);
-      this.project.settings = { ...this.project.settings, interruptionLabelSide: value };
-      modal.remove(); this.notifyChange();
+      const langChanged = selectedLang !== getUiLanguage();
+      if (langChanged) {
+        setUiLanguage(selectedLang);
+      }
+      modal.remove();
+      if (langChanged) {
+        this.refreshUiLocalization();
+      }
     });
+  }
+
+  private openProjectSettings(): void {
+    document.getElementById('projectSettingsModal')?.remove();
+    const modal = document.createElement('div'); modal.id = 'projectSettingsModal'; modal.className = 'modal-backdrop';
+    modal.style.cssText = 'position:fixed;inset:0;background:#000b;z-index:2200;display:flex;align-items:center;justify-content:center';
+    const selectedSide = this.project.settings?.interruptionLabelSide ?? 'source';
+    const projectLang = this.project.language ?? 'en';
+    modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:500px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
+      <h3 style="margin-top:0;margin-bottom:16px;">${t('projectSettingsTitle')}</h3>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin:16px 0;">
+        <div>
+          <label style="display:block;font-size:12px;color:#a0aec0;margin-bottom:4px;">${t('projectNameLabel')}</label>
+          <input type="text" id="projSettingName" class="form-input" style="width:100%;box-sizing:border-box;" value="${escapeSvg(this.project.name)}" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#a0aec0;margin-bottom:4px;">${t('projectDescLabel')}</label>
+          <input type="text" id="projSettingDesc" class="form-input" style="width:100%;box-sizing:border-box;" value="${escapeSvg(this.project.description)}" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:12px;color:#a0aec0;margin-bottom:4px;">${t('companyLabel')}</label>
+            <input type="text" id="projSettingCompany" class="form-input" style="width:100%;box-sizing:border-box;" value="${escapeSvg(this.project.company)}" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:#a0aec0;margin-bottom:4px;">${t('authorLabel')}</label>
+            <input type="text" id="projSettingAuthor" class="form-input" style="width:100%;box-sizing:border-box;" value="${escapeSvg(this.project.author)}" />
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#a0aec0;margin-bottom:4px;">${t('standardLabel')}</label>
+          <input type="text" id="projSettingStandard" class="form-input" style="width:100%;box-sizing:border-box;" value="${escapeSvg(this.project.standard)}" />
+        </div>
+
+        <div style="padding-top:8px;border-top:1px solid #374151;">
+          <label for="projSettingLanguage" style="display:block;font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">${t('projectLanguageLabel')}</label>
+          <select id="projSettingLanguage" class="form-input" style="width:100%;box-sizing:border-box;">
+            <option value="de" ${projectLang === 'de' ? 'selected' : ''}>${t('langGerman')}</option>
+            <option value="en" ${projectLang === 'en' ? 'selected' : ''}>${t('langEnglish')}</option>
+          </select>
+          <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('projectLanguageDesc')}</p>
+        </div>
+
+        <div style="padding-top:8px;border-top:1px solid #374151;">
+          <label for="projInterruptionSide" style="display:block;font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">${t('interruptionLabelSide')}</label>
+          <select id="projInterruptionSide" class="form-input" style="width:100%;box-sizing:border-box;">
+            <option value="source" ${selectedSide === 'source' ? 'selected' : ''}>${t('optSource')}</option>
+            <option value="before" ${selectedSide === 'before' ? 'selected' : ''}>${t('optBefore')}</option>
+            <option value="after" ${selectedSide === 'after' ? 'selected' : ''}>${t('optAfter')}</option>
+          </select>
+          <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('interruptionLabelSideDesc')}</p>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
+        <button class="btn" id="cancelProjSettings">${t('btnCancel')}</button>
+        <button class="btn btn-primary" id="saveProjSettings">${t('btnApply')}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#cancelProjSettings')!.addEventListener('click', () => modal.remove());
+    modal.querySelector('#saveProjSettings')!.addEventListener('click', () => {
+      const name = (modal.querySelector('#projSettingName') as HTMLInputElement).value.trim();
+      const desc = (modal.querySelector('#projSettingDesc') as HTMLInputElement).value.trim();
+      const company = (modal.querySelector('#projSettingCompany') as HTMLInputElement).value.trim();
+      const author = (modal.querySelector('#projSettingAuthor') as HTMLInputElement).value.trim();
+      const standard = (modal.querySelector('#projSettingStandard') as HTMLInputElement).value.trim() as any;
+      const lang = (modal.querySelector('#projSettingLanguage') as HTMLSelectElement).value as 'de' | 'en';
+      const side = (modal.querySelector('#projInterruptionSide') as HTMLSelectElement).value as 'source' | 'before' | 'after';
+
+      if (name) this.project.name = name;
+      this.project.description = desc;
+      this.project.company = company;
+      this.project.author = author;
+      if (standard) this.project.standard = standard;
+      this.project.settings = { ...this.project.settings, interruptionLabelSide: side };
+
+      const oldLang = this.project.language ?? 'en';
+      if (lang !== oldLang) {
+        this.project.language = lang;
+        if (!this.project.plotFrameTemplate || this.project.plotFrameTemplate.id === 'default-a3') {
+          this.project.plotFrameTemplate = defaultPlotFrame(lang);
+        }
+        if (!this.project.coverPageTemplate || this.project.coverPageTemplate.id === 'default-f26') {
+          this.project.coverPageTemplate = defaultCoverPageTemplate(lang);
+        }
+        for (const p of this.project.pages) {
+          if (p.pageType === 'cover') {
+            if (oldLang === 'de' && p.title === 'Titelblatt' && lang === 'en') {
+              p.title = 'Cover Sheet';
+            } else if (oldLang === 'en' && p.title === 'Cover Sheet' && lang === 'de') {
+              p.title = 'Titelblatt';
+            }
+          }
+        }
+      }
+
+      modal.remove();
+      this.notifyChange();
+      this.updateUI();
+    });
+  }
+
+  private refreshUiLocalization(): void {
+    const chrome = document.querySelector('.app-chrome');
+    if (chrome) {
+      chrome.outerHTML = renderAppHeader(this.project.name);
+      this.bindHeaderEvents();
+    }
+    const leftHeading = document.querySelector('#leftSidebar .sidebar-heading');
+    if (leftHeading) leftHeading.textContent = t('leftHeading');
+    const rightHeading = document.getElementById('rightSidebarHeading');
+    if (rightHeading) rightHeading.textContent = t('rightHeading');
+
+    const isDe = getUiLanguage() === 'de';
+    const tabMap: Record<string, string> = {
+      pages: t('tabPages'),
+      symbols: t('tabSymbols'),
+      connections: t('tabConnections'),
+      macros: t('tabMacros'),
+      parts: isDe ? 'Artikel' : 'Parts',
+      terminals: t('tabTerminals'),
+      bom: t('tabBom')
+    };
+    document.querySelectorAll('#leftSidebar .tab-btn').forEach(btn => {
+      const tab = (btn as HTMLElement).dataset.tab;
+      if (tab && tabMap[tab]) btn.textContent = tabMap[tab];
+    });
+
+    const statusLeft = document.getElementById('statusLeft');
+    if (statusLeft) statusLeft.textContent = t('statusReady');
+    this.updateStatusBar();
+
+    this.renderLeftTab();
+    this.renderRightTab();
   }
 
   private initHistoryEvents(): void {
@@ -1153,21 +1300,23 @@ export class App {
     const canMoveDown = activeIdx >= 0 && activeIdx < this.project.pages.length - 1;
     const canDelete = this.project.pages.length > 1;
 
+    const sheetWord = t('sheet');
+    const pageWord = t('page');
     let html = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Projektseiten (DIN EN 81346)</span>
-        <button class="btn btn-primary" id="btnAddPage" style="padding: 2px 8px; font-size: 11px;">+ Seite</button>
+        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">${t('projectPages')}</span>
+        <button class="btn btn-primary" id="btnAddPage" style="padding: 2px 8px; font-size: 11px;">${t('btnNewPage')}</button>
       </div>
-      <button class="btn" id="btnAddCoverPage" style="width: 100%; margin-bottom: 8px;">+ Titelblatt</button>
+      <button class="btn" id="btnAddCoverPage" style="width: 100%; margin-bottom: 8px;">${t('btnNewCover')}</button>
 
       <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
-        <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${activePage ? `Blatt ${escapeSvg(activePage.pageNumber)}: ${escapeSvg(activePage.title)}` : 'Aktive Seite'}">
-          ${activePage ? `Blatt ${escapeSvg(activePage.pageNumber)}` : 'Seite'}:
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${activePage ? `${sheetWord} ${escapeSvg(activePage.pageNumber)}: ${escapeSvg(activePage.title)}` : t('activePage')}">
+          ${activePage ? `${sheetWord} ${escapeSvg(activePage.pageNumber)}` : pageWord}:
         </span>
         <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
-          <button type="button" class="btn" id="btnTreeMovePageUp" title="Aktive Seite nach oben verschieben" ${canMoveUp ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▲</button>
-          <button type="button" class="btn" id="btnTreeMovePageDown" title="Aktive Seite nach unten verschieben" ${canMoveDown ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▼</button>
-          <button type="button" class="btn" id="btnTreeDeletePage" title="Aktive Seite löschen" ${canDelete ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2; color: var(--danger); border-color: rgba(229,62,62,0.4);">🗑️</button>
+          <button type="button" class="btn" id="btnTreeMovePageUp" title="${t('movePageUp')}" ${canMoveUp ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▲</button>
+          <button type="button" class="btn" id="btnTreeMovePageDown" title="${t('movePageDown')}" ${canMoveDown ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▼</button>
+          <button type="button" class="btn" id="btnTreeDeletePage" title="${t('deletePage')}" ${canDelete ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2; color: var(--danger); border-color: rgba(229,62,62,0.4);">🗑️</button>
         </div>
       </div>
 
@@ -1180,9 +1329,9 @@ export class App {
       const icon = page.pageType === 'cover' ? '📄' : (page.pageType === 'schematic' ? '⚡' : '📋');
       html += `
         <div class="tree-node page-tree-item ${isActive ? 'active' : ''}" data-page-id="${page.id}" data-page-index="${idx}" draggable="true" style="user-select: none;">
-          <span style="cursor: grab;" title="Ziehen zum Neuanordnen">${icon}</span>
+          <span style="cursor: grab;" title="${t('dragToReorder')}">${icon}</span>
           <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 6px;">
-            <div style="font-weight: 500;">Blatt ${escapeSvg(page.pageNumber)}: ${escapeSvg(page.title)}</div>
+            <div style="font-weight: 500;">${sheetWord} ${escapeSvg(page.pageNumber)}: ${escapeSvg(page.title)}</div>
             <div style="font-size: 10px; color: ${isActive ? '#e2e8f0' : 'var(--text-muted)'};">${escapeSvg(page.higherLevel)}${escapeSvg(page.location)}</div>
           </div>
         </div>
@@ -1292,13 +1441,13 @@ export class App {
 
   public deletePage(pageId: string): void {
     if (this.project.pages.length <= 1) {
-      alert('Das Projekt muss mindestens eine Seite enthalten.');
+      alert(t('deletePageMinPages'));
       return;
     }
     const page = this.project.pages.find(p => p.id === pageId);
     if (!page) return;
 
-    const confirmMsg = `Möchten Sie die Seite "Blatt ${page.pageNumber}: ${page.title}" wirklich löschen?`;
+    const confirmMsg = t('deletePageConfirm', { number: page.pageNumber, title: page.title });
     if (!confirm(confirmMsg)) return;
 
     const idx = this.project.pages.findIndex(p => p.id === pageId);
@@ -1921,28 +2070,29 @@ export class App {
   }
 
   private renderTerminalsTab(container: HTMLElement): void {
+    const isEn = this.project.language === 'en';
     const strips = TerminalDiagramGenerator.generateTerminalReport(this.project);
 
     let html = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
-        Klemmenplan-Auswertung (DIN EN 81346)
+        ${isEn ? 'Terminal Diagram Report (DIN EN 81346)' : 'Klemmenplan-Auswertung (DIN EN 81346)'}
       </div>
     `;
 
     if (strips.size === 0) {
-      html += `<div style="font-size: 11px; color: var(--text-muted); padding: 12px 0;">Keine Klemmenleisten im Projekt platziert.</div>`;
+      html += `<div style="font-size: 11px; color: var(--text-muted); padding: 12px 0;">${isEn ? 'No terminal strips placed in project.' : 'Keine Klemmenleisten im Projekt platziert.'}</div>`;
     } else {
       for (const [stripName, entries] of strips.entries()) {
         html += `
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 12px; font-weight: bold; color: var(--warning); margin-bottom: 4px;">Klemmenleiste: ${stripName}</div>
+            <div style="font-size: 12px; font-weight: bold; color: var(--warning); margin-bottom: 4px;">${isEn ? 'Terminal Strip' : 'Klemmenleiste'}: ${stripName}</div>
             <table class="report-table">
               <thead>
                 <tr>
-                  <th>Klemme</th>
-                  <th>Intern</th>
-                  <th>Extern</th>
-                  <th>Funktion</th>
+                  <th>${isEn ? 'Terminal' : 'Klemme'}</th>
+                  <th>${isEn ? 'Internal' : 'Intern'}</th>
+                  <th>${isEn ? 'External' : 'Extern'}</th>
+                  <th>${isEn ? 'Function' : 'Funktion'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1965,20 +2115,21 @@ export class App {
   }
 
   private renderBomTab(container: HTMLElement): void {
+    const isEn = this.project.language === 'en';
     const parts = PartsListGenerator.generatePartsList(this.project);
 
     let html = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
-        Stückliste / Artikelliste (BOM)
+        ${isEn ? 'Bill of Materials (BOM)' : 'Stückliste / Artikelliste (BOM)'}
       </div>
       <table class="report-table">
         <thead>
           <tr>
-            <th>Menge</th>
-            <th>Artikelnummer</th>
-            <th>Beschreibung</th>
-            <th>Hersteller</th>
-            <th>BMK-Liste</th>
+            <th>${isEn ? 'Qty' : 'Menge'}</th>
+            <th>${isEn ? 'Part Number' : 'Artikelnummer'}</th>
+            <th>${isEn ? 'Description / Type' : 'Beschreibung'}</th>
+            <th>${isEn ? 'Manufacturer' : 'Hersteller'}</th>
+            <th>${isEn ? 'Tag List' : 'BMK-Liste'}</th>
           </tr>
         </thead>
         <tbody>
@@ -2003,16 +2154,11 @@ export class App {
   private renderRightTab(): void {
     const container = document.getElementById('rightTabContent');
     if (!container) return;
-
-    if (this.activeRightTab === 'properties') {
-      this.renderPropertiesTab(container);
-    } else {
-      this.renderArchiveInspectorTab(container);
-    }
+    this.renderPropertiesTab(container);
   }
 
   private openSelectionProperties():void {
-    this.activeRightTab='properties';if(this.isRightCollapsed)this.setRightPanelCollapsed(false);this.renderRightTab();
+    if(this.isRightCollapsed)this.setRightPanelCollapsed(false);this.renderRightTab();
   }
 
   private renderImageProperties(container:HTMLElement):void {
@@ -2431,52 +2577,52 @@ export class App {
 
       container.innerHTML = `
         <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-          Seiteneigenschaften (Blatt ${activePage?.pageNumber || '1'})
+          ${t('pageProperties', { number: activePage?.pageNumber || '1' })}
         </div>
-        ${activePage?.pageType==='cover'?'<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">Titelblatt bearbeiten…</button>':''}
+        ${activePage?.pageType==='cover'?`<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">${t('btnEditCoverPage')}</button>`:''}
 
         <div class="form-group">
-          <label class="form-label">Blattnummer</label>
+          <label class="form-label">${t('fieldSheetNumber')}</label>
           <input class="form-input" id="pageNumberInput" value="${escapeSvg(activePage?.pageNumber || '')}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Seitentitel</label>
+          <label class="form-label">${t('fieldPageTitle')}</label>
           <input class="form-input" id="pageTitleInput" value="${activePage?.title || ''}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Anlagenkennzeichen (=Anlage)</label>
+          <label class="form-label">${t('fieldHigherLevel')}</label>
           <input class="form-input" id="pageHigherLevelInput" value="${activePage?.higherLevel || '=A1'}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Ortskennzeichen (+Ort)</label>
+          <label class="form-label">${t('fieldLocation')}</label>
           <input class="form-input" id="pageLocationInput" value="${activePage?.location || '+S1'}">
         </div>
 
         <div style="display: flex; gap: 6px; margin: 12px 0 16px 0;">
-          <button class="btn" id="btnMovePageUp" style="flex: 1;" ${canMoveUp ? '' : 'disabled'} title="Seite nach oben verschieben">▲ Nach oben</button>
-          <button class="btn" id="btnMovePageDown" style="flex: 1;" ${canMoveDown ? '' : 'disabled'} title="Seite nach unten verschieben">▼ Nach unten</button>
-          <button class="btn" id="btnDeleteCurrentPage" style="flex: 1; border-color: var(--danger); color: var(--danger);" ${canDelete ? '' : 'disabled'} title="Aktuelle Seite löschen">🗑️ Löschen</button>
+          <button class="btn" id="btnMovePageUp" style="flex: 1;" ${canMoveUp ? '' : 'disabled'} title="${t('movePageUp')}">${t('btnMoveUp')}</button>
+          <button class="btn" id="btnMovePageDown" style="flex: 1;" ${canMoveDown ? '' : 'disabled'} title="${t('movePageDown')}">${t('btnMoveDown')}</button>
+          <button class="btn" id="btnDeleteCurrentPage" style="flex: 1; border-color: var(--danger); color: var(--danger);" ${canDelete ? '' : 'disabled'} title="${t('deletePage')}">🗑️ ${t('menuDelete')}</button>
         </div>
 
         <div style="margin-top: 20px; font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-          Projekteigenschaften
+          ${t('projectPropertiesHeading')}
         </div>
 
         <div class="form-group">
-          <label class="form-label">Projektname</label>
+          <label class="form-label">${t('fieldProjectName')}</label>
           <input class="form-input" id="projNameInput" value="${this.project.name}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Firma</label>
+          <label class="form-label">${t('fieldCompany')}</label>
           <input class="form-input" id="projCompanyInput" value="${this.project.company}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Ersteller / Bearbeiter</label>
+          <label class="form-label">${t('fieldAuthor')}</label>
           <input class="form-input" id="projAuthorInput" value="${this.project.author}">
         </div>
       `;
@@ -2530,52 +2676,6 @@ export class App {
     }
   }
 
-  private renderArchiveInspectorTab(container: HTMLElement): void {
-    container.innerHTML = `
-      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
-        Archiv & REA Inspektor
-      </div>
-
-      <div class="dropzone" id="archiveDropzone">
-        <div style="font-size: 24px; margin-bottom: 8px;">📦</div>
-        <div style="font-size: 12px; font-weight: 500;">Projekt- oder Archiv-Datei hier ablegen</div>
-        <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Unterstützt .zw1 (Backup), .edz (Makros), .xml, .elk</div>
-      </div>
-
-      <div id="inspectorDetails" style="font-size: 11px;">
-        <div style="padding: 10px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; line-height: 1.5; color: var(--text-muted);">
-          <strong style="color: var(--accent-bright);">Unterstützte Formate:</strong><br>
-          • <strong>.zw1:</strong> Komprimiertes Projektbackup (enthält .elk und *.edb Datenbankverzeichnis).<br>
-          • <strong>.edz:</strong> Artikel- und Makropakete.<br>
-          • <strong>XML:</strong> XML-Schema für Stromlaufpläne und Stammdaten.<br>
-          • <strong>Querverweise:</strong> Automatische Berechnung von Kontaktspiegeln und Abbruchstellen nach DIN EN 81346.
-        </div>
-      </div>
-    `;
-
-    const dropzone = document.getElementById('archiveDropzone');
-    if (dropzone) {
-      dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.style.borderColor = 'var(--accent-bright)';
-      });
-      dropzone.addEventListener('dragleave', () => {
-        dropzone.style.borderColor = 'var(--border-color)';
-      });
-      dropzone.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        dropzone.style.borderColor = 'var(--border-color)';
-        const files = e.dataTransfer?.files;
-        if (files && files.length > 0) {
-          await this.handleFilesOpen(files);
-        }
-      });
-      dropzone.addEventListener('click', () => {
-        document.getElementById('fileInput')?.click();
-      });
-    }
-  }
-
   private async handleFileOpen(file: File): Promise<void> {
     await this.handleFilesOpen([file]);
   }
@@ -2600,39 +2700,9 @@ export class App {
         this.updateUI();
         this.saveActiveProject();
       }
-
-      // Display inspection findings
-      const detailsContainer = document.getElementById('inspectorDetails');
-      if (detailsContainer) {
-        let entriesSummary = '';
-        if (result.entries.length > 0) {
-          entriesSummary = `
-            <div style="margin-top: 10px;">
-              <strong>Gefundene Archivelemente (${result.entries.length}):</strong>
-              <div style="max-height: 150px; overflow-y: auto; background: var(--bg-primary); padding: 6px; border-radius: 4px; margin-top: 4px; font-family: monospace; font-size: 10px;">
-                ${result.entries.slice(0, 50).map(e => `<div>${e.type === 'elk' ? '⭐' : (e.type === 'edb' ? '📁' : '📄')} ${escapeSvg(neutralSourceLabel(e.path))}</div>`).join('')}
-                ${result.entries.length > 50 ? `<div>... und ${result.entries.length - 50} weitere Einträge</div>` : ''}
-              </div>
-            </div>
-          `;
-        }
-
-        const displayName = files.length > 1 ? `${files.length} Archivteile (${result.filename})` : (files[0]?.name || result.filename);
-        detailsContainer.innerHTML = `
-          <div style="padding: 10px; background-color: var(--bg-secondary); border: 1px solid var(--accent); border-radius: 4px;">
-            <div style="font-weight: bold; color: var(--success); margin-bottom: 4px;">✓ ${escapeSvg(neutralSourceLabel(displayName))} erfolgreich analysiert</div>
-            <div>Format: <strong>${result.format}</strong></div>
-            <div>Projektname: <strong>${escapeSvg(neutralSourceLabel(result.extractedProject?.name ?? result.projectName))}</strong></div>
-            <div>Seiten im Projekt: <strong>${result.extractedProject?.pages.length || 0}</strong></div>
-            ${entriesSummary}
-            <div style="margin-top: 8px; font-size: 10px; color: var(--warning);">
-              ${result.messages.map(message=>escapeSvg(neutralSourceLabel(message))).join('<br>')}
-            </div>
-          </div>
-        `;
-      }
     } catch (err: any) {
-      alert(`Fehler beim Öffnen der Datei: ${neutralSourceLabel(err.message)}`);
+      const isEn = this.project.language === 'en';
+      alert(`${isEn ? 'Error opening file' : 'Fehler beim Öffnen der Datei'}: ${neutralSourceLabel(err.message)}`);
     }
   }
 

@@ -1,8 +1,6 @@
-// src/ui/PdfExportDialog.ts
-// Modal dialog for Smart PDF-Export settings
-
 import { Project } from '../model/types';
 import { PdfExporter, PdfExportOptions } from '../export/PdfExporter';
+import { getUiLanguage } from '../i18n';
 
 export class PdfExportDialog {
   private project: Project;
@@ -19,6 +17,7 @@ export class PdfExportDialog {
   }
 
   private createModal(): void {
+    const isEn = getUiLanguage() === 'en';
     this.modalOverlay = document.createElement('div');
     this.modalOverlay.style.cssText = `
       position: fixed;
@@ -55,7 +54,7 @@ export class PdfExportDialog {
           justify-content: space-between;
         ">
           <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-            📑 Schematico – PDF-Export
+            📑 Schematico – ${isEn ? 'PDF Export' : 'PDF-Export'}
           </div>
           <button id="btnPdfClose" style="background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 16px;">✕</button>
         </div>
@@ -64,39 +63,39 @@ export class PdfExportDialog {
         <div style="padding: 18px; font-size: 12px; line-height: 1.5; max-height: 75vh; overflow-y: auto;">
           <!-- 1. Seitenumfang -->
           <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">1. Seitenbereich</div>
+            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">1. ${isEn ? 'Page Range' : 'Seitenbereich'}</div>
             <div style="display: flex; gap: 16px;">
               <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <input type="radio" name="pdfPageRange" value="all" checked>
-                Gesamtes Projekt (${this.project.pages.length} Seiten)
+                ${isEn ? `Entire Project (${this.project.pages.length} pages)` : `Gesamtes Projekt (${this.project.pages.length} Seiten)`}
               </label>
               <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <input type="radio" name="pdfPageRange" value="current">
-                Nur aktive Seite
+                ${isEn ? 'Current active page only' : 'Nur aktive Seite'}
               </label>
             </div>
           </div>
 
           <!-- 2. Format & Papier -->
           <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">2. Papierformat</div>
+            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">2. ${isEn ? 'Paper Size' : 'Papierformat'}</div>
             <select id="pdfFormatSelect" style="width: 100%; padding: 6px; background: #2d3748; border: 1px solid #4a5568; color: white; border-radius: 4px;">
-              <option value="a3" selected>DIN A3 Querformat (420 × 297 mm - Standard)</option>
-              <option value="a4">DIN A4 Querformat (297 × 210 mm)</option>
+              <option value="a3" selected>${isEn ? 'DIN A3 Landscape (420 × 297 mm - Standard)' : 'DIN A3 Querformat (420 × 297 mm - Standard)'}</option>
+              <option value="a4">${isEn ? 'DIN A4 Landscape (297 × 210 mm)' : 'DIN A4 Querformat (297 × 210 mm)'}</option>
             </select>
           </div>
 
           <!-- 3. Farbmodus -->
           <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">3. Farbmodus</div>
+            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">3. ${isEn ? 'Color Mode' : 'Farbmodus'}</div>
             <div style="display: flex; gap: 16px;">
               <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <input type="radio" name="pdfColorMode" value="color" checked>
-                Farbe (Standard Farbschema)
+                ${isEn ? 'Color (Standard color scheme)' : 'Farbe (Standard Farbschema)'}
               </label>
               <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <input type="radio" name="pdfColorMode" value="monochrome">
-                Schwarz / Weiß (Druckoptimiert)
+                ${isEn ? 'Black / White (Print optimized)' : 'Schwarz / Weiß (Druckoptimiert)'}
               </label>
             </div>
           </div>
@@ -104,39 +103,39 @@ export class PdfExportDialog {
           <!-- 4. Smart PDF Optionen -->
           <div style="margin-bottom: 16px; background: #232d3d; padding: 12px; border-radius: 6px; border: 1px solid #3e4c63;">
             <div style="font-weight: bold; color: #f6e05e; margin-bottom: 8px; font-size: 11px; text-transform: uppercase;">
-              ✨ Intelligente PDF-Funktionen
+              ✨ ${isEn ? 'Smart PDF Features' : 'Intelligente PDF-Funktionen'}
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="chkInteractiveLinks" checked>
-                <strong>Interaktive Querverweise</strong> (Klickbare Sprungmarken zwischen Spule & Kontakten)
+                <strong>${isEn ? 'Interactive Cross-References' : 'Interaktive Querverweise'}</strong> (${isEn ? 'Clickable navigation between coils & contacts' : 'Klickbare Sprungmarken zwischen Spule & Kontakten'})
               </label>
               
               <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="chkBookmarks" checked>
-                <strong>Lesezeichenbaum</strong> (Strukturierung nach DIN EN 81346 =Anlage+Ort)
+                <strong>${isEn ? 'Document Outline / Bookmarks' : 'Lesezeichenbaum'}</strong> (${isEn ? 'Structured by DIN EN 81346 =Location+Aspect' : 'Strukturierung nach DIN EN 81346 =Anlage+Ort'})
               </label>
 
               <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="chkTerminalDiagram" checked>
-                <strong>Klemmenplan-Auswertung</strong> als zusätzliche PDF-Seite anhängen
+                <strong>${isEn ? 'Terminal Diagram Report' : 'Klemmenplan-Auswertung'}</strong> ${isEn ? 'appended as extra PDF page' : 'als zusätzliche PDF-Seite anhängen'}
               </label>
 
               <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="chkPartsList" checked>
-                <strong>Stückliste (BOM)</strong> an das PDF anhängen
+                <strong>${isEn ? 'Bill of Materials (BOM)' : 'Stückliste (BOM)'}</strong> ${isEn ? 'appended to PDF' : 'an das PDF anhängen'}
               </label>
 
               <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="chkPlotFrame" checked>
-                Normblatt & Schriftfeld nach DIN EN ISO 7200 drucken
+                ${isEn ? 'Print plot frame & title block according to DIN EN ISO 7200' : 'Normblatt & Schriftfeld nach DIN EN ISO 7200 drucken'}
               </label>
             </div>
           </div>
 
           <div id="pdfExportStatus" style="display: none; padding: 8px; border-radius: 4px; background: #2b6cb0; color: white; text-align: center; margin-bottom: 12px;">
-            ⏳ Vektor-PDF wird generiert...
+            ⏳ ${isEn ? 'Generating vector PDF...' : 'Vektor-PDF wird generiert...'}
           </div>
         </div>
 
@@ -150,10 +149,10 @@ export class PdfExportDialog {
           gap: 10px;
         ">
           <button id="btnPdfCancel" style="padding: 6px 14px; font-size: 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Abbrechen
+            ${isEn ? 'Cancel' : 'Abbrechen'}
           </button>
           <button id="btnPdfDoExport" style="padding: 6px 16px; font-size: 12px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
-            📥 PDF Exportieren
+            📥 ${isEn ? 'Export PDF' : 'PDF Exportieren'}
           </button>
         </div>
       </div>

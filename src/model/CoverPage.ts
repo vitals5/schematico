@@ -46,7 +46,7 @@ export function defaultCoverPageTemplate(lang: 'de' | 'en' = 'de'):CoverPageTemp
   add('count-label',350.5,234.727,lang === 'en' ? 'Number of Pages' : 'Anzahl der Seiten');add('count',400,234.727,undefined,10300,3.5*1.242,'end');
   return {id:'default-f26',name:'F26_001',width:420,height:297,graphics,texts};
 }
-export const coverPageTemplate = (project:Project) => project.coverPageTemplate ?? defaultCoverPageTemplate();
+export const coverPageTemplate = (project:Project) => project.coverPageTemplate ?? defaultCoverPageTemplate(project.language ?? 'de');
 const dateText = (value:string) => /^\d{4}-\d{2}-\d{2}/.test(value)?value.slice(0,10).split('-').reverse().join('.'):value;
 export function coverFieldValue(text:FrameText,page:Page,project:Project,template=coverPageTemplate(project)):string {
   if(text.text!==undefined)return text.text;
@@ -63,8 +63,9 @@ export function coverFieldValue(text:FrameText,page:Page,project:Project,templat
 }
 export function coverPageFields(page:Page,project:Project) {
   const t=coverPageTemplate(project),seen=new Set<string>();
+  const currentLabels = project.language === 'en' ? labelsEn : labelsDe;
   return t.texts.filter(text=>text.property!==undefined).filter(text=>{const key=coverFieldKey(text);if(seen.has(key))return false;seen.add(key);return true;})
-    .map(text=>({key:coverFieldKey(text),label:labels[text.property!] ?? `Formularfeld ${text.property}`,value:coverFieldValue(text,page,project,t),readOnly:[10300,11015].includes(text.property!)}));
+    .map(text=>({key:coverFieldKey(text),label:currentLabels[text.property!] ?? labelsDe[text.property!] ?? `Formularfeld ${text.property}`,value:coverFieldValue(text,page,project,t),readOnly:[10300,11015].includes(text.property!)}));
 }
 /** Bound each caption/value to its own row and next horizontal field. */
 export function coverTextCell(text:FrameText,template:CoverPageTemplate) {
@@ -100,7 +101,7 @@ export function createCoverPage(project:Project):Page {
   const existing=project.pages.filter(p=>p.pageType==='cover'),first=project.pages[0],t=coverPageTemplate(project);
   const higherLevel=existing[0]?.higherLevel ?? '=CA1',location=existing[0]?.location ?? '+EAA';
   let number=1;while(project.pages.some(p=>p.higherLevel===higherLevel&&p.location===location&&p.pageNumber===String(number)))number++;
-  return {id:'cover_'+crypto.randomUUID(),pageNumber:String(number),pageType:'cover',title:'Titelblatt',higherLevel,location,
+  return {id:'cover_'+crypto.randomUUID(),pageNumber:String(number),pageType:'cover',title:project.language === 'en' ? 'Cover Sheet' : 'Titelblatt',higherLevel,location,
     components:[],wires:[],coverPage:{values:{}},plotFrame:{type:'DIN_A3_LANDSCAPE',width:first?.plotFrame.width ?? 1000,
       height:(first?.plotFrame.width ?? 1000)*t.height/t.width,columns:10,rows:['A','B','C','D','E','F'],titleBlock:{
         projectTitle:project.name,commission:'',company:project.company,author:project.author,date:dateText(project.created ?? ''),revision:'',sheetNumber:String(number),totalSheets:String(project.pages.length+1)}}};

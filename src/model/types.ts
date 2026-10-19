@@ -267,6 +267,7 @@ export interface Project {
   plotFrameTemplate?: PlotFrameTemplate;
   coverPageTemplate?: CoverPageTemplate;
   settings?: { interruptionLabelSide?: 'source' | 'before' | 'after' };
+  language?: 'de' | 'en';
   drawingUnitsPerMm?: number;
   /** Shared project master data. Placements reference these definitions by symbolId. */
   symbolLibrary?: SymbolDefinition[];

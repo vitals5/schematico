@@ -2,6 +2,7 @@ import { Page, PageImage, Project } from '../model/types';
 import { CoverPageData, coverPageFields, coverPageLogo, coverPageSvg } from '../model/CoverPage';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { isBundledSupplierLogo } from '../model/PresentationNaming';
+import { getUiLanguage } from '../i18n';
 
 export interface CoverPageDialogCallbacks {
   onSave: (cover: CoverPageData) => void;
@@ -20,6 +21,7 @@ export class CoverPageDialog {
 
   public show(): void {
     document.getElementById('coverPageModal')?.remove();
+    const isEn = getUiLanguage() === 'en';
     const modal = document.createElement('div');
     modal.id = 'coverPageModal';
     modal.className = 'modal-backdrop';
@@ -48,19 +50,19 @@ export class CoverPageDialog {
       </style>
       <div class="modal-card ecad-window cover-card">
         <div class="cover-header ecad-window-header">
-          <strong id="cover-title">Titelseite bearbeiten</strong>
-          <button id="cover-close" type="button" aria-label="Schließen" style="background:none;border:none;color:#a0aec0;font-size:22px;cursor:pointer;">&times;</button>
+          <strong id="cover-title">${isEn ? 'Edit Cover Sheet' : 'Titelseite bearbeiten'}</strong>
+          <button id="cover-close" type="button" aria-label="${isEn ? 'Close' : 'Schließen'}" style="background:none;border:none;color:#a0aec0;font-size:22px;cursor:pointer;">&times;</button>
         </div>
         <div class="cover-body">
           <div class="cover-fields">${this.renderFields()}</div>
           <div class="cover-preview-column">
-            <div id="cover-preview" aria-label="Vorschau der Titelseite"></div>
-            <p class="cover-note">Die Vorschau zeigt die Titelseite im Seitenformat. Angaben gelten für diese Titelseite.</p>
+            <div id="cover-preview" aria-label="${isEn ? 'Cover sheet preview' : 'Vorschau der Titelseite'}"></div>
+            <p class="cover-note">${isEn ? 'The preview displays the cover sheet in page format. Values apply to this cover sheet.' : 'Die Vorschau zeigt die Titelseite im Seitenformat. Angaben gelten für diese Titelseite.'}</p>
             <strong style="font-size:12px;">Logo</strong>
             <div class="cover-logo-controls">
-              <button id="cover-logo-upload" class="btn" type="button">Bild laden…</button>
-              <button id="cover-logo-remove" class="btn" type="button">Entfernen</button>
-              <button id="cover-logo-template" class="btn" type="button">Vorlagenlogo</button>
+              <button id="cover-logo-upload" class="btn" type="button">${isEn ? 'Load Image…' : 'Bild laden…'}</button>
+              <button id="cover-logo-remove" class="btn" type="button">${isEn ? 'Remove' : 'Entfernen'}</button>
+              <button id="cover-logo-template" class="btn" type="button">${isEn ? 'Template Logo' : 'Vorlagenlogo'}</button>
               <input id="cover-logo-file" type="file" accept="image/png,image/jpeg" hidden>
             </div>
             <div id="cover-logo-position" class="cover-logo-position"></div>
@@ -68,9 +70,9 @@ export class CoverPageDialog {
           </div>
         </div>
         <div class="cover-footer">
-          <button id="cover-apply" class="btn" type="button">Übernehmen</button>
+          <button id="cover-apply" class="btn" type="button">${isEn ? 'Apply' : 'Übernehmen'}</button>
           <button id="cover-save" class="btn btn-primary" type="button">OK</button>
-          <button id="cover-cancel" class="btn" type="button">Abbrechen</button>
+          <button id="cover-cancel" class="btn" type="button">${isEn ? 'Cancel' : 'Abbrechen'}</button>
         </div>
       </div>`;
     document.body.appendChild(modal);
@@ -141,7 +143,9 @@ export class CoverPageDialog {
 
   private updateLogoPosition(modal: HTMLElement): void {
     const logo = this.effectiveLogo();
-    modal.querySelector('#cover-logo-position')!.innerHTML = (['x', 'y', 'width', 'height'] as const).map((key, index) => `<div class="cover-field"><label for="cover-logo-${key}">${['X (mm)', 'Y (mm)', 'Breite (mm)', 'Höhe (mm)'][index]}</label><input id="cover-logo-${key}" data-logo-coordinate="${key}" class="form-input" type="number" step="any" required ${key === 'width' || key === 'height' ? 'min="0.1"' : ''} ${logo ? `value="${logo[key]}"` : 'disabled'}></div>`).join('');
+    const isEn = getUiLanguage() === 'en';
+    const labels = ['X (mm)', 'Y (mm)', isEn ? 'Width (mm)' : 'Breite (mm)', isEn ? 'Height (mm)' : 'Höhe (mm)'];
+    modal.querySelector('#cover-logo-position')!.innerHTML = (['x', 'y', 'width', 'height'] as const).map((key, index) => `<div class="cover-field"><label for="cover-logo-${key}">${labels[index]}</label><input id="cover-logo-${key}" data-logo-coordinate="${key}" class="form-input" type="number" step="any" required ${key === 'width' || key === 'height' ? 'min="0.1"' : ''} ${logo ? `value="${logo[key]}"` : 'disabled'}></div>`).join('');
     modal.querySelectorAll<HTMLInputElement>('[data-logo-coordinate]').forEach(input => input.addEventListener('input', () => {
       if (!input.checkValidity() || input.value.trim() === '' || !Number.isFinite(input.valueAsNumber)) return;
       const current = this.effectiveLogo();

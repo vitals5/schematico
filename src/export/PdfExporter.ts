@@ -23,7 +23,7 @@ import { Project, Page, PlacedComponent, Wire, DrawingPrimitive, SymbolDefinitio
 import { getSymbolForComponent } from '../model/symbols';
 import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
 import { PartsListGenerator } from '../reports/PartsList';
-import { layoutPartsListPdf, BOM_COLUMNS, BOM_FONT_SIZE, BOM_LINE_HEIGHT, BOM_ROWS_TOP, type BomPage } from './PartsListPdf';
+import { layoutPartsListPdf, BOM_COLUMNS, BOM_FONT_SIZE, BOM_LINE_HEIGHT, BOM_ROWS_TOP, getBomColumns, type BomPage } from './PartsListPdf';
 
 export interface PdfExportOptions {
   paperFormat: 'a3' | 'a4';
@@ -77,7 +77,8 @@ export class PdfExporter {
     });
 
     // Total sheet count update
-    const bomPages = options.includePartsList ? layoutPartsListPdf(doc, PartsListGenerator.generatePartsList(project), pageHeightMm) : [];
+    const bomColumns = getBomColumns(project.language ?? 'de');
+    const bomPages = options.includePartsList ? layoutPartsListPdf(doc, PartsListGenerator.generatePartsList(project), pageHeightMm, bomColumns) : [];
     const extraSheets = (options.includeTerminalDiagram ? 1 : 0) + bomPages.length;
     const totalSheetsCount = pagesToExport.length + extraSheets;
 
@@ -131,7 +132,7 @@ export class PdfExporter {
       const pdfPageNum = doc.getNumberOfPages();
       if (options.includeBookmarks && doc.outline) {
         try {
-          doc.outline.add(null, `Auswertung: Klemmenplan (-X1)`, { pageNumber: pdfPageNum });
+          doc.outline.add(null, project.language === 'en' ? 'Report: Terminal Diagram (-X1)' : 'Auswertung: Klemmenplan (-X1)', { pageNumber: pdfPageNum });
         } catch {}
       }
       this.renderTerminalDiagramPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount);
@@ -143,7 +144,7 @@ export class PdfExporter {
       const pdfPageNum = doc.getNumberOfPages();
       if (options.includeBookmarks && doc.outline) {
         try {
-          doc.outline.add(null, `Auswertung: Stückliste (BOM)`, { pageNumber: pdfPageNum });
+          doc.outline.add(null, project.language === 'en' ? 'Report: Bill of Materials (BOM)' : 'Auswertung: Stückliste (BOM)', { pageNumber: pdfPageNum });
         } catch {}
       }
       this.renderPartsListPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, bomPages);
@@ -1018,11 +1019,12 @@ export class PdfExporter {
     colorMode: 'color' | 'monochrome',
     totalSheets: number
   ): void {
+    const isEn = project.language === 'en';
     const dummyPage: Page = {
       id: 'rep_term',
-      pageNumber: 'KP',
+      pageNumber: isEn ? 'TD' : 'KP',
       pageType: 'terminal_diagram',
-      title: 'Auswertung: Klemmenplan',
+      title: isEn ? 'Report: Terminal Diagram' : 'Auswertung: Klemmenplan',
       higherLevel: '=A1',
       location: '+S1',
       components: [],
@@ -1040,7 +1042,7 @@ export class PdfExporter {
           author: project.author,
           date: new Date().toISOString().split('T')[0],
           revision: '1.0',
-          sheetNumber: 'KP',
+          sheetNumber: isEn ? 'TD' : 'KP',
           totalSheets: totalSheets.toString()
         }
       }
@@ -1054,20 +1056,22 @@ export class PdfExporter {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text('KLEMMENPLAN (DIN EN 81346 / IEC 60617)', 20, curY);
+    doc.text(isEn ? 'TERMINAL DIAGRAM (DIN EN 81346 / IEC 60617)' : 'KLEMMENPLAN (DIN EN 81346 / IEC 60617)', 20, curY);
     curY += 10;
 
     for (const [stripName, entries] of strips.entries()) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(colorMode === 'color' ? 200 : 0, colorMode === 'color' ? 100 : 0, 0);
-      doc.text(`Klemmenleiste: ${stripName} (Schaltschrank +S1)`, 20, curY);
+      doc.text(isEn ? `Terminal Strip: ${stripName} (Cabinet +S1)` : `Klemmenleiste: ${stripName} (Schaltschrank +S1)`, 20, curY);
       curY += 5;
 
       // Table Header
       const tableX = 20;
       const colWidths = [30, 45, 45, 60, 30];
-      const headers = ['Klemme', 'Internes Ziel', 'Externes Ziel', 'Funktionstext', 'Querschnitt'];
+      const headers = isEn
+        ? ['Terminal', 'Internal Target', 'External Target', 'Function Text', 'Cross Section']
+        : ['Klemme', 'Internes Ziel', 'Externes Ziel', 'Funktionstext', 'Querschnitt'];
 
       doc.setFillColor(240, 240, 240);
       doc.rect(tableX, curY, 210, 7, 'F');
@@ -1126,11 +1130,13 @@ export class PdfExporter {
     totalSheets: number,
     pages: BomPage[]
   ): void {
+    const isEn = project.language === 'en';
+    const pagePrefix = isEn ? 'BOM' : 'ST';
     const dummyPage: Page = {
       id: 'rep_bom',
-      pageNumber: 'ST',
+      pageNumber: pagePrefix,
       pageType: 'parts_list',
-      title: 'Auswertung: Stückliste',
+      title: isEn ? 'Report: Bill of Materials' : 'Auswertung: Stückliste',
       higherLevel: '=A1',
       location: '+S1',
       components: [],
@@ -1148,33 +1154,34 @@ export class PdfExporter {
           author: project.author,
           date: new Date().toISOString().split('T')[0],
           revision: '1.0',
-          sheetNumber: 'ST',
+          sheetNumber: pagePrefix,
           totalSheets: totalSheets.toString()
         }
       }
     };
 
     const tableX = 20;
-    const tableWidth = BOM_COLUMNS.reduce((sum, column) => sum + column.width, 0);
+    const columns = getBomColumns(project.language ?? 'de');
+    const tableWidth = columns.reduce((sum, column) => sum + column.width, 0);
     for (let index = 0; index < pages.length; index++) {
       if (index) doc.addPage(wMm > 300 ? 'a3' : 'a4', 'landscape');
-      dummyPage.pageNumber = pages.length > 1 ? `ST${index + 1}` : 'ST';
+      dummyPage.pageNumber = pages.length > 1 ? `${pagePrefix}${index + 1}` : pagePrefix;
       dummyPage.plotFrame.titleBlock.sheetNumber = dummyPage.pageNumber;
       this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
-      doc.text('ARTIKELSTÜCKLISTE (BILL OF MATERIALS)', tableX, 30);
+      doc.text(isEn ? 'BILL OF MATERIALS (BOM)' : 'ARTIKELSTÜCKLISTE (BILL OF MATERIALS)', tableX, 30);
       doc.setFillColor(240, 240, 240);
       doc.rect(tableX, 40, tableWidth, 7, 'F');
       doc.setFontSize(8);
       let tx = tableX;
-      for (const column of BOM_COLUMNS) {
+      for (const column of columns) {
         doc.text(column.title, tx + 2, 45); tx += column.width;
       }
       let curY = BOM_ROWS_TOP;
       for (const row of pages[index]) {
         tx = tableX;
-        for (let i = 0; i < BOM_COLUMNS.length; i++) {
-          const column = BOM_COLUMNS[i];
+        for (let i = 0; i < columns.length; i++) {
+          const column = columns[i];
           doc.setFont(column.font, column.style); doc.setFontSize(BOM_FONT_SIZE);
           row.cells[i].forEach((line, lineIndex) => doc.text(line, tx + 2, curY + 4.5 + lineIndex * BOM_LINE_HEIGHT));
           tx += column.width;

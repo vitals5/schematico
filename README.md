@@ -7,103 +7,87 @@
 
 # Schematico
 
-Schematico ist ein Editor für Stromlaufpläne für **Windows und den Browser**. Projekte bestehen aus bearbeitbaren Bibliothekselementen, Verbindungen, Texten, Grafiken und Seitenformularen. Kennzeichnungsstruktur, Symbole und Schriftfelder orientieren sich an DIN EN 81346, IEC 60617 und DIN EN ISO 7200.
+Schematico is an electrical schematic and wiring diagram editor for **Windows and the Web browser**. Projects consist of editable library symbols, electrical wires, text callouts, drawings, device boxes, and structured page forms. The designation structures, symbol models, and title blocks follow DIN EN 81346, IEC 60617, and DIN EN ISO 7200.
 
-[Web-App öffnen](https://vitals5.github.io/schematico/) · [Windows-Downloads](https://github.com/vitals5/schematico/releases/latest) · [Windows-Builds](https://github.com/vitals5/schematico/actions/workflows/build-windows.yml)
+[Launch Web App](https://vitals5.github.io/schematico/) · [Windows Downloads](https://github.com/vitals5/schematico/releases/latest) · [Windows Build Workflow](https://github.com/vitals5/schematico/actions/workflows/build-windows.yml)
 
-Dieses Repository startet mit einem eigenständigen ersten Commit des aktuellen Schematico-Dateistands. Frühere Git-Historie und private Referenzarchive sind nicht enthalten.
+## Features
 
-## Funktionen
+- **Draw & Wire:** Place, move, and rotate library components; directional connection ports, grid snap, orthogonal wiring, T-junctions, connection nodes, and intelligent autoconnecting.
+- **Multilingual Support:**
+  - **Program / UI Language:** Switch seamlessly between English and German in General Settings. The user interface (menus, toolbars, sidebars, status bar, and dialogs) updates dynamically and persists via local storage in both Web and Desktop versions. Initial selection defaults to your system/browser language.
+  - **Project Language:** Configure the project language (English or German) in Project Settings. Cover sheets, title blocks / plot frames, Bills of Materials (BOM / parts lists), terminal diagrams, and report headers automatically adapt to the chosen project language.
+- **Multi-Page Management:** Create, reorder (move up/down), renumber, and delete project pages. Centralized page toolbar prevents accidental deletion of the last page. Title and cover pages display live project metadata and page counts.
+- **Symbol Library:** Rich generic templates for protection devices, contactors, relays, terminals, power supply, sensors, automation, drives, and control cabinets. Imported projects retain and use their own symbol definitions.
+- **Component Labelling:** Device tags (BMK), function texts, device descriptions, technical specifications, and engraving texts with customizable positions, font sizes, alignments, text angles, and visibility toggles.
+- **Selection & Grouping:** Multi-select with selection box or Shift/Ctrl click. Edit shared properties simultaneously. Create or dissolve permanent and nested groups.
+- **Device Boxes & Images:** Edit device boxes and location frames as regular elements with custom line styles and dimensions. Insert, scale, position, and organize images.
+- **Cross-References:** Clickable cross-references between interruption points, coils, and contacts across different pages. Automatic calculation of contact mirrors and interruption references conforming to DIN EN 81346.
+- **Undo / Redo:** Full history tracking across objects, wiring, properties, and pages.
+- **Macros:** Search, preview, and place window macros (`.ema`), page macros (`.ems`), external macro packages, and contour files (`.fp1`). Configure macro variables prior to placement or add entire page macros as new project sheets.
+- **Reports & Vector PDF Export:** Project validation, terminal diagrams, and Bills of Materials (BOM). Clean multi-page vector PDF generation in DIN A3/A4 formats (color or monochrome) with interactive clickable cross-reference links, bookmarked pages, and automatic text wrapping.
+- **Touch & Mobile Support:** Touch dragging, placement, pinch-to-zoom, and collapsible panels for tablets and smartphones.
 
-- **Zeichnen und verbinden:** Bibliothekselemente platzieren, verschieben und drehen; richtungsabhängige Anschlüsse, Rasterfang, Verbindungslinien, Knoten und automatisches Verbinden.
-- **Bibliothek:** Generische Vorlagen für Schutzgeräte, Schaltgeräte, Klemmen, Versorgung und Messung, Sensorik, Automation, Antriebe, Installation und Schrankbau. Importierte Projekte verwenden ihre mitgelieferten Symboldefinitionen.
-- **Beschriftungen:** BMK, Funktionstext, Gerätebezeichnung, technische Daten und Gravur; getrennte Positionen, Schriftgrößen, Ausrichtung, Textwinkel und Sichtbarkeit. Neue automatische Beschriftungen stehen links und rechtsbündig.
-- **Auswahl und Gruppen:** Mit dem Mausrahmen mehrere Objekte auswählen und gemeinsam verschieben. Gemeinsame Eigenschaften bearbeiten, dauerhafte und verschachtelte Gruppen bilden oder auflösen. Gespeicherte native Gruppenzuordnungen werden für unterstützte Objekte importiert.
-- **Gerätekästen und Bilder:** Gerätekästen als normale Elemente bearbeiten; variable Maße und Linienarten. Eigene Bilddateien einfügen, verschieben, skalieren und löschen.
-- **Seiten und Titelseiten:** Bearbeitbare Projekt- und Kundendaten, Logos, Normblätter und Schriftfelder; importierte unterstützte Formulare bleiben erhalten.
-- **Querverweise:** Gegenstellen im Editor anklicken und anspringen. Verweise und Kontaktspiegel aus den Projektobjekten berechnen.
-- **Rückgängig/Wiederholen:** Änderungen an Objekten, Verdrahtung, Eigenschaften und Seiten innerhalb der Sitzung zurücknehmen oder wiederholen.
-- **Makros:** `.ema`, `.ems`, Seitenmakros `.emp` und Konturen `.fp1` aus einer eigenen Ordnerbibliothek suchen, in der Vorschau betrachten und als Objekte auf der aktuellen Seite platzieren. Variablen vor dem Einfügen konfigurieren; Seitenmakros auch als neue Seiten hinzufügen. Eingebettete Bilder und gespeicherte 2D-Ansichten übernehmen. Eigene Makros erhalten Bibliothek, Beschriftungen, Verbindungen und Gruppen.
-- **Auswertungen und PDF:** Projektprüfung, Klemmenplan und Artikelstückliste. Vektor-PDF in A3/A4 mit Farbe oder Schwarz-Weiß, anklickbaren Verweisen und optionalen Auswertungsseiten. Lange Stücklistentexte werden umgebrochen.
-- **Touch-Bedienung:** Verschieben und Platzieren per Touch, Zoomen mit zwei Fingern und einklappbare Seitenleisten.
+## Keyboard Shortcuts
 
-## Bedienung
+The main menu bar provides access to **Project**, **Edit**, **Insert**, **View**, **Evaluate**, and **Help**, complemented by a compact action toolbar.
 
-Die obere Menüzeile enthält **Projekt**, **Bearbeiten**, **Einfügen**, **Ansicht**, **Auswerten** und **Hilfe**. Darunter stehen die häufigen Aktionen in einer kompakten Werkzeugleiste.
-
-**Element** öffnet direkt die Bibliothek; der **Pfeil daneben** bietet Verbindungselemente, Gerätekästen, Kabelbeschriftungen, Bilder und Makros. Im **Rastermenü** werden Rasterfang und automatisches Verbinden eingestellt. Auf kleinen Bildschirmen bündelt **Menü** die Hauptmenüs.
-
-| Aktion | Bedienung |
+| Action | Shortcut / Operation |
 | --- | --- |
-| Mehrfachauswahl | Mausrahmen; Strg-/Umschalt-Klick ergänzt die Auswahl |
-| Alles auswählen | Strg+A |
-| Gruppieren / äußere Gruppe auflösen | Strg+G / Strg+Umschalt+G |
-| Rückgängig / Wiederholen | Strg+Z / Strg+Y oder Strg+Umschalt+Z |
-| Eigenschaften | F2, Enter oder Doppelklick |
-| Elementauswahl / Verdrahten | Einfg / D oder W |
-| Ausschneiden / Kopieren / Einfügen | Strg+X / Strg+C / Strg+V |
-| Drehen / Duplizieren / Löschen | R / Strg+D / Entf |
-| Ganzes Blatt / Ansicht verschieben | F / Pfeiltasten |
-| Rasterstufe | Alt+1, Alt+2, Alt+3, Alt+0; H schaltet Halb-/Vollraster um |
-| Laufende Aktion abbrechen | Esc |
+| Multi-selection | Drag selection box; Ctrl/Shift+Click to toggle items |
+| Select All | Ctrl+A |
+| Group / Ungroup | Ctrl+G / Ctrl+Shift+G |
+| Undo / Redo | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z |
+| Properties Inspector | F2, Enter, or Double-click |
+| Insert Symbol / Wire | Ins / D or W |
+| Cut / Copy / Paste | Ctrl+X / Ctrl+C / Ctrl+V |
+| Rotate / Duplicate / Delete | R / Ctrl+D / Del |
+| Fit to Screen / Pan Canvas | F / Arrow keys or middle-mouse drag |
+| Grid Snap Modes | Alt+1, Alt+2, Alt+3, Alt+0; H toggles half-/full-grid |
+| Cancel Action | Esc |
 
-In Textfeldern bleibt die normale Textbearbeitung aktiv.
+## File Formats & Compatibility
 
-Weitere Anleitungen: [Menüs](docs/menues.md), [Gruppen](docs/gruppierung.md), [Gerätekästen](docs/geraetekaesten.md), [Elementbibliothek](docs/elementbibliothek.md), [Makrobibliothek](docs/makrobibliothek.md).
+Open projects via **Project → Open Project…**:
+- Native Schematico JSON projects (`.json`)
+- Project XML files (`.xml`)
+- Project backup archives (`.zw1`, `.zip`, and split archive parts `.001`/`.002`). Uncompressed on-the-fly without requiring third-party extraction tools.
+- Macro packages and symbol packages (`.edz`, `.ema`, `.ems`, `.emp`, `.fp1`).
 
-Logos, App-Icons und Hinweise zur Verwendung: [Branding](docs/branding/README.md).
+Export your project as:
+- Native JSON project
+- Printable vector PDF (A3 / A4)
+- Compressed project archive (`.zw1`)
+- Standard exchange XML (`.xml`)
+- Page macro (`.ems`) or window macro (`.ema`)
 
-## Dateiformate und Grenzen
+## Development
 
-Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. `.zw1`-Sicherungen werden direkt als ZIP oder 7z erkannt; vorheriges Entpacken ist nicht erforderlich. Der 7z-Entpacker läuft lokal in einem Hintergrundprozess und benötigt keine zusätzliche Installation. Unterstützt werden unverschlüsselte Sicherungen bis 256 MiB mit bis zu 512 MiB entpacktem Inhalt. Archive ohne lesbare Projektdaten erzeugen eine Fehlermeldung statt Beispielinhalt. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems`/`.emp`/`.fp1` werden für unterstützte Paket- und Makrostrukturen gelesen.
-
-Die Erweiterung allein garantiert keine Importierbarkeit. Der native Import unterstützt die untersuchten Datenbanklayouts, Bibliotheken und XML-Objekttypen. Unbekannte Varianten und unauflösbare Daten werden gemeldet.
-
-**Speichern** erzeugt ein eigenes bearbeitbares JSON-Projekt. Eigene XML-, Archiv- und Makroexporte erhalten die unterstützten Projektdaten; ein Rückschreiben fremder proprietärer Datenbanken wird nicht zugesagt. Ältere eigene Speicherstände und Makros werden beim Öffnen auf neutrale interne Kennungen migriert.
-
-## Entwicklung
-
-Voraussetzungen: **Node.js 22 oder neuer** und npm.
+Prerequisites: **Node.js 22 or newer** and `npm`.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Die Vorschau läuft unter `http://localhost:5173`. Für einen Test im lokalen Netzwerk die IP-Adresse des Entwicklungsrechners verwenden. **Hilfe → Auf dem Smartphone öffnen** zeigt die Verbindungsinformationen.
+The preview server runs at `http://localhost:5173`. Open on other devices on your local network using the IP shown under **Help → Open on Smartphone…**.
 
 ```bash
-npm test          # Automatische Tests ohne private Projektarchive
-npm run build    # Namensprüfung, TypeScript und Web-Build nach dist/
-npm run preview  # Produktionsbuild lokal anzeigen
-npm run check:branding  # Neutrale Produktverweise und Archivablage prüfen
+npm test            # Automated unit and integration test suite
+npm run build       # TypeScript verification and production web build in dist/
+npm run preview     # Preview production build locally
+npm run check:branding # Verify brand-neutral documentation and source tokens
 ```
 
-Die Tests decken unter anderem Verlauf, Auswahl/Gruppen, Bibliotheken, Beschriftungen, Verdrahtung, Formulare, Makros, Dateiformate und PDF ab. Einige zusätzliche Regressionen benötigen eine vom Entwickler bereitgestellte private Quelldatei; ohne diese Daten werden nur diese Archivprüfungen ausdrücklich übersprungen.
-
-Private Beispielprojekte und vollständige Quellarchive sind **nicht Bestandteil dieses Repositorys**. Für die ergänzenden Regressionen das erste Teilarchiv oder eine vollständige ZIP-Datei außerhalb des Repositorys bereitstellen:
+## Desktop Build (Windows)
 
 ```bash
-SCHEMATICO_NATIVE_FIXTURE=/pfad/zu/house.zip.001 npm run test:native
+npm run electron:dev   # Desktop app with live development server
+npm run dist:win       # Package Windows installer and portable EXE
 ```
 
-Die historischen Archivregressionen erwarten das ursprünglich untersuchte Referenzprojekt. Für andere Projekte sind passende eigene Erwartungen erforderlich. Normale Tests und Builds benötigen dieses Referenzprojekt nicht.
+Release builds are generated in `release/` under the name **Schematico**. The GitHub Actions workflow automatically builds the web app and Windows executable on pushes to `main`.
 
-Eine andere native ZIP-/7z-Projektsicherung lässt sich zusätzlich über den direkten Dateieingang prüfen:
+## License
 
-```bash
-SCHEMATICO_BACKUP_FIXTURE=/pfad/zur/sicherung.zw1 npx tsx src/packages/ProjectArchive.test.ts
-```
-
-## Windows und Veröffentlichung
-
-```bash
-npm run electron:dev   # Desktop mit Entwicklungsserver
-npm run dist:win       # Windows-Installer und portable EXE
-```
-
-Für den Windows-Build wird ein Windows-System empfohlen. Die Ausgaben liegen in `release/` und tragen den Namen **Schematico**. Die GitHub-Actions-Workflows veröffentlichen bei Pushes auf `main` die Web-App und erstellen den Windows-Installer samt portabler EXE. Die EXE-Dateien stehen als Workflow-Artefakt **Schematico-Windows-x64** bereit; Versions-Tags `v*` können zusätzlich ein Release erzeugen.
-
-## Lizenz
-
-Die Paketmetadaten deklarieren MIT. Der separat geladene 7z-Entpacker verwendet 7z-wasm (LGPL mit unRAR-Einschränkung); Lizenztexte und Bezugsquellen stehen unter [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt). Private Benutzerprojekte und externe Quelldateien werden nicht mitgeliefert und sind davon getrennt.
+Licensed under the MIT License. The bundled 7z-wasm unpacker is licensed under LGPL with unRAR restriction (see [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt)).

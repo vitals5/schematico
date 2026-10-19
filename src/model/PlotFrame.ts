@@ -85,7 +85,7 @@ export function fitFrameText(value: string, text: FrameText, cell: ReturnType<ty
 }
 
 export function plotFrameSvg(page: Page, project: Project): string {
-  const t=project.plotFrameTemplate ?? defaultPlotFrame();
+  const t=project.plotFrameTemplate ?? defaultPlotFrame(project.language ?? 'de');
   return `<g id="titleBlock" class="native-plot-frame" color="#8fae65" transform="scale(${page.plotFrame.width/t.width},${page.plotFrame.height/t.height})">${drawingToSvg(t.graphics,{color:'currentColor'})}${t.texts.map(text=>{
     const value=frameTextValue(text,page,project,t); if(!value)return '';
     const cell=frameTextCell(text,t),fit=fitFrameText(value,text,cell),id='frame-clip-'+text.id;

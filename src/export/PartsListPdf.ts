@@ -1,13 +1,17 @@
 import type { jsPDF } from 'jspdf';
 import type { PartEntry } from '../reports/PartsList';
 
-export const BOM_COLUMNS = [
-  { title: 'Menge', width: 18, font: 'helvetica', style: 'bold' },
-  { title: 'Artikelnummer', width: 45, font: 'courier', style: 'bold' },
-  { title: 'Beschreibung / Typ', width: 65, font: 'helvetica', style: 'normal' },
-  { title: 'Hersteller', width: 40, font: 'helvetica', style: 'normal' },
-  { title: 'BMK-Liste', width: 50, font: 'courier', style: 'normal' }
-];
+export function getBomColumns(lang: 'de' | 'en' = 'de') {
+  return [
+    { title: lang === 'en' ? 'Qty' : 'Menge', width: 18, font: 'helvetica', style: 'bold' },
+    { title: lang === 'en' ? 'Part Number' : 'Artikelnummer', width: 45, font: 'courier', style: 'bold' },
+    { title: lang === 'en' ? 'Description / Type' : 'Beschreibung / Typ', width: 65, font: 'helvetica', style: 'normal' },
+    { title: lang === 'en' ? 'Manufacturer' : 'Hersteller', width: 40, font: 'helvetica', style: 'normal' },
+    { title: lang === 'en' ? 'Tag List' : 'BMK-Liste', width: 50, font: 'courier', style: 'normal' }
+  ];
+}
+
+export const BOM_COLUMNS = getBomColumns('de');
 export const BOM_FONT_SIZE = 7.5;
 export const BOM_LINE_HEIGHT = 3.2; // mm, including leading
 export const BOM_ROWS_TOP = 47;
@@ -16,7 +20,7 @@ export type BomPage = BomRow[];
 
 /** Measure with each cell's actual font. Keep ordinary rows together; a row
  * taller than a whole page continues without dropping any of its text. */
-export function layoutPartsListPdf(doc: jsPDF, parts: PartEntry[], pageHeight: number): BomPage[] {
+export function layoutPartsListPdf(doc: jsPDF, parts: PartEntry[], pageHeight: number, columns = BOM_COLUMNS): BomPage[] {
   const savedFont = doc.getFont(), savedSize = doc.getFontSize();
   const pages: BomPage[] = [[]];
   const bottom = pageHeight - 25, fullHeight = bottom - BOM_ROWS_TOP;
@@ -26,7 +30,7 @@ export function layoutPartsListPdf(doc: jsPDF, parts: PartEntry[], pageHeight: n
     for (const part of parts) {
       const values = [`${part.quantity}x`, part.articleNumber, part.description, part.manufacturer, part.bmkList.join(', ')];
       const cells = values.map((text, i) => {
-        const column = BOM_COLUMNS[i];
+        const column = columns[i] ?? BOM_COLUMNS[i];
         doc.setFont(column.font, column.style); doc.setFontSize(BOM_FONT_SIZE);
         return doc.splitTextToSize(text.replace(/\r\n?/g, '\n'), column.width - 4) as string[];
       });

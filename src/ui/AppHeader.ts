@@ -1,4 +1,5 @@
 import { escapeSvg } from '../model/ImportedDrawing';
+import { t } from '../i18n';
 
 const paths:Record<string,string>={
   bolt:'m13 2-9 12h7l-1 8 10-12h-7z',
@@ -33,63 +34,64 @@ const proxy=(id:string,label:string,key='')=>`<button type="button" class="menu-
 
 export function renderAppHeader(projectName:string):string {
   return `<div class="app-chrome">
-    <nav class="ecad-menubar" id="ecadMenubar" aria-label="Hauptmenü">
+    <nav class="ecad-menubar" id="ecadMenubar" aria-label="${t('menu')}">
       <div class="brand-logo"><img class="brand-icon" src="${import.meta.env.BASE_URL}branding/icon-64.png" width="28" height="28" alt="" draggable="false" />Schematico</div>
-      <button type="button" class="menu-trigger compact-menu-toggle" id="btnCompactMenu" aria-expanded="false" aria-controls="mainMenuList">${headerIcon('menu')} Menü</button>
+      <button type="button" class="menu-trigger compact-menu-toggle" id="btnCompactMenu" aria-expanded="false" aria-controls="mainMenuList">${headerIcon('menu')} ${t('menu')}</button>
       <div class="main-menu-list" id="mainMenuList">
-        ${menu('menuProjectTrigger','Projekt',
-          opt('menuNew','Neues Projekt…')+opt('menuOpen','Projekt öffnen…')+opt('menuSave','Speichern','Strg+S')+
-          separator+opt('menuLoadDemo','Standard-Projekt laden…')+
-          separator+heading('Export')+opt('menuExportPdf','PDF exportieren…','Strg+P')+opt('menuExportZw1','Projektarchiv (.zw1)…')+opt('menuExportXml','Projekt-XML…')+opt('menuExportPageMacro','Seite als Makro (.ems)…')+opt('menuPrint','Drucken…')+
-          separator+opt('menuSettings','Einstellungen…'),'menu-item')}
-        ${menu('menuEditTrigger','Bearbeiten',
-          opt('menuUndo','Rückgängig','Strg+Z')+opt('menuRedo','Wiederholen','Strg+Y')+separator+
-          opt('menuCut','Ausschneiden','Strg+X')+opt('menuCopy','Kopieren','Strg+C')+opt('menuPaste','Einfügen','Strg+V')+opt('menuDuplicate','Duplizieren','Strg+D')+separator+
-          opt('menuRotate','Um 90° drehen','R')+opt('menuDelete','Löschen','Entf')+separator+
-          opt('menuGroup','Gruppieren','Strg+G')+opt('menuUngroup','Gruppierung auflösen','Strg+Umschalt+G'),'menu-item')}
-        ${menu('menuInsertTrigger','Einfügen',
-          opt('menuInsertSym','Element…','Einfg')+opt('menuInsertConnections','Verbindungselement…')+opt('menuWire','Verbindungslinie','D')+opt('menuInsertCable','Kabelbeschriftung…')+opt('menuInsertBox','Gerätekasten zeichnen')+opt('menuInsertImage','Bilddatei…')+separator+
-          heading('Makros')+opt('menuInsertMacro','Fenstermakro (.ema)…')+opt('menuInsertPageMacro','Makro platzieren (.ems)…')+separator+
-          heading('Seiten')+opt('menuNewPage','Neue Seite…')+opt('menuNewCoverPage','Titelblatt…')+opt('menuDeletePage','Aktuelle Seite löschen…'),'menu-item')}
-        ${menu('menuViewTrigger','Ansicht',
-          opt('menuFit','Ganzes Blatt','F')+opt('menuZoom100','Originalgröße (100 %)')+opt('menuZoomIn','Vergrößern')+opt('menuZoomOut','Verkleinern')+separator+
-          heading('Rasterfang')+opt('menuGridFull','Vollraster','Alt+1')+opt('menuGridHalf','Halbraster','H / Alt+2')+opt('menuGridFine','Feinraster','Alt+3')+opt('menuGridOff','Rasterfang aus','Alt+0')+separator+
-          opt('menuToggleAutoconnect','Automatisch verbinden','', 'aria-pressed="true"')+separator+
-          opt('menuToggleLeftPanel','Seiten & Bibliothek')+opt('menuToggleRightPanel','Eigenschaften'),'menu-item')}
-        ${menu('menuDataTrigger','Auswerten',
-          opt('menuPlausibility','Projekt prüfen…')+opt('menuRecalcCrossRef','Querverweise aktualisieren')+separator+
-          opt('menuShowTerminals','Klemmenplan anzeigen')+opt('menuShowBom','Artikelstückliste anzeigen'),'menu-item')}
-        ${menu('menuHelpTrigger','Hilfe',opt('menuShortcuts','Tastenkürzel…')+opt('menuMobile','Auf dem Smartphone öffnen…')+separator+opt('menuAbout','Über Schematico'),'menu-item')}
+        ${menu('menuProjectTrigger',t('menuProject'),
+          opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+
+          separator+opt('menuProjectSettings',t('menuProjectSettings'))+
+          separator+opt('menuLoadDemo',t('menuLoadDemo'))+
+          separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuPrint',t('menuPrint'))+
+          separator+opt('menuSettings',t('menuSettings')),'menu-item')}
+        ${menu('menuEditTrigger',t('menuEdit'),
+          opt('menuUndo',t('menuUndo'),t('keyCtrlZ'))+opt('menuRedo',t('menuRedo'),t('keyCtrlY'))+separator+
+          opt('menuCut',t('menuCut'),t('keyCtrlX'))+opt('menuCopy',t('menuCopy'),t('keyCtrlC'))+opt('menuPaste',t('menuPaste'),t('keyCtrlV'))+opt('menuDuplicate',t('menuDuplicate'),t('keyCtrlD'))+separator+
+          opt('menuRotate',t('menuRotate'),t('keyR'))+opt('menuDelete',t('menuDelete'),t('keyDel'))+separator+
+          opt('menuGroup',t('menuGroup'),t('keyCtrlG'))+opt('menuUngroup',t('menuUngroup'),t('keyCtrlShiftG')),'menu-item')}
+        ${menu('menuInsertTrigger',t('menuInsert'),
+          opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
+          heading(t('headingMacros'))+opt('menuInsertMacro',t('menuInsertMacro'))+opt('menuInsertPageMacro',t('menuInsertPageMacro'))+separator+
+          heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
+        ${menu('menuViewTrigger',t('menuView'),
+          opt('menuFit',t('menuFit'),t('keyF'))+opt('menuZoom100',t('menuZoom100'))+opt('menuZoomIn',t('menuZoomIn'))+opt('menuZoomOut',t('menuZoomOut'))+separator+
+          heading(t('headingGrid'))+opt('menuGridFull',t('menuGridFull'),'Alt+1')+opt('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+opt('menuGridFine',t('menuGridFine'),'Alt+3')+opt('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
+          opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+separator+
+          opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel')),'menu-item')}
+        ${menu('menuDataTrigger',t('menuData'),
+          opt('menuPlausibility',t('menuPlausibility'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
+          opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
+        ${menu('menuHelpTrigger',t('menuHelp'),opt('menuShortcuts',t('menuShortcuts'))+opt('menuMobile',t('menuMobile'))+separator+opt('menuAbout',t('menuAbout')),'menu-item')}
       </div>
       <span id="headerProjectName" class="header-project-name" title="${escapeSvg(projectName)}">${escapeSvg(projectName)}</span>
     </nav>
-    <header class="app-header" aria-label="Werkzeugleiste">
-      <div class="toolbar" role="toolbar" aria-label="Zeichnen und bearbeiten">
-        <div class="toolbar-group panel-tools" role="group" aria-label="Seiten">${tool('btnToggleLeftSidebar','Seiten & Bibliothek ein-/ausblenden','left')}</div>
-        <div class="toolbar-group file-tools" role="group" aria-label="Projekt">
-          ${tool('btnOpenProject','Projekt öffnen','open')}${tool('btnSaveJson','Projekt speichern (Strg+S)','save')}
+    <header class="app-header" aria-label="${t('toolToggleLeft')}">
+      <div class="toolbar" role="toolbar" aria-label="${t('toolSelect')}">
+        <div class="toolbar-group panel-tools" role="group" aria-label="${t('tabPages')}">${tool('btnToggleLeftSidebar',t('toolToggleLeft'),'left')}</div>
+        <div class="toolbar-group file-tools" role="group" aria-label="${t('menuProject')}">
+          ${tool('btnOpenProject',t('toolOpenProject'),'open')}${tool('btnSaveJson',t('toolSave'),'save')}
         </div>
-        <div class="toolbar-group history-tools" role="group" aria-label="Verlauf">${tool('btnUndo','Rückgängig (Strg+Z)','undo')}${tool('btnRedo','Wiederholen (Strg+Y)','redo')}</div>
-        <div class="toolbar-group draw-tools" role="group" aria-label="Zeichnen">
-          ${tool('btnToolSelect','Auswählen','select','','active')}${tool('btnToolWire','Verbindungslinie zeichnen (D)','wire','Verdrahten')}
+        <div class="toolbar-group history-tools" role="group" aria-label="${t('menuUndo')}">${tool('btnUndo',t('toolUndo'),'undo')}${tool('btnRedo',t('toolRedo'),'redo')}</div>
+        <div class="toolbar-group draw-tools" role="group" aria-label="${t('toolWire')}">
+          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}
           <div class="insert-split">
-            ${tool('btnOpenSymbolSelection','Element auswählen (Einfg)','add','Element','btn-primary')}
-            ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">Weitere Objekte einfügen</span>`,
-              opt('btnOpenConnections','Verbindungselement…')+opt('btnDeviceBox','Gerätekasten zeichnen')+opt('btnCableDefinition','Kabelbeschriftung…')+opt('btnAddImage','Bilddatei…')+separator+
-              proxy('menuInsertMacro','Fenstermakro (.ema)…')+proxy('menuInsertPageMacro','Makro platzieren (.ems)…'),'insert-menu')}
+            ${tool('btnOpenSymbolSelection',t('toolInsertSym'),'add',t('toolInsertSymLabel'),'btn-primary')}
+            ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">${t('toolMoreInsert')}</span>`,
+              opt('btnOpenConnections',t('menuInsertConnections'))+opt('btnDeviceBox',t('menuInsertBox'))+opt('btnCableDefinition',t('menuInsertCable'))+opt('btnAddImage',t('menuInsertImage'))+separator+
+              proxy('menuInsertMacro',t('menuInsertMacro'))+proxy('menuInsertPageMacro',t('menuInsertPageMacro')),'insert-menu')}
           </div>
         </div>
-        <div class="toolbar-group selection-tools" role="group" aria-label="Auswahl bearbeiten">
-          ${tool('btnToolRotate','Um 90° drehen (R)','rotate')}${tool('btnToolCopy','Kopieren (Strg+C)','copy')}${tool('btnToolPaste','Einfügen (Strg+V)','paste')}${tool('btnToolDuplicate','Duplizieren (Strg+D)','duplicate')}${tool('btnToolDelete','Löschen (Entf)','trash')}
+        <div class="toolbar-group selection-tools" role="group" aria-label="${t('menuEdit')}">
+          ${tool('btnToolRotate',t('toolRotate'),'rotate')}${tool('btnToolCopy',t('toolCopy'),'copy')}${tool('btnToolPaste',t('toolPaste'),'paste')}${tool('btnToolDuplicate',t('toolDuplicate'),'duplicate')}${tool('btnToolDelete',t('toolDelete'),'trash')}
         </div>
-        <div class="toolbar-group view-tools" role="group" aria-label="Ansicht und Fang">
-          ${tool('btnZoomFit','Ganzes Blatt (F)','fit')}
-          ${menu('btnDrawingOptions',`${headerIcon('grid')}<span class="grid-label" id="headerGridLabel">Raster</span>${headerIcon('chevron')}`,
-            heading('Rasterfang')+proxy('menuGridFull','Vollraster','Alt+1')+proxy('menuGridHalf','Halbraster','H / Alt+2')+proxy('menuGridFine','Feinraster','Alt+3')+proxy('menuGridOff','Rasterfang aus','Alt+0')+separator+
-            proxy('menuToggleAutoconnect','Automatisch verbinden'),'drawing-options')}
+        <div class="toolbar-group view-tools" role="group" aria-label="${t('menuView')}">
+          ${tool('btnZoomFit',t('toolFit'),'fit')}
+          ${menu('btnDrawingOptions',`${headerIcon('grid')}<span class="grid-label" id="headerGridLabel">${t('toolGrid')}</span>${headerIcon('chevron')}`,
+            heading(t('headingGrid'))+proxy('menuGridFull',t('menuGridFull'),'Alt+1')+proxy('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+proxy('menuGridFine',t('menuGridFine'),'Alt+3')+proxy('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
+            proxy('menuToggleAutoconnect',t('menuToggleAutoconnect')),'drawing-options')}
         </div>
-        <div class="toolbar-group output-tools" role="group" aria-label="Ausgabe">${tool('btnExportPdf','PDF exportieren (Strg+P)','pdf','PDF')}</div>
-        <div class="toolbar-group inspector-tools" role="group" aria-label="Eigenschaften">${tool('btnToggleRightSidebar','Eigenschaften ein-/ausblenden','right')}</div>
+        <div class="toolbar-group output-tools" role="group" aria-label="${t('headingExport')}">${tool('btnExportPdf',t('toolExportPdf'),'pdf','PDF')}</div>
+        <div class="toolbar-group inspector-tools" role="group" aria-label="${t('tabProperties')}">${tool('btnToggleRightSidebar',t('toolToggleRight'),'right')}</div>
       </div>
     </header>
     <input type="file" id="menuFileInput" accept=".zw1,.zip,.edz,.xml,.json,.elk,.001,.002,.003" multiple hidden>
