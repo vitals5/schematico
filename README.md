@@ -56,7 +56,7 @@ Logos, App-Icons und Hinweise zur Verwendung: [Branding](docs/branding/README.md
 
 Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems`/`.emp`/`.fp1` werden für unterstützte Paket- und Makrostrukturen gelesen.
 
-Die Erweiterung allein garantiert keine Importierbarkeit. Der native Import unterstützt die untersuchten Datenbanklayouts, Bibliotheken und XML-Objekttypen. Unbekannte Varianten und unauflösbare Daten werden gemeldet. Befunde und verbleibende Grenzen stehen unter [docs/reverse-engineering](docs/reverse-engineering/).
+Die Erweiterung allein garantiert keine Importierbarkeit. Der native Import unterstützt die untersuchten Datenbanklayouts, Bibliotheken und XML-Objekttypen. Unbekannte Varianten und unauflösbare Daten werden gemeldet.
 
 **Speichern** erzeugt ein eigenes bearbeitbares JSON-Projekt. Eigene XML-, Archiv- und Makroexporte erhalten die unterstützten Projektdaten; ein Rückschreiben fremder proprietärer Datenbanken wird nicht zugesagt. Ältere eigene Speicherstände und Makros werden beim Öffnen auf neutrale interne Kennungen migriert.
 
