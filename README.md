@@ -55,7 +55,7 @@ Logos, App-Icons und Hinweise zur Verwendung: [Branding](docs/branding/README.md
 
 ## Dateiformate und Grenzen
 
-Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems`/`.emp`/`.fp1` werden für unterstützte Paket- und Makrostrukturen gelesen.
+Unter **Projekt → Projekt öffnen** lassen sich eigene JSON-Projekte, eigene Projekt-XML-Dateien und unterstützte Projektarchive (`.zw1`, `.zip`, zusammengehörige `.001`/`.002`-Teile) öffnen. `.zw1`-Sicherungen werden direkt als ZIP oder 7z erkannt; vorheriges Entpacken ist nicht erforderlich. Der 7z-Entpacker läuft lokal in einem Hintergrundprozess und benötigt keine zusätzliche Installation. Unterstützt werden unverschlüsselte Sicherungen bis 256 MiB mit bis zu 512 MiB entpacktem Inhalt. Archive ohne lesbare Projektdaten erzeugen eine Fehlermeldung statt Beispielinhalt. Zusammengehörige Archivteile gemeinsam auswählen. `.edz` sowie `.ema`/`.ems`/`.emp`/`.fp1` werden für unterstützte Paket- und Makrostrukturen gelesen.
 
 Die Erweiterung allein garantiert keine Importierbarkeit. Der native Import unterstützt die untersuchten Datenbanklayouts, Bibliotheken und XML-Objekttypen. Unbekannte Varianten und unauflösbare Daten werden gemeldet.
 
@@ -89,6 +89,12 @@ SCHEMATICO_NATIVE_FIXTURE=/pfad/zu/house.zip.001 npm run test:native
 
 Die historischen Archivregressionen erwarten das ursprünglich untersuchte Referenzprojekt. Für andere Projekte sind passende eigene Erwartungen erforderlich. Normale Tests und Builds benötigen dieses Referenzprojekt nicht.
 
+Eine andere native ZIP-/7z-Projektsicherung lässt sich zusätzlich über den direkten Dateieingang prüfen:
+
+```bash
+SCHEMATICO_BACKUP_FIXTURE=/pfad/zur/sicherung.zw1 npx tsx src/packages/ProjectArchive.test.ts
+```
+
 ## Windows und Veröffentlichung
 
 ```bash
@@ -100,4 +106,4 @@ Für den Windows-Build wird ein Windows-System empfohlen. Die Ausgaben liegen in
 
 ## Lizenz
 
-Die Paketmetadaten deklarieren MIT. Private Benutzerprojekte und externe Quelldateien werden nicht mitgeliefert und sind davon getrennt.
+Die Paketmetadaten deklarieren MIT. Der separat geladene 7z-Entpacker verwendet 7z-wasm (LGPL mit unRAR-Einschränkung); Lizenztexte und Bezugsquellen stehen unter [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt). Private Benutzerprojekte und externe Quelldateien werden nicht mitgeliefert und sind davon getrennt.

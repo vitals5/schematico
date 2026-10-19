@@ -1,7 +1,7 @@
 import { migrateLegacyData, normalizeLegacyProjectXml } from '../model/LegacyCompatibility';
 // src/packages/PackageHandler.ts
 // Parser and generator for CAD project archive files:
-// - .zw1: Project Backup Archive (ZIP containing .elk and *.edb)
+// - .zw1: Project Backup Archive (ZIP or 7z containing native project data)
 // - .edz: Component / Macro Archive (ZIP with XML, macros, and images)
 // - .xml: XML Project & Schema Exchange Format
 
@@ -10,6 +10,7 @@ import { Project, Page, PlacedComponent, Wire } from '../model/types';
 import { SYMBOL_DEFINITIONS } from '../model/symbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { EdbProjectParser } from './EdbProjectParser';
+import { readProjectArchive } from './ProjectArchive';
 
 export interface PackageEntry {
   path: string;
@@ -106,18 +107,18 @@ export class PackageHandler {
    * Parses a project backup archive (.zw1 or .zip containing .elk and *.edb)
    */
   private static async parseZw1Backup(file: File): Promise<PackageInspectionResult> {
-    const zip = await JSZip.loadAsync(file);
+    const { zip, sizes, compression } = await readProjectArchive(file);
     const entries: PackageEntry[] = [];
     let elkContent = '';
     let projectName = file.name.replace(/\.(zw1|zip)$/i, '');
-    const messages: string[] = [];
+    const messages: string[] = compression === '7z' ? ['7z-Projektsicherung direkt entpackt.'] : [];
 
     // Analyze archive entries
     zip.forEach((relativePath, zipEntry) => {
       let type: PackageEntry['type'] = 'other';
       if (relativePath.toLowerCase().endsWith('.elk')) {
         type = 'elk';
-      } else if (relativePath.toLowerCase().includes('.edb/')) {
+      } else if (relativePath.toLowerCase().includes('.edb/') || relativePath.toLowerCase().endsWith('.eod')) {
         type = 'edb';
       } else if (relativePath.toLowerCase().endsWith('.ema') || relativePath.toLowerCase().endsWith('.ems')) {
         type = 'macro';
@@ -127,7 +128,7 @@ export class PackageHandler {
 
       entries.push({
         path: relativePath,
-        size: (zipEntry as any)._data?.uncompressedSize || 0,
+        size: sizes.get(relativePath) ?? 0,
         isDir: zipEntry.dir,
         type
       });
@@ -184,20 +185,7 @@ export class PackageHandler {
       }
     }
 
-    // Fallback to structured default with metadata if no EOD database was parsed
-    const project = this.createProjectFromPackageMetadata(projectName, elkContent, entries);
-    messages.push(`Projekt "${projectName}" mit ${entries.length} Elementen erfolgreich strukturiert.`);
-
-    return {
-      filename: file.name,
-      projectName,
-      format: 'ZW1_PROJECT_BACKUP',
-      entryCount: entries.length,
-      entries,
-      elkContent,
-      extractedProject: project,
-      messages
-    };
+    throw new Error('Das Archiv enthält keine unterstützten Projektdaten (Page.eod oder project_data.json).');
   }
 
   /**

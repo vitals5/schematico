@@ -80,8 +80,8 @@ await assert.rejects(() => PackageHandler.inspectFile(new File([invalidSaved], '
 const metadataOnly = new JSZip();
 metadataOnly.file('Metadata.elk', '[Project]\nProjectName=Metadata\n');
 const metadataBytes = new Uint8Array(await metadataOnly.generateAsync({ type: 'uint8array' }));
-assert((await PackageHandler.inspectFile(new File([metadataBytes], 'metadata.zw1'))).extractedProject,
-  'metadata-only backup behavior is preserved');
+await assert.rejects(PackageHandler.inspectFile(new File([metadataBytes], 'metadata.zw1')), /keine unterstützten Projektdaten/,
+  'metadata alone must not fabricate an editable demo circuit');
 assert.equal((await PackageHandler.inspectFile(new File([metadataBytes], 'metadata.unknown'))).format, 'UNKNOWN',
   'metadata-only generic archive behavior is preserved');
 console.log('Strict EDB failure propagation and saved ZW1 project priority passed.');
