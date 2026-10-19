@@ -1,8 +1,6 @@
-// src/reports/PartsList.ts
-// Generates Bill of Materials (Stückliste / Artikelliste) according to DIN EN 81346 standards
-
-import { Project } from '../model/types';
+import { Project, PlacedComponent, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
+import { isConnectionSymbol } from '../model/ConnectionSymbols';
 
 export interface PartEntry {
   articleNumber: string;
@@ -13,13 +11,33 @@ export interface PartEntry {
   bmkList: string[];
 }
 
+export function isConnectionComponent(comp: PlacedComponent, sym?: SymbolDefinition): boolean {
+  if (sym && isConnectionSymbol(sym)) return true;
+  if (sym?.category === 'connections' || sym?.connectionGraphic) return true;
+  const id = comp.symbolId.toLowerCase();
+  return (
+    id === 'potential_arrow' ||
+    id.startsWith('potential_arrow') ||
+    id.startsWith('t_piece') ||
+    id.startsWith('corner') ||
+    id.startsWith('cross_') ||
+    id === 'potential_rail_source'
+  );
+}
+
 export class PartsListGenerator {
   public static generatePartsList(project: Project): PartEntry[] {
     const partsMap = new Map<string, PartEntry>();
 
     for (const page of project.pages) {
       for (const comp of page.components) {
-        const sym = getSymbolForComponent(comp);
+        const sym = getSymbolForComponent(comp, project);
+
+        // Skip connection elements (T-pieces, corners, potential arrows, crossings, etc.)
+        if (isConnectionComponent(comp, sym)) {
+          continue;
+        }
+
         // Skip auxiliary contacts if part is counted on master coil
         if (sym?.isContact && !sym.isMaster && sym.category === 'relays' && sym.contactType !== 'PowerNO') {
           continue;
