@@ -171,8 +171,8 @@ export class App {
 
   private initDefaultProject(): void {
     const dummyFile = new File([''], 'Projekt_Einspeisung.zw1');
-    // Generates the initial project with Cover, 400V Motor circuit, and 24V DC control circuit
-    const res = (PackageHandler as any).createProjectFromPackageMetadata('Anlagensteuerung', '', []);
+    // Generates the initial project with Cover, 400V Motor circuit, 24V DC control circuit, and PLC/Sensor circuit
+    const res = (PackageHandler as any).createProjectFromPackageMetadata('Förderanlagen-Steuerung FA-400', '', []);
     this.project = res;
     setProjectSymbolLibrary(this.project);
     for (const p of this.project.pages) {
