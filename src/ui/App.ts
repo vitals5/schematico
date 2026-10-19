@@ -1147,12 +1147,30 @@ export class App {
   }
 
   private renderPagesTab(container: HTMLElement): void {
+    const activePage = this.project.pages.find(p => p.id === this.project.activePageId) || this.project.pages[0];
+    const activeIdx = this.project.pages.findIndex(p => p.id === this.project.activePageId);
+    const canMoveUp = activeIdx > 0;
+    const canMoveDown = activeIdx >= 0 && activeIdx < this.project.pages.length - 1;
+    const canDelete = this.project.pages.length > 1;
+
     let html = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Projektseiten (DIN EN 81346)</span>
         <button class="btn btn-primary" id="btnAddPage" style="padding: 2px 8px; font-size: 11px;">+ Seite</button>
       </div>
-      <button class="btn" id="btnAddCoverPage" style="width:100%;margin-bottom:12px">+ Titelblatt</button>
+      <button class="btn" id="btnAddCoverPage" style="width: 100%; margin-bottom: 8px;">+ Titelblatt</button>
+
+      <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${activePage ? `Blatt ${escapeSvg(activePage.pageNumber)}: ${escapeSvg(activePage.title)}` : 'Aktive Seite'}">
+          ${activePage ? `Blatt ${escapeSvg(activePage.pageNumber)}` : 'Seite'}:
+        </span>
+        <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+          <button type="button" class="btn" id="btnTreeMovePageUp" title="Aktive Seite nach oben verschieben" ${canMoveUp ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▲</button>
+          <button type="button" class="btn" id="btnTreeMovePageDown" title="Aktive Seite nach unten verschieben" ${canMoveDown ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▼</button>
+          <button type="button" class="btn" id="btnTreeDeletePage" title="Aktive Seite löschen" ${canDelete ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2; color: var(--danger); border-color: rgba(229,62,62,0.4);">🗑️</button>
+        </div>
+      </div>
+
       <div class="page-tree">
     `;
 
@@ -1163,14 +1181,9 @@ export class App {
       html += `
         <div class="tree-node page-tree-item ${isActive ? 'active' : ''}" data-page-id="${page.id}" data-page-index="${idx}" draggable="true" style="user-select: none;">
           <span style="cursor: grab;" title="Ziehen zum Neuanordnen">${icon}</span>
-          <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 4px;">
+          <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 6px;">
             <div style="font-weight: 500;">Blatt ${escapeSvg(page.pageNumber)}: ${escapeSvg(page.title)}</div>
             <div style="font-size: 10px; color: ${isActive ? '#e2e8f0' : 'var(--text-muted)'};">${escapeSvg(page.higherLevel)}${escapeSvg(page.location)}</div>
-          </div>
-          <div class="page-item-actions" style="display: flex; gap: 2px; align-items: center;">
-            <button type="button" class="btn btn-page-action btn-move-page-up" data-page-id="${page.id}" title="Nach oben verschieben" ${idx === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px"' : 'style="padding:2px 4px;font-size:10px"'}>▲</button>
-            <button type="button" class="btn btn-page-action btn-move-page-down" data-page-id="${page.id}" title="Nach unten verschieben" ${idx === this.project.pages.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px"' : 'style="padding:2px 4px;font-size:10px"'}>▼</button>
-            <button type="button" class="btn btn-page-action btn-delete-page" data-page-id="${page.id}" title="Seite löschen" ${this.project.pages.length <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;padding:2px 4px;font-size:10px;color:var(--danger)"' : 'style="padding:2px 4px;font-size:10px;color:var(--danger)"'}>🗑️</button>
           </div>
         </div>
       `;
@@ -1181,9 +1194,8 @@ export class App {
 
     // Events
     container.querySelectorAll('.tree-node').forEach(node => {
-      node.addEventListener('click', (e) => {
-        if ((e.target as Element)?.closest?.('.page-item-actions')) return;
-        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
+      node.addEventListener('click', () => {
+        const id = (node as HTMLElement).dataset.pageId!;
         this.canvas.setPage(id);
         if (window.innerWidth <= 960) {
           this.setLeftPanelCollapsed(true);
@@ -1192,28 +1204,17 @@ export class App {
       });
     });
 
-    container.querySelectorAll('.btn-move-page-up').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
-        this.movePage(id, 'up');
-      });
+    const activePageId = this.project.activePageId;
+    document.getElementById('btnTreeMovePageUp')?.addEventListener('click', () => {
+      if (activePageId) this.movePage(activePageId, 'up');
     });
 
-    container.querySelectorAll('.btn-move-page-down').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
-        this.movePage(id, 'down');
-      });
+    document.getElementById('btnTreeMovePageDown')?.addEventListener('click', () => {
+      if (activePageId) this.movePage(activePageId, 'down');
     });
 
-    container.querySelectorAll('.btn-delete-page').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = (e.currentTarget as HTMLElement).dataset.pageId!;
-        this.deletePage(id);
-      });
+    document.getElementById('btnTreeDeletePage')?.addEventListener('click', () => {
+      if (activePageId) this.deletePage(activePageId);
     });
 
     // Drag & Drop

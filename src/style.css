@@ -300,23 +300,20 @@ body.resizing {
   border-top: 2px solid var(--accent-bright);
 }
 
-.page-item-actions button {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-  color: var(--text-muted);
-  line-height: 1;
-}
-
-.tree-node:hover .page-item-actions button,
-.tree-node.active .page-item-actions button {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #e2e8f0;
-}
-
-.page-item-actions button:hover:not(:disabled) {
+.page-tree-toolbar button {
   background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-color);
+}
+
+.page-tree-toolbar button:hover:not(:disabled) {
   border-color: var(--accent-bright);
+}
+
+.page-tree-toolbar button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* Symbol Palette Grid */
