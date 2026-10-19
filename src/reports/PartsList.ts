@@ -14,6 +14,7 @@ export interface PartEntry {
 export function isConnectionComponent(comp: PlacedComponent, sym?: SymbolDefinition): boolean {
   if (sym && isConnectionSymbol(sym)) return true;
   if (sym?.category === 'connections' || sym?.connectionGraphic) return true;
+  if (sym?.deviceBox || sym?.category === 'structure' || comp.symbolId === 'device_box') return true;
   const id = comp.symbolId.toLowerCase();
   return (
     id === 'potential_arrow' ||
@@ -21,7 +22,9 @@ export function isConnectionComponent(comp: PlacedComponent, sym?: SymbolDefinit
     id.startsWith('t_piece') ||
     id.startsWith('corner') ||
     id.startsWith('cross_') ||
-    id === 'potential_rail_source'
+    id === 'potential_rail_source' ||
+    id === 'device_box' ||
+    id === 'box'
   );
 }
 

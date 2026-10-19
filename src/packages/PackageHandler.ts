@@ -10,6 +10,8 @@ import { Project, Page, PlacedComponent, Wire, PageBox, CableDefinition } from '
 import { SYMBOL_DEFINITIONS } from '../model/symbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
+import { defaultPlotFrame } from '../model/PlotFrame';
+import { defaultCoverPageTemplate } from '../model/CoverPage';
 import { EdbProjectParser } from './EdbProjectParser';
 import { readProjectArchive } from './ProjectArchive';
 
@@ -414,20 +416,22 @@ export class PackageHandler {
   private static createProjectFromPackageMetadata(projectName: string, _rawMeta: string, entries: PackageEntry[]): Project {
     const now = new Date().toISOString().split('T')[0];
     const nowFormatted = now.split('-').reverse().join('.');
-    const effectiveProjectName = projectName && projectName !== 'Anlagensteuerung' ? projectName : 'Förderanlagen-Steuerung FA-400';
+    const effectiveProjectName = projectName && projectName !== 'Anlagensteuerung' && projectName !== 'Förderanlagen-Steuerung FA-400'
+      ? projectName
+      : 'Conveyor System Control FA-400';
 
-    // Umfassendes, professionelles Industrie-Beispielprojekt (4 Seiten):
-    // Seite 0: Voll ausgefüllte Titelseite (F26-Normblatt)
-    // Seite 1: 400V AC Netzeinspeisung, Hauptantrieb & 24V DC Stromversorgungs-Baugruppe mit Gerätekästen
-    // Seite 2: 24V DC Steuerung, Not-Halt-Sicherheitskreis, Schützverriegelung & Meldeanzeigen
-    // Seite 3: SPS-Kompaktsteuerung (SIMATIC S7-1200) im Gerätekasten, Sensorik & Aktorik
+    // Comprehensive, professional industrial demo project (4 pages):
+    // Sheet 0: Cover Page & Project Overview (F26 Norm Sheet)
+    // Sheet 1: 400V AC Mains Supply, Main Drive & 24V DC Power Supply Unit with Device Boxes
+    // Sheet 2: 24V DC Control Circuit, Emergency Stop, Contactor Interlock & Signaling
+    // Sheet 3: PLC Compact Controller (SIMATIC S7-1200) with Sensors & Actuators
 
-    // --- SEITE 0: DECKBLATT / TITELSEITE ---
+    // --- SHEET 0: COVER PAGE / TITLE SHEET ---
     const pageCover: Page = {
       id: 'p_cover',
       pageNumber: '0',
       pageType: 'cover',
-      title: 'Deckblatt & Projektübersicht',
+      title: 'Cover Page & Project Overview',
       higherLevel: '=A1',
       location: '+S1',
       components: [],
@@ -435,24 +439,24 @@ export class PackageHandler {
       coverPage: {
         values: {
           '10000:0': effectiveProjectName,
-          '10011:0': 'Hauptantrieb & Förderbandsteuerung mit 24V Sicherheitskreis & SPS',
+          '10011:0': 'Main Drive & Conveyor Belt Control with 24V Safety Circuit & PLC',
           '10013:0': 'PRJ-2026-4412',
-          '10014:0': 'KOM-77402',
+          '10014:0': 'COM-77402',
           '10015:0': 'Schematico Automation Engineering GmbH',
-          '10235:0': 'Industriestraße 12-14',
+          '10235:0': 'Industriestrasse 12-14',
           '10237:0': '30159',
-          '10238:0': 'Hannover',
+          '10238:0': 'Hanover',
           '10240:0': '+49 (0) 511 8923-0',
           '10030:0': 'Schematico Systems',
-          '10031:0': 'Schaltschrank SS-01',
-          '10032:0': 'Halle 3 / Förderlinie B',
-          '10025:0': 'Dipl.-Ing. M. Mustermann',
-          '10033:0': 'Schutzart IP54 / TN-S Netz 400V 50Hz / 24V DC SELV',
+          '10031:0': 'Control Cabinet SS-01',
+          '10032:0': 'Hall 3 / Conveyor Line B',
+          '10025:0': 'M. Mustermann (PE)',
+          '10033:0': 'Protection IP54 / TN-S System 400V 50Hz / 24V DC SELV',
           '10021:0': nowFormatted,
           '10023:0': nowFormatted,
           '10022:0': 'MM',
-          '10100:0': 'Industrieautomation Nord GmbH',
-          '10901:1': '/Projekte/2026/FA-400/FA400_Rev1.zw1'
+          '10100:0': 'Industrial Automation North Ltd.',
+          '10901:1': '/Projects/2026/FA-400/FA400_Rev1.zw1'
         }
       },
       plotFrame: {
@@ -463,9 +467,9 @@ export class PackageHandler {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: effectiveProjectName,
-          commission: 'KOM-77402',
+          commission: 'COM-77402',
           company: 'Schematico Automation Engineering GmbH',
-          author: 'M. Mustermann',
+          author: 'M. Mustermann (PE)',
           date: now,
           revision: '1.0',
           sheetNumber: '0',
@@ -474,115 +478,122 @@ export class PackageHandler {
       }
     };
 
-    // --- SEITE 1: 400V AC NETZEINSPEISUNG & HAUPTANTRIEB ---
+    // --- SHEET 1: 400V AC MAINS SUPPLY & MAIN DRIVE ---
     const pagePower: Page = {
       id: 'p_power',
       pageNumber: '1',
       pageType: 'schematic',
-      title: 'Einspeisung 400V AC & Hauptantrieb',
+      title: '400V AC Mains Supply & Main Drive',
       higherLevel: '=A1',
       location: '+S1',
       boxes: [
         {
           id: 'box_psu',
-          kind: 'device',
           bmk: '-G1',
-          label: 'Stromversorgungs-Baugruppe 24V DC',
-          description: 'SITOP smart PSU100S 24V / 5A\nEingang: 230V AC | Ausgang: 24V DC / 5A SELV\nAbsicherung: Primär 2A / Sekundär 4A elektronisch',
+          label: '24V DC Power Supply Unit',
+          description: 'SITOP smart PSU100S 24V / 5A\nInput: 230V AC | Output: 24V DC / 5A SELV',
           lineStyle: 'dashed',
           lineWidth: 1.2,
           color: '#3182ce',
-          fontSize: 9.5,
-          x: 460,
+          fontSize: 8.5,
+          x: 440,
           y: 110,
-          width: 330,
+          width: 340,
           height: 385
         },
         {
           id: 'box_motor',
-          kind: 'device',
           bmk: '+M1',
-          label: 'Antriebseinheit Förderband 1',
-          description: 'Vor-Ort Montage (Außenbereich Halle 3)\nSchutzart IP65 / IE3 Drehstrom-Asynchronmotor',
+          label: 'Conveyor Drive 1 (IP65)',
+          description: 'Field Mounted Unit / Hall 3',
           lineStyle: 'dashed',
           lineWidth: 1.2,
           color: '#48bb78',
-          fontSize: 9,
-          x: 190,
-          y: 510,
-          width: 150,
-          height: 120
+          fontSize: 8.5,
+          x: 140,
+          y: 505,
+          width: 260,
+          height: 145
         }
       ],
       components: [
-        // --- 400V Einspeisung Spalte 2 ---
+        // --- 400V Mains Supply Column 2 ---
         { id: 'comp_pf_l1', symbolId: 'potential_arrow_down', bmk: 'L1', functionText: 'L1', x: 220, y: 70, rotation: 0, pins: {} },
         { id: 'comp_pf_l2', symbolId: 'potential_arrow_down', bmk: 'L2', functionText: 'L2', x: 244, y: 70, rotation: 0, pins: {} },
         { id: 'comp_pf_l3', symbolId: 'potential_arrow_down', bmk: 'L3', functionText: 'L3', x: 268, y: 70, rotation: 0, pins: {} },
         { id: 'comp_pf_pe', symbolId: 'potential_arrow_down', bmk: 'PE', functionText: 'PE', x: 292, y: 70, rotation: 0, pins: {} },
 
-        // Hauptschalter -Q0
+        // Main Switch Disconnector -Q0
         {
           id: 'comp_q0', symbolId: 'circuit_breaker_3p', bmk: '-Q0', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Hauptschalter Netzeinspeisung', technicalCharacteristics: '400V 25A 3P', articleNumber: '3VA1125-3ED36', manufacturer: 'Siemens',
+          functionText: 'Main Switch Disconnector', technicalCharacteristics: '400V 25A 3P', articleNumber: '3VA1125-3ED36', manufacturer: 'Siemens',
           x: 220, y: 130, rotation: 0, pins: {}
         },
 
-        // Motorschutzschalter -Q1
+        // Motor Starter Protector -Q1
         {
           id: 'comp_q1', symbolId: 'motor_protective_switch', bmk: '-Q1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Motorschutzschalter Hauptantrieb', technicalCharacteristics: '2.5 - 4.0A / 400V', articleNumber: '3RV2011-1EA10', manufacturer: 'Siemens',
+          functionText: 'Motor Starter Protector', technicalCharacteristics: '2.5 - 4.0A / 400V', articleNumber: '3RV2011-1EA10', manufacturer: 'Siemens',
           x: 220, y: 230, rotation: 0, pins: {}
         },
 
-        // Leistungsschütz -K1
+        // Main Contactor -K1
         {
           id: 'comp_k1_power', symbolId: 'contactor_power_3p', bmk: '-K1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Hauptschütz Antrieb M1', technicalCharacteristics: '4kW / 400V 9A', articleNumber: '3RT2016-1BB41', manufacturer: 'Siemens',
+          functionText: 'Main Contactor 4kW', technicalCharacteristics: '400V 9A AC-3', articleNumber: '3RT2016-1BB41', manufacturer: 'Siemens',
           x: 220, y: 330, rotation: 0, pins: {}
         },
 
-        // Klemmenleiste -X1
-        { id: 'comp_x1_1', symbolId: 'terminal_single', bmk: '-X1', functionText: '1', bmkPosition: { preset: 'left', offsetX: -6 }, x: 220, y: 430, rotation: 0, pins: {} },
+        // Terminal Strip -X1
+        { id: 'comp_x1_1', symbolId: 'terminal_single', bmk: '-X1', functionText: '1', bmkPosition: { preset: 'left', offsetX: -8 }, x: 220, y: 430, rotation: 0, pins: {} },
         { id: 'comp_x1_2', symbolId: 'terminal_single', bmk: '-X1', functionText: '2', bmkPosition: { visible: false }, x: 244, y: 430, rotation: 0, pins: {} },
         { id: 'comp_x1_3', symbolId: 'terminal_single', bmk: '-X1', functionText: '3', bmkPosition: { visible: false }, x: 268, y: 430, rotation: 0, pins: {} },
         { id: 'comp_x1_pe', symbolId: 'terminal_pe', bmk: '-X1', functionText: 'PE', bmkPosition: { visible: false }, x: 292, y: 430, rotation: 0, pins: {} },
 
-        // Drehstrommotor -M1
+        // Three-Phase AC Motor -M1
         {
           id: 'comp_m1', symbolId: 'motor_3phase', bmk: '-M1', higherLevelFunction: '=A1', mountingLocation: '+M1',
-          functionText: 'Antriebsmotor Förderband 1', technicalCharacteristics: '1.5kW 400V 50Hz 3.2A', articleNumber: '1LE1001-0DB22', manufacturer: 'Siemens',
-          x: 220, y: 530, rotation: 0, pins: {}
+          functionText: 'Conveyor Drive Motor', technicalCharacteristics: '1.5kW 400V 50Hz 3.2A', articleNumber: '1LE1001-0DB22', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 12 },
+          functionTextPosition: { preset: 'right', offsetX: 12, offsetY: 12 },
+          technicalDataPosition: { preset: 'right', offsetX: 12, offsetY: 24 },
+          x: 220, y: 540, rotation: 0, pins: {}
         },
 
-        // --- 24V DC Stromversorgungs-Zweig (Spalte 5/6) ---
-        // Potentialeinspeisung L1, N, PE für Netzteil
+        // --- 24V DC Power Supply Branch ---
         { id: 'comp_p1_in_l1', symbolId: 'potential_arrow_down', bmk: 'L1', functionText: 'L1', x: 488, y: 70, rotation: 0, pins: {} },
         { id: 'comp_p1_in_n', symbolId: 'potential_arrow_down', bmk: 'N', functionText: 'N', x: 502, y: 70, rotation: 0, pins: {} },
         { id: 'comp_p1_in_pe', symbolId: 'potential_arrow_down', bmk: 'PE', functionText: 'PE', x: 516, y: 70, rotation: 0, pins: {} },
 
-        // Primärsicherung -F0
+        // Primary Fuse -F0
         {
           id: 'comp_f0', symbolId: 'fuse_1p', bmk: '-F0', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Primärabsicherung 230V', technicalCharacteristics: '2A gL/gG', articleNumber: '5SE2302', manufacturer: 'Siemens',
-          x: 488, y: 140, rotation: 0, pins: {}
+          functionText: 'Primary Fuse 230V', technicalCharacteristics: '2A gL/gG', articleNumber: '5SE2302', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 488, y: 160, rotation: 0, pins: {}
         },
 
-        // Schaltnetzteil 24V DC -G1
+        // Switched-Mode Power Supply -G1
         {
           id: 'comp_g1', symbolId: 'power_supply_dc', bmk: '-G1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Schaltnetzteil 24V DC / 5A', technicalCharacteristics: 'Primär 230V AC | Sekundär 24V DC 120W', articleNumber: '6EP1333-1LB00', manufacturer: 'Siemens',
-          x: 486, y: 230, rotation: 0, pins: {}
+          functionText: 'Power Supply 24V DC / 5A', technicalCharacteristics: '230V AC / 24V DC SELV', articleNumber: '6EP1333-1LB00', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 12 },
+          functionTextPosition: { preset: 'right', offsetX: 12, offsetY: 14 },
+          technicalDataPosition: { preset: 'right', offsetX: 12, offsetY: 28 },
+          x: 486, y: 250, rotation: 0, pins: {}
         },
 
-        // Sekundärabsicherung -F2
+        // Secondary Fuse -F2
         {
           id: 'comp_f2', symbolId: 'fuse_1p', bmk: '-F2', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Elektronische Sicherung 24V', technicalCharacteristics: '4A SELV', articleNumber: 'EPD24-4A', manufacturer: 'Siemens',
-          x: 492, y: 330, rotation: 0, pins: {}
+          functionText: 'Electronic Breaker 24V', technicalCharacteristics: '4A SELV', articleNumber: 'EPD24-4A', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 492, y: 340, rotation: 0, pins: {}
         },
 
-        // Verbindungselemente: Ecken und Kreuzungs-Brücke zu den Abbruchstellen
+        // Connecting Elements: Corners and Cross Bridge to Interruption Arrows
         { id: 'comp_p1_c_24v', symbolId: 'corner_bottom_left', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 494, y: 410, rotation: 0, pins: {} },
         { id: 'comp_p1_bridge', symbolId: 'cross_bridge', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 570, y: 410, rotation: 0, pins: {} },
         { id: 'comp_p1_out_24v', symbolId: 'potential_arrow_right', bmk: '+24V', functionText: '+24V', x: 750, y: 410, rotation: 0, pins: {} },
@@ -598,7 +609,7 @@ export class PackageHandler {
           bmk: '-W1',
           cableType: 'ÖLFLEX CLASSIC 110',
           crossSection: '4G1.5',
-          description: 'Motoranschlussleitung flexibel',
+          description: 'Flexible Motor Connection Cable',
           cores: [
             { id: 'w1_c1', t: 0.15, designation: '1', color: 'BK' },
             { id: 'w1_c2', t: 0.38, designation: '2', color: 'BK' },
@@ -616,9 +627,9 @@ export class PackageHandler {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: effectiveProjectName,
-          commission: 'KOM-77402',
+          commission: 'COM-77402',
           company: 'Schematico Automation Engineering GmbH',
-          author: 'M. Mustermann',
+          author: 'M. Mustermann (PE)',
           date: now,
           revision: '1.0',
           sheetNumber: '1',
@@ -628,127 +639,146 @@ export class PackageHandler {
     };
     AutoconnectEngine.updatePageAutoconnections(pagePower);
 
-    // --- SEITE 2: 24V DC STEUERUNG & SCHÜTZVERRIEGELUNG ---
+    // --- SHEET 2: 24V DC CONTROL CIRCUIT & CONTACTOR INTERLOCK ---
     const pageControl: Page = {
       id: 'p_control',
       pageNumber: '2',
       pageType: 'schematic',
-      title: 'Steuerung 24V DC & Schützverriegelung',
+      title: '24V DC Control Circuit & Contactor Interlock',
       higherLevel: '=A1',
       location: '+S1',
       boxes: [
         {
           id: 'box_desk',
-          kind: 'device',
           bmk: '+T1',
-          label: 'Bedienpult Hauptantrieb',
-          description: 'Vor-Ort Bedienstation Förderband 1\nNOT-HALT Pilztaster, Taster Ein/Aus & Meldeleuchten Betrieb/Störung',
+          label: 'Local Control Station',
+          description: 'Conveyor 1 Operator Desk (IP65)',
           lineStyle: 'dashed',
           lineWidth: 1.2,
           color: '#ed8936',
-          fontSize: 9.5,
-          x: 180,
-          y: 175,
-          width: 440,
-          height: 400
+          fontSize: 8.5,
+          x: 130,
+          y: 165,
+          width: 510,
+          height: 290
         }
       ],
       components: [
-        // --- Abbruchstellen von Blatt 1 links (+24V, 0V) ---
+        // --- Interruption Arrows from Sheet 1 (+24V, 0V) ---
         { id: 'comp_p2_in_24v', symbolId: 'potential_arrow_left', bmk: '+24V', functionText: '+24V', x: 80, y: 70, rotation: 0, pins: {} },
         { id: 'comp_p2_in_0v', symbolId: 'potential_arrow_left', bmk: '0V', functionText: '0V', x: 80, y: 610, rotation: 0, pins: {} },
 
-        // --- Abbruchstellen zu Blatt 3 rechts (+24V_SPS, 0V_SPS) ---
-        { id: 'comp_p2_out_24v', symbolId: 'potential_arrow_right', bmk: '+24V_SPS', functionText: '+24V_SPS', x: 750, y: 70, rotation: 0, pins: {} },
-        { id: 'comp_p2_out_0v', symbolId: 'potential_arrow_right', bmk: '0V_SPS', functionText: '0V_SPS', x: 750, y: 610, rotation: 0, pins: {} },
+        // --- Interruption Arrows to Sheet 3 (+24V_PLC, 0V_PLC) ---
+        { id: 'comp_p2_out_24v', symbolId: 'potential_arrow_right', bmk: '+24V_PLC', functionText: '+24V_PLC', x: 750, y: 70, rotation: 0, pins: {} },
+        { id: 'comp_p2_out_0v', symbolId: 'potential_arrow_right', bmk: '0V_PLC', functionText: '0V_PLC', x: 750, y: 610, rotation: 0, pins: {} },
 
-        // --- Potenzial-Verteilschienen (+24V oben, 0V unten) ---
-        // +24V T-Stücke oben
-        { id: 'comp_t_top_1', symbolId: 't_piece_down', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 70, rotation: 0, pins: {} },
+        // +24V Distribution rail (x=240, 450, 580)
+        { id: 'comp_t_top_1', symbolId: 't_piece_down', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 240, y: 70, rotation: 0, pins: {} },
         { id: 'comp_t_top_2', symbolId: 't_piece_down', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 450, y: 70, rotation: 0, pins: {} },
         { id: 'comp_t_top_3', symbolId: 't_piece_down', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 580, y: 70, rotation: 0, pins: {} },
 
-        // 0V T-Stücke unten
-        { id: 'comp_t_bot_1', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 610, rotation: 0, pins: {} },
+        // 0V Distribution rail
+        { id: 'comp_t_bot_1', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 240, y: 610, rotation: 0, pins: {} },
         { id: 'comp_t_bot_2', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 450, y: 610, rotation: 0, pins: {} },
         { id: 'comp_t_bot_3', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 580, y: 610, rotation: 0, pins: {} },
 
-        // --- STROMPFAD 1 (Spulenkreis -K1, x=220) ---
-        // Steuersicherung -F1
+        // --- RUNG 1: Contactor Coil Circuit -K1 (x=240) ---
+        // Control Fuse -F1
         {
           id: 'comp_f1', symbolId: 'fuse_1p', bmk: '-F1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Steuersicherung Steuerkreis', technicalCharacteristics: '2A gL/gG', articleNumber: '5SE2302', manufacturer: 'Siemens',
-          x: 208, y: 120, rotation: 0, pins: {}
+          functionText: 'Control Fuse 2A', technicalCharacteristics: '2A gL/gG', articleNumber: '5SE2302', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 238, y: 115, rotation: 0, pins: {}
         },
-        // NOT-HALT Taster -S1
+        // Emergency Stop Pushbutton -S1
         {
           id: 'comp_s1', symbolId: 'pushbutton_emergency_stop', bmk: '-S1', higherLevelFunction: '=A1', mountingLocation: '+T1',
-          functionText: 'NOT-HALT Bedienpult', articleNumber: '3SU1801-0AA00-0AB1', manufacturer: 'Siemens',
-          x: 204, y: 200, rotation: 0, pins: {}
+          functionText: 'Emergency Stop Desk', articleNumber: '3SU1801-0AA00-0AB1', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 12 },
+          functionTextPosition: { preset: 'right', offsetX: 12, offsetY: 12 },
+          x: 234, y: 195, rotation: 0, pins: {}
         },
-        // Taster AUS -S2 (Öffner)
+        // Stop Pushbutton -S2 (NC)
         {
           id: 'comp_s2', symbolId: 'contact_nc', bmk: '-S2', higherLevelFunction: '=A1', mountingLocation: '+T1',
-          functionText: 'Taster AUS', articleNumber: '3SU1000-0CB20-0AA0', manufacturer: 'Siemens',
-          x: 208, y: 270, rotation: 0, pins: {}
+          functionText: 'Stop Pushbutton (NC)', articleNumber: '3SU1000-0CB20-0AA0', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 238, y: 265, rotation: 0, pins: {}
         },
 
-        // Abzweig für Selbsthaltung -K1:13-14 parallel zu Taster EIN -S3
-        { id: 'comp_t_branch_top', symbolId: 't_piece_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 335, rotation: 0, pins: {} },
-        { id: 'comp_c_branch_top', symbolId: 'corner_top_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 320, y: 335, rotation: 0, pins: {} },
+        // Parallel branch for contactor latching -K1:13-14
+        { id: 'comp_t_branch_top', symbolId: 't_piece_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 240, y: 330, rotation: 0, pins: {} },
+        { id: 'comp_c_branch_top', symbolId: 'corner_top_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 340, y: 330, rotation: 0, pins: {} },
 
-        // Taster EIN -S3 (Schließer)
+        // Start Pushbutton -S3 (NO)
         {
           id: 'comp_s3', symbolId: 'pushbutton_no', bmk: '-S3', higherLevelFunction: '=A1', mountingLocation: '+T1',
-          functionText: 'Taster EIN', articleNumber: '3SU1000-0AB20-0AA0', manufacturer: 'Siemens',
-          x: 208, y: 370, rotation: 0, pins: {}
+          functionText: 'Start Pushbutton (NO)', articleNumber: '3SU1000-0AB20-0AA0', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'left', offsetX: -8 },
+          functionTextPosition: { preset: 'left', offsetX: -8, offsetY: 12 },
+          x: 238, y: 365, rotation: 0, pins: {}
         },
-        // Hilfskontakt -K1:13-14 (Schließer für Selbsthaltung)
+        // Auxiliary Contact -K1:13-14 (NO Latching)
         {
           id: 'comp_k1_hold', symbolId: 'contact_no', bmk: '-K1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Selbsthaltung Hauptschütz', technicalCharacteristics: '1NO 10A / 24V DC',
-          x: 318, y: 370, rotation: 0, pins: {}
+          functionText: 'Latching Contact 13-14', technicalCharacteristics: '1NO 10A / 24V DC',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 338, y: 365, rotation: 0, pins: {}
         },
 
-        // Zusammenführung Selbsthaltung
-        { id: 'comp_c_branch_bot', symbolId: 'corner_bottom_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 320, y: 435, rotation: 0, pins: {} },
-        { id: 'comp_t_branch_bot', symbolId: 't_piece_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 435, rotation: 0, pins: {} },
+        // Rejoin branch
+        { id: 'comp_c_branch_bot', symbolId: 'corner_bottom_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 340, y: 430, rotation: 0, pins: {} },
+        { id: 'comp_t_branch_bot', symbolId: 't_piece_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 240, y: 430, rotation: 0, pins: {} },
 
-        // Schützspule -K1 (Master)
+        // Main Contactor Coil -K1 (Master)
         {
           id: 'comp_k1_coil', symbolId: 'contactor_coil', bmk: '-K1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Hauptschütz Antrieb', technicalCharacteristics: '24V DC / 4kW', articleNumber: '3RT2016-1BB41', manufacturer: 'Siemens',
-          x: 204, y: 480, rotation: 0, pins: {}
+          functionText: 'Main Contactor 24V DC', technicalCharacteristics: '24V DC / 4kW', articleNumber: '3RT2016-1BB41', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'left', offsetX: -8 },
+          functionTextPosition: { preset: 'left', offsetX: -8, offsetY: 12 },
+          crossRefPosition: { preset: 'bottom', alignment: 'middle', offsetX: 0, offsetY: 8, fontSize: 7.5 },
+          x: 234, y: 490, rotation: 0, pins: {}
         },
 
-        // --- STROMPFAD 3 (Meldekreis Betrieb -P1, x=460) ---
-        // Meldekontakt -K1:23-24 (Hilfskontakt Schließer)
+        // --- RUNG 2: Running Status Lamp -P1 (x=450) ---
+        // Auxiliary Contact -K1:23-24
         {
           id: 'comp_k1_aux', symbolId: 'contact_no', bmk: '-K1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Betriebsmeldung Antrieb', technicalCharacteristics: '1NO',
+          functionText: 'Run Status Contact', technicalCharacteristics: '1NO (23-24)',
           pins: { '13': { customLabel: '23' }, '14': { customLabel: '24' } },
-          x: 448, y: 370, rotation: 0
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 448, y: 365, rotation: 0
         },
-        // Meldeleuchte -P1
+        // Running Pilot Lamp -P1
         {
           id: 'comp_p1', symbolId: 'pilot_lamp', bmk: '-P1', higherLevelFunction: '=A1', mountingLocation: '+T1',
-          functionText: 'Betriebsanzeige Grün', technicalCharacteristics: '24V DC LED grün', articleNumber: '3SU1102-6AA40-1AA0', manufacturer: 'Siemens',
-          x: 444, y: 480, rotation: 0, pins: {}
+          functionText: 'Running Indicator (Green)', technicalCharacteristics: '24V DC LED Green', articleNumber: '3SU1102-6AA40-1AA0', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 444, y: 490, rotation: 0, pins: {}
         },
 
-        // --- STROMPFAD 4 (Störmeldekreis -P2, x=590) ---
-        // Hilfskontakt Motorschutzschalter -Q1:97-98 (Schließer)
+        // --- RUNG 3: Fault Signaling Lamp -P2 (x=580) ---
+        // Auxiliary Contact Motor Protector -Q1:97-98
         {
           id: 'comp_q1_aux', symbolId: 'contact_no', bmk: '-Q1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Störmeldekontakt Motorschutz', technicalCharacteristics: '1NO 97-98',
+          functionText: 'Motor Overload Fault', technicalCharacteristics: '1NO (97-98)',
           pins: { '13': { customLabel: '97' }, '14': { customLabel: '98' } },
-          x: 578, y: 370, rotation: 0
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 578, y: 365, rotation: 0
         },
-        // Störmeldeleuchte -P2
+        // Fault Pilot Lamp -P2
         {
           id: 'comp_p2', symbolId: 'pilot_lamp', bmk: '-P2', higherLevelFunction: '=A1', mountingLocation: '+T1',
-          functionText: 'Störanzeige Rot', technicalCharacteristics: '24V DC LED rot', articleNumber: '3SU1102-6AA20-1AA0', manufacturer: 'Siemens',
-          x: 574, y: 480, rotation: 0, pins: {}
+          functionText: 'Fault Indicator (Red)', technicalCharacteristics: '24V DC LED Red', articleNumber: '3SU1102-6AA20-1AA0', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 },
+          functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 574, y: 490, rotation: 0, pins: {}
         }
       ],
       wires: [],
@@ -760,9 +790,9 @@ export class PackageHandler {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: effectiveProjectName,
-          commission: 'KOM-77402',
+          commission: 'COM-77402',
           company: 'Schematico Automation Engineering GmbH',
-          author: 'M. Mustermann',
+          author: 'M. Mustermann (PE)',
           date: now,
           revision: '1.0',
           sheetNumber: '2',
@@ -772,111 +802,126 @@ export class PackageHandler {
     };
     AutoconnectEngine.updatePageAutoconnections(pageControl);
 
-    // --- SEITE 3: SPS-KOMPAKTSTEUERUNG & SENSORIK ---
+    // --- SHEET 3: PLC COMPACT CONTROLLER & SENSORS ---
     const pagePlc: Page = {
       id: 'p_plc',
       pageNumber: '3',
       pageType: 'schematic',
-      title: 'SPS-Kompaktsteuerung & Sensorik',
+      title: 'PLC Compact Controller & Sensors',
       higherLevel: '=A1',
       location: '+S1',
       boxes: [
         {
           id: 'box_plc',
-          kind: 'device',
           bmk: '-KF1',
-          label: 'SPS-Kompaktsteuerung',
-          description: 'Siemens SIMATIC S7-1200 CPU 1214C DC/DC/DC\n14 DI 24V DC / 10 DO 24V DC / 2 AI 0-10V / PROFINET onboard\nArtikel-Nr.: 6ES7214-1AG40-0XB0',
+          label: 'PLC Compact Controller',
+          description: 'SIMATIC S7-1200 CPU 1214C DC/DC/DC\n14 DI 24V / 10 DO 24V / PROFINET',
           lineStyle: 'dashed',
-          lineWidth: 1.5,
+          lineWidth: 1.2,
           color: '#3182ce',
-          fontSize: 9.5,
-          x: 180,
-          y: 110,
-          width: 530,
-          height: 380
+          fontSize: 8.5,
+          x: 150,
+          y: 95,
+          width: 580,
+          height: 395
         },
         {
           id: 'box_field',
-          kind: 'device',
           bmk: '+F1',
-          label: 'Sensorik & Aktorik Förderband 1',
-          description: 'Vor-Ort Installation Schutzart IP67 (Übergabestation)\nInduktiver Näherungsschalter & optischer/akustischer Warnmelder',
+          label: 'Field Sensors & Actuators',
+          description: 'Transfer Station Line B (IP67)\nProximity switch & acoustic/optical alarm',
           lineStyle: 'dashed',
           lineWidth: 1.2,
           color: '#805ad5',
-          fontSize: 9,
-          x: 180,
+          fontSize: 8.5,
+          x: 150,
           y: 505,
-          width: 530,
-          height: 90
+          width: 580,
+          height: 85
         }
       ],
       components: [
-        // --- Abbruchstellen von Blatt 2 links (+24V_SPS, 0V_SPS) ---
-        { id: 'comp_p3_in_24v', symbolId: 'potential_arrow_left', bmk: '+24V_SPS', functionText: '+24V_SPS', x: 80, y: 70, rotation: 0, pins: {} },
-        { id: 'comp_p3_in_0v', symbolId: 'potential_arrow_left', bmk: '0V_SPS', functionText: '0V_SPS', x: 80, y: 610, rotation: 0, pins: {} },
+        // --- Interruption Arrows from Sheet 2 (+24V_PLC, 0V_PLC) ---
+        { id: 'comp_p3_in_24v', symbolId: 'potential_arrow_left', bmk: '+24V_PLC', functionText: '+24V_PLC', x: 80, y: 70, rotation: 0, pins: {} },
+        { id: 'comp_p3_in_0v', symbolId: 'potential_arrow_left', bmk: '0V_PLC', functionText: '0V_PLC', x: 80, y: 610, rotation: 0, pins: {} },
 
-        // --- Potenzial-Verteilschienen (+24V oben, 0V unten) ---
-        // Kreuzung mit Verbindungspunkt oben bei x=220
+        // +24V Distribution rail top
         { id: 'comp_cross_top', symbolId: 'cross_junction', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 70, rotation: 0, pins: {} },
         { id: 'comp_t_plc_top', symbolId: 't_piece_down', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 450, y: 70, rotation: 0, pins: {} },
         { id: 'comp_c_plc_top', symbolId: 'corner_top_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 630, y: 70, rotation: 0, pins: {} },
 
-        // 0V Schiene unten
+        // 0V Distribution rail bottom
         { id: 'comp_t_plc_bot_1', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 210, y: 610, rotation: 0, pins: {} },
         { id: 'comp_t_plc_bot_2', symbolId: 't_piece_up', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 450, y: 610, rotation: 0, pins: {} },
         { id: 'comp_c_plc_bot', symbolId: 'corner_bottom_right', bmk: '', functionText: '', bmkPosition: { visible: false }, x: 630, y: 610, rotation: 0, pins: {} },
 
-        // --- SPALTE 2: Sensor-Einspeisung & SPS-Digitaleingang (x=220) ---
-        // Reihenklemme -X2:1 (Sensorversorgung +24V)
-        { id: 'comp_x2_1', symbolId: 'terminal_single', bmk: '-X2', functionText: '1 (+24V)', technicalCharacteristics: '24V DC', x: 208, y: 130, rotation: 0, pins: {} },
-        // Induktiver Näherungsschalter -B1
+        // --- Column 2: Sensor Input & PLC Digital Input (x=210) ---
+        // Terminal -X2:1 (+24V Sensor Power)
+        {
+          id: 'comp_x2_1', symbolId: 'terminal_single', bmk: '-X2', functionText: '1 (+24V)', technicalCharacteristics: '24V DC',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 208, y: 140, rotation: 0, pins: {}
+        },
+        // Inductive Proximity Sensor -B1
         {
           id: 'comp_b1', symbolId: 'contact_no', bmk: '-B1', higherLevelFunction: '=A1', mountingLocation: '+F1',
-          functionText: 'Induktiver Sensor Bandende', technicalCharacteristics: '24V DC PNP NO Sn=8mm', articleNumber: '3RG4013-0AG00', manufacturer: 'Siemens',
+          functionText: 'Proximity Sensor Belt End', technicalCharacteristics: '24V DC PNP NO Sn=8mm', articleNumber: '3RG4013-0AG00', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
           x: 208, y: 220, rotation: 0, pins: {}
         },
-        // Reihenklemme -X2:2 (Sensorsignal Eingang)
-        { id: 'comp_x2_2', symbolId: 'terminal_single', bmk: '-X2', functionText: '2 (DI 0.0)', technicalCharacteristics: 'Signal', x: 208, y: 320, rotation: 0, pins: {} },
-        // SPS Digitaleingang DI 0.0
+        // Terminal -X2:2 (Sensor Signal Input)
+        {
+          id: 'comp_x2_2', symbolId: 'terminal_single', bmk: '-X2', functionText: '2 (DI 0.0)', technicalCharacteristics: 'Signal',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 208, y: 310, rotation: 0, pins: {}
+        },
+        // PLC Digital Input DI 0.0
         {
           id: 'comp_kf1_di0', symbolId: 'contact_no', bmk: '-KF1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'SPS Eingang DI 0.0\n(Sensor Stauüberwachung)', technicalCharacteristics: '24V DC 2.5mA',
-          x: 208, y: 410, rotation: 0, pins: {}
+          functionText: 'PLC Input DI 0.0\n(Jam Monitoring)', technicalCharacteristics: '24V DC 2.5mA',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 208, y: 400, rotation: 0, pins: {}
         },
 
-        // --- SPALTE 4: SPS-Digitalausgang & Meldeaktor (x=460) ---
-        // SPS Digitalausgang DO 0.0
+        // --- Column 4: PLC Digital Output & Alarm Actuator (x=450) ---
+        // PLC Digital Output DO 0.0
         {
           id: 'comp_kf1_do0', symbolId: 'contact_no', bmk: '-KF1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'SPS Ausgang DO 0.0\n(Ansteuerung Warnsignal)', technicalCharacteristics: 'Relais 24V DC / 2A',
+          functionText: 'PLC Output DO 0.0\n(Alarm Horn / Strobe)', technicalCharacteristics: 'Relay 24V DC 2A',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
           x: 448, y: 220, rotation: 0, pins: {}
         },
-        // Reihenklemme -X2:3 (Aktorsignal)
-        { id: 'comp_x2_3', symbolId: 'terminal_single', bmk: '-X2', functionText: '3 (DO 0.0)', technicalCharacteristics: 'Aktorleitung', x: 448, y: 320, rotation: 0, pins: {} },
-        // Warnmelder / Signalgeber -P3
+        // Terminal -X2:3 (Actuator Signal)
+        {
+          id: 'comp_x2_3', symbolId: 'terminal_single', bmk: '-X2', functionText: '3 (DO 0.0)', technicalCharacteristics: 'Actuator',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 448, y: 310, rotation: 0, pins: {}
+        },
+        // Warning Beacon / Siren -P3
         {
           id: 'comp_p3', symbolId: 'pilot_lamp', bmk: '-P3', higherLevelFunction: '=A1', mountingLocation: '+F1',
-          functionText: 'Optische / Akustische Warnung Stau', technicalCharacteristics: '24V DC LED Blitzleuchte', articleNumber: '8WD4420-5AB', manufacturer: 'Siemens',
-          x: 444, y: 410, rotation: 0, pins: {}
+          functionText: 'Warning Beacon / Siren', technicalCharacteristics: '24V DC Strobe / Siren', articleNumber: '8WD4420-5AB', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 444, y: 400, rotation: 0, pins: {}
         },
 
-        // --- SPALTE 6: PROFINET & Schaltschranküberwachung (x=640) ---
-        // PROFINET Ethernet Schnittstelle -ETH1
+        // --- Column 6: PROFINET & Enclosure Monitoring (x=630) ---
+        // PROFINET Port -ETH1
         {
           id: 'comp_eth1', symbolId: 'rj45_port', bmk: '-ETH1', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'PROFINET Schnittstelle CPU 1214C\nIP: 192.168.0.10 / Subnet: 255.255.255.0', articleNumber: '6GK5005-0BA00', manufacturer: 'Siemens',
-          x: 624, y: 140, rotation: 0, pins: {}
+          functionText: 'PROFINET CPU Port\n192.168.0.10', articleNumber: '6GK5005-0BA00', manufacturer: 'Siemens',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 624, y: 150, rotation: 0, pins: {}
         },
-        // Schaltschrank-Thermostat -B2
+        // Enclosure Thermostat -B2
         {
           id: 'comp_b2', symbolId: 'thermostat_box', bmk: '-B2', higherLevelFunction: '=A1', mountingLocation: '+S1',
-          functionText: 'Schaltschrank-Thermostat', technicalCharacteristics: '0 - 60°C NC/NO', articleNumber: '7T.81.0.000.2303', manufacturer: 'Finder',
-          x: 610, y: 250, rotation: 0, pins: {}
+          functionText: 'Cabinet Thermostat', technicalCharacteristics: '0 - 60°C NC/NO', articleNumber: '7T.81.0.000.2303', manufacturer: 'Finder',
+          bmkPosition: { preset: 'right', offsetX: 8 }, functionTextPosition: { preset: 'right', offsetX: 8, offsetY: 12 },
+          x: 610, y: 260, rotation: 0, pins: {}
         },
-        // PE Klemme -X2:PE
-        { id: 'comp_x2_pe', symbolId: 'terminal_pe', bmk: '-X2', functionText: 'PE', x: 628, y: 410, rotation: 0, pins: {} }
+        // PE Terminal -X2:PE
+        { id: 'comp_x2_pe', symbolId: 'terminal_pe', bmk: '-X2', functionText: 'PE', bmkPosition: { preset: 'right', offsetX: 8 }, x: 628, y: 400, rotation: 0, pins: {} }
       ],
       wires: [],
       plotFrame: {
@@ -887,9 +932,9 @@ export class PackageHandler {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: effectiveProjectName,
-          commission: 'KOM-77402',
+          commission: 'COM-77402',
           company: 'Schematico Automation Engineering GmbH',
-          author: 'M. Mustermann',
+          author: 'M. Mustermann (PE)',
           date: now,
           revision: '1.0',
           sheetNumber: '3',
@@ -902,13 +947,15 @@ export class PackageHandler {
     const project: Project = {
       id: 'proj_' + Math.random().toString(36).substring(2, 9),
       name: effectiveProjectName,
-      description: 'Hauptantrieb & Förderbandsteuerung mit 24V Sicherheitskreis & SPS',
+      description: 'Main Drive & Conveyor Belt Control with 24V Safety Circuit & PLC',
       standard: 'DIN EN 81346-2 / IEC 60617',
       version: '2024.0',
       created: now,
       modified: now,
-      author: 'Dipl.-Ing. M. Mustermann',
+      author: 'M. Mustermann (PE)',
       company: 'Schematico Automation Engineering GmbH',
+      plotFrameTemplate: defaultPlotFrame('en'),
+      coverPageTemplate: defaultCoverPageTemplate('en'),
       symbolLibrary: [...SYMBOL_DEFINITIONS],
       pages: [pageCover, pagePower, pageControl, pagePlc],
       activePageId: 'p_cover'

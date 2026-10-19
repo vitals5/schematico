@@ -5,16 +5,24 @@ import { isBundledSupplierLogo } from './PresentationNaming';
 
 export type CoverPageTemplate = PlotFrameTemplate & { images?: PageImage[] };
 export type CoverPageData = { values?: Record<string,string>; logo?: PageImage | null };
-const labels: Record<number,string> = {
+const labelsDe: Record<number,string> = {
   10000:'Projektname',10011:'Projektbeschreibung',10013:'Projektnummer',10014:'Kommission',10015:'Hersteller / Firma',
   10021:'Erstellt am',10022:'Bearbeiter (Kürzel)',10023:'Bearbeitet am',10025:'Projektverantwortlicher',10030:'Fabrikat',
   10031:'Typ',10032:'Installationsort',10033:'Teilebesonderheit',10100:'Firma / Kunde',10300:'Anzahl der Seiten',
   10901:'Pfad',11015:'Formular',10235:'Anschrift',10237:'Postleitzahl',10238:'Ort',10240:'Telefon'
 };
+const labelsEn: Record<number,string> = {
+  10000:'Project Name',10011:'Project Description',10013:'Project Number',10014:'Commission',10015:'Manufacturer / Company',
+  10021:'Created on',10022:'By (Initials)',10023:'Edited on',10025:'Project Manager',10030:'Make',
+  10031:'Type',10032:'Installation Location',10033:'Special Features',10100:'Company / Client',10300:'Number of Pages',
+  10901:'Path',11015:'Form',10235:'Address',10237:'Postal Code',10238:'City',10240:'Telephone'
+};
+export const labels: Record<number,string> = labelsDe;
 export const coverFieldKey = (text:FrameText) => `${text.property}:${text.index ?? 0}`;
 
 /** F26 layout in physical millimetres; values remain project/page data. */
-export function defaultCoverPageTemplate():CoverPageTemplate {
+export function defaultCoverPageTemplate(lang: 'de' | 'en' = 'de'):CoverPageTemplate {
+  const currentLabels = lang === 'en' ? labelsEn : labelsDe;
   const color='currentColor',graphics:CoverPageTemplate['graphics']=[];
   const fill=(x:number,y:number,width:number,height:number)=>graphics.push({kind:'polygon',points:[{x,y},{x:x+width,y},{x:x+width,y:y+height},{x,y:y+height}],color,fill:color,width:0});
   for(const y of [19.5,67.5,263.5])fill(8,y,404,3);
@@ -27,15 +35,15 @@ export function defaultCoverPageTemplate():CoverPageTemplate {
   for(const [property,y] of [[10235,49.5],[10237,56],[10238,56],[10240,62.5]])add(`header-${property}`,property===10238?138:property===10240?133.5:116,y,undefined,property);
   add('telephone-label',116,62.5,'Tel.');
   for(const [property,y] of [[10100,105],[10011,115],[10013,125],[10014,135]]){
-    add(`label-${property}`,20,y,labels[property],undefined,5*1.242);add(`field-${property}`,116,y,undefined,property,5*1.242);
+    add(`label-${property}`,20,y,currentLabels[property],undefined,5*1.242);add(`field-${property}`,116,y,undefined,property,5*1.242);
   }
   for(const [property,y] of [[10015,149],[10901,165],[10000,173],[10030,181],[10031,189],[10032,197],[10025,205],[10033,213]]){
-    add(`label-${property}`,20,y,labels[property]);add(`field-${property}`,116,y,undefined,property,3.5*1.242,'start',property===10901?1:undefined);
+    add(`label-${property}`,20,y,currentLabels[property]);add(`field-${property}`,116,y,undefined,property,3.5*1.242,'start',property===10901?1:undefined);
   }
-  add('created-label',20,226.727,'Erstellt am');add('created',76,226.727,undefined,10021);
-  add('modified-label',20,234.727,'Bearbeitet am');add('modified',76,234.727,undefined,10023);
-  add('author-label',140.6,234.727,'von (Kürzel)');add('author',168,234.727,undefined,10022);
-  add('count-label',350.5,234.727,'Anzahl der Seiten');add('count',400,234.727,undefined,10300,3.5*1.242,'end');
+  add('created-label',20,226.727,lang === 'en' ? 'Created on' : 'Erstellt am');add('created',76,226.727,undefined,10021);
+  add('modified-label',20,234.727,lang === 'en' ? 'Edited on' : 'Bearbeitet am');add('modified',76,234.727,undefined,10023);
+  add('author-label',140.6,234.727,lang === 'en' ? 'By (Initials)' : 'von (Kürzel)');add('author',168,234.727,undefined,10022);
+  add('count-label',350.5,234.727,lang === 'en' ? 'Number of Pages' : 'Anzahl der Seiten');add('count',400,234.727,undefined,10300,3.5*1.242,'end');
   return {id:'default-f26',name:'F26_001',width:420,height:297,graphics,texts};
 }
 export const coverPageTemplate = (project:Project) => project.coverPageTemplate ?? defaultCoverPageTemplate();

@@ -7,7 +7,7 @@ export type PlotFrameTemplate = { id: string; name: string; width: number; heigh
   graphics: DrawingPrimitive[]; texts: FrameText[]; diagnostics?: string[]; properties?: Record<string, string> };
 
 /** Default A3 frame uses the same full-width footer as the reference norm sheet. */
-export function defaultPlotFrame(): PlotFrameTemplate {
+export function defaultPlotFrame(lang: 'de' | 'en' = 'de'): PlotFrameTemplate {
   const graphics: DrawingPrimitive[] = [{ kind: 'rect', x: 0, y: 0, width: 420, height: 297, color: 'currentColor', lineWidth: .35 }];
   const line = (x1: number, y1: number, x2: number, y2: number) => graphics.push({ kind: 'line', x1, y1: 297-y1, x2, y2: 297-y2, width: .25, color: 'currentColor' });
   line(0,16,420,16); line(0,292,420,292);
@@ -17,15 +17,15 @@ export function defaultPlotFrame(): PlotFrameTemplate {
   const texts: FrameText[] = [];
   const add = (id: string, x: number, y: number, text?: string, property?: number, anchor: FrameText['anchor']='start') => texts.push({ id,x,y:297-y,size:1.8*1.242,...(text === undefined ? {} : {text}),...(property === undefined ? {} : {property}),anchor });
   for (let i=0;i<10;i++) texts.push({id:`column-${i}`,x:21+42*i,y:3.6,size:1.5*1.242,anchor:'middle',text:String(i)});
-  add('date-label',61,13,'Datum'); add('date',73,13,undefined,11024); add('author-label',61,9,'Bearb.'); add('author',73,9,undefined,11022);
-  add('approved',61,5,'Gepr.'); add('original',61,1,'Urspr.'); add('description',101,5,undefined,10011);
+  add('date-label',61,13,lang === 'en' ? 'Date' : 'Datum'); add('date',73,13,undefined,11024); add('author-label',61,9,lang === 'en' ? 'Drawn' : 'Bearb.'); add('author',73,9,undefined,11022);
+  add('approved',61,5,lang === 'en' ? 'Appr.' : 'Gepr.'); add('original',61,1,lang === 'en' ? 'Orig.' : 'Urspr.'); add('description',101,5,undefined,10011);
   add('company',185,12,undefined,10015); add('page-title',231,12,undefined,11011);
   add('structure-sign',371,13,'='); add('structure',374,13,undefined,1001);
   add('location-sign',371,9,'+'); texts.push({id:'location',x:374,y:288,size:1.8*1.242,anchor:'start',property:1001,index:2});
-  add('sheet-label',401,5,'Blatt'); add('sheet',419,5,undefined,11000,'end');
-  add('ordinal-label',401,1,'Seite'); add('ordinal',413,1,undefined,25020,'end'); add('slash',414,1,'/'); add('total',415,1,undefined,10300);
-  add('change',1,1,'Änderung'); add('change-date',21,1,'Datum'); add('change-name',41,1,'Name'); add('replacement',101,1,'Ersatz von'); add('replaced',143,1,'Ersetzt durch');
-  return { id:'default-a3',name:'A3 Normblatt',width:420,height:297,graphics,texts };
+  add('sheet-label',401,5,lang === 'en' ? 'Sheet' : 'Blatt'); add('sheet',419,5,undefined,11000,'end');
+  add('ordinal-label',401,1,lang === 'en' ? 'Page' : 'Seite'); add('ordinal',413,1,undefined,25020,'end'); add('slash',414,1,'/'); add('total',415,1,undefined,10300);
+  add('change',1,1,lang === 'en' ? 'Rev.' : 'Änderung'); add('change-date',21,1,lang === 'en' ? 'Date' : 'Datum'); add('change-name',41,1,lang === 'en' ? 'Name' : 'Name'); add('replacement',101,1,lang === 'en' ? 'Repl. for' : 'Ersatz von'); add('replaced',143,1,lang === 'en' ? 'Repl. by' : 'Ersetzt durch');
+  return { id:'default-a3',name:lang === 'en' ? 'A3 Standard Frame' : 'A3 Normblatt',width:420,height:297,graphics,texts };
 }
 
 export function frameTextValue(text: FrameText, page: Page, project: Project, template: PlotFrameTemplate): string {

@@ -192,17 +192,30 @@ assert(!allBmks.includes('PF1'), 'Connection BMK PF1 must not be in BOM');
 assert(!allBmks.includes('/1.1'), 'Connection BMK /1.1 must not be in BOM');
 assert(!allBmks.includes('/2.1'), 'Connection BMK /2.1 must not be in BOM');
 
-// --- Test 2: Project with only connection elements yields empty BOM ---
-const connectionOnlyProject: Project = {
+// --- Test 3: Device boxes and structure components are excluded from BOM ---
+const projectWithDeviceBox: Project = {
   ...testProject,
   pages: [
     {
       ...testPage,
-      components: testPage.components.filter(c => isConnectionComponent(c))
+      components: [
+        ...testPage.components,
+        {
+          id: 'box_plc',
+          symbolId: 'device_box',
+          bmk: '-KF1',
+          functionText: 'PLC Controller',
+          x: 100,
+          y: 400,
+          rotation: 0,
+          pins: {}
+        }
+      ]
     }
   ]
 };
-const emptyParts = PartsListGenerator.generatePartsList(connectionOnlyProject);
-assert.equal(emptyParts.length, 0, 'Project with only connection elements must have an empty BOM');
+const partsWithBox = PartsListGenerator.generatePartsList(projectWithDeviceBox);
+assert.equal(partsWithBox.length, 3, 'Device box must NOT be included in BOM');
+assert(!partsWithBox.some(p => p.articleNumber.includes('DEVICE_BOX')), 'No DEVICE_BOX article in BOM');
 
-console.log('✓ PartsList: Connection elements (T-Stücke, Winkel, Abbruchstellen, Kreuzungen) are successfully filtered out of the Bill of Materials');
+console.log('✓ PartsList: Connection elements and device boxes are successfully filtered out of the Bill of Materials');
