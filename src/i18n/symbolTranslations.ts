@@ -176,7 +176,13 @@ export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; descripti
   usb_service_socket: { name: 'USB Service Interface', description: 'Cabinet bulkhead / front USB service port' },
   rj45_socket_8p: { name: 'RJ45 Socket (8-Pin, Cat.6)', description: 'RJ45 8-pin Ethernet connector socket Cat.6 with shield' },
   rj45_socket_4p: { name: 'RJ45 Socket (4-Pin, PROFINET)', description: 'RJ45 4-pin Industrial Ethernet / PROFINET socket' },
-  rj45_feedthrough: { name: 'RJ45 Panel Feedthrough', description: 'RJ45 bulkhead coupler / feedthrough jack' }
+  rj45_feedthrough: { name: 'RJ45 Panel Feedthrough', description: 'RJ45 bulkhead coupler / feedthrough jack' },
+  usb_socket_compact: { name: 'Compact USB Socket (1-Pin)', description: 'Compact USB socket with single connection point' },
+  usb_socket_compact_h: { name: 'Compact USB Socket Horizontal (1-Pin)', description: 'Compact horizontal USB socket with single connection point' },
+  usb_c_socket_compact: { name: 'Compact USB-C Socket (1-Pin)', description: 'Compact USB-C socket with single connection point' },
+  usb_c_socket_compact_h: { name: 'Compact USB-C Socket Horizontal (1-Pin)', description: 'Compact horizontal USB-C socket with single connection point' },
+  rj45_socket_compact: { name: 'Compact RJ45 Socket (1-Pin)', description: 'Compact RJ45 network socket with single connection point' },
+  rj45_socket_compact_h: { name: 'Compact RJ45 Socket Horizontal (1-Pin)', description: 'Compact horizontal RJ45 network socket with single connection point' }
 };
 
 const PHRASE_REPLACEMENTS: [RegExp, string][] = [

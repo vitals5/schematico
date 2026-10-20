@@ -1555,5 +1555,121 @@ export const STANDARD_IEC_SYMBOLS: SymbolDefinition[] = [
       <text x="24" y="32" font-size="6" font-family="sans-serif" text-anchor="middle" fill="currentColor">FEED</text>
     `,
     description: 'RJ45-Schaltschrankdurchführung / Buchse-zu-Buchse Keystone Kupplung'
+  },
+  {
+    id: 'usb_socket_compact',
+    name: 'USB-Buchse (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'USB', x: 16, y: 0, direction: 'top', description: 'USB-Schnittstelle (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
+      <rect x="6" y="10" width="20" height="18" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="10" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="24" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB</text>
+    `,
+    description: 'Kompakte USB-Buchse mit Einzelleitungsanschluss nach IEC 60617'
+  },
+  {
+    id: 'usb_socket_compact_h',
+    name: 'USB-Buchse horizontal (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'USB', x: 0, y: 16, direction: 'left', description: 'USB-Schnittstelle horizontal (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="0" y1="16" x2="10" y2="16" stroke="currentColor" stroke-width="2"/>
+      <rect x="10" y="6" width="18" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="16" y1="10" x2="16" y2="22" stroke="currentColor" stroke-width="1.5"/>
+      <text x="19" y="19" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB</text>
+    `,
+    description: 'Kompakte horizontale USB-Buchse mit Einzelleitungsanschluss nach IEC 60617'
+  },
+  {
+    id: 'usb_c_socket_compact',
+    name: 'USB-C Buchse (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB-C',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'USB-C', x: 16, y: 0, direction: 'top', description: 'USB-C Schnittstelle (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
+      <rect x="5" y="10" width="22" height="18" fill="none" stroke="currentColor" stroke-width="2" rx="6"/>
+      <text x="16" y="22" font-size="6.5" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB-C</text>
+    `,
+    description: 'Kompakte USB-C Buchse mit Einzelleitungsanschluss nach IEC 60617'
+  },
+  {
+    id: 'usb_c_socket_compact_h',
+    name: 'USB-C Buchse horizontal (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB-C',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'USB-C', x: 0, y: 16, direction: 'left', description: 'USB-C Schnittstelle horizontal (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="0" y1="16" x2="10" y2="16" stroke="currentColor" stroke-width="2"/>
+      <rect x="10" y="5" width="18" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="6"/>
+      <text x="19" y="18" font-size="5.5" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB-C</text>
+    `,
+    description: 'Kompakte horizontale USB-C Buchse mit Einzelleitungsanschluss nach IEC 60617'
+  },
+  {
+    id: 'rj45_socket_compact',
+    name: 'RJ45-Buchse (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'ETH',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'ETH', x: 16, y: 0, direction: 'top', description: 'RJ45 Ethernet-Anschluss (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 8 L 26 8 L 26 26 L 20 26 L 20 22 L 12 22 L 12 26 L 6 26 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="18" font-size="6" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">RJ45</text>
+    `,
+    description: 'Kompakte RJ45-Netzwerkbuchse mit Einzelleitungsanschluss nach IEC 60617'
+  },
+  {
+    id: 'rj45_socket_compact_h',
+    name: 'RJ45-Buchse horizontal (kompakt, 1 Anschluss)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'ETH',
+    width: 32,
+    height: 32,
+    pins: [
+      { id: '1', name: 'ETH', x: 0, y: 16, direction: 'left', description: 'RJ45 Ethernet-Anschluss horizontal (kompakt)' }
+    ],
+    svgContent: `
+      <line x1="0" y1="16" x2="8" y2="16" stroke="currentColor" stroke-width="2"/>
+      <path d="M 8 6 L 26 6 L 26 12 L 22 12 L 22 20 L 26 20 L 26 26 L 8 26 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="18" font-size="6" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">RJ45</text>
+    `,
+    description: 'Kompakte horizontale RJ45-Netzwerkbuchse mit Einzelleitungsanschluss nach IEC 60617'
   }
 ];
