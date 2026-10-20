@@ -4,6 +4,8 @@ import { defaultCoverPageTemplate, createCoverPage } from '../model/CoverPage';
 import { defaultPlotFrame } from '../model/PlotFrame';
 import { getBomColumns } from '../export/PartsListPdf';
 import { Project } from '../model/types';
+import { getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from './symbolTranslations';
+import { SYMBOL_DEFINITIONS } from '../model/symbols';
 
 // 1. Test UI Language Switching & Callbacks
 let callbackLang = '';
@@ -100,4 +102,25 @@ assert.equal(bomColsEn[0].title, 'Qty');
 assert.equal(bomColsEn[1].title, 'Part Number');
 assert.equal(bomColsEn[2].title, 'Description / Type');
 
-console.log('✓ UI and Project language localization: switching, persistence, parameter interpolation, cover pages, plot frames and BOM columns passed.');
+// 6. Test Category, Connection & Macro Localizations
+assert.equal(getCategoryLabel('relays', 'de'), 'Schaltgeräte & Relais');
+assert.equal(getCategoryLabel('relays', 'en'), 'Switchgear & Relays');
+assert.equal(getCategoryLabel('protection', 'en'), 'Protection Devices');
+
+assert.equal(getConnectionCategoryLabel('interruptions', 'de'), 'Abbruchstellen');
+assert.equal(getConnectionCategoryLabel('interruptions', 'en'), 'Interruption Points');
+assert.equal(getConnectionCategoryLabel('tees', 'en'), 'T-Junctions');
+
+assert.equal(getMacroCategoryLabel('motor', 'de'), '⚙️ Motoren & Antriebe');
+assert.equal(getMacroCategoryLabel('motor', 'en'), '⚙️ Motors & Drives');
+assert.equal(getMacroCategoryLabel('all', 'en'), 'All Macros');
+
+const coilSym = SYMBOL_DEFINITIONS.find(s => s.id === 'coil');
+if (coilSym) {
+  const coilDe = getLocalizedSymbol(coilSym, 'de');
+  assert.equal(coilDe.name, 'Relaisspule / Schützspule');
+  const coilEn = getLocalizedSymbol(coilSym, 'en');
+  assert.equal(coilEn.name, 'Relay Coil / Contactor Coil');
+}
+
+console.log('✓ UI and Project language localization: switching, persistence, parameter interpolation, cover pages, plot frames, BOM columns, and symbol translations passed.');

@@ -6,6 +6,7 @@ import { escapeSvg } from '../model/ImportedDrawing';
 import { isConnectionSymbol, connectionFamily } from '../model/ConnectionSymbols';
 import { SymbolDefinition } from '../model/types';
 import { getSymbolDefinitions, getSymbolById } from '../model/symbols';
+import { t, getCategoryLabel, getConnectionCategoryLabel, getLocalizedSymbol } from '../i18n';
 
 export interface SymbolSelectionCallbacks {
   onSelect: (symbol: SymbolDefinition) => void;
@@ -66,7 +67,7 @@ export class SymbolSelectionDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #63b3ed;">📐</span>
-            <span>${this.kind === 'connections' ? 'Verbindungselemente' : 'Elementauswahl'} (DIN EN 60617 / IEC 81346)</span>
+            <span>${t(this.kind === 'connections' ? 'symModalTitleConnections' : 'symModalTitleElements')}</span>
           </div>
           <button id="btnCloseSymModal" style="background: none; border: none; color: #a0aec0; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
@@ -82,7 +83,7 @@ export class SymbolSelectionDialog {
         ">
           <div style="flex: 1; display: flex; align-items: center; gap: 6px; background: #232731; border: 1px solid #3e4656; border-radius: 4px; padding: 4px 8px;">
             <span style="color: #a0aec0; font-size: 12px;">🔍</span>
-            <input type="text" id="symSearchInput" placeholder="Symbol suchen (z.B. Schütz, FI, Stromstoß, Taster, Motor)..." style="
+            <input type="text" id="symSearchInput" placeholder="${escapeSvg(t('symSearchPlaceholder'))}" style="
               background: none;
               border: none;
               color: white;
@@ -92,7 +93,7 @@ export class SymbolSelectionDialog {
             " value="${escapeSvg(this.searchQuery)}">
           </div>
           <span style="font-size: 11px; color: #a0aec0;" id="symCountBadge">
-            ${getSymbolDefinitions().length} Symbole verfügbar
+            ${t('symCountBadge', { count: getSymbolDefinitions().length })}
           </span>
         </div>
 
@@ -106,11 +107,11 @@ export class SymbolSelectionDialog {
             padding: 10px;
             overflow-y: auto;
           ">
-            <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 6px;">Bibliotheken</div>
+            <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 6px;">${t('symTreeLibraries')}</div>
             
             ${(this.kind === 'connections'
-              ? [['all','Alle Verbindungselemente'],['interruptions','Abbruchstellen'],['tees','T-Stücke'],['corners','Winkel'],['crossings','Kreuzungen'],['other','Weitere'],['project','Projektbibliothek']]
-              : [['all','Alle Elemente'],['project','Projektbibliothek'],...ELEMENT_CATEGORIES.map(c=>[c.id,c.label])])
+              ? ['all', 'interruptions', 'tees', 'corners', 'crossings', 'other', 'project'].map(id => [id, getConnectionCategoryLabel(id)])
+              : [['all', getCategoryLabel('all')], ['project', getCategoryLabel('project')], ...ELEMENT_CATEGORIES.map(c => [c.id, getCategoryLabel(c.id)]) as [string, string][]])
               .map(([id,label])=>`<div class="sym-tree-node ${id===this.selectedCategory?'active':''}" data-cat="${id}" style="padding:6px;cursor:pointer;font-size:11px">${escapeSvg(label)}</div>`).join('')}
 
           </div>
@@ -153,11 +154,11 @@ export class SymbolSelectionDialog {
           align-items: center;
         ">
           <div style="font-size: 11px; color: #a0aec0;">
-            Tipp: Mit <strong>Tab</strong> können Sie das Bauteil beim Platzieren drehen.
+            ${t('symTipTab')}
           </div>
           <div style="display: flex; gap: 8px;">
-            <button id="btnInsertSym" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">Einfügen (Enter)</button>
-            <button id="btnCancelSym" class="btn" style="padding: 6px 14px; font-size: 12px;">Abbrechen (Esc)</button>
+            <button id="btnInsertSym" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">${t('symBtnInsert')}</button>
+            <button id="btnCancelSym" class="btn" style="padding: 6px 14px; font-size: 12px;">${t('symBtnCancel')}</button>
           </div>
         </div>
       </div>
@@ -185,13 +186,14 @@ export class SymbolSelectionDialog {
     if (list.length === 0) {
       return `
         <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: #a0aec0;">
-          Keine Symbole für diesen Suchbegriff gefunden.
+          ${t('symNoResults')}
         </div>
       `;
     }
 
     return list.map(sym => {
       const isSelected = sym.id === this.selectedSymbolId;
+      const locSym = getLocalizedSymbol(sym);
       return `
         <div class="sym-dialog-card ${isSelected ? 'selected' : ''}" data-sym-id="${sym.id}" style="
           background: #232731;
@@ -218,7 +220,7 @@ export class SymbolSelectionDialog {
               <g color="#e2e8f0">${sym.svgContent}</g>
             </svg>
           </div>
-          <div style="font-size: 11px; font-weight: 500; color: #edf2f7; line-height: 1.2;">${escapeSvg(sym.name)}</div>
+          <div style="font-size: 11px; font-weight: 500; color: #edf2f7; line-height: 1.2;">${escapeSvg(locSym.name)}</div>
           <div style="font-size: 9px; font-family: monospace; color: #f6e05e; margin-top: 4px;">BMK: ${sym.defaultBmkPrefix}</div>
         </div>
       `;
@@ -227,11 +229,12 @@ export class SymbolSelectionDialog {
 
   private renderSymbolDetails(): string {
     const sym = getSymbolById(this.selectedSymbolId);
-    if (!sym) return '<div>Kein Element ausgewählt.</div>';
+    if (!sym) return `<div>${t('symNoSelection')}</div>`;
+    const locSym = getLocalizedSymbol(sym);
 
     return `
       <div>
-        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">Vorschau</div>
+        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">${t('symPreview')}</div>
         <div style="
           background: #1c212c;
           border: 1px solid #3e4656;
@@ -249,28 +252,28 @@ export class SymbolSelectionDialog {
       </div>
 
       <div>
-        <div style="font-size: 12px; font-weight: 600; color: #edf2f7;">${escapeSvg(sym.name)}</div>
-        <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">${escapeSvg(sym.description)}</div>
+        <div style="font-size: 12px; font-weight: 600; color: #edf2f7;">${escapeSvg(locSym.name)}</div>
+        <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">${escapeSvg(locSym.description || '')}</div>
       </div>
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px;">
-        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">Kenndaten</div>
+        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">${t('symDetails')}</div>
         <div style="font-size: 11px; line-height: 1.6;">
-          <div><strong style="color: #cbd5e0;">Norm:</strong> ${sym.standard}</div>
-          <div><strong style="color: #cbd5e0;">Präfix:</strong> <code>${escapeSvg((sym.bmkPrefixes?.join(' / ') ?? sym.defaultBmkPrefix) || '–')}</code></div>
-          <div><strong style="color: #cbd5e0;">Rastermaß:</strong> ${sym.width}x${sym.height}</div>
-          <div><strong style="color: #cbd5e0;">Standardtext:</strong> ${escapeSvg(sym.defaultFunctionText)}</div>
+          <div><strong style="color: #cbd5e0;">${t('symStandard')}:</strong> ${sym.standard}</div>
+          <div><strong style="color: #cbd5e0;">${t('symPrefix')}:</strong> <code>${escapeSvg((sym.bmkPrefixes?.join(' / ') ?? sym.defaultBmkPrefix) || '–')}</code></div>
+          <div><strong style="color: #cbd5e0;">${t('symGridSize')}:</strong> ${sym.width}x${sym.height}</div>
+          <div><strong style="color: #cbd5e0;">${t('symDefaultText')}:</strong> ${escapeSvg(sym.defaultFunctionText)}</div>
           ${Object.entries(sym.variantProperties??{}).map(([key,value])=>`<div><strong style="color:#cbd5e0">${escapeSvg(key)}:</strong> ${escapeSvg(value)}</div>`).join('')}
-          ${sym.family?'<div style="margin-top:6px;color:#a0aec0">Generische Vorlage · Kennwerte und BMK sind nach dem Einfügen editierbar.</div>':''}
+          ${sym.family?`<div style="margin-top:6px;color:#a0aec0">${t('symGenericHint')}</div>`:''}
         </div>
       </div>
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px;">
-        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">Anschlüsse (${sym.pins.length})</div>
+        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">${t('symPins', { count: sym.pins.length })}</div>
         <div style="display: flex; flex-direction: column; gap: 4px;">
           ${sym.pins.map(p => `
             <div style="display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; background: #232731; padding: 2px 6px; border-radius: 3px;">
-              <span style="color: #63b3ed;">Pin ${p.name}</span>
+              <span style="color: #63b3ed;">${t('propPinPrefix')} ${p.name}</span>
               <span style="color: #a0aec0;">[${p.x}, ${p.y}] ${p.direction}</span>
             </div>
           `).join('')}
@@ -354,7 +357,7 @@ export class SymbolSelectionDialog {
 
     const count = this.getFilteredSymbols().length;
     const badge = modal.querySelector('#symCountBadge');
-    if (badge) badge.textContent = `${count} Symbole gefunden`;
+    if (badge) badge.textContent = t('symCountBadge', { count });
   }
 
   private bindCardClicks(modal: HTMLElement, onDoubleSelect: () => void): void {

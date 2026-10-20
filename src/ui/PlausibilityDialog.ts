@@ -3,6 +3,7 @@
 
 import { Project, PlacedComponent } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
+import { t } from '../i18n';
 
 export interface PlausibilityMessage {
   id: string;
@@ -79,7 +80,7 @@ export class PlausibilityDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #68d391;">📋</span>
-            <span>Prüflauf - Meldungsverwaltung (Plausibilitätsprüfung)</span>
+            <span>${t('plausModalTitle')}</span>
           </div>
           <button id="btnClosePlausModal" style="background: none; border: none; color: #a0aec0; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
@@ -94,11 +95,11 @@ export class PlausibilityDialog {
           gap: 16px;
           font-size: 12px;
         ">
-          <div>Status: <strong>Prüflauf abgeschlossen</strong></div>
+          <div>${t('plausStatusDone')}</div>
           <div style="display: flex; gap: 12px; margin-left: auto;">
-            <span style="color: #fc8181;">❌ ${errors} Fehler</span>
-            <span style="color: #f6ad55;">⚠️ ${warnings} Warnungen</span>
-            <span style="color: #63b3ed;">ℹ️ ${infos} Hinweise</span>
+            <span style="color: #fc8181;">❌ ${t('plausErrors', { count: errors })}</span>
+            <span style="color: #f6ad55;">⚠️ ${t('plausWarnings', { count: warnings })}</span>
+            <span style="color: #63b3ed;">ℹ️ ${t('plausInfos', { count: infos })}</span>
           </div>
         </div>
 
@@ -107,29 +108,35 @@ export class PlausibilityDialog {
           <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
             <thead>
               <tr style="background: #181b22; color: #a0aec0; text-align: left; border-bottom: 1px solid #3e4656;">
-                <th style="padding: 6px 8px;">Typ</th>
-                <th style="padding: 6px 8px;">Ort / Blatt</th>
-                <th style="padding: 6px 8px;">BMK</th>
-                <th style="padding: 6px 8px;">Meldungstext</th>
-                <th style="padding: 6px 8px;">Aktion</th>
+                <th style="padding: 6px 8px;">${t('plausColSeverity')}</th>
+                <th style="padding: 6px 8px;">${t('plausColPage')}</th>
+                <th style="padding: 6px 8px;">${t('plausColBmk')}</th>
+                <th style="padding: 6px 8px;">${t('plausColMessage')}</th>
+                <th style="padding: 6px 8px;">${t('plausColAction')}</th>
               </tr>
             </thead>
             <tbody>
-              ${messages.map(m => `
+              ${messages.length === 0 ? `
+                <tr>
+                  <td colspan="5" style="padding: 24px; text-align: center; color: #a0aec0;">
+                    ${t('plausEmpty')}
+                  </td>
+                </tr>
+              ` : messages.map(m => `
                 <tr class="plaus-row" data-page-id="${m.pageId}" data-comp-id="${m.componentId || ''}" style="border-bottom: 1px solid #2d3748; cursor: pointer;">
                   <td style="padding: 6px 8px; white-space: nowrap;">
-                    ${m.severity === 'error' ? '❌ <span style="color:#fc8181;font-weight:600;">Fehler</span>' : 
-                      (m.severity === 'warning' ? '⚠️ <span style="color:#f6ad55;font-weight:600;">Warnung</span>' : 
-                      'ℹ️ <span style="color:#63b3ed;">Hinweis</span>')}
+                    ${m.severity === 'error' ? `❌ <span style="color:#fc8181;font-weight:600;">${t('plausSeverityError')}</span>` : 
+                      (m.severity === 'warning' ? `⚠️ <span style="color:#f6ad55;font-weight:600;">${t('plausSeverityWarning')}</span>` : 
+                      `ℹ️ <span style="color:#63b3ed;">${t('plausSeverityInfo')}</span>`)}
                   </td>
-                  <td style="padding: 6px 8px; white-space: nowrap; font-family: monospace;">Blatt ${m.pageNumber}</td>
+                  <td style="padding: 6px 8px; white-space: nowrap; font-family: monospace;">${t('sheet')} ${m.pageNumber}</td>
                   <td style="padding: 6px 8px; font-weight: bold; font-family: monospace; color: #f6e05e;">${m.bmk || '-'}</td>
                   <td style="padding: 6px 8px;">
                     <div>${m.message}</div>
-                    <div style="font-size: 10px; color: #a0aec0; margin-top: 2px;">Empfehlung: ${m.recommendation}</div>
+                    <div style="font-size: 10px; color: #a0aec0; margin-top: 2px;">${t('plausColRecommendation')}: ${m.recommendation}</div>
                   </td>
                   <td style="padding: 6px 8px; white-space: nowrap;">
-                    <button class="btn btn-jump" style="padding: 2px 8px; font-size: 10px;">Springen ➔</button>
+                    <button class="btn btn-jump" style="padding: 2px 8px; font-size: 10px;">${t('plausBtnNavigate')} ➔</button>
                   </td>
                 </tr>
               `).join('')}
@@ -145,7 +152,7 @@ export class PlausibilityDialog {
           display: flex;
           justify-content: flex-end;
         ">
-          <button id="btnConfirmPlaus" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px;">Schließen</button>
+          <button id="btnConfirmPlaus" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px;">${t('close')}</button>
         </div>
       </div>
     `;
@@ -195,8 +202,8 @@ export class PlausibilityDialog {
             pageNumber: page.pageNumber,
             componentId: comp.id,
             bmk: comp.bmk,
-            message: `Keine Artikelnummer / Bestelldaten für Bauteil hinterlegt.`,
-            recommendation: `Weisen Sie im Eigenschaften-Dialog einen Herstellerartikel zu.`
+            message: t('plausMsgMissingArticle'),
+            recommendation: t('plausRecMissingArticle')
           });
         }
 
@@ -218,8 +225,8 @@ export class PlausibilityDialog {
               pageNumber: page.pageNumber,
               componentId: comp.id,
               bmk: comp.bmk,
-              message: `Bauteil ist vollständig unverdrahtet (alle ${sym.pins.length} Anschlüsse unbeschaltet).`,
-              recommendation: `Verbinden Sie die Anschlüsse mit Zuleitung oder Klemmen.`
+              message: t('plausMsgUnwired', { count: sym.pins.length }),
+              recommendation: t('plausRecUnwired')
             });
           }
         }
@@ -241,8 +248,8 @@ export class PlausibilityDialog {
             pageNumber: entry.components[1].pageNum,
             componentId: entry.components[1].comp.id,
             bmk: bmk,
-            message: `Doppeltes Betriebsmittelkennzeichen '${bmk}' für eigenständige Geräte gefunden.`,
-            recommendation: `Benennen Sie eines der Geräte um (z.B. in ${bmk}A).`
+            message: t('plausMsgDuplicateBmk', { bmk }),
+            recommendation: t('plausRecDuplicateBmk', { bmk })
           });
         }
       }

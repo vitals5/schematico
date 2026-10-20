@@ -2,7 +2,7 @@ import { Page, PageImage, Project } from '../model/types';
 import { CoverPageData, coverPageFields, coverPageLogo, coverPageSvg } from '../model/CoverPage';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { isBundledSupplierLogo } from '../model/PresentationNaming';
-import { getUiLanguage } from '../i18n';
+import { getUiLanguage, t } from '../i18n';
 
 export interface CoverPageDialogCallbacks {
   onSave: (cover: CoverPageData) => void;
@@ -158,7 +158,7 @@ export class CoverPageDialog {
   private async loadLogo(modal: HTMLElement, file?: File): Promise<void> {
     if (!file) return;
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
-      this.setLogoError(modal, 'Bitte ein PNG- oder JPEG-Bild auswählen.');
+      this.setLogoError(modal, t('coverLogoSelectError'));
       return;
     }
     const request = ++this.logoRequest;
@@ -168,20 +168,21 @@ export class CoverPageDialog {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Die Bilddatei konnte nicht gelesen werden.'));
+        reader.onerror = () => reject(new Error(t('coverLogoCorruptError')));
         reader.readAsDataURL(file);
       });
       // Decoding rejects damaged images before storing an inline project asset.
       await new Promise<void>((resolve, reject) => {
         const image = new Image();
         image.onload = () => resolve();
-        image.onerror = () => reject(new Error('Die Bilddatei ist beschädigt oder wird nicht unterstützt.'));
+        image.onerror = () => reject(new Error(t('coverLogoCorruptError')));
         image.src = dataUrl;
       });
       if (!modal.isConnected || request !== this.logoRequest) return;
+      const isEn = getUiLanguage() === 'en';
       const old = this.effectiveLogo();
       const logo = { ...(old ?? { id: 'cover-logo', x: 64, y: 24.346394, width: 29, height: 40.386 }), dataUrl, caption:file.name };
-      if(isBundledSupplierLogo(logo))throw new Error('Bitte ein eigenes Firmenlogo verwenden.');
+      if(isBundledSupplierLogo(logo))throw new Error(isEn ? 'Please use a custom company logo.' : 'Bitte ein eigenes Firmenlogo verwenden.');
       this.draft.logo = logo;
       this.setLogoError(modal, '');
       this.updateLogoPosition(modal);

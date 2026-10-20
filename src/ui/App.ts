@@ -12,7 +12,7 @@ import { setComponentLabelText, revealImportedComponentLabels } from '../model/L
 import { selectionCount } from '../model/ElementSelection';
 import { createCoverPage, defaultCoverPageTemplate } from '../model/CoverPage';
 import { defaultPlotFrame } from '../model/PlotFrame';
-import { t, getUiLanguage, setUiLanguage, Language } from '../i18n';
+import { t, getUiLanguage, setUiLanguage, onLanguageChange, Language, getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from '../i18n';
 import { CoverPageDialog } from './CoverPageDialog';
 import { neutralSourceLabel, prepareProjectPresentation } from '../model/PresentationNaming';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties } from '../model/SelectionProperties';
@@ -89,6 +89,9 @@ export class App {
     this.history.reset(this.project);
     this.initHistoryEvents();
     this.initPanelResizers();
+    onLanguageChange(() => {
+      this.refreshUiLocalization();
+    });
     this.updateUI();
     externalMacroLibrary.subscribe(() => {
       refreshMacroFolderPanels();
@@ -222,8 +225,8 @@ export class App {
         <main class="canvas-wrapper" id="canvasContainer">
           <!-- Floating Symbol Placement Banner -->
           <div class="place-hint-banner" id="placeHintBanner" style="display: none;">
-            <span id="placeHintText">📍 Bauteil gewählt: Tippe auf den Plan</span>
-            <button class="btn-banner-close" id="btnCancelPlace" title="Platzieren abbrechen">✕</button>
+            <span id="placeHintText">${t('placeHintText')}</span>
+            <button class="btn-banner-close" id="btnCancelPlace" title="${t('btnCancelPlace')}">✕</button>
           </div>
 
           <!-- Floating Selection Action Bar (always visible on canvas when component selected) -->
@@ -245,23 +248,23 @@ export class App {
           ">
             <span id="selectionFloatingTag" style="font-weight: bold; font-family: monospace; color: #f6e05e; font-size: 13px;">-K1</span>
             <button class="btn btn-primary" id="btnFloatingEdit" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #3182ce; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-              <span>⚡ BMK & Beschriftung bearbeiten...</span>
+              <span>${t('btnFloatingEdit')}</span>
             </button>
-            <button class="btn" id="btnFloatingCopy" style="padding: 6px 10px; font-size: 12px;" title="Kopieren (Strg+C)">📋</button>
-            <button class="btn" id="btnFloatingDuplicate" style="padding: 6px 10px; font-size: 12px;" title="Duplizieren (Strg+D)">📑</button>
-            <button class="btn" id="btnFloatingExportMacro" style="padding: 6px 10px; font-size: 12px; background: rgba(66, 153, 225, 0.2); border-color: #3182ce;" title="Als .ema Makro speichern">📦 Makro</button>
-            <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="90° Drehen">🔄</button>
-            <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="Löschen">🗑️</button>
+            <button class="btn" id="btnFloatingCopy" style="padding: 6px 10px; font-size: 12px;" title="${t('toolCopy')}">📋</button>
+            <button class="btn" id="btnFloatingDuplicate" style="padding: 6px 10px; font-size: 12px;" title="${t('toolDuplicate')}">📑</button>
+            <button class="btn" id="btnFloatingExportMacro" style="padding: 6px 10px; font-size: 12px; background: rgba(66, 153, 225, 0.2); border-color: #3182ce;" title="${t('btnFloatingSaveMacroTitle')}">${t('btnFloatingSaveMacro')}</button>
+            <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="${t('toolRotate')}">🔄</button>
+            <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="${t('toolDelete')}">🗑️</button>
           </div>
 
           <!-- Mobile Floating Action Bar -->
           <div class="mobile-floating-bar" id="mobileFloatingBar">
-            <button class="btn-fab btn-fab-primary" id="fabEdit" title="BMK & Beschriftung editieren">⚡ Edit</button>
-            <button class="btn-fab" id="fabFit" title="Blatt anpassen">🔍 Fit</button>
-            <button class="btn-fab" id="fabWire" title="Verdrahten">🔌 Draht</button>
-            <button class="btn-fab" id="fabRotate" title="Drehen">🔄 Drehen</button>
-            <button class="btn-fab" id="fabDelete" title="Löschen">🗑️ Löschen</button>
-            <button class="btn-fab" id="fabPdf" title="PDF Export">📑 PDF</button>
+            <button class="btn-fab btn-fab-primary" id="fabEdit" title="${t('fabEditTitle')}">${t('fabEdit')}</button>
+            <button class="btn-fab" id="fabFit" title="${t('menuFit')}">${t('fabFit')}</button>
+            <button class="btn-fab" id="fabWire" title="${t('toolWireLabel')}">${t('fabWire')}</button>
+            <button class="btn-fab" id="fabRotate" title="${t('menuRotate')}">${t('fabRotate')}</button>
+            <button class="btn-fab" id="fabDelete" title="${t('menuDelete')}">${t('fabDelete')}</button>
+            <button class="btn-fab" id="fabPdf" title="${t('toolExportPdf')}">${t('fabPdf')}</button>
           </div>
         </main>
 
@@ -414,33 +417,35 @@ export class App {
     const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
     if (bar && tag) {
       if (multiple) {
-        tag.textContent=`${this.canvas.canUngroupSelection()?'Gruppe: ':''}${selectionCount(this.canvas.getElementSelection())} Elemente ausgewählt`;
+        tag.textContent = `${this.canvas.canUngroupSelection() ? t('menuGroup') + ': ' : ''}${t('foundElements', { count: selectionCount(this.canvas.getElementSelection()) })}`;
         if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';
-        if(btnDel){btnDel.title='Ausgewählte Elemente löschen';btnDel.textContent='🗑️';}bar.style.display='flex';
+        if(btnDel){btnDel.title=t('floatingSelectionDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
       } else if(boxSelected) {
-        tag.textContent='Gerätekasten ausgewählt';if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title='Gerätekasten löschen';btnDel.textContent='🗑️';}bar.style.display='flex';
+        tag.textContent=t('boxHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingBoxDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
       } else if(imageSelected) {
-        tag.textContent='Bild ausgewählt';if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title='Bild löschen';btnDel.textContent='🗑️';}bar.style.display='flex';
+        tag.textContent=t('imageHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingImageDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
       } else if (this.selectedComponent) {
-        tag.textContent = `${this.selectedComponent.bmk} (${this.selectedComponent.functionText || 'Bauteil'})`;
+        const sym = getSymbolForComponent(this.selectedComponent);
+        const locSym = sym ? getLocalizedSymbol(sym) : undefined;
+        tag.textContent = `${this.selectedComponent.bmk} (${this.selectedComponent.functionText || locSym?.name || t('componentLabel')})`;
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'inline-block';
         if (btnDel) {
-          btnDel.title = 'Bauteil löschen';
+          btnDel.title = t('floatingCompDeleteTitle');
           btnDel.textContent = '🗑️';
         }
         bar.style.display = 'flex';
       } else if (this.selectedCable) {
-        tag.textContent='Kabel: '+(this.selectedCable.bmk || this.selectedCable.cableType || 'Kabeldefinition');
+        tag.textContent = t('floatingCable', { name: this.selectedCable.bmk || this.selectedCable.cableType || t('cableHeading') });
         if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='inline-block';
-        if(btnDel)btnDel.title='Kabeldefinition löschen';bar.style.display='flex';
+        if(btnDel)btnDel.title=t('floatingCableDeleteTitle');bar.style.display='flex';
       } else if (this.selectedWire) {
-        tag.textContent = `🔌 Leitung: ${this.selectedWire.potential} (${this.selectedWire.color || 'BK'}, ${this.selectedWire.crossSection || '1.5mm²'})`;
+        tag.textContent = t('floatingWire', { potential: this.selectedWire.potential, color: this.selectedWire.color || 'BK', section: this.selectedWire.crossSection || '1.5mm²' });
         if (btnEdit) btnEdit.style.display = 'none';
         if (btnRot) btnRot.style.display = 'none';
         if (btnDel) {
-          btnDel.title = 'Leitung trennen / löschen';
-          btnDel.textContent = '🗑️ Trennen';
+          btnDel.title = t('floatingWireDisconnectTitle');
+          btnDel.textContent = t('floatingWireDisconnect');
         }
         bar.style.display = 'flex';
       } else {
@@ -592,7 +597,7 @@ export class App {
       const banner = document.getElementById('placeHintBanner');
       const bannerText = document.getElementById('placeHintText');
       if (banner && bannerText) {
-        bannerText.textContent = `📍 ${customName || 'Bauteil'} gewählt: Tippe auf den Plan`;
+        bannerText.textContent = t('placeHintSelected', { name: customName || t('componentLabel') });
         banner.style.display = 'flex';
       }
     }
@@ -813,12 +818,12 @@ export class App {
     bindMenuOpt('menuToggleLeftPanel',()=>this.setLeftPanelCollapsed(!this.isLeftCollapsed));
     bindMenuOpt('menuToggleRightPanel',()=>this.setRightPanelCollapsed(!this.isRightCollapsed));
     bindMenuOpt('menuNew', () => {
-      if (confirm('Möchten Sie ein neues leeres Projekt anlegen? Nicht gespeicherte Änderungen gehen verloren.')) {
+      if (confirm(t('confirmNewProject'))) {
         this.createNewProject();
       }
     });
     bindMenuOpt('menuLoadDemo', () => {
-      if (confirm('Möchten Sie das Standard-Beispielprojekt laden? Nicht gespeicherte Änderungen am aktuellen Projekt gehen verloren.')) {
+      if (confirm(t('confirmLoadDemo'))) {
         this.loadDemoProject();
       }
     });
@@ -922,7 +927,7 @@ export class App {
       CrossReferenceEngine.updateProjectCrossReferences(this.project);
       this.canvas.render();
       this.updateUI();
-      alert('Querverweise und Kontaktspiegel für alle Schaltzeichen wurden erfolgreich neu berechnet.');
+      alert(t('alertCrossRefsCalculated'));
     });
     bindMenuOpt('menuShowTerminals', () => {
       this.activeLeftTab = 'terminals';
@@ -938,35 +943,7 @@ export class App {
     // Hilfe
     bindMenuOpt('menuMobile', () => MobileConnectDialog.show());
     bindMenuOpt('menuShortcuts', () => {
-      alert(
-        'Elektro-CAD Tastatur-Kürzel:\n\n' +
-        '• Pfeiltasten: Ansicht verschieben (Umschalt: größerer Schritt)\n' +
-        '• Mausrahmen: Mehrere Elemente auswählen\n' +
-        '• Strg-/Umschalt-Klick oder -Rahmen: Auswahl ergänzen / umschalten\n' +
-        '• Strg+A: Alle Elemente auswählen\n' +
-        '• Strg+G: Gruppieren / Strg+Umschalt+G: Gruppierung auflösen\n' +
-        '• F2 / Enter: Eigenschaften der Auswahl\n' +
-        '• Einfg: Elementauswahl öffnen\n' +
-        '• Tab: Symbol während Vorschau um 90° drehen\n' +
-        '• D / W: Verbindungslinie zeichnen (Verdrahten)\n' +
-        '• Doppelklick: Eigenschaften (Schaltzeichen)\n' +
-        '• Rechtsklick: Kontextmenü\n' +
-        '• Strg+Z: Rückgängig\n' +
-        '• Strg+Y / Strg+Umschalt+Z: Wiederholen\n' +
-        '• Strg+C: Auswahl kopieren\n' +
-        '• Strg+X: Auswahl ausschneiden\n' +
-        '• Strg+V: Einfügen\n' +
-        '• Strg+D: Auswahl duplizieren\n' +
-        '• R: Ausgewähltes Bauteil um 90° drehen\n' +
-        '• Entf / Backspace: Ausgewähltes Element löschen\n' +
-        '• F: Ganzes Blatt anzeigen (Fit)\n' +
-        '• H: Halbraster umschalten (4px / 2mm)\n' +
-        '• Alt+1 / Alt+2 / Alt+3 / Alt+0: Voll-, Halb-, Feinraster, Aus\n' +
-        '• Shift / Alt beim Verschieben: Halbraster-Fang\n' +
-        '• Strg+P: Intelligenter PDF-Export (DIN A3)\n' +
-        '• Strg+S: Projekt speichern\n' +
-        '• Esc: Modus / Platzierung abbrechen'
-      );
+      alert(t('shortcutsHelp'));
     });
     bindMenuOpt('menuAbout', () => AboutDialog.show());
   }
@@ -1516,26 +1493,27 @@ export class App {
     const connections = this.activeLeftTab === 'connections';
     const category = connections ? this.connectionCategoryFilter : this.symbolCategoryFilter;
     const query = connections ? this.connectionSearchQuery : this.symbolSearchQuery;
-    const categories = connections
-      ? [['all','Alle Verbindungselemente'],['interruptions','Abbruchstellen'],['tees','T-Stücke'],['corners','Winkel'],['crossings','Kreuzungen'],['other','Weitere'],['project','Projektbibliothek']]
-      : [['all','Alle Kategorien'],['project','Projektbibliothek (mitgeliefert)'],...ELEMENT_CATEGORIES.map(c=>[c.id,c.label])];
+    const categories: [string, string][] = connections
+      ? ['all', 'interruptions', 'tees', 'corners', 'crossings', 'other', 'project'].map(id => [id, getConnectionCategoryLabel(id)])
+      : [['all', getCategoryLabel('all')], ['project', getCategoryLabel('project')], ...ELEMENT_CATEGORIES.map(c => [c.id, getCategoryLabel(c.id)]) as [string, string][]];
     const filtered = getSymbolDefinitions().filter(s => !s.annotationKind && isConnectionSymbol(s) === connections
       && (category === 'all' || category === 'project' && !!s.source || (connections ? connectionFamily(s) : s.category) === category)
       && symbolMatchesQuery(s,query));
-    let categoriesHtml = `<select class="form-input" id="symbolCategorySelect" aria-label="Bibliothekskategorie">${categories.map(([id,label])=>`<option value="${id}" ${category===id?'selected':''}>${escapeSvg(label)}</option>`).join('')}</select>
-      <input class="form-input" id="symbolSearchInput" aria-label="Elemente suchen" placeholder="Suchen: z. B. FI 4P B+ 300 mA" value="${escapeSvg(query)}" style="margin:8px 0">
-      <div style="font-size:11px;margin-bottom:8px;color:var(--text-muted)">${filtered.length} ${connections?'Verbindungselemente':'Elemente'} gefunden</div><div class="symbol-grid">`;
+    let categoriesHtml = `<select class="form-input" id="symbolCategorySelect" aria-label="${escapeSvg(connections ? t('tabConnections') : t('tabSymbols'))}">${categories.map(([id,label])=>`<option value="${id}" ${category===id?'selected':''}>${escapeSvg(label)}</option>`).join('')}</select>
+      <input class="form-input" id="symbolSearchInput" aria-label="${escapeSvg(connections ? t('tabConnections') : t('tabSymbols'))}" placeholder="${escapeSvg(t(connections ? 'searchConnectionsPlaceholder' : 'searchSymbolsPlaceholder'))}" value="${escapeSvg(query)}" style="margin:8px 0">
+      <div style="font-size:11px;margin-bottom:8px;color:var(--text-muted)">${t(connections ? 'foundConnections' : 'foundElements', { count: filtered.length })}</div><div class="symbol-grid">`;
 
     for (const sym of filtered) {
       const isSelected = this.canvas.activeSymbolToPlace === sym.id && this.canvas.mode === 'place_symbol';
+      const locSym = getLocalizedSymbol(sym);
       categoriesHtml += `
-        <div class="symbol-card ${isSelected ? 'selected' : ''}" data-symbol-id="${sym.id}" title="${escapeSvg(sym.description)}">
+        <div class="symbol-card ${isSelected ? 'selected' : ''}" data-symbol-id="${sym.id}" title="${escapeSvg(locSym.description || '')}">
           <div class="symbol-preview-svg">
             <svg width="40" height="40" viewBox="0 0 ${sym.width} ${sym.height}">
               <g color="#e2e8f0">${sym.importedGraphics ? drawingToSvg(sym.importedGraphics) : sym.svgContent}</g>
             </svg>
           </div>
-          <div class="symbol-title">${escapeSvg(sym.name)}</div>
+          <div class="symbol-title">${escapeSvg(locSym.name)}</div>
           <div class="symbol-bmk">BMK: ${sym.defaultBmkPrefix}</div>
           ${sym.source ? `<div class="symbol-bmk">${sym.source.library} / ${sym.source.number} · ${sym.source.variant}</div>` : ''}
         </div>
@@ -1543,7 +1521,7 @@ export class App {
     }
 
     categoriesHtml += `</div>`;
-    container.innerHTML = (connections ? '<button class="btn" id="connectionCableTool" style="width:100%;margin-bottom:8px">Kabeldefinition / Kabelbeschriftung</button>' : '') + categoriesHtml;
+    container.innerHTML = (connections ? `<button class="btn" id="connectionCableTool" style="width:100%;margin-bottom:8px">${t('connBtnCable')}</button>` : '') + categoriesHtml;
     container.querySelector('#connectionCableTool')?.addEventListener('click',()=>this.startCableDefinition());
 
     const search = container.querySelector<HTMLInputElement>('#symbolSearchInput');
@@ -1565,20 +1543,22 @@ export class App {
       card.addEventListener('click', (e) => {
         const symId = (e.currentTarget as HTMLElement).dataset.symbolId!;
         const sym = getSymbolById(symId);
-        this.onSymbolSelectedToPlace(symId, sym?.name);
+        const locSym = sym ? getLocalizedSymbol(sym) : undefined;
+        this.onSymbolSelectedToPlace(symId, locSym?.name);
         this.renderSymbolsTab(container);
       });
     });
   }
 
   private renderMacrosTab(container: HTMLElement): void {
+    const macroCategories = ['all', 'window', 'page', 'motor', 'power', 'safety', 'external', 'user'] as const;
     let html = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Makro-Bibliothek</span>
+        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">${t('macroHeading')}</span>
         <div style="display: flex; gap: 4px;">
-          <button class="btn" id="btnOpenMacroDialog" style="padding: 2px 7px; font-size: 11px;" title="Große Makro-Bibliothek öffnen">🔍 Groß</button>
-          <label class="btn btn-primary" style="padding: 2px 7px; font-size: 11px; margin: 0; cursor: pointer;" title="Makrodatei (.ema, .ems, .edz, .xml, .json) importieren">
-            + Import
+          <button class="btn" id="btnOpenMacroDialog" style="padding: 2px 7px; font-size: 11px;" title="${t('macroOpenDialogTitle')}">${t('macroOpenDialog')}</button>
+          <label class="btn btn-primary" style="padding: 2px 7px; font-size: 11px; margin: 0; cursor: pointer;" title="${t('macroImportTitle')}">
+            ${t('macroImport')}
             <input type="file" id="macroTabFileInput" accept=".ema,.ems,.emp,.fp1,.edz,.xml,.json" style="display: none;">
           </label>
         </div>
@@ -1586,21 +1566,14 @@ export class App {
 
       <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;">
         <select class="form-input" id="macroCategorySelect">
-          <option value="all" ${this.macroCategoryFilter === 'all' ? 'selected' : ''}>Alle Makros</option>
-          <option value="window" ${this.macroCategoryFilter === 'window' ? 'selected' : ''}>📦 Fenstermakros (.ema)</option>
-          <option value="page" ${this.macroCategoryFilter === 'page' ? 'selected' : ''}>📦 Makros (.ems)</option>
-          <option value="motor" ${this.macroCategoryFilter === 'motor' ? 'selected' : ''}>⚙️ Motoren & Antriebe</option>
-          <option value="power" ${this.macroCategoryFilter === 'power' ? 'selected' : ''}>⚡ Stromversorgung</option>
-          <option value="safety" ${this.macroCategoryFilter === 'safety' ? 'selected' : ''}>🛡️ Not-Halt & Sicherheit</option>
-          <option value="external" ${this.macroCategoryFilter === 'external' ? 'selected' : ''}>📁 Externer Ordner</option>
-          <option value="user" ${this.macroCategoryFilter === 'user' ? 'selected' : ''}>⭐ Eigene Importe</option>
+          ${macroCategories.map(cat => `<option value="${cat}" ${this.macroCategoryFilter === cat ? 'selected' : ''}>${escapeSvg(getMacroCategoryLabel(cat))}</option>`).join('')}
         </select>
-        <input class="form-input" id="macroTabSearch" placeholder="Suche (z.B. Motor, 24V)..." value="${escapeSvg(this.macroSearchQuery)}">
+        <input class="form-input" id="macroTabSearch" placeholder="${escapeSvg(t('searchMacrosPlaceholder'))}" value="${escapeSvg(this.macroSearchQuery)}">
       </div>
 
-      <div class="dropzone" id="macroTabDropzone" style="padding: 8px 10px; margin-bottom: 8px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.15); cursor: pointer;" title="Klicken oder Datei (.ema/.ems) hier ablegen">
+      <div class="dropzone" id="macroTabDropzone" style="padding: 8px 10px; margin-bottom: 8px; text-align: center; border: 1px dashed var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.15); cursor: pointer;" title="${t('macroDropzoneTitle')}">
         <div style="font-size: 11px; color: var(--text-muted);">
-          📥 .ema / .ems / .edz hier ablegen
+          ${t('macroDropzone')}
         </div>
       </div>
 
@@ -1641,12 +1614,11 @@ export class App {
 
     const pageSize=48,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
     this.macroPage=Math.max(0,Math.min(this.macroPage,pageCount-1));
-    if(pageCount>1)html+=`<div data-macro-pager style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.macroPage===0?'disabled':''} aria-label="Vorherige Makroseite">←</button><span>${list.length} Makros · ${this.macroPage+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.macroPage===pageCount-1?'disabled':''} aria-label="Nächste Makroseite">→</button></div>`;
+    if(pageCount>1)html+=`<div data-macro-pager style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.macroPage===0?'disabled':''} aria-label="${t('macroPagePrev')}">←</button><span>${t('foundMacros', { count: list.length })} · ${this.macroPage+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.macroPage===pageCount-1?'disabled':''} aria-label="${t('macroPageNext')}">→</button></div>`;
     if (list.length === 0) {
       html += `
         <div style="padding: 24px 10px; text-align: center; color: var(--text-muted); font-size: 11px;">
-          Keine Makros gefunden.<br>
-          Importieren Sie Ihre .ema/.ems Makros mit dem Button oben.
+          ${t('noMacrosFound')}
         </div>
       `;
     } else {
@@ -1676,20 +1648,20 @@ export class App {
             </div>
 
             <div style="font-size: 10px; color: var(--text-muted); line-height: 1.3; max-height: 26px; overflow: hidden;">
-              ${escapeSvg(m.description || 'Schaltungsmakro')}${m.externalPath ? `<br><span title="Quelldatei">${escapeSvg(m.externalPath)}</span>` : ''}
+              ${escapeSvg(m.description || t('macroCircuitMacro'))}${m.externalPath ? `<br><span title="${t('macroSourceFile')}">${escapeSvg(m.externalPath)}</span>` : ''}
             </div>
 
             <div style="font-size: 9px; font-family: monospace; color: #f6e05e;">
-              ${compCount} Bauteile: ${escapeSvg(bmkSummary || '–')}
+              ${t('macroComponentsSummary', { count: compCount, summary: escapeSvg(bmkSummary || '–') })}
             </div>
-            ${m.importDiagnostics?.length?`<details class="macro-import-notes"><summary>${m.importDiagnostics.length} Importhinweise</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
+            ${m.importDiagnostics?.length?`<details class="macro-import-notes"><summary>${t('macroDiagnostics', { count: m.importDiagnostics.length })}</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
 
             <div style="display: flex; gap: 4px; margin-top: 2px;">
-              <button class="btn btn-primary btn-tab-place-macro" data-macro-id="${m.id}" style="flex:1;padding:3px 6px;font-size:11px;justify-content:center">⚡ Platzieren</button>
-              ${m.type==='ems'&&m.nativeData?.kind==='PageMacro'?`<button class="btn btn-tab-add-page-macro" data-macro-id="${m.id}" style="padding:3px 6px;font-size:11px">Seite(n) hinzufügen</button>`:''}
-              <button class="btn btn-tab-export-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px;" title="Als .ema/.ems exportieren">💾</button>
+              <button class="btn btn-primary btn-tab-place-macro" data-macro-id="${m.id}" style="flex:1;padding:3px 6px;font-size:11px;justify-content:center">⚡ ${t('macroPlace')}</button>
+              ${m.type==='ems'&&m.nativeData?.kind==='PageMacro'?`<button class="btn btn-tab-add-page-macro" data-macro-id="${m.id}" style="padding:3px 6px;font-size:11px">${t('macroAddPages')}</button>`:''}
+              <button class="btn btn-tab-export-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px;" title="${t('macroExportBtn')}">💾</button>
               ${!m.isBuiltIn && !m.externalPath ? `
-                <button class="btn btn-tab-delete-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px; color: #fc8181; border-color: #e53e3e;" title="Löschen">🗑️</button>
+                <button class="btn btn-tab-delete-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px; color: #fc8181; border-color: #e53e3e;" title="${t('menuDelete')}">🗑️</button>
               ` : ''}
             </div>
           </div>
@@ -1791,7 +1763,7 @@ export class App {
     container.querySelectorAll('.btn-tab-delete-macro').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = (e.currentTarget as HTMLElement).dataset.macroId!;
-        if (confirm('Möchten Sie dieses Makro wirklich aus Ihrer Bibliothek entfernen?')) {
+        if (confirm(t('macroDeleteConfirm'))) {
           MacroManager.deleteMacro(id);
           this.renderMacrosTab(container);
         }
@@ -1815,17 +1787,17 @@ export class App {
       this.configureMacro(macro);return;
     }
     try { this.startPlacingWindowMacro(MacroManager.forPlacement(macro)); }
-    catch (error) { alert(error instanceof Error ? error.message : 'Das Makro kann nicht platziert werden.'); }
+    catch (error) { alert(error instanceof Error ? error.message : t('macroCannotPlace')); }
   }
 
   private configureMacro(macro:MacroItem,asPages=false):void {
     document.getElementById('macroConfigureDialog')?.remove();
     const dialog=document.createElement('dialog');dialog.id='macroConfigureDialog';dialog.className='about-dialog modal-backdrop';
     const variables=macro.nativeData?.variables??[],pages=macro.type==='ems'?macro.pages??[macro.page]:[];
-    dialog.innerHTML=`<div class="about-heading"><h2>Makro konfigurieren</h2><button class="btn" data-close aria-label="Schließen">×</button></div>
-      <div class="about-body"><p>${escapeSvg(macro.name)}</p>${pages.length>1&&!asPages?`<label class="form-label">Quellseite<select class="form-input" data-source-page>${pages.map((p,i)=>`<option value="${i}">${escapeSvg(p.title)}</option>`).join('')}</select></label>`:''}
+    dialog.innerHTML=`<div class="about-heading"><h2>${t('macroConfigureTitle')}</h2><button class="btn" data-close aria-label="${t('btnClose')}">×</button></div>
+      <div class="about-body"><p>${escapeSvg(macro.name)}</p>${pages.length>1&&!asPages?`<label class="form-label">${t('macroSourcePage')}<select class="form-input" data-source-page>${pages.map((p,i)=>`<option value="${i}">${escapeSvg(p.title)}</option>`).join('')}</select></label>`:''}
       ${variables.map((v,i)=>`<label class="form-label" style="display:block;margin:10px 0">${escapeSvg(v.name.replace(/_/g,' '))}<input class="form-input" data-variable="${i}" value="${escapeSvg(v.value)}"></label>`).join('')}
-      <button class="btn btn-primary" data-apply>${asPages?'Seite(n) hinzufügen':'Platzieren'}</button></div>`;
+      <button class="btn btn-primary" data-apply>${asPages?t('macroAddPages'):t('macroPlace')}</button></div>`;
     document.body.appendChild(dialog);dialog.querySelector('[data-close]')!.addEventListener('click',()=>dialog.close());
     dialog.addEventListener('close',()=>dialog.remove(),{once:true});
     dialog.querySelector('[data-apply]')!.addEventListener('click',()=>{
@@ -1835,7 +1807,7 @@ export class App {
       if(asPages&&configured.type==='ems')this.addMacroPages(configured);
       else{
         if(configured.type==='ems'){const index=Number(dialog.querySelector<HTMLSelectElement>('[data-source-page]')?.value??0);configured.page=configured.pages?.[index]??configured.page;}
-        try{this.startPlacingWindowMacro(MacroManager.forPlacement(configured));}catch(e){alert(e instanceof Error?e.message:'Das Makro kann nicht platziert werden.');}
+        try{this.startPlacingWindowMacro(MacroManager.forPlacement(configured));}catch(e){alert(e instanceof Error?e.message:t('macroCannotPlace'));}
       }
     });dialog.showModal();
   }
@@ -1858,7 +1830,7 @@ export class App {
     const banner = document.getElementById('placeHintBanner');
     const bannerText = document.getElementById('placeHintText');
     if (banner && bannerText) {
-      bannerText.textContent = `📍 Makro "${macro.name}" gewählt: Tippe auf den Plan zum Platzieren`;
+      bannerText.textContent = t('macroPlaceHint', { name: macro.name });
       banner.style.display = 'flex';
     }
   }
@@ -1871,9 +1843,9 @@ export class App {
         const container = document.getElementById('leftTabContent');
         if (container) this.renderMacrosTab(container);
       }
-      alert(`Makro "${imported.name}" erfolgreich importiert (${imported.type === 'ema' ? '.ema' : '.ems'})!`);
+      alert(t('macroImportSuccess', { name: imported.name, type: imported.type === 'ema' ? '.ema' : '.ems' }));
     } catch (err: any) {
-      alert(`Fehler beim Importieren des Makros: ${err.message}`);
+      alert(t('macroImportError', { error: err.message }));
     }
   }
 
@@ -1881,7 +1853,7 @@ export class App {
     const page=this.project.pages.find(p=>p.id===this.project.activePageId)!;
     const components=page.components.filter(c=>this.canvas.getElementSelection().componentIds.includes(c.id));
     if (!components.length) {
-      alert('Bitte wählen Sie zuerst ein Bauteil im Plan aus.');
+      alert(t('macroSelectFirst'));
       return;
     }
     this.exportComponentsAsMacro(components);
@@ -1895,10 +1867,10 @@ export class App {
       ? `Makro_${comps[0].bmk}`
       : `Makro_${comps[0].bmk}_Gruppe`;
 
-    const name = prompt('Name für das neue Fenstermakro (.ema):', defaultName);
+    const name = prompt(t('macroWindowPromptName'), defaultName);
     if (!name) return;
 
-    const desc = prompt('Beschreibung des Makros:', comps[0].functionText || 'Benutzerdefiniertes Schaltungsmakro') || '';
+    const desc = prompt(t('macroWindowPromptDesc'), comps[0].functionText || t('macroWindowCustomDesc')) || '';
 
     const current=this.canvas.getElementSelection();
     const selection=current.componentIds.length===comps.length&&comps.every(c=>current.componentIds.includes(c.id))?current:{componentIds:comps.map(c=>c.id),cableIds:[]};
@@ -1914,7 +1886,7 @@ export class App {
       if (container) this.renderMacrosTab(container);
     }
 
-    alert(`Fenstermakro "${name}" (.ema) wurde erfolgreich erstellt, heruntergeladen und zu Ihrer Makro-Bibliothek hinzugefügt!`);
+    alert(t('macroWindowCreated', { name }));
   }
 
   public exportCurrentPageAsPageMacro(): void {
@@ -1922,10 +1894,10 @@ export class App {
     if (!activePage) return;
 
     const defaultName = `Makro_Blatt_${activePage.pageNumber}_${activePage.title.replace(/\s+/g, '_')}`;
-    const name = prompt('Name für das Makro (.ems):', defaultName);
+    const name = prompt(t('macroPagePromptName'), defaultName);
     if (!name) return;
 
-    const desc = prompt('Beschreibung des Makros:', `${activePage.title} (${activePage.higherLevel}${activePage.location})`) || '';
+    const desc = prompt(t('macroWindowPromptDesc'), `${activePage.title} (${activePage.higherLevel}${activePage.location})`) || '';
 
     const macro = MacroManager.createMacroFromPage(
       activePage,
@@ -1943,7 +1915,7 @@ export class App {
       if (container) this.renderMacrosTab(container);
     }
 
-    alert(`Makro "${name}" (.ems) wurde erfolgreich erstellt, heruntergeladen und zu Ihrer Makro-Bibliothek hinzugefügt!`);
+    alert(t('macroPageCreated', { name }));
   }
 
   public downloadMacro(macro: MacroItem): void {
@@ -1962,19 +1934,19 @@ export class App {
       this.updateUI();
 
     } catch (err: any) {
-      alert(`Fehler beim Verarbeiten des Makros: ${err.message}`);
+      alert(t('macroProcessError', { error: err.message }));
     }
   }
 
   private renderPartsCatalogueTab(container: HTMLElement): void {
     let html = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
-        Artikel-Stammdaten & Katalog
+        ${t('partsHeading')}
       </div>
 
       <div style="display: flex; gap: 6px; margin-bottom: 8px;">
         <select class="form-input" id="mfrSelect" style="flex: 1;">
-          <option value="all" ${this.manufacturerFilter === 'all' ? 'selected' : ''}>Alle Hersteller</option>
+          <option value="all" ${this.manufacturerFilter === 'all' ? 'selected' : ''}>${t('partsMfrAll')}</option>
           <option value="Hager" ${this.manufacturerFilter === 'Hager' ? 'selected' : ''}>Hager</option>
           <option value="Finder" ${this.manufacturerFilter === 'Finder' ? 'selected' : ''}>Finder</option>
           <option value="Siemens" ${this.manufacturerFilter === 'Siemens' ? 'selected' : ''}>Siemens</option>
@@ -1982,7 +1954,7 @@ export class App {
           <option value="Eaton" ${this.manufacturerFilter === 'Eaton' ? 'selected' : ''}>Eaton</option>
           <option value="Dehn" ${this.manufacturerFilter === 'Dehn' ? 'selected' : ''}>Dehn</option>
         </select>
-        <input class="form-input" id="mfrSearch" placeholder="Suche (z.B. FI, Stromstoß)..." value="${this.manufacturerSearchQuery}" style="flex: 1.2;">
+        <input class="form-input" id="mfrSearch" placeholder="${escapeSvg(t('partsSearchPlaceholder'))}" value="${escapeSvg(this.manufacturerSearchQuery)}" style="flex: 1.2;">
       </div>
 
       <div class="parts-list" style="display: flex; flex-direction: column; gap: 8px;">
@@ -2028,9 +2000,9 @@ export class App {
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
-            <span style="font-size: 9px; color: #718096;">${part.widthModules || 'Normbauform'}</span>
+            <span style="font-size: 9px; color: #718096;">${part.widthModules || t('partsNormDesign')}</span>
             <button class="btn btn-primary btn-place-part" data-part-id="${part.id}" style="padding: 2px 6px; font-size: 10px;">
-              ⚡ Im Plan platzieren
+              ⚡ ${t('partsPlaceOnCanvas')}
             </button>
           </div>
         </div>
@@ -2164,10 +2136,10 @@ export class App {
   private renderImageProperties(container:HTMLElement):void {
     const page=this.project.pages.find(p=>p.id===this.project.activePageId),image=page?.images?.find(i=>i.id===this.canvas.selectedImageId);if(!image)return;
     const units=getDrawingUnitsPerMm(this.project),ratio=image.width/image.height;
-    container.innerHTML=`<h3>Bild</h3><p>${escapeSvg(image.caption || 'Grafik')}</p>
-      ${[['X','Position X',image.x],['Y','Position Y',image.y],['Width','Breite',image.width],['Height','Höhe',image.height]].map(([id,label,n])=>`<label class="form-label">${label} (mm)<input class="form-input" id="image${id}" type="number" step="any" ${id==='Width'||id==='Height'?'min="0.1"':''} value="${Number((Number(n)/units).toFixed(4))}"></label>`).join('')}
-      ${image.missing?'<p style="color:#f6ad55">Die referenzierte Bilddatei fehlt. Hier kann die Originalgrafik zugeordnet werden.</p>':''}
-      <p style="font-size:12px;color:var(--text-muted)">Breite und Höhe werden proportional geändert.</p><button class="btn" id="applyImageProperties">Übernehmen</button> <button class="btn" id="replaceImage">Bild ersetzen…</button> <button class="btn" id="deleteImage">Bild löschen</button>`;
+    container.innerHTML=`<h3>${t('imageHeading')}</h3><p>${escapeSvg(image.caption || t('imageCaptionDefault'))}</p>
+      ${[['X',t('boxLabelPosX'),image.x],['Y',t('boxLabelPosY'),image.y],['Width',t('boxLabelWidth'),image.width],['Height',t('boxLabelHeight'),image.height]].map(([id,label,n])=>`<label class="form-label">${label} (mm)<input class="form-input" id="image${id}" type="number" step="any" ${id==='Width'||id==='Height'?'min="0.1"':''} value="${Number((Number(n)/units).toFixed(4))}"></label>`).join('')}
+      ${image.missing?`<p style="color:#f6ad55">${t('imageMissing')}</p>`:''}
+      <p style="font-size:12px;color:var(--text-muted)">${t('imageProportional')}</p><button class="btn" id="applyImageProperties">${t('btnApply')}</button> <button class="btn" id="replaceImage">${t('imageReplace')}</button> <button class="btn" id="deleteImage">${t('imageDelete')}</button>`;
     let editedSize:'Width'|'Height'|undefined;
     for(const key of ['Width','Height'] as const)container.querySelector('#image'+key)?.addEventListener('input',()=>{editedSize=key;const input=container.querySelector('#image'+key) as HTMLInputElement,other=container.querySelector('#image'+(key==='Width'?'Height':'Width')) as HTMLInputElement;if(input.value&&input.validity.valid)other.value=String(key==='Width'?Number(input.value)/ratio:Number(input.value)*ratio);});
     container.querySelector('#applyImageProperties')?.addEventListener('click',()=>{
@@ -2185,7 +2157,7 @@ export class App {
         const file=input.files?.[0];input.remove();if(!file)return;
         try{const replacement=await readImageFile(file,units);if(!page?.images?.includes(image))return;
           image.dataUrl=replacement.dataUrl;image.caption=file.name;image.missing=false;this.notifyChange();this.renderRightTab();
-        }catch(error){alert(error instanceof Error?error.message:'Das Bild kann nicht gelesen werden.');}
+        }catch(error){alert(error instanceof Error?error.message:t('imageReadError'));}
       },{once:true});input.click();
     });
   }
@@ -2195,22 +2167,22 @@ export class App {
     const hasFrames=!!selection.boxIds?.length||page.components.some(c=>selection.componentIds.includes(c.id)&&c.deviceBox);
     const field=(key:SharedProperty,label:string,number=false)=>{
       const value=sharedPropertyValue(page,this.project,selection,key);
-      return `<label class="form-label" style="display:block;margin-bottom:8px">${label}<input class="form-input" data-shared-property="${key}" id="shared-${key}" type="${number?'number':'text'}" ${number?'min="0.1" max="20" step="any"':''} value="${value===undefined?'':escapeSvg(String(typeof value==='number'?Number(value.toFixed(4)):value))}" placeholder="${value===undefined?'Unterschiedliche Werte':''}"></label>`;
+      return `<label class="form-label" style="display:block;margin-bottom:8px">${label}<input class="form-input" data-shared-property="${key}" id="shared-${key}" type="${number?'number':'text'}" ${number?'min="0.1" max="20" step="any"':''} value="${value===undefined?'':escapeSvg(String(typeof value==='number'?Number(value.toFixed(4)):value))}" placeholder="${value===undefined?t('sharedDifferentValues'):''}"></label>`;
     };
-    container.innerHTML=`<h3>Gemeinsame Eigenschaften</h3><p>${selectionCount(selection)} Elemente ausgewählt (${selection.componentIds.length} Bauteile / Verbindungselemente, ${selection.cableIds.length} Kabel, ${selection.imageIds?.length ?? 0} Bilder, ${selection.boxIds?.length ?? 0} Gerätekästen).</p>
-      <p style="font-size:12px;color:var(--text-muted)">Nur geänderte Felder werden übernommen. Unterschiedliche Werte können gemeinsam vereinheitlicht werden.</p>
-      ${selection.componentIds.length||selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Schriftgrößen (mm)</legend>
-      ${field('bmkFontSize','BMK',true)}${field('functionFontSize','Funktionstext / Kabelbeschriftung',true)}
-      ${selection.componentIds.length?field('additionalFontSize','Zusatztext / Graviertext (Bauteile)',true)+field('technicalFontSize','Technische Daten (Bauteile)',true)+field('crossRefFontSize','Querverweise (Bauteile / Verbindungselemente)',true):''}
-      ${field('pinFontSize','Anschluss- / Aderbezeichnungen',true)}</fieldset>`:''}
-      ${selection.componentIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Bauteile / Verbindungselemente</legend>${field('functionText','Funktionstext')}${field('additionalText','Zusatztext / Graviertext')}${field('deviceTag','Gerätebezeichnung')}${field('technicalCharacteristics','Technische Kennwerte')}</fieldset>`:''}
-      ${selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Kabeldefinitionen</legend>${field('cableType','Kabeltyp')}${field('crossSection','Aderquerschnitt (mm²)')}</fieldset>`:''}
-      ${hasFrames?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Gerätekästen</legend>
-      ${selection.boxIds?.length?field('boxFontSize','Schriftgröße (mm)',true):''}
-      <label class="form-label">Linienbreite (mm)<input class="form-input" data-shared-property="boxLineWidth" type="number" min="0.05" max="5" step="any" value="${sharedPropertyValue(page,this.project,selection,'boxLineWidth')??''}"></label>
-      <label class="form-label">Linienart<select class="form-input" data-shared-property="boxLineStyle">${[['','Unterschiedliche Werte'],['solid','Durchgezogen'],['dashed','Gestrichelt']].map(([value,label])=>`<option value="${value}" ${value===''?'disabled':''} ${value===(sharedPropertyValue(page,this.project,selection,'boxLineStyle')??'')?'selected':''}>${label}</option>`).join('')}</select></label></fieldset>`:''}
-      <button class="btn btn-primary" id="applySharedProperties" disabled>Änderungen übernehmen</button>
-      <button class="btn" id="clearElementSelection">Auswahl aufheben</button>`;
+    container.innerHTML=`<h3>${t('sharedPropsHeading')}</h3><p>${t('sharedPropsSelected', { count: selectionCount(selection), components: selection.componentIds.length, cables: selection.cableIds.length, images: selection.imageIds?.length ?? 0, boxes: selection.boxIds?.length ?? 0 })}</p>
+      <p style="font-size:12px;color:var(--text-muted)">${t('sharedPropsHint')}</p>
+      ${selection.componentIds.length||selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendFontSizes')}</legend>
+      ${field('bmkFontSize',t('labelBmk'),true)}${field('functionFontSize',`${t('labelFunctionText')} / ${t('cableHeading')}`,true)}
+      ${selection.componentIds.length?field('additionalFontSize',`${t('labelAdditionalText')} (${t('legendComponents')})`,true)+field('technicalFontSize',`${t('labelTechnical')} (${t('legendComponents')})`,true)+field('crossRefFontSize',`${t('labelCrossRef')} (${t('legendComponents')})`,true):''}
+      ${field('pinFontSize',t('symPins', { count: '' }),true)}</fieldset>`:''}
+      ${selection.componentIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendComponents')}</legend>${field('functionText',t('labelFunctionText'))}${field('additionalText',t('labelAdditionalText'))}${field('deviceTag',t('labelDeviceTag'))}${field('technicalCharacteristics',t('labelTechnical'))}</fieldset>`:''}
+      ${selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendCableDefs')}</legend>${field('cableType',t('cableType'))}${field('crossSection',t('cableSection'))}</fieldset>`:''}
+      ${hasFrames?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendDeviceBoxes')}</legend>
+      ${selection.boxIds?.length?field('boxFontSize',t('boxLabelFontSize'),true):''}
+      <label class="form-label">${t('boxLabelLineWidth')} (mm)<input class="form-input" data-shared-property="boxLineWidth" type="number" min="0.05" max="5" step="any" value="${sharedPropertyValue(page,this.project,selection,'boxLineWidth')??''}"></label>
+      <label class="form-label">${t('boxLabelLineStyle')}<select class="form-input" data-shared-property="boxLineStyle">${[['',t('sharedDifferentValues')],['solid',t('boxStyleSolid')],['dashed',t('boxStyleDashed')]].map(([value,label])=>`<option value="${value}" ${value===''?'disabled':''} ${value===(sharedPropertyValue(page,this.project,selection,'boxLineStyle')??'')?'selected':''}>${label}</option>`).join('')}</select></label></fieldset>`:''}
+      <button class="btn btn-primary" id="applySharedProperties" disabled>${t('sharedApplyChanges')}</button>
+      <button class="btn" id="clearElementSelection">${t('sharedClearSelection')}</button>`;
     const patch:SelectionPatch={},apply=container.querySelector('#applySharedProperties') as HTMLButtonElement;
     container.querySelectorAll<HTMLInputElement>('[data-shared-property]').forEach(input=>input.addEventListener('input',()=>{
       const key=input.dataset.sharedProperty as SharedProperty;
@@ -2227,34 +2199,34 @@ export class App {
 
   private startDeviceBox():void {
     this.canvas.startDeviceBox();this.updateToolButtons('btnDeviceBox');
-    const status=document.getElementById('statusLeft');if(status)status.textContent='Gerätekasten: Rechteck mit der Maus aufziehen oder zwei Ecken anklicken. Esc bricht ab.';
+    const status=document.getElementById('statusLeft');if(status)status.textContent=t('statusDeviceBox');
   }
 
   private startCableDefinition():void {
     this.canvas.setMode('cable');this.updateToolButtons('btnCableDefinition');
-    const status=document.getElementById('statusLeft');if(status)status.textContent='Kabeldefinition: Startpunkt und Endpunkt quer über die Adern anklicken. Esc bricht ab.';
+    const status=document.getElementById('statusLeft');if(status)status.textContent=t('statusCable');
   }
 
   private renderCableProperties(container:HTMLElement,cable:CableDefinition):void {
     const units=getDrawingUnitsPerMm(this.project),page=this.project.pages.find(p=>p.id===this.project.activePageId)!;
     const crossings=cableCrossings(cable,page,this.project);
     const input=(id:string,label:string,value:string|number,type='text')=>`<label class="form-label">${label}<input class="form-input" id="${id}" type="${type}" ${type==='number'?'step="any"':''} value="${escapeSvg(String(value))}"></label>`;
-    container.innerHTML=`<h3>Kabeldefinition / Kabelbeschriftung</h3>
-      ${input('cableBmk','Kabel-BMK',cable.bmk)}${input('cableType','Kabeltyp',cable.cableType)}
-      ${input('cableCoreCount','Aderzahl',cable.coreCount ?? '','number')}${input('cableSection','Aderquerschnitt (mm²)',cable.crossSection)}${input('cableDescription','Zusatztext',cable.description ?? '')}
-      <fieldset style="border:1px solid var(--border-color);margin:10px 0"><legend>Beschriftung</legend>
-      ${input('cableFontSize','Schriftgröße (mm)',Number(((cable.fontSize ?? units*2.2356)/units).toFixed(4)),'number')}
-      ${input('cableBmkFontSize','BMK-Schriftgröße (mm)',Number(((cable.bmkFontSize ?? cable.fontSize ?? units*2.2356)/units).toFixed(4)),'number')}
-      ${input('cableCoreFontSize','Ader-Schriftgröße (mm)',Number(((cable.coreFontSize ?? units*1.6146)/units).toFixed(4)),'number')}
-      ${input('cableLabelX','Beschriftung Versatz X (mm)',(cable.labelOffset?.x ?? -units)/units,'number')}${input('cableLabelY','Beschriftung Versatz Y (mm)',(cable.labelOffset?.y ?? -.285*units)/units,'number')}
-      <label><input id="cableShowLabel" type="checkbox" ${cable.showLabel!==false?'checked':''}> Kabelbeschriftung sichtbar</label><br>
-      <label><input id="cableShowCores" type="checkbox" ${cable.showCoreLabels!==false?'checked':''}> Aderbeschriftungen sichtbar</label>
-      <label class="form-label">Adermarkierung<select class="form-input" id="cableMarkStyle"><option value="none" ${cable.markStyle==='none'?'selected':''}>Ohne Schrägstrich (importiert)</option><option value="slash" ${cable.markStyle!=='none'?'selected':''}>Schrägstrich</option></select></label></fieldset>
-      <fieldset style="border:1px solid var(--border-color);margin:10px 0"><legend>Definitionslinie (mm)</legend>
-      ${input('cableStartX','Start X',cable.start.x/units,'number')}${input('cableStartY','Start Y',cable.start.y/units,'number')}${input('cableEndX','Ende X',cable.end.x/units,'number')}${input('cableEndY','Ende Y',cable.end.y/units,'number')}</fieldset>
-      <p>${crossings.length} gekreuzte Leiterpositionen. Die Definitionslinie verbindet die Adern elektrisch nicht miteinander.</p>
-      ${cable.cores.length?`<details><summary>Aderbeschriftungen (${cable.cores.length})</summary>${cable.cores.map((core,i)=>`<div style="margin:8px 0">Ader ${i+1}${input('cableCoreColor'+i,'Farbe',core.color ?? '')}${input('cableCoreName'+i,'Bezeichnung',core.designation ?? '')}</div>`).join('')}</details>`:''}
-      <button class="btn" id="cableRotate">Drehen</button> <button class="btn" id="cableDelete">Kabeldefinition löschen</button>`;
+    container.innerHTML=`<h3>${t('cableHeading')}</h3>
+      ${input('cableBmk',t('cableBmk'),cable.bmk)}${input('cableType',t('cableType'),cable.cableType)}
+      ${input('cableCoreCount',t('cableCoreCount'),cable.coreCount ?? '','number')}${input('cableSection',t('cableSection'),cable.crossSection)}${input('cableDescription',t('cableDescription'),cable.description ?? '')}
+      <fieldset style="border:1px solid var(--border-color);margin:10px 0"><legend>${t('cableLegendLabel')}</legend>
+      ${input('cableFontSize',t('cableFontSize'),Number(((cable.fontSize ?? units*2.2356)/units).toFixed(4)),'number')}
+      ${input('cableBmkFontSize',t('cableBmkFontSize'),Number(((cable.bmkFontSize ?? cable.fontSize ?? units*2.2356)/units).toFixed(4)),'number')}
+      ${input('cableCoreFontSize',t('cableCoreFontSize'),Number(((cable.coreFontSize ?? units*1.6146)/units).toFixed(4)),'number')}
+      ${input('cableLabelX',t('cableLabelX'),(cable.labelOffset?.x ?? -units)/units,'number')}${input('cableLabelY',t('cableLabelY'),(cable.labelOffset?.y ?? -.285*units)/units,'number')}
+      <label><input id="cableShowLabel" type="checkbox" ${cable.showLabel!==false?'checked':''}> ${t('cableShowLabel')}</label><br>
+      <label><input id="cableShowCores" type="checkbox" ${cable.showCoreLabels!==false?'checked':''}> ${t('cableShowCores')}</label>
+      <label class="form-label">${t('cableMarkStyle')}<select class="form-input" id="cableMarkStyle"><option value="none" ${cable.markStyle==='none'?'selected':''}>${t('cableMarkNone')}</option><option value="slash" ${cable.markStyle!=='none'?'selected':''}>${t('cableMarkSlash')}</option></select></label></fieldset>
+      <fieldset style="border:1px solid var(--border-color);margin:10px 0"><legend>${t('cableLegendLine')}</legend>
+      ${input('cableStartX',t('cableStartX'),cable.start.x/units,'number')}${input('cableStartY',t('cableStartY'),cable.start.y/units,'number')}${input('cableEndX',t('cableEndX'),cable.end.x/units,'number')}${input('cableEndY',t('cableEndY'),cable.end.y/units,'number')}</fieldset>
+      <p>${t('cableCrossings', { count: crossings.length })}</p>
+      ${cable.cores.length?`<details><summary>${t('cableCoresSummary', { count: cable.cores.length })}</summary>${cable.cores.map((core,i)=>`<div style="margin:8px 0">${t('cableCore', { index: i+1 })}${input('cableCoreColor'+i,t('cableColor'),core.color ?? '')}${input('cableCoreName'+i,t('cableDesignation'),core.designation ?? '')}</div>`).join('')}</details>`:''}
+      <button class="btn" id="cableRotate">${t('cableRotate')}</button> <button class="btn" id="cableDelete">${t('cableDelete')}</button>`;
     const bindText=(id:string,apply:(value:string)=>void)=>container.querySelector('#'+id)?.addEventListener('input',event=>{apply((event.target as HTMLInputElement).value);this.notifyChange();});
     for(const [id,key] of [['cableBmk','bmk'],['cableType','cableType'],['cableSection','crossSection'],['cableDescription','description']] as const)bindText(id,value=>cable[key]=value);
     const bindNumber=(id:string,apply:(value:number)=>void,min=-Infinity,max=Infinity)=>container.querySelector('#'+id)?.addEventListener('input',event=>{const input=event.target as HTMLInputElement,value=Number(input.value);if(input.value!==''&&input.validity.valid&&Number.isFinite(value)&&value>=min&&value<=max){apply(value);this.notifyChange();}});
@@ -2286,61 +2258,62 @@ export class App {
       const units = getDrawingUnitsPerMm(this.project);
       const bmkPreset = comp.bmkPosition?.preset || 'auto';
 
+      const locSym = sym ? getLocalizedSymbol(sym) : undefined;
       container.innerHTML = `
         <button class="btn btn-primary" id="btnOpenFullPropModal" style="width: 100%; margin-bottom: 12px; font-weight: 600; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #3182ce; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-          <span>⚡ Eigenschaften-Editierfenster...</span>
+          <span>${t('btnOpenFullPropModal')}</span>
           <span style="font-size: 10px; opacity: 0.8; font-family: monospace;">[Enter / F2]</span>
         </button>
 
         <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-          Bauteileigenschaften (${sym?.name || comp.symbolId})
+          ${t('compPropsHeading', { name: locSym?.name || comp.symbolId })}
         </div>
         ${deviceBoxFields(comp,units)}
 
         <div class="form-group">
-          <label class="form-label">Betriebsmittelkennzeichen (BMK)</label>
+          <label class="form-label">${t('labelBmk')}</label>
           <input class="form-input" id="propBmk" value="${escapeSvg(comp.bmk)}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Gerätebezeichnung</label>
-          <input class="form-input" id="propDeviceTag" value="${escapeSvg(comp.deviceTag || '')}" placeholder="z.B. Hauptschütz, Netzteil">
+          <label class="form-label">${t('labelDeviceTag')}</label>
+          <input class="form-input" id="propDeviceTag" value="${escapeSvg(comp.deviceTag || '')}" placeholder="${t('placeholderDeviceTag')}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Funktionstext</label>
+          <label class="form-label">${t('labelFunctionText')}</label>
           <textarea class="form-input" id="propFunctionText" rows="2">${escapeSvg(comp.functionText || '')}</textarea>
         </div>
 
-        <div class="form-group"><label class="form-label">Zusatztext / Graviertext</label><textarea class="form-input" id="propAdditionalText">${escapeSvg(comp.additionalText || '')}</textarea></div>
-        <fieldset style="border:1px solid var(--border-color);padding:8px;margin:0 0 12px"><legend>Schriftgrößen (mm)</legend>
-          ${[['Bmk','BMK',comp.bmkPosition?.fontSize ?? 10],['Fn','Funktionstext',comp.functionTextPosition?.fontSize ?? 8],['Additional','Zusatztext / Graviertext',comp.additionalTextPosition?.fontSize ?? 8],['Tech','Technische Daten',comp.technicalDataPosition?.fontSize ?? 8],['CrossRef','Querverweise',comp.crossRefFontSize ?? 8],['Pin','Anschlussbezeichnungen',comp.pinLabelFontSize ?? Object.values(comp.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym?.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? 6.5]].map(([key,label,size])=>`<label class="form-label">${label}<input class="form-input" id="quick${key}FontSize" type="number" min="0.1" max="20" step="0.1" value="${Number((Number(size)/units).toFixed(4))}"></label>`).join('')}
+        <div class="form-group"><label class="form-label">${t('labelAdditionalText')}</label><textarea class="form-input" id="propAdditionalText">${escapeSvg(comp.additionalText || '')}</textarea></div>
+        <fieldset style="border:1px solid var(--border-color);padding:8px;margin:0 0 12px"><legend>${t('legendFontSizes')}</legend>
+          ${[['Bmk',t('labelBmk'),comp.bmkPosition?.fontSize ?? 10],['Fn',t('labelFunctionText'),comp.functionTextPosition?.fontSize ?? 8],['Additional',t('labelAdditionalText'),comp.additionalTextPosition?.fontSize ?? 8],['Tech',t('labelTechnical'),comp.technicalDataPosition?.fontSize ?? 8],['CrossRef',t('labelCrossRef'),comp.crossRefFontSize ?? 8],['Pin',t('symPins', { count: '' }),comp.pinLabelFontSize ?? Object.values(comp.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym?.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? 6.5]].map(([key,label,size])=>`<label class="form-label">${label}<input class="form-input" id="quick${key}FontSize" type="number" min="0.1" max="20" step="0.1" value="${Number((Number(size)/units).toFixed(4))}"></label>`).join('')}
         </fieldset>
 
         <div class="form-group">
-          <label class="form-label">Position der BMK-Beschriftung</label>
+          <label class="form-label">${t('labelBmkPosition')}</label>
           <select class="form-input" id="propQuickBmkPreset">
-            <option value="auto" ${bmkPreset === 'auto' ? 'selected' : ''}>Links daneben (Standard)</option>
-            <option value="top" ${bmkPreset === 'top' ? 'selected' : ''}>Oben zentriert</option>
-            <option value="top_left" ${bmkPreset === 'top_left' ? 'selected' : ''}>Oben links</option>
-            <option value="top_right" ${bmkPreset === 'top_right' ? 'selected' : ''}>Oben rechts</option>
-            <option value="bottom" ${bmkPreset === 'bottom' ? 'selected' : ''}>Unten zentriert</option>
-            <option value="bottom_left" ${bmkPreset === 'bottom_left' ? 'selected' : ''}>Unten links</option>
-            <option value="bottom_right" ${bmkPreset === 'bottom_right' ? 'selected' : ''}>Unten rechts</option>
-            <option value="left" ${bmkPreset === 'left' ? 'selected' : ''}>Links daneben</option>
-            <option value="right" ${bmkPreset === 'right' ? 'selected' : ''}>Rechts daneben</option>
+            <option value="auto" ${bmkPreset === 'auto' ? 'selected' : ''}>${t('bmkPresetAuto')}</option>
+            <option value="top" ${bmkPreset === 'top' ? 'selected' : ''}>${t('bmkPresetTop')}</option>
+            <option value="top_left" ${bmkPreset === 'top_left' ? 'selected' : ''}>${t('bmkPresetTopLeft')}</option>
+            <option value="top_right" ${bmkPreset === 'top_right' ? 'selected' : ''}>${t('bmkPresetTopRight')}</option>
+            <option value="bottom" ${bmkPreset === 'bottom' ? 'selected' : ''}>${t('bmkPresetBottom')}</option>
+            <option value="bottom_left" ${bmkPreset === 'bottom_left' ? 'selected' : ''}>${t('bmkPresetBottomLeft')}</option>
+            <option value="bottom_right" ${bmkPreset === 'bottom_right' ? 'selected' : ''}>${t('bmkPresetBottomRight')}</option>
+            <option value="left" ${bmkPreset === 'left' ? 'selected' : ''}>${t('bmkPresetLeft')}</option>
+            <option value="right" ${bmkPreset === 'right' ? 'selected' : ''}>${t('bmkPresetRight')}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Technische Kennwerte</label>
+          <label class="form-label">${t('labelTechnical')}</label>
           <input class="form-input" id="propTechnical" value="${escapeSvg(comp.technicalCharacteristics || '')}">
         </div>
 
         <div class="form-group" style="background: rgba(99, 179, 237, 0.08); padding: 8px; border-radius: 4px; border: 1px dashed var(--accent);">
-          <label class="form-label" style="color: var(--accent-bright);">📦 Artikel aus Katalog zuweisen</label>
+          <label class="form-label" style="color: var(--accent-bright);">${t('labelAssignPart')}</label>
           <select class="form-input" id="propAssignPartSelect">
-            <option value="">-- Hersteller-Artikel wählen --</option>
+            <option value="">${t('selectPartPlaceholder')}</option>
             ${MANUFACTURER_PARTS.map(p => `
               <option value="${p.id}" ${comp.articleNumber === p.articleNumber ? 'selected' : ''}>
                 ${p.manufacturer} - ${p.articleNumber} (${p.name})
@@ -2350,17 +2323,17 @@ export class App {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Artikelnummer</label>
+          <label class="form-label">${t('labelArticleNumber')}</label>
           <input class="form-input" id="propArticle" value="${comp.articleNumber || ''}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Hersteller</label>
+          <label class="form-label">${t('labelManufacturer')}</label>
           <input class="form-input" id="propManufacturer" value="${comp.manufacturer || ''}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Anlagen- / Ortskennzeichen</label>
+          <label class="form-label">${t('labelStructure')}</label>
           <div style="display: flex; gap: 6px;">
             <input class="form-input" id="propHigherLevel" placeholder="=Anlage" value="${comp.higherLevelFunction || ''}">
             <input class="form-input" id="propLocation" placeholder="+Ort" value="${comp.mountingLocation || ''}">
@@ -2368,21 +2341,21 @@ export class App {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Querverweis / Kontaktspiegel</label>
+          <label class="form-label">${t('labelCrossRef')}</label>
           <div style="padding: 8px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; font-family: monospace; font-size: 11px; color: var(--warning);">
-            ${referenceMarkup(this.project, comp) || 'Keine Querverweise aktiv'}
+            ${referenceMarkup(this.project, comp) || t('noCrossRefs')}
           </div>
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 14px;">
           <button class="btn btn-primary" id="btnPropApply" style="flex: 1; font-weight: 600; padding: 7px 10px; background: #38a169;">
-            💾 Übernehmen (OK)
+            ${t('btnApplyOk')}
           </button>
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 8px;">
-          <button class="btn" id="btnPropRotate" style="flex: 1;">🔄 90° Drehen</button>
-          <button class="btn" id="btnPropDelete" style="flex: 1; border-color: var(--danger); color: var(--danger);">🗑️ Löschen</button>
+          <button class="btn" id="btnPropRotate" style="flex: 1;">${t('btnRotate90')}</button>
+          <button class="btn" id="btnPropDelete" style="flex: 1; border-color: var(--danger); color: var(--danger);">${t('btnDelete')}</button>
         </div>
       `;
 
@@ -2429,7 +2402,7 @@ export class App {
         const applyBtn = document.getElementById('btnPropApply');
         if (applyBtn) {
           const orig = applyBtn.innerHTML;
-          applyBtn.innerHTML = '✓ Übernommen!';
+          applyBtn.innerHTML = t('appliedSuccess');
           setTimeout(() => { applyBtn.innerHTML = orig; }, 1200);
         }
       });
@@ -2524,32 +2497,32 @@ export class App {
 
       container.innerHTML = `
         <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-          Verbindungseigenschaften (Leitung)
+          ${t('wirePropsHeading')}
         </div>
 
         <div class="form-group">
-          <label class="form-label">Potenzialbezeichnung</label>
+          <label class="form-label">${t('wirePotential')}</label>
           <input class="form-input" id="propWirePotential" value="${wire.potential}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Querschnitt</label>
+          <label class="form-label">${t('wireSection')}</label>
           <input class="form-input" id="propWireSection" value="${wire.crossSection || '1.5mm²'}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Aderfarbe</label>
+          <label class="form-label">${t('wireColor')}</label>
           <select class="form-input" id="propWireColor">
-            <option value="BK" ${wire.color === 'BK' ? 'selected' : ''}>BK (Schwarz - Phase)</option>
-            <option value="BU" ${wire.color === 'BU' ? 'selected' : ''}>BU (Hellblau - Neutralleiter)</option>
-            <option value="GNYE" ${wire.color === 'GNYE' ? 'selected' : ''}>GNYE (Grün/Gelb - Schutzleiter PE)</option>
-            <option value="RD" ${wire.color === 'RD' ? 'selected' : ''}>RD (Rot - Steuerstrom AC)</option>
-            <option value="DBU" ${wire.color === 'DBU' ? 'selected' : ''}>DBU (Dunkelblau - Steuerspannung DC)</option>
+            <option value="BK" ${wire.color === 'BK' ? 'selected' : ''}>${t('wireColorBk')}</option>
+            <option value="BU" ${wire.color === 'BU' ? 'selected' : ''}>${t('wireColorBu')}</option>
+            <option value="GNYE" ${wire.color === 'GNYE' ? 'selected' : ''}>${t('wireColorGnye')}</option>
+            <option value="RD" ${wire.color === 'RD' ? 'selected' : ''}>${t('wireColorRd')}</option>
+            <option value="DBU" ${wire.color === 'DBU' ? 'selected' : ''}>${t('wireColorDbu')}</option>
           </select>
         </div>
 
         <button class="btn" id="btnDeleteWire" style="width: 100%; margin-top: 16px; border-color: var(--danger); color: var(--danger);">
-          🗑️ Leitung löschen
+          ${t('wireDelete')}
         </button>
       `;
 

@@ -10,6 +10,7 @@ import { MANUFACTURER_PARTS } from '../model/PartCatalogue';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
+import { t, getLocalizedSymbol } from '../i18n';
 
 export interface PropertiesDialogCallbacks {
   onSave: (updated: PlacedComponent) => void;
@@ -34,6 +35,7 @@ export class PropertiesDialog {
     if (existing) existing.remove();
 
     const sym = getSymbolForComponent(this.component, this.project);
+    const symName = sym ? getLocalizedSymbol(sym).name : t('symbol');
 
     const modal = document.createElement('div');
     modal.id = 'propertiesModal';
@@ -73,7 +75,7 @@ export class PropertiesDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #dd6b20; font-weight: bold;">⚡</span>
-            <span>Eigenschaften (Schaltzeichen): <strong>${escapeSvg(this.component.bmk)}</strong> (${escapeSvg(sym?.name || 'Bauteil')})</span>
+            <span>${escapeSvg(t('propDialogTitle', { bmk: this.component.bmk, name: symName }))}</span>
           </div>
           <button id="btnClosePropModal" style="background: none; border: none; color: #a0aec0; font-size: 20px; cursor: pointer; line-height: 1;">&times;</button>
         </div>
@@ -86,11 +88,11 @@ export class PropertiesDialog {
           padding: 0 8px;
           overflow-x: auto;
         ">
-          <button class="ecad-tab-btn ${this.activeTab === 'symbol' ? 'active' : ''}" data-tab="symbol">Schaltzeichen</button>
-          <button class="ecad-tab-btn ${this.activeTab === 'display' ? 'active' : ''}" data-tab="display">Anzeige / Beschriftung</button>
-          <button class="ecad-tab-btn ${this.activeTab === 'part' ? 'active' : ''}" data-tab="part">Artikel</button>
-          <button class="ecad-tab-btn ${this.activeTab === 'crossref' ? 'active' : ''}" data-tab="crossref">Querverweise / Kontakte</button>
-          <button class="ecad-tab-btn ${this.activeTab === 'format' ? 'active' : ''}" data-tab="format">Darstellung & Lage</button>
+          <button class="ecad-tab-btn ${this.activeTab === 'symbol' ? 'active' : ''}" data-tab="symbol">${escapeSvg(t('propTabSymbol'))}</button>
+          <button class="ecad-tab-btn ${this.activeTab === 'display' ? 'active' : ''}" data-tab="display">${escapeSvg(t('propTabDisplay'))}</button>
+          <button class="ecad-tab-btn ${this.activeTab === 'part' ? 'active' : ''}" data-tab="part">${escapeSvg(t('propTabPart'))}</button>
+          <button class="ecad-tab-btn ${this.activeTab === 'crossref' ? 'active' : ''}" data-tab="crossref">${escapeSvg(t('propTabCrossRef'))}</button>
+          <button class="ecad-tab-btn ${this.activeTab === 'format' ? 'active' : ''}" data-tab="format">${escapeSvg(t('propTabFormat'))}</button>
         </div>
 
         <!-- Tab Body Content -->
@@ -107,9 +109,9 @@ export class PropertiesDialog {
           justify-content: flex-end;
           gap: 8px;
         ">
-          <button id="btnApplyProp" class="btn" style="padding: 6px 14px; font-size: 12px;">Übernehmen</button>
-          <button id="btnSaveProp" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">OK</button>
-          <button id="btnCancelProp" class="btn" style="padding: 6px 14px; font-size: 12px;">Abbrechen</button>
+          <button id="btnApplyProp" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnApply'))}</button>
+          <button id="btnSaveProp" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">${escapeSvg(t('propBtnOk'))}</button>
+          <button id="btnCancelProp" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnCancel'))}</button>
         </div>
       </div>
     `;
@@ -127,56 +129,56 @@ export class PropertiesDialog {
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-              <label class="form-label">Sichtbares BMK:</label>
+              <label class="form-label">${escapeSvg(t('propVisibleBmk'))}</label>
               <input type="text" id="propBmk" class="form-input" value="${escapeSvg(this.component.bmk)}" placeholder="-K1">
             </div>
             <div>
-              <label class="form-label">Vollständiges BMK (Vorschau):</label>
+              <label class="form-label">${escapeSvg(t('propFullBmkPreview'))}</label>
               <input type="text" class="form-input" disabled value="${escapeSvg(this.component.higherLevelFunction ?? '=A1')}${escapeSvg(this.component.mountingLocation ?? '+S1')}${escapeSvg(this.component.bmk)}" style="background: #181b22; color: #a0aec0;">
             </div>
           </div>
 
           <div>
-            <label class="form-label">Gerätebezeichnung (Name / Typ):</label>
-            <input type="text" id="propDeviceTag" class="form-input" value="${escapeSvg(this.component.deviceTag || '')}" placeholder="z.B. Hauptschütz K1, Netzteil 24V, Motorschutzschalter">
+            <label class="form-label">${escapeSvg(t('propDeviceTag'))}</label>
+            <input type="text" id="propDeviceTag" class="form-input" value="${escapeSvg(this.component.deviceTag || '')}" placeholder="${escapeSvg(t('propDeviceTagPlaceholder'))}">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-              <label class="form-label">Funktionstext:</label>
-              <textarea id="propFunctionText" class="form-input" rows="2" placeholder="z.B. Hauptantrieb Förderband">${escapeSvg(this.component.functionText || '')}</textarea>
+              <label class="form-label">${escapeSvg(t('propFunctionText'))}</label>
+              <textarea id="propFunctionText" class="form-input" rows="2" placeholder="${escapeSvg(t('propFunctionPlaceholder'))}">${escapeSvg(this.component.functionText || '')}</textarea>
             </div>
             <div>
-              <label class="form-label">Zusatztext / Graviertext:</label>
-              <textarea id="propAdditionalText" class="form-input" rows="2" placeholder="z.B. Tür links, Feld 3">${escapeSvg(this.component.additionalText || '')}</textarea>
+              <label class="form-label">${escapeSvg(t('propAdditionalText'))}</label>
+              <textarea id="propAdditionalText" class="form-input" rows="2" placeholder="${escapeSvg(t('propAdditionalPlaceholder'))}">${escapeSvg(this.component.additionalText || '')}</textarea>
             </div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-              <label class="form-label">Anlage (=Höhere Ebene):</label>
+              <label class="form-label">${escapeSvg(t('propPlant'))}</label>
               <input type="text" id="propHigherLevel" class="form-input" value="${escapeSvg(this.component.higherLevelFunction ?? '=A1')}">
             </div>
             <div>
-              <label class="form-label">Einbauort (+Ort):</label>
+              <label class="form-label">${escapeSvg(t('propLocation'))}</label>
               <input type="text" id="propLocation" class="form-input" value="${escapeSvg(this.component.mountingLocation ?? '+S1')}">
             </div>
           </div>
 
           <div>
-            <label class="form-label">Technische Kenngrößen:</label>
-            <textarea id="propTechChar" class="form-input" rows="2" placeholder="z.B. 4kW 400V 8.5A">${escapeSvg(this.component.technicalCharacteristics || '')}</textarea>
+            <label class="form-label">${escapeSvg(t('propTechnicalData'))}</label>
+            <textarea id="propTechChar" class="form-input" rows="2" placeholder="${escapeSvg(t('propTechnicalPlaceholder'))}">${escapeSvg(this.component.technicalCharacteristics || '')}</textarea>
           </div>
 
           <div>
-            <label class="form-label">Anschlussbezeichnungen (Pins):</label>
+            <label class="form-label">${escapeSvg(t('propPinLabel'))}</label>
             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
               ${sym?.pins.map(p => `
                 <div style="display: flex; align-items: center; gap: 4px; background: #1a202c; border: 1px solid #3e4656; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
-                  <span style="color: #63b3ed; font-family: monospace;">Pin ${p.id}:</span>
+                  <span style="color: #63b3ed; font-family: monospace;">${escapeSvg(t('propPinPrefix'))} ${p.id}:</span>
                   <input type="text" class="prop-pin-label" data-pin-id="${p.id}" value="${escapeSvg(this.component.pins[p.id]?.customLabel ?? p.name)}" style="width: 45px; background: #2d3748; border: 1px solid #4a5568; color: white; padding: 2px 4px; border-radius: 2px; font-size: 11px; text-align: center;">
                 </div>
-              `).join('') || '<span style="font-size: 11px; color: #a0aec0;">Keine Anschlüsse vorhanden</span>'}
+              `).join('') || `<span style="font-size: 11px; color: #a0aec0;">${escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
         </div>
@@ -192,58 +194,58 @@ export class PropertiesDialog {
         <div style="display: flex; flex-direction: column; gap: 14px;">
           <!-- Description Header -->
           <div style="font-size: 11px; color: #a0aec0; background: #1a202c; border: 1px solid #3e4656; border-radius: 4px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span>Konfigurieren Sie hier die Positionen, Ausrichtungen und Sichtbarkeiten aller Beschriftungen für das ausgewählte Schaltzeichen.</span>
-            <button id="btnResetPositions" class="btn" style="padding: 2px 8px; font-size: 10px; white-space: nowrap;">↺ Standardpositionen</button>
+            <span>${escapeSvg(t('propDisplayDesc'))}</span>
+            <button id="btnResetPositions" class="btn" style="padding: 2px 8px; font-size: 10px; white-space: nowrap;">${escapeSvg(t('propResetPositions'))}</button>
           </div>
 
           <!-- Section 1: BMK Position -->
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; font-size: 12px; color: #f6e05e;">🏷️ Betriebsmittelkennzeichen (BMK)</span>
+              <span style="font-weight: 600; font-size: 12px; color: #f6e05e;">${escapeSvg(t('propBmkHeading'))}</span>
               <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <input type="checkbox" id="propBmkVisible" ${bmkPos.visible !== false ? 'checked' : ''}>
-                Sichtbar
+                ${escapeSvg(t('propVisible'))}
               </label>
             </div>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
               <div>
-                <label class="form-label" style="font-size: 10px;">Position (Preset):</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propBmkPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${bmkPos.preset === 'auto' ? 'selected' : ''}>Links daneben (Standard)</option>
-                  <option value="top" ${bmkPos.preset === 'top' ? 'selected' : ''}>Oben zentriert</option>
-                  <option value="top_left" ${bmkPos.preset === 'top_left' ? 'selected' : ''}>Oben links</option>
-                  <option value="top_right" ${bmkPos.preset === 'top_right' ? 'selected' : ''}>Oben rechts</option>
-                  <option value="bottom" ${bmkPos.preset === 'bottom' ? 'selected' : ''}>Unten zentriert</option>
-                  <option value="bottom_left" ${bmkPos.preset === 'bottom_left' ? 'selected' : ''}>Unten links</option>
-                  <option value="bottom_right" ${bmkPos.preset === 'bottom_right' ? 'selected' : ''}>Unten rechts</option>
-                  <option value="left" ${bmkPos.preset === 'left' ? 'selected' : ''}>Links daneben</option>
-                  <option value="right" ${bmkPos.preset === 'right' ? 'selected' : ''}>Rechts daneben</option>
-                  <option value="custom" ${bmkPos.preset === 'custom' ? 'selected' : ''}>Benutzerdefiniert</option>
+                  <option value="auto" ${bmkPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
+                  <option value="top" ${bmkPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
+                  <option value="top_left" ${bmkPos.preset === 'top_left' ? 'selected' : ''}>${escapeSvg(t('propPresetTopLeft'))}</option>
+                  <option value="top_right" ${bmkPos.preset === 'top_right' ? 'selected' : ''}>${escapeSvg(t('propPresetTopRight'))}</option>
+                  <option value="bottom" ${bmkPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottom'))}</option>
+                  <option value="bottom_left" ${bmkPos.preset === 'bottom_left' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomLeft'))}</option>
+                  <option value="bottom_right" ${bmkPos.preset === 'bottom_right' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomRight'))}</option>
+                  <option value="left" ${bmkPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
+                  <option value="right" ${bmkPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
+                  <option value="custom" ${bmkPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz X:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
                 <input type="number" step="any" id="propBmkOffsetX" class="form-input" value="${bmkPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz Y:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
                 <input type="number" step="any" id="propBmkOffsetY" class="form-input" value="${bmkPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Ausrichtung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
                 <select id="propBmkAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${bmkPos.alignment === 'middle' ? 'selected' : ''}>Zentriert</option>
-                  <option value="start" ${bmkPos.alignment === 'start' ? 'selected' : ''}>Linksbündig</option>
-                  <option value="end" ${bmkPos.alignment === 'end' ? 'selected' : ''}>Rechtsbündig</option>
+                  <option value="middle" ${bmkPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
+                  <option value="start" ${bmkPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
+                  <option value="end" ${bmkPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Drehung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
                 <select id="propBmkRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
                   <option value="0" ${bmkPos.rotation === 0 ? 'selected' : ''}>0°</option>
                   <option value="90" ${bmkPos.rotation === 90 ? 'selected' : ''}>90°</option>
@@ -257,51 +259,51 @@ export class PropertiesDialog {
           <!-- Section 2: Funktionstext Position -->
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; font-size: 12px; color: #e2e8f0;">📝 Funktionstext</span>
+              <span style="font-weight: 600; font-size: 12px; color: #e2e8f0;">${escapeSvg(t('propFnHeading'))}</span>
               <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <input type="checkbox" id="propFnVisible" ${fnPos.visible !== false ? 'checked' : ''}>
-                Sichtbar
+                ${escapeSvg(t('propVisible'))}
               </label>
             </div>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
               <div>
-                <label class="form-label" style="font-size: 10px;">Position (Preset):</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propFnPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${fnPos.preset === 'auto' ? 'selected' : ''}>Links daneben (Standard)</option>
-                  <option value="bottom" ${fnPos.preset === 'bottom' ? 'selected' : ''}>Unten zentriert</option>
-                  <option value="bottom_left" ${fnPos.preset === 'bottom_left' ? 'selected' : ''}>Unten links</option>
-                  <option value="bottom_right" ${fnPos.preset === 'bottom_right' ? 'selected' : ''}>Unten rechts</option>
-                  <option value="top" ${fnPos.preset === 'top' ? 'selected' : ''}>Oben zentriert</option>
-                  <option value="top_left" ${fnPos.preset === 'top_left' ? 'selected' : ''}>Oben links</option>
-                  <option value="top_right" ${fnPos.preset === 'top_right' ? 'selected' : ''}>Oben rechts</option>
-                  <option value="left" ${fnPos.preset === 'left' ? 'selected' : ''}>Links daneben</option>
-                  <option value="right" ${fnPos.preset === 'right' ? 'selected' : ''}>Rechts daneben</option>
-                  <option value="custom" ${fnPos.preset === 'custom' ? 'selected' : ''}>Benutzerdefiniert</option>
+                  <option value="auto" ${fnPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
+                  <option value="bottom" ${fnPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottom'))}</option>
+                  <option value="bottom_left" ${fnPos.preset === 'bottom_left' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomLeft'))}</option>
+                  <option value="bottom_right" ${fnPos.preset === 'bottom_right' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomRight'))}</option>
+                  <option value="top" ${fnPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
+                  <option value="top_left" ${fnPos.preset === 'top_left' ? 'selected' : ''}>${escapeSvg(t('propPresetTopLeft'))}</option>
+                  <option value="top_right" ${fnPos.preset === 'top_right' ? 'selected' : ''}>${escapeSvg(t('propPresetTopRight'))}</option>
+                  <option value="left" ${fnPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
+                  <option value="right" ${fnPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
+                  <option value="custom" ${fnPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz X:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
                 <input type="number" step="any" id="propFnOffsetX" class="form-input" value="${fnPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz Y:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
                 <input type="number" step="any" id="propFnOffsetY" class="form-input" value="${fnPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Ausrichtung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
                 <select id="propFnAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${fnPos.alignment === 'middle' ? 'selected' : ''}>Zentriert</option>
-                  <option value="start" ${fnPos.alignment === 'start' ? 'selected' : ''}>Linksbündig</option>
-                  <option value="end" ${fnPos.alignment === 'end' ? 'selected' : ''}>Rechtsbündig</option>
+                  <option value="middle" ${fnPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
+                  <option value="start" ${fnPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
+                  <option value="end" ${fnPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Drehung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
                 <select id="propFnRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
                   <option value="0" ${fnPos.rotation === 0 ? 'selected' : ''}>0°</option>
                   <option value="90" ${fnPos.rotation === 90 ? 'selected' : ''}>90°</option>
@@ -315,47 +317,47 @@ export class PropertiesDialog {
           <!-- Section 3: Gerätebezeichnung & Technische Daten -->
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; font-size: 12px; color: #68d391;">⚙️ Gerätebezeichnung & Technische Kennwerte</span>
+              <span style="font-weight: 600; font-size: 12px; color: #68d391;">${escapeSvg(t('propTechHeading'))}</span>
               <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                 <input type="checkbox" id="propTechVisible" ${techPos.visible ? 'checked' : ''}>
-                Sichtbar
+                ${escapeSvg(t('propVisible'))}
               </label>
             </div>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
               <div>
-                <label class="form-label" style="font-size: 10px;">Position (Preset):</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propTechPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${techPos.preset === 'auto' ? 'selected' : ''}>Links daneben (Standard)</option>
-                  <option value="bottom" ${techPos.preset === 'bottom' ? 'selected' : ''}>Unten (unter Funktionstext)</option>
-                  <option value="top" ${techPos.preset === 'top' ? 'selected' : ''}>Oben</option>
-                  <option value="right" ${techPos.preset === 'right' ? 'selected' : ''}>Rechts daneben</option>
-                  <option value="left" ${techPos.preset === 'left' ? 'selected' : ''}>Links daneben</option>
-                  <option value="custom" ${techPos.preset === 'custom' ? 'selected' : ''}>Benutzerdefiniert</option>
+                  <option value="auto" ${techPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
+                  <option value="bottom" ${techPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomUnderFn'))}</option>
+                  <option value="top" ${techPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
+                  <option value="right" ${techPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
+                  <option value="left" ${techPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
+                  <option value="custom" ${techPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz X:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
                 <input type="number" step="any" id="propTechOffsetX" class="form-input" value="${techPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Versatz Y:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
                 <input type="number" step="any" id="propTechOffsetY" class="form-input" value="${techPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Ausrichtung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
                 <select id="propTechAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${techPos.alignment === 'middle' ? 'selected' : ''}>Zentriert</option>
-                  <option value="start" ${techPos.alignment === 'start' ? 'selected' : ''}>Linksbündig</option>
-                  <option value="end" ${techPos.alignment === 'end' ? 'selected' : ''}>Rechtsbündig</option>
+                  <option value="middle" ${techPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
+                  <option value="start" ${techPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
+                  <option value="end" ${techPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
                 </select>
               </div>
 
               <div>
-                <label class="form-label" style="font-size: 10px;">Drehung:</label>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
                 <select id="propTechRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
                   <option value="0" ${techPos.rotation === 0 ? 'selected' : ''}>0°</option>
                   <option value="90" ${techPos.rotation === 90 ? 'selected' : ''}>90°</option>
@@ -370,7 +372,7 @@ export class PropertiesDialog {
           ${this.crossReferencePositionFields()}
 
           <div style="background:#1f242e;border:1px solid #3e4656;border-radius:6px;padding:12px">
-            <strong>Schriftgrößen (mm)</strong>
+            <strong>${escapeSvg(t('propFontSizesHeading'))}</strong>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
               ${this.fontSizeFields()}
             </div>
@@ -379,7 +381,7 @@ export class PropertiesDialog {
           <!-- Section 4: Live Interactive Preview -->
           <div style="background: #181d26; border: 1px solid #3e4656; border-radius: 6px; padding: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #63b3ed; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-              <span>🔍 Live-Vorschau der Beschriftungsplatzierung (1:1 Planansicht)</span>
+              <span>${escapeSvg(t('propLivePreview'))}</span>
             </div>
             <div id="previewSvgWrapper" style="display: flex; justify-content: center; align-items: center; background: #13171f; border: 1px dashed #4a5568; border-radius: 4px; padding: 12px; min-height: 140px; overflow: hidden;">
               ${this.generatePreviewSvg()}
@@ -394,11 +396,11 @@ export class PropertiesDialog {
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="background: #1c212c; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <div style="font-size: 12px; font-weight: 600; color: #63b3ed;">Herstellerartikel / Katalogdaten zuweisen</div>
-              <div style="font-size: 11px; color: #a0aec0;">Wählen Sie einen vorgefertigten Normartikel aus der Datenbank</div>
+              <div style="font-size: 12px; font-weight: 600; color: #63b3ed;">${escapeSvg(t('propPartHeading'))}</div>
+              <div style="font-size: 11px; color: #a0aec0;">${escapeSvg(t('propPartDesc'))}</div>
             </div>
             <select id="quickPartSelect" class="form-input" style="width: auto; max-width: 260px;">
-              <option value="">-- Artikelkatalog wählen --</option>
+              <option value="">${escapeSvg(t('propPartSelectQuick'))}</option>
               ${MANUFACTURER_PARTS.map(p => `
                 <option value="${p.id}" ${this.component.articleNumber === p.articleNumber ? 'selected' : ''}>
                   ${p.manufacturer}: ${p.articleNumber} (${escapeSvg(p.name)})
@@ -409,41 +411,41 @@ export class PropertiesDialog {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-              <label class="form-label">Hersteller:</label>
+              <label class="form-label">${escapeSvg(t('propManufacturer'))}</label>
               <input type="text" id="propManufacturer" class="form-input" value="${escapeSvg(this.component.manufacturer || '')}" placeholder="z.B. Siemens / Hager / Finder">
             </div>
             <div>
-              <label class="form-label">Artikelnummer / Bestell-Nr.:</label>
+              <label class="form-label">${escapeSvg(t('propOrderNumber'))}</label>
               <input type="text" id="propArticleNumber" class="form-input" value="${escapeSvg(this.component.articleNumber || '')}" placeholder="z.B. 3RT2016-1BB41">
             </div>
           </div>
 
           <div>
-            <label class="form-label">Katalog-Kurzbeschreibung:</label>
-            <input type="text" id="propPartDesc" class="form-input" value="${escapeSvg(this.component.technicalCharacteristics || '')}" placeholder="z.B. Leistungsschütz 4kW, 24V DC, 1S">
+            <label class="form-label">${escapeSvg(t('propPartShortDesc'))}</label>
+            <input type="text" id="propPartDesc" class="form-input" value="${escapeSvg(this.component.technicalCharacteristics || '')}" placeholder="${escapeSvg(t('propPartDescPlaceholder'))}">
           </div>
         </div>
       `;
     }
 
     if (this.activeTab === 'crossref') {
-      const crossRefText = referenceMarkup(this.project, this.component) || 'Kein Querverweis vorhanden';
+      const crossRefText = referenceMarkup(this.project, this.component) || t('propCrossRefNone');
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="background: #181d26; border: 1px solid #3e4656; border-radius: 6px; padding: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #f6ad55; margin-bottom: 6px;">
-              Querverweis-Status (DIN EN 81346 / IEC 60617):
+              ${escapeSvg(t('propCrossRefStatus'))}
             </div>
             <div style="font-size: 14px; font-family: monospace; color: #edf2f7; font-weight: bold; margin-bottom: 6px;">
               ${crossRefText}
             </div>
             <div style="font-size: 11px; color: #a0aec0; line-height: 1.5;">
-              Querverweise werden automatisch anhand identischer BMK-Bezeichnungen (z.B. Spule <code>-K1</code> und Kontakte <code>-K1</code>) über das gesamte Projekt berechnet.
+              ${t('propCrossRefInfo')}
             </div>
           </div>
 
           <div style="border-top: 1px solid #3e4656; padding-top: 10px;">
-            <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Gefundene Verknüpfungen im Projekt:</div>
+            <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">${escapeSvg(t('propCrossRefLinks'))}</div>
             <ul style="font-size: 11px; color: #cbd5e0; padding-left: 18px; line-height: 1.6;">
               ${this.getRelatedComponentsHtml()}
             </ul>
@@ -459,22 +461,22 @@ export class PropertiesDialog {
           ${deviceBoxFields(this.component,getDrawingUnitsPerMm(this.project))}
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-              <label class="form-label">X-Position (Einfügepunkt):</label>
+              <label class="form-label">${escapeSvg(t('propPosX'))}</label>
               <input type="number" step="any" id="propPosX" class="form-input" value="${insertion.x}">
             </div>
             <div>
-              <label class="form-label">Y-Position (Einfügepunkt):</label>
+              <label class="form-label">${escapeSvg(t('propPosY'))}</label>
               <input type="number" step="any" id="propPosY" class="form-input" value="${insertion.y}">
             </div>
           </div>
 
           <div>
-            <label class="form-label">Drehwinkel des Bauteils:</label>
+            <label class="form-label">${escapeSvg(t('propRotationAngle'))}</label>
             <select id="propRotation" class="form-input">
-              <option value="0" ${this.component.rotation === 0 ? 'selected' : ''}>0° (Standard)</option>
-              <option value="90" ${this.component.rotation === 90 ? 'selected' : ''}>90° im Uhrzeigersinn</option>
-              <option value="180" ${this.component.rotation === 180 ? 'selected' : ''}>180°</option>
-              <option value="270" ${this.component.rotation === 270 ? 'selected' : ''}>270°</option>
+              <option value="0" ${this.component.rotation === 0 ? 'selected' : ''}>${escapeSvg(t('propRot0'))}</option>
+              <option value="90" ${this.component.rotation === 90 ? 'selected' : ''}>${escapeSvg(t('propRot90'))}</option>
+              <option value="180" ${this.component.rotation === 180 ? 'selected' : ''}>${escapeSvg(t('propRot180'))}</option>
+              <option value="270" ${this.component.rotation === 270 ? 'selected' : ''}>${escapeSvg(t('propRot270'))}</option>
             </select>
           </div>
         </div>
@@ -488,19 +490,19 @@ export class PropertiesDialog {
     const cfg = this.component.crossRefPosition;
     const units = getDrawingUnitsPerMm(this.project);
     return `<fieldset style="background:#1f242e;border:1px solid #3e4656;border-radius:6px;padding:12px">
-      <legend style="color:#f6ad55">Querverweise / Kontaktspiegel</legend>
-      <label><input type="checkbox" id="propCrossRefVisible" ${cfg?.visible !== false ? 'checked' : ''}> Sichtbar</label>
+      <legend style="color:#f6ad55">${escapeSvg(t('propCrossRefLegend'))}</legend>
+      <label><input type="checkbox" id="propCrossRefVisible" ${cfg?.visible !== false ? 'checked' : ''}> ${escapeSvg(t('propVisible'))}</label>
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px">
-        <label class="form-label">Position<select class="form-input" id="propCrossRefPreset">${[
-          ['auto','Automatisch (Standard)'],['custom','Benutzerdefiniert (mit Versatz)'],['top','Oben'],['top_left','Oben links'],['top_right','Oben rechts'],
-          ['bottom','Unten'],['bottom_left','Unten links'],['bottom_right','Unten rechts'],['left','Links daneben'],['right','Rechts daneben']
+        <label class="form-label">${escapeSvg(t('propPositionPreset'))}<select class="form-input" id="propCrossRefPreset">${[
+          ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
+          ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
         ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">Ausrichtung<select class="form-input" id="propCrossRefAlignment">${[
-          ['','Automatisch'],['start','Linksbündig'],['middle','Zentriert'],['end','Rechtsbündig']
+        <label class="form-label">${escapeSvg(t('propAlignment'))}<select class="form-input" id="propCrossRefAlignment">${[
+          ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
         ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">Versatz X (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetX" value="${(cfg?.offsetX ?? 0)/units}"></label>
-        <label class="form-label">Versatz Y (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetY" value="${(cfg?.offsetY ?? 0)/units}"></label>
-        <label class="form-label">Drehung<select class="form-input" id="propCrossRefRotation">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select></label>
+        <label class="form-label">${escapeSvg(t('propOffsetX'))} (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetX" value="${(cfg?.offsetX ?? 0)/units}"></label>
+        <label class="form-label">${escapeSvg(t('propOffsetY'))} (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetY" value="${(cfg?.offsetY ?? 0)/units}"></label>
+        <label class="form-label">${escapeSvg(t('propRotation'))}<select class="form-input" id="propCrossRefRotation">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select></label>
       </div>
     </fieldset>`;
   }
@@ -509,15 +511,15 @@ export class PropertiesDialog {
     const symbol = getSymbolForComponent(this.component, this.project);
     const cfg = { alignment: symbol ? computeAdditionalTextPosition(this.component, symbol).anchor : 'end', ...this.component.additionalTextPosition };
     const units = getDrawingUnitsPerMm(this.project);
-    const presets = [['auto','Links daneben (Standard)'],['bottom','Unten zentriert'],['bottom_left','Unten links'],['bottom_right','Unten rechts'],['top','Oben zentriert'],['top_left','Oben links'],['top_right','Oben rechts'],['left','Links'],['right','Rechts'],['custom','Benutzerdefiniert']];
-    return `<fieldset style="border:1px solid #3e4656;border-radius:6px;padding:12px"><legend>Zusatztext / Graviertext</legend>
-      <label><input id="propAdditionalVisible" type="checkbox" ${cfg.visible !== false ? 'checked' : ''}> Sichtbar</label>
+    const presets = [['auto',t('propPresetAuto')],['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')],['custom',t('propPresetCustom')]];
+    return `<fieldset style="border:1px solid #3e4656;border-radius:6px;padding:12px"><legend>${escapeSvg(t('propAdditionalText'))}</legend>
+      <label><input id="propAdditionalVisible" type="checkbox" ${cfg.visible !== false ? 'checked' : ''}> ${escapeSvg(t('propVisible'))}</label>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
-        <label class="form-label">Position<select class="form-input" id="propAdditionalPreset">${presets.map(([key,label])=>`<option value="${key}" ${(cfg.preset || 'auto')===key?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">Versatz X (mm)<input class="form-input" id="propAdditionalOffsetX" type="number" step="any" value="${(cfg.offsetX || 0)/units}"></label>
-        <label class="form-label">Versatz Y (mm)<input class="form-input" id="propAdditionalOffsetY" type="number" step="any" value="${(cfg.offsetY || 0)/units}"></label>
-        <label class="form-label">Ausrichtung<select class="form-input" id="propAdditionalAlignment">${[['middle','Zentriert'],['start','Linksbündig'],['end','Rechtsbündig']].map(([key,label])=>`<option value="${key}" ${(cfg.alignment || 'middle')===key?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">Drehung<select class="form-input" id="propAdditionalRotation">${[0,90,180,270].map(angle=>`<option value="${angle}" ${(cfg.rotation || 0)===angle?'selected':''}>${angle}°</option>`).join('')}</select></label>
+        <label class="form-label">${escapeSvg(t('propPositionPreset'))}<select class="form-input" id="propAdditionalPreset">${presets.map(([key,label])=>`<option value="${key}" ${(cfg.preset || 'auto')===key?'selected':''}>${label}</option>`).join('')}</select></label>
+        <label class="form-label">${escapeSvg(t('propOffsetX'))} (mm)<input class="form-input" id="propAdditionalOffsetX" type="number" step="any" value="${(cfg.offsetX || 0)/units}"></label>
+        <label class="form-label">${escapeSvg(t('propOffsetY'))} (mm)<input class="form-input" id="propAdditionalOffsetY" type="number" step="any" value="${(cfg.offsetY || 0)/units}"></label>
+        <label class="form-label">${escapeSvg(t('propAlignment'))}<select class="form-input" id="propAdditionalAlignment">${[['middle',t('propAlignMiddle')],['start',t('propAlignStart')],['end',t('propAlignEnd')]].map(([key,label])=>`<option value="${key}" ${(cfg.alignment || 'middle')===key?'selected':''}>${label}</option>`).join('')}</select></label>
+        <label class="form-label">${escapeSvg(t('propRotation'))}<select class="form-input" id="propAdditionalRotation">${[0,90,180,270].map(angle=>`<option value="${angle}" ${(cfg.rotation || 0)===angle?'selected':''}>${angle}°</option>`).join('')}</select></label>
       </div></fieldset>`;
   }
 
@@ -526,18 +528,18 @@ export class PropertiesDialog {
     if (!sym) return '';
     const units = getDrawingUnitsPerMm(this.project);
     return [
-      ['Bmk', 'BMK', computeBmkPosition(this.component, sym).fontSize],
-      ['Fn', 'Funktionstext', computeFunctionTextPosition(this.component, sym).fontSize],
-      ['Additional', 'Zusatztext / Graviertext', computeAdditionalTextPosition(this.component, sym).fontSize],
-      ['Tech', 'Technische Daten', computeTechnicalDataPosition(this.component, sym).fontSize],
-      ['CrossRef', 'Querverweise', this.component.crossRefFontSize ?? 8],
-      ['Pin', 'Anschlussbezeichnungen', this.component.pinLabelFontSize ?? Object.values(this.component.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? 6.5]
+      ['Bmk', t('labelBmk'), computeBmkPosition(this.component, sym).fontSize],
+      ['Fn', t('labelFunctionText'), computeFunctionTextPosition(this.component, sym).fontSize],
+      ['Additional', t('labelAdditionalText'), computeAdditionalTextPosition(this.component, sym).fontSize],
+      ['Tech', t('labelTechnicalData'), computeTechnicalDataPosition(this.component, sym).fontSize],
+      ['CrossRef', t('propCrossRefTab'), this.component.crossRefFontSize ?? 8],
+      ['Pin', t('propPinLabel'), this.component.pinLabelFontSize ?? Object.values(this.component.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? 6.5]
     ].map(([key,label,size]) => `<label class="form-label">${label}<input class="form-input" type="number" min="0.1" max="20" step="0.1" id="prop${key}FontSize" value="${Number((Number(size)/units).toFixed(4))}"></label>`).join('');
   }
 
   private generatePreviewSvg(): string {
     const sym = getSymbolForComponent(this.component, this.project);
-    if (!sym) return '<span style="color:#a0aec0;">Kein Symbol gefunden</span>';
+    if (!sym) return `<span style="color:#a0aec0;">${escapeSvg(t('propNoSymbolFound'))}</span>`;
 
     const bmkPos = computeBmkPosition(this.component, sym);
     const fnPos = computeFunctionTextPosition(this.component, sym);
@@ -564,11 +566,11 @@ export class PropertiesDialog {
     ` : '';
 
     const fnSvg = (!isConn && fnPos.visible) ? `
-      <text x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${escapeSvg(this.component.functionText || 'Funktionstext')}</text>
+      <text x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${escapeSvg(this.component.functionText || t('labelFunctionText'))}</text>
     ` : '';
 
     const techSvg = (!isConn && techPos.visible && (techText || this.activeTab === 'display')) ? `
-      <text x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${escapeSvg(techText || 'Gerätebezeichnung')}</text>
+      <text x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${escapeSvg(techText || t('labelDeviceTag'))}</text>
     ` : '';
 
     const pinsSvg = sym.pins.map(pin => `
@@ -614,9 +616,10 @@ export class PropertiesDialog {
       for (const c of p.components) {
         if (c.bmk === this.component.bmk && c.id !== this.component.id) {
           const sym = getSymbolForComponent(c);
+          const symName = sym ? getLocalizedSymbol(sym).name : t('symbol');
           related.push(`
             <li style="margin-bottom: 4px;">
-              <strong>Blatt ${p.pageNumber}:</strong> ${escapeSvg(sym?.name || 'Bauteil')} (${c.functionText || 'Ohne Funktionstext'})
+              <strong>${escapeSvg(t('sheet'))} ${p.pageNumber}:</strong> ${escapeSvg(symName)} (${escapeSvg(c.functionText || t('propNoFunctionText'))})
               <span style="font-family: monospace; color: #f6e05e; margin-left: 6px;">[X: ${c.x}, Y: ${c.y}]</span>
             </li>
           `);
@@ -624,7 +627,7 @@ export class PropertiesDialog {
       }
     }
     if (related.length === 0) {
-      return '<li style="color: #a0aec0;">Keine weiteren Bauteile mit demselben BMK im Projekt.</li>';
+      return `<li style="color: #a0aec0;">${escapeSvg(t('propCrossRefNoneInProject'))}</li>`;
     }
     return related.join('');
   }
@@ -687,8 +690,8 @@ export class PropertiesDialog {
       this.callbacks.onSave(structuredClone(this.component));
       const applyBtn = modal.querySelector('#btnApplyProp') as HTMLElement;
       if (applyBtn) {
-        const origText = applyBtn.textContent || 'Übernehmen';
-        applyBtn.textContent = '✓ Übernommen';
+        const origText = applyBtn.textContent || t('propBtnApply');
+        applyBtn.textContent = t('propAppliedBadge');
         setTimeout(() => {
           applyBtn.textContent = origText;
         }, 1200);

@@ -1,6 +1,7 @@
 import { externalMacroLibrary } from '../model/ExternalMacroLibrary';
 import { createMacroFolderPanel } from './MacroFolderPanel';
 import { escapeSvg } from '../model/ImportedDrawing';
+import { t, getMacroCategoryLabel } from '../i18n';
 // src/ui/MacroSelectionDialog.ts
 // Dialog for browsing, importing, previewing, and placing macros (.ema / .ems)
 
@@ -84,7 +85,7 @@ export class MacroSelectionDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #63b3ed;">📦</span>
-            <span>Makro-Bibliothek (.ema / .ems)</span>
+            <span>${escapeSvg(t('macroModalTitle'))}</span>
           </div>
           <button id="btnCloseMacroModal" style="background: none; border: none; color: #a0aec0; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
@@ -101,7 +102,7 @@ export class MacroSelectionDialog {
         ">
           <div style="flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px; background: #232731; border: 1px solid #3e4656; border-radius: 4px; padding: 4px 8px;">
             <span style="color: #a0aec0; font-size: 12px;">🔍</span>
-            <input type="text" id="macroSearchInput" placeholder="Makro suchen (z.B. Motor, Wendeschütz, Not-Halt, 24V)..." style="
+            <input type="text" id="macroSearchInput" placeholder="${escapeSvg(t('searchMacrosPlaceholder'))}" style="
               background: none;
               border: none;
               color: white;
@@ -112,12 +113,12 @@ export class MacroSelectionDialog {
           </div>
 
           <label class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; margin: 0; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-            <span>📂 Makro importieren</span>
+            <span>${escapeSvg(t('macroImportBtn'))}</span>
             <input type="file" id="macroDialogFileInput" accept=".ema,.ems,.emp,.fp1,.edz,.xml,.json" style="display: none;">
           </label>
 
           <span style="font-size: 11px; color: #a0aec0;" id="macroCountBadge">
-            ${all.length} Makros verfügbar
+            ${escapeSvg(t('macroCountAvailable', { count: all.length }))}
           </span>
         </div>
 
@@ -133,30 +134,30 @@ export class MacroSelectionDialog {
             overflow-y: auto;
             flex-shrink: 0;
           ">
-            <div style="font-size: 10px; font-weight: bold; color: #718096; text-transform: uppercase; padding: 4px 12px; margin-bottom: 2px;">Kategorien</div>
+            <div style="font-size: 10px; font-weight: bold; color: #718096; text-transform: uppercase; padding: 4px 12px; margin-bottom: 2px;">${escapeSvg(t('categories'))}</div>
             <div class="macro-tree-node ${this.selectedCategory === 'all' ? 'active' : ''}" data-cat="all" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>📁</span> Alle Makros
+              <span>📁</span> ${escapeSvg(getMacroCategoryLabel('all'))}
             </div>
             <div class="macro-tree-node ${this.selectedCategory === 'window' ? 'active' : ''}" data-cat="window" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>📦</span> Fenstermakros (.ema)
+              <span>📦</span> ${escapeSvg(getMacroCategoryLabel('window'))}
             </div>
             <div class="macro-tree-node ${this.selectedCategory === 'page' ? 'active' : ''}" data-cat="page" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>📄</span> Makros (.ems)
+              <span>📄</span> ${escapeSvg(getMacroCategoryLabel('page'))}
             </div>
             
-            <div style="font-size: 10px; font-weight: bold; color: #718096; text-transform: uppercase; padding: 8px 12px 2px 12px; margin-top: 4px; border-top: 1px solid #2d3748;">Themen</div>
+            <div style="font-size: 10px; font-weight: bold; color: #718096; text-transform: uppercase; padding: 8px 12px 2px 12px; margin-top: 4px; border-top: 1px solid #2d3748;">${escapeSvg(t('macroCatTopics'))}</div>
             <div class="macro-tree-node ${this.selectedCategory === 'motor' ? 'active' : ''}" data-cat="motor" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>⚙️</span> Motoren & Antriebe
+              <span>⚙️</span> ${escapeSvg(getMacroCategoryLabel('motor'))}
             </div>
             <div class="macro-tree-node ${this.selectedCategory === 'power' ? 'active' : ''}" data-cat="power" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>⚡</span> Stromversorgung
+              <span>⚡</span> ${escapeSvg(getMacroCategoryLabel('power'))}
             </div>
             <div class="macro-tree-node ${this.selectedCategory === 'safety' ? 'active' : ''}" data-cat="safety" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>🛡️</span> Sicherheit & Not-Halt
+              <span>🛡️</span> ${escapeSvg(getMacroCategoryLabel('safety'))}
             </div>
-            <div class="macro-tree-node" data-cat="external" style="padding:6px 12px;cursor:pointer;font-size:12px">📁 Externer Ordner</div>
+            <div class="macro-tree-node" data-cat="external" style="padding:6px 12px;cursor:pointer;font-size:12px">📁 ${escapeSvg(getMacroCategoryLabel('external'))}</div>
             <div class="macro-tree-node ${this.selectedCategory === 'user' ? 'active' : ''}" data-cat="user" style="padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>⭐</span> Eigene Importe
+              <span>⭐</span> ${escapeSvg(getMacroCategoryLabel('user'))}
             </div>
           </div>
 
@@ -200,12 +201,13 @@ export class MacroSelectionDialog {
           align-items: center;
         ">
           <div style="font-size: 11px; color: #a0aec0;">
-            Tipp: Doppelklick zum schnellen Platzieren | Unterstützt .ema, .ems, .edz, XML, JSON
+            ${escapeSvg(t('macroTipDblClick'))}
           </div>
           <div style="display: flex; gap: 8px;">
-            <button class="btn" id="btnCancelMacro">Schließen</button>
-            <button class="btn btn-primary" id="btnApplyMacroAction">⚡ Ausführen</button>
+            <button class="btn" id="btnCancelMacro">${escapeSvg(t('macroBtnClose'))}</button>
+            <button class="btn btn-primary" id="btnApplyMacroAction">${escapeSvg(t('macroBtnExecute'))}</button>
           </div>
+        </div>
         </div>
       </div>
     `;
@@ -260,15 +262,14 @@ export class MacroSelectionDialog {
     if (list.length === 0) {
       return `
         <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; color: #a0aec0;">
-          Keine Makros für diesen Filter oder Suchbegriff gefunden.<br>
-          <span style="font-size: 11px; color: #718096; margin-top: 6px; display: block;">Nutzen Sie "Makro importieren" oben, um Ihre .ema/.ems Dateien einzuladen.</span>
+          ${t('macroEmptySearch')}
         </div>
       `;
     }
 
     const pageSize=48,pageCount=Math.max(1,Math.ceil(list.length/pageSize));
     this.page=Math.max(0,Math.min(this.page,pageCount-1));
-    const pager=pageCount>1?`<div data-macro-pager style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.page===0?'disabled':''} aria-label="Vorherige Makroseite">←</button><span>${list.length} Makros · ${this.page+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.page===pageCount-1?'disabled':''} aria-label="Nächste Makroseite">→</button></div>`:'';
+    const pager=pageCount>1?`<div data-macro-pager style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px"><button class="btn" data-macro-page="-1" ${this.page===0?'disabled':''} aria-label="${escapeSvg(t('macroPagePrev'))}">←</button><span>${escapeSvg(t('foundMacros', { count: list.length }))} · ${this.page+1}/${pageCount}</span><button class="btn" data-macro-page="1" ${this.page===pageCount-1?'disabled':''} aria-label="${escapeSvg(t('macroPageNext'))}">→</button></div>`:'';
     return pager+list.slice(this.page*pageSize,(this.page+1)*pageSize).map(m => {
       const isSelected = m.id === this.selectedMacroId;
       const isWindow = m.type === 'ema';
@@ -312,7 +313,7 @@ export class MacroSelectionDialog {
           </div>
 
           <div style="font-size: 10px; color: #a0aec0; height: 26px; overflow: hidden; line-height: 1.3;">
-            ${escapeSvg(m.description || 'Schaltungsmakro')}
+            ${escapeSvg(m.description || t('macroCircuitMacro'))}
           </div>
         </div>
       `;
@@ -323,11 +324,11 @@ export class MacroSelectionDialog {
     const all = this.getFilteredMacros();
     const m = all.find(item => item.id === this.selectedMacroId) || all[0];
     if (!m) {
-      return '<div style="color: #a0aec0; font-size: 12px;">Kein Makro ausgewählt</div>';
+      return `<div style="color: #a0aec0; font-size: 12px;">${escapeSvg(t('macroNoSelection'))}</div>`;
     }
 
     const isWindow = m.type === 'ema';
-    const typeLabel = isWindow ? 'Fenstermakro (.ema)' : 'Makro (.ems)';
+    const typeLabel = isWindow ? getMacroCategoryLabel('window') : getMacroCategoryLabel('page');
     const typeColor = isWindow ? '#63b3ed' : '#b794f4';
     const thumbSvg = MacroManager.generateMacroSvgThumbnail(m);
 
@@ -356,15 +357,15 @@ export class MacroSelectionDialog {
         </div>
       `).join('');
       if (pm.page.components.length > 8) {
-        compListHtml += `<div style="font-size: 9px; color: #a0aec0; text-align: center;">...und ${pm.page.components.length - 8} weitere</div>`;
+        compListHtml += `<div style="font-size: 9px; color: #a0aec0; text-align: center;">${escapeSvg(t('macroMoreComponents', { count: pm.page.components.length - 8 }))}</div>`;
       }
     }
 
     return `
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase;">Makro-Vorschau</span>
-          <span style="font-size: 10px; font-weight: bold; color: ${typeColor};">${typeLabel}</span>
+          <span style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase;">${escapeSvg(t('macroPreviewHeading'))}</span>
+          <span style="font-size: 10px; font-weight: bold; color: ${typeColor};">${escapeSvg(typeLabel)}</span>
         </div>
         <div style="
           background: #181b22;
@@ -383,21 +384,21 @@ export class MacroSelectionDialog {
       <div>
         <div style="font-size: 13px; font-weight: 600; color: #edf2f7;">${escapeSvg(m.name)}</div>
         <div style="font-size: 11px; color: #a0aec0; margin-top: 3px; line-height: 1.4;">${escapeSvg(m.description || '')}</div>
-        ${m.importDiagnostics?.length?`<details><summary>${m.importDiagnostics.length} Importhinweise</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
+        ${m.importDiagnostics?.length?`<details><summary>${escapeSvg(t('macroDiagnostics', { count: m.importDiagnostics.length }))}</summary><ul style="padding-left:16px;font-size:11px;overflow-wrap:anywhere">${m.importDiagnostics.map(note=>`<li>${escapeSvg(note)}</li>`).join('')}</ul></details>`:''}
       </div>
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px;">
-        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">Informationen</div>
+        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">${escapeSvg(t('macroInfoHeading'))}</div>
         <div style="font-size: 11px; line-height: 1.6;">
-          <div><strong style="color: #cbd5e0;">Typ:</strong> ${typeLabel}</div>
-          <div><strong style="color: #cbd5e0;">Bauteile:</strong> ${componentsCount} Schaltzeichen</div>
-          <div><strong style="color: #cbd5e0;">Verbindungen:</strong> ${wiresCount} Leitungen</div>
-          <div><strong style="color: #cbd5e0;">Herkunft:</strong> ${m.externalPath ? 'Externer Ordner: ' + escapeSvg(m.externalPath) : m.isBuiltIn ? 'Standard-Bibliothek' : 'Benutzerdefiniert'}</div>
+          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroTypeLabel'))}</strong> ${escapeSvg(typeLabel)}</div>
+          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroComponentsLabel'))}</strong> ${escapeSvg(t('macroComponentsVal', { count: componentsCount }))}</div>
+          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroConnectionsLabel'))}</strong> ${escapeSvg(t('macroConnectionsVal', { count: wiresCount }))}</div>
+          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroOriginLabel'))}</strong> ${m.externalPath ? escapeSvg(t('macroOriginExternal', { path: m.externalPath })) : m.isBuiltIn ? escapeSvg(t('macroOriginBuiltin')) : escapeSvg(t('macroOriginUser'))}</div>
         </div>
       </div>
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">Enthaltene Bauteile (${componentsCount})</div>
+        <div style="font-size: 10px; font-weight: bold; color: #a0aec0; text-transform: uppercase; margin-bottom: 4px;">${escapeSvg(t('macroContainedHeading', { count: componentsCount }))}</div>
         <div style="display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 130px;">
           ${compListHtml}
         </div>
@@ -405,14 +406,14 @@ export class MacroSelectionDialog {
 
       <div style="border-top: 1px solid #2d3748; padding-top: 8px; display: flex; flex-direction: column; gap: 6px;">
         <button class="btn btn-primary" id="btnActionPrimary" style="width: 100%; justify-content: center; padding: 6px 12px; font-size: 11px; font-weight: 600;">
-          ⚡ Auf Plan platzieren
+          ${escapeSvg(t('macroPlaceOnPlan'))}
         </button>
         <div style="display: flex; gap: 6px;">
-          <button class="btn" id="btnExportMacroItem" style="flex: 1; justify-content: center; font-size: 11px;" title="Als Datei exportieren">
-            💾 Export
+          <button class="btn" id="btnExportMacroItem" style="flex: 1; justify-content: center; font-size: 11px;" title="${escapeSvg(t('export'))}">
+            ${escapeSvg(t('macroExportBtn'))}
           </button>
           ${!m.isBuiltIn && !m.externalPath ? `
-            <button class="btn" id="btnDeleteMacroItem" style="color: #fc8181; border-color: #e53e3e; font-size: 11px;" title="Aus Bibliothek entfernen">
+            <button class="btn" id="btnDeleteMacroItem" style="color: #fc8181; border-color: #e53e3e; font-size: 11px;" title="${escapeSvg(t('macroDeleteMacro'))}">
               🗑️
             </button>
           ` : ''}
@@ -518,7 +519,7 @@ export class MacroSelectionDialog {
     });
 
     modal.querySelector('#btnDeleteMacroItem')?.addEventListener('click', () => {
-      if (confirm('Möchten Sie dieses Makro wirklich aus Ihrer Bibliothek entfernen?')) {
+      if (confirm(t('macroDeleteConfirm'))) {
         MacroManager.deleteMacro(this.selectedMacroId);
         const remaining = MacroManager.getAllMacros();
         this.selectedMacroId = remaining.length > 0 ? remaining[0].id : '';
@@ -537,7 +538,7 @@ export class MacroSelectionDialog {
 
     const count = this.getFilteredMacros().length;
     const badge = modal.querySelector('#macroCountBadge');
-    if (badge) badge.textContent = `${count} Makros gefunden`;
+    if (badge) badge.textContent = t('foundMacros', { count });
 
     const details = modal.querySelector('#macroDetailsContainer');
     if (details) {
@@ -596,9 +597,9 @@ export class MacroSelectionDialog {
       MacroManager.addMacro(imported);
       this.selectedMacroId = imported.id;
       this.updateGrid(modal);
-      alert(`Makro "${imported.name}" erfolgreich importiert (${imported.type === 'ema' ? '.ema' : '.ems'})!`);
+      alert(t('macroImportSuccess', { name: imported.name, type: imported.type === 'ema' ? '.ema' : '.ems' }));
     } catch (err: any) {
-      alert(`Fehler beim Importieren des Makros: ${err.message}`);
+      alert(t('macroImportError', { error: err.message }));
     }
   }
 }
