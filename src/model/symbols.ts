@@ -5,6 +5,7 @@ import { DEVICE_BOX_SYMBOL, componentFromBox, deviceBoxDefinition, geometryFromS
 
 import { PlacedComponent, Project, SymbolDefinition } from './types';
 import { EXTENDED_SYMBOL_DEFINITIONS } from './ExtendedSymbols';
+import { STANDARD_IEC_SYMBOLS } from './StandardIecSymbols';
 import { scaleSymbolDefinition } from './SymbolGeometry';
 
 export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
@@ -1444,7 +1445,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   }
 ];
 
-SYMBOL_DEFINITIONS.push(...EXTENDED_SYMBOL_DEFINITIONS,DEVICE_BOX_SYMBOL);
+SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, DEVICE_BOX_SYMBOL);
 
 for (const symbol of SYMBOL_DEFINITIONS) {
   symbol.unitsPerMm = 2;
@@ -1550,3 +1551,5 @@ export function getSymbolForComponent(comp: PlacedComponent, project: Project | 
   const base=comp.importedSymbol ?? getSymbolById(comp.symbolId, project);
   return base && deviceBoxDefinition(comp,base);
 }
+
+export { STANDARD_IEC_SYMBOLS } from './StandardIecSymbols';
