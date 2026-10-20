@@ -24,6 +24,7 @@ import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextP
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
+import { floorPlanToSvg, findNearestWall } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
 
@@ -578,6 +579,13 @@ export class CadCanvas {
   }
 
   private placementPosition(x: number, y: number, symbol: NonNullable<ReturnType<typeof getSymbolById>>): { x: number; y: number } {
+    if (this.activePage.floorPlan?.walls?.length) {
+      const snap = findNearestWall({ x, y }, this.activePage.floorPlan.walls, 24);
+      if (snap) {
+        this.ghostRotation = snap.rotation;
+        return positionAtInsertionPoint(snap.snappedPoint, symbol, snap.rotation);
+      }
+    }
     return positionAtInsertionPoint({ x: this.snap(x), y: this.snap(y, false, 'y') }, symbol, this.ghostRotation);
   }
 
@@ -875,6 +883,10 @@ export class CadCanvas {
     const isInterruption = isInterruptionSymbol(sym);
     const bmk = isInterruption ? (sym.defaultFunctionText || 'L1') : nextDeviceTag(this.project, sym.defaultBmkPrefix);
 
+    const snap = this.activePage.floorPlan?.walls?.length
+      ? findNearestWall({ x: worldX, y: worldY }, this.activePage.floorPlan.walls, 24)
+      : null;
+
     const newComp: PlacedComponent = {
       id: 'comp_' + Math.random().toString(36).substring(2, 9),
       symbolId: sym.id,
@@ -887,7 +899,8 @@ export class CadCanvas {
       articleNumber: sym.articleNumber || '',
       manufacturer: sym.manufacturer || '',
       ...this.placementPosition(worldX, worldY, sym),
-      rotation: this.ghostRotation || 0,
+      rotation: (snap ? snap.rotation : this.ghostRotation) || 0,
+      ...(snap ? { installationMetadata: { attachedWallId: snap.wall.id } } : {}),
       pins: Object.fromEntries(sym.pins.map(pin => [pin.id, { customLabel: pin.name, wireIds: [] }]))
     };
 
@@ -1511,6 +1524,9 @@ export class CadCanvas {
         <!-- DIN A3 Normblatt Plot Frame -->
         ${this.renderPlotFrame(pageWidth, pageHeight)}
         ${coverPageSvg(this.activePage, this.project)}
+
+        <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">

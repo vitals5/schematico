@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { findNearestWall, calculateArcControlPoint, arcWireSvgPath, floorPlanToSvg } from './FloorPlanRenderer';
+import { FloorPlanData, WallSegment } from './types';
+
+console.log('Testing FloorPlanRenderer...');
+
+// 1. Test Nearest Wall Calculation & Snapping
+const walls: WallSegment[] = [
+  { id: 'w1', start: { x: 100, y: 100 }, end: { x: 500, y: 100 }, thickness: 16, isExterior: true },
+  { id: 'w2', start: { x: 500, y: 100 }, end: { x: 500, y: 400 }, thickness: 12, isExterior: false }
+];
+
+// Point near horizontal wall w1 at y = 115
+const snapHorizontal = findNearestWall({ x: 250, y: 115 }, walls, 30);
+assert(snapHorizontal, 'Should find nearest wall');
+assert.equal(snapHorizontal.wall.id, 'w1');
+assert.equal(snapHorizontal.snappedPoint.x, 250);
+assert.equal(snapHorizontal.snappedPoint.y, 100);
+assert(snapHorizontal.distance <= 15.1);
+
+// Point near vertical wall w2 at x = 490
+const snapVertical = findNearestWall({ x: 490, y: 250 }, walls, 30);
+assert(snapVertical, 'Should find nearest wall');
+assert.equal(snapVertical.wall.id, 'w2');
+assert.equal(snapVertical.snappedPoint.x, 500);
+assert.equal(snapVertical.snappedPoint.y, 250);
+
+// Point too far from any wall
+const snapTooFar = findNearestWall({ x: 300, y: 300 }, walls, 20);
+assert.equal(snapTooFar, null, 'Should return null when distance exceeds maxDistance');
+
+// 2. Test Arc Wire Control Point & Path
+const p1 = { x: 100, y: 100 };
+const p2 = { x: 200, y: 100 };
+const ctrl = calculateArcControlPoint(p1, p2, 0.25);
+assert.equal(ctrl.x, 150, 'Midpoint X');
+assert.notEqual(ctrl.y, 100, 'Control point Y must be deflected perpendicularly');
+
+const svgPath = arcWireSvgPath(p1, p2, 0.25);
+assert(svgPath.startsWith('M 100 100 Q 150 '), 'SVG path format must be M ... Q ...');
+
+// 3. Test floorPlanToSvg rendering
+const testPlan: FloorPlanData = {
+  scale: { scaleRatio: 100, pixelPerMeter: 50 },
+  walls,
+  openings: [
+    { id: 'op1', kind: 'door', center: { x: 200, y: 100 }, width: 80 },
+    { id: 'op2', kind: 'window', center: { x: 400, y: 100 }, width: 100 }
+  ],
+  rooms: [
+    { id: 'r1', name: 'Wohnzimmer', areaM2: 24.5, polygon: [{ x: 100, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 400 }, { x: 100, y: 400 }] }
+  ]
+};
+
+const svg = floorPlanToSvg(testPlan);
+assert(svg.includes('class="floorplan-door"'), 'Must contain door');
+assert(svg.includes('class="floorplan-window"'), 'Must contain window');
+assert(svg.includes('Wohnzimmer'), 'Must render room label');
+assert(svg.includes('24.5 m²'), 'Must render room area');
+
+console.log('✓ FloorPlanRenderer tests passed successfully!');

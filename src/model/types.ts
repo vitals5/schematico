@@ -4,7 +4,78 @@ import type { PlotFrameTemplate } from './PlotFrame';
 import type { CoverPageData, CoverPageTemplate } from './CoverPage';
 // Data structures following IEC 81346 / DIN EN 60617 standards
 
-export type PageType = 'cover' | 'schematic' | 'terminal_diagram' | 'parts_list' | 'overview';
+export type PageType = 'cover' | 'schematic' | 'terminal_diagram' | 'parts_list' | 'overview' | 'installation';
+
+export interface WallSegment {
+  id: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  thickness: number; // drawing units / mm
+  isExterior?: boolean;
+}
+
+export interface WallOpening {
+  id: string;
+  wallId?: string;
+  kind: 'door' | 'window';
+  center: { x: number; y: number };
+  width: number;
+  swingAngle?: number;
+  swingDirection?: 'left_in' | 'right_in' | 'left_out' | 'right_out' | 'none';
+}
+
+export interface RoomDefinition {
+  id: string;
+  name: string;
+  code?: string;
+  areaM2?: number;
+  polygon: { x: number; y: number }[];
+  ceilingHeight?: number;
+}
+
+export interface ScaleCalibration {
+  scaleRatio: number; // e.g. 50 for 1:50, 100 for 1:100
+  pixelPerMeter: number;
+  referenceDistance?: {
+    pointA: { x: number; y: number };
+    pointB: { x: number; y: number };
+    realLengthMeters: number;
+  };
+}
+
+export interface InstallationCircuit {
+  id: string;
+  name: string; // e.g. "F1 / W1"
+  color?: string; // e.g. "#3182ce"
+  fuseBmk?: string; // e.g. "-F1"
+  phase?: 'L1' | 'L2' | 'L3' | 'N' | 'PE' | 'DC';
+  cableType?: string; // e.g. "NYM-J 3x1.5"
+  subDistribution?: string; // e.g. "+UV-EG"
+}
+
+export interface InstallationArcWire {
+  id: string;
+  fromComponentId: string;
+  toComponentId: string;
+  circuitId?: string;
+  curvature?: number; // bulge factor, default 0.25
+  label?: string; // e.g. "NYM-J 3x1.5"
+}
+
+export interface FloorPlanData {
+  scale: ScaleCalibration;
+  walls: WallSegment[];
+  openings: WallOpening[];
+  rooms: RoomDefinition[];
+  circuits?: InstallationCircuit[];
+  arcWires?: InstallationArcWire[];
+  backgroundImage?: {
+    dataUrl: string;
+    opacity: number;
+    visible: boolean;
+    bounds: { x: number; y: number; width: number; height: number };
+  };
+}
 
 export interface PinDefinition {
   id: string;
@@ -116,6 +187,12 @@ export interface PlacedComponent {
   additionalTextPosition?: TextFormatConfig;
   technicalDataPosition?: TextFormatConfig;
   crossRefPosition?: TextFormatConfig;
+  installationMetadata?: {
+    mountingHeightCm?: number;
+    associatedRoomId?: string;
+    attachedWallId?: string;
+    circuitId?: string;
+  };
 }
 
 export interface Wire {
@@ -230,6 +307,7 @@ export interface Page {
   grid?: { spacing: number; origin: { x: number; y: number } };
   wires: Wire[];
   cables?: CableDefinition[];
+  floorPlan?: FloorPlanData;
   texts?: PageText[];
   boxes?: PageBox[];
   images?: PageImage[];

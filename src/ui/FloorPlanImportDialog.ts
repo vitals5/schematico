@@ -1,0 +1,352 @@
+// src/ui/FloorPlanImportDialog.ts
+// Modal dialog for importing architectural blueprints and photos with Gemini AI vectorization
+
+import { Page, Project, FloorPlanData } from '../model/types';
+import { hasGeminiApiKey, getGeminiApiKey } from '../ai/GeminiConfig';
+import { vectorizeFloorPlanWithGemini } from '../ai/GeminiFloorPlanService';
+import { floorPlanToSvg } from '../model/FloorPlanRenderer';
+import { t, getUiLanguage } from '../i18n';
+import { escapeSvg } from '../model/ImportedDrawing';
+
+export interface FloorPlanImportDialogCallbacks {
+  onCreatePage: (page: Page) => void;
+  onOpenSettings?: () => void;
+}
+
+export class FloorPlanImportDialog {
+  private rawImageDataUrl: string | null = null;
+  private currentFloorPlan: FloorPlanData | null = null;
+  private isProcessing: boolean = false;
+
+  constructor(
+    private readonly project: Project,
+    private readonly callbacks: FloorPlanImportDialogCallbacks
+  ) {}
+
+  public show(): void {
+    document.getElementById('floorPlanImportModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'floorPlanImportModal';
+    modal.className = 'modal-backdrop';
+    modal.style.cssText = 'position:fixed;inset:0;padding:12px;z-index:2100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);';
+
+    const hasKey = hasGeminiApiKey();
+    const defaultPageNum = String(this.project.pages.length + 1);
+
+    modal.innerHTML = `
+      <style>
+        #floorPlanImportModal .fpi-card { width:100%; max-width:1050px; max-height:94vh; display:flex; flex-direction:column; overflow:hidden; border:1px solid #4a5568; border-radius:6px; background:#232731; color:#edf2f7; box-shadow:0 20px 40px rgba(0,0,0,.8); }
+        #floorPlanImportModal .fpi-header { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; background:#2d323e; border-bottom:1px solid #3e4656; }
+        #floorPlanImportModal .fpi-body { min-height:0; overflow:auto; display:grid; grid-template-columns:minmax(320px, 1fr) minmax(360px, 1.4fr); gap:20px; padding:18px; }
+        #floorPlanImportModal .fpi-controls { display:flex; flex-direction:column; gap:12px; }
+        #floorPlanImportModal .fpi-field label { display:block; font-size:12px; font-weight:600; color:#e2e8f0; margin-bottom:4px; }
+        #floorPlanImportModal .form-input { width:100%; box-sizing:border-box; background:#1a202c; border:1px solid #4a5568; color:#fff; padding:6px 10px; border-radius:4px; font-size:13px; }
+        #floorPlanImportModal .dropzone { border:2px dashed #4a5568; border-radius:6px; padding:24px 16px; text-align:center; cursor:pointer; background:#1a202c; transition:border-color .2s, background .2s; }
+        #floorPlanImportModal .dropzone:hover, #floorPlanImportModal .dropzone.dragover { border-color:#3182ce; background:#2a4365; }
+        #floorPlanImportModal .preview-box { width:100%; height:460px; border:1px solid #4a5568; border-radius:6px; background:#181b22; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+        #floorPlanImportModal .preview-box svg { width:100%; height:100%; }
+        #floorPlanImportModal .fpi-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid #3e4656; background:#1c1f26; }
+        @media (max-width:760px) { #floorPlanImportModal .fpi-body { grid-template-columns:1fr; } }
+      </style>
+      <div class="fpi-card">
+        <div class="fpi-header">
+          <strong>${t('importFloorPlanTitle')}</strong>
+          <button id="fpi-close" type="button" style="background:none;border:none;color:#a0aec0;font-size:24px;cursor:pointer;">&times;</button>
+        </div>
+
+        <div class="fpi-body">
+          <div class="fpi-controls">
+            ${!hasKey ? `
+              <div style="background:#742a2a;border:1px solid #e53e3e;padding:10px 14px;border-radius:4px;font-size:12px;color:#fff;">
+                <strong>⚠️ Kein Gemini API-Schlüssel hinterlegt!</strong><br/>
+                Bitte trage deinen Google Gemini API-Schlüssel in den Allgemeinen Einstellungen ein.
+                <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;font-size:11px;padding:3px 8px;background:#2b6cb0;color:#fff;border:none;">Einstellungen öffnen</button>
+              </div>
+            ` : ''}
+
+            <!-- File Upload Dropzone -->
+            <div class="dropzone" id="fpi-dropzone">
+              <input type="file" id="fpi-file-input" accept="image/png,image/jpeg,image/webp,application/pdf" style="display:none;" />
+              <div style="font-size:28px;margin-bottom:6px;">📄</div>
+              <div style="font-size:13px;font-weight:600;">${t('dropFloorPlanFile')}</div>
+              <div style="font-size:11px;color:#a0aec0;margin-top:4px;">${t('supportedFormats')}</div>
+              <div id="fpi-file-name" style="font-size:12px;color:#68d391;margin-top:8px;font-weight:bold;display:none;"></div>
+            </div>
+
+            <div class="fpi-field">
+              <label for="fpi-hint">${t('floorPlanHintLabel')}</label>
+              <textarea id="fpi-hint" class="form-input" style="height:54px;resize:vertical;" placeholder="${t('floorPlanHintPlaceholder')}"></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="fpi-field">
+                <label for="fpi-scale">${t('floorPlanScaleLabel')}</label>
+                <select id="fpi-scale" class="form-input">
+                  <option value="50">1 : 50 (Detail)</option>
+                  <option value="100" selected>1 : 100 (Standard)</option>
+                  <option value="200">1 : 200 (Übersicht)</option>
+                </select>
+              </div>
+              <div class="fpi-field">
+                <label for="fpi-page-num">Blattnummer</label>
+                <input type="text" id="fpi-page-num" class="form-input" value="${defaultPageNum}" />
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="fpi-field">
+                <label for="fpi-level">=Anlage (Gebäude)</label>
+                <input type="text" id="fpi-level" class="form-input" value="=Haus1" />
+              </div>
+              <div class="fpi-field">
+                <label for="fpi-loc">+Ort (Geschoss/UV)</label>
+                <input type="text" id="fpi-loc" class="form-input" value="+EG" />
+              </div>
+            </div>
+
+            <div class="fpi-field">
+              <label for="fpi-title">${t('floorPlanTitleLabel')}</label>
+              <input type="text" id="fpi-title" class="form-input" value="Elektroinstallation Erdgeschoss" />
+            </div>
+
+            <button type="button" id="fpi-start-ai" class="btn btn-primary" style="padding:10px;font-size:13px;font-weight:bold;background:#3182ce;" ${!hasKey ? 'disabled' : ''}>
+              ${t('btnStartVectorization')}
+            </button>
+
+            <div id="fpi-progress-bar" style="display:none;background:#2d3748;border-radius:4px;overflow:hidden;height:6px;margin-top:4px;">
+              <div id="fpi-progress-fill" style="background:#3182ce;height:100%;width:30%;transition:width .3s;"></div>
+            </div>
+            <div id="fpi-status-text" style="font-size:11px;color:#a0aec0;text-align:center;min-height:16px;"></div>
+          </div>
+
+          <!-- Preview Column -->
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <label style="font-size:12px;font-weight:600;color:#e2e8f0;">${t('previewVectorFloorPlan')}</label>
+              <div id="fpi-opacity-control" style="display:none;align-items:center;gap:8px;font-size:11px;color:#a0aec0;">
+                <span>${t('overlayOpacity')}:</span>
+                <input type="range" id="fpi-opacity-slider" min="0" max="100" value="35" style="width:80px;accent-color:#3182ce;" />
+                <span id="fpi-opacity-val">35%</span>
+              </div>
+            </div>
+
+            <div class="preview-box" id="fpi-preview-container">
+              <div id="fpi-preview-empty" style="color:#718096;font-size:13px;text-align:center;padding:20px;">
+                Noch kein Grundriss geladen.<br/>
+                <span style="font-size:11px;color:#4a5568;">Lade links ein Bild hoch und starte die KI-Vektorisierung.</span>
+              </div>
+            </div>
+
+            <!-- Detected Rooms Summary -->
+            <div id="fpi-rooms-list" style="display:none;background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px 12px;font-size:11px;max-height:80px;overflow-y:auto;">
+            </div>
+          </div>
+        </div>
+
+        <div class="fpi-footer">
+          <button type="button" class="btn" id="fpi-cancel">${t('btnCancel')}</button>
+          <button type="button" class="btn btn-primary" id="fpi-create-sheet" style="background:#38a169;" disabled>
+            ${t('btnCreateInstallationPage')}
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event listeners
+    const dropzone = modal.querySelector('#fpi-dropzone') as HTMLElement;
+    const fileInput = modal.querySelector('#fpi-file-input') as HTMLInputElement;
+    const fileNameDisplay = modal.querySelector('#fpi-file-name') as HTMLElement;
+    const btnStartAi = modal.querySelector('#fpi-start-ai') as HTMLButtonElement;
+    const progressBar = modal.querySelector('#fpi-progress-bar') as HTMLElement;
+    const progressFill = modal.querySelector('#fpi-progress-fill') as HTMLElement;
+    const statusText = modal.querySelector('#fpi-status-text') as HTMLElement;
+    const previewContainer = modal.querySelector('#fpi-preview-container') as HTMLElement;
+    const opacityControl = modal.querySelector('#fpi-opacity-control') as HTMLElement;
+    const opacitySlider = modal.querySelector('#fpi-opacity-slider') as HTMLInputElement;
+    const opacityVal = modal.querySelector('#fpi-opacity-val') as HTMLElement;
+    const roomsList = modal.querySelector('#fpi-rooms-list') as HTMLElement;
+    const btnCreateSheet = modal.querySelector('#fpi-create-sheet') as HTMLButtonElement;
+
+    modal.querySelector('#fpi-close')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('#fpi-cancel')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('#fpi-open-settings')?.addEventListener('click', () => {
+      modal.remove();
+      this.callbacks.onOpenSettings?.();
+    });
+
+    // File selection
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        this.handleFile(files[0], fileNameDisplay);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        this.handleFile(fileInput.files[0], fileNameDisplay);
+      }
+    });
+
+    // Opacity slider
+    opacitySlider.addEventListener('input', () => {
+      const val = Number(opacitySlider.value);
+      opacityVal.textContent = `${val}%`;
+      if (this.currentFloorPlan?.backgroundImage) {
+        this.currentFloorPlan.backgroundImage.opacity = val / 100;
+        this.updatePreview(previewContainer);
+      }
+    });
+
+    // AI Start
+    btnStartAi.addEventListener('click', async () => {
+      if (!this.rawImageDataUrl) {
+        alert('Bitte wähle zuerst ein Bild aus.');
+        return;
+      }
+      this.isProcessing = true;
+      btnStartAi.disabled = true;
+      progressBar.style.display = 'block';
+      progressFill.style.width = '20%';
+      statusText.textContent = t('vectorizingProgress');
+
+      const hint = (modal.querySelector('#fpi-hint') as HTMLTextAreaElement).value.trim();
+      const scaleVal = Number((modal.querySelector('#fpi-scale') as HTMLSelectElement).value);
+
+      try {
+        progressFill.style.width = '45%';
+        const plan = await vectorizeFloorPlanWithGemini(this.rawImageDataUrl, {
+          userPromptHint: hint,
+          canvasWidth: 800,
+          canvasHeight: 560,
+          onProgress: (status) => {
+            statusText.textContent = status;
+            progressFill.style.width = '75%';
+          }
+        });
+
+        plan.scale.scaleRatio = scaleVal;
+        this.currentFloorPlan = plan;
+        progressFill.style.width = '100%';
+        statusText.style.color = '#68d391';
+        statusText.textContent = 'Grundriss erfolgreich vektorisiert!';
+
+        // Update preview & rooms
+        opacityControl.style.display = 'flex';
+        this.updatePreview(previewContainer);
+        this.renderRoomsSummary(plan, roomsList);
+
+        btnCreateSheet.disabled = false;
+      } catch (err: any) {
+        statusText.style.color = '#fc8181';
+        statusText.textContent = err?.message || 'Fehler bei der KI-Vektorisierung.';
+      } finally {
+        this.isProcessing = false;
+        btnStartAi.disabled = false;
+      }
+    });
+
+    // Create Page
+    btnCreateSheet.addEventListener('click', () => {
+      if (!this.currentFloorPlan) return;
+
+      const pageNum = (modal.querySelector('#fpi-page-num') as HTMLInputElement).value.trim() || defaultPageNum;
+      const higherLevel = (modal.querySelector('#fpi-level') as HTMLInputElement).value.trim() || '=Haus1';
+      const location = (modal.querySelector('#fpi-loc') as HTMLInputElement).value.trim() || '+EG';
+      const title = (modal.querySelector('#fpi-title') as HTMLInputElement).value.trim() || 'Installationsplan';
+
+      const newPage: Page = {
+        id: `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        pageNumber: pageNum,
+        pageType: 'installation',
+        title,
+        higherLevel,
+        location,
+        components: [],
+        wires: [],
+        floorPlan: this.currentFloorPlan,
+        plotFrame: {
+          type: 'DIN_A3_LANDSCAPE',
+          width: 840,
+          height: 594,
+          columns: 10,
+          rows: ['A', 'B', 'C', 'D', 'E', 'F'],
+          titleBlock: {
+            projectTitle: this.project.name,
+            commission: '',
+            company: this.project.company,
+            author: this.project.author,
+            date: new Date().toLocaleDateString('de-DE'),
+            revision: '1.0',
+            sheetNumber: pageNum,
+            totalSheets: String(this.project.pages.length + 1)
+          }
+        }
+      };
+
+      modal.remove();
+      this.callbacks.onCreatePage(newPage);
+    });
+  }
+
+  private handleFile(file: File, displayElem: HTMLElement): void {
+    displayElem.style.display = 'block';
+    displayElem.textContent = `Ausgewählt: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        this.rawImageDataUrl = result;
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  private updatePreview(container: HTMLElement): void {
+    if (!this.currentFloorPlan) return;
+
+    const svgContent = floorPlanToSvg(this.currentFloorPlan, {
+      showBackground: true,
+      showRooms: true,
+      showWalls: true,
+      showOpenings: true,
+      showWires: true
+    });
+
+    container.innerHTML = `
+      <svg viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg">
+        <rect width="800" height="560" fill="#181b22" />
+        ${svgContent}
+      </svg>
+    `;
+  }
+
+  private renderRoomsSummary(plan: FloorPlanData, container: HTMLElement): void {
+    if (!plan.rooms || plan.rooms.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    const roomTags = plan.rooms.map(r => {
+      const area = r.areaM2 ? ` (${r.areaM2.toFixed(1)} m²)` : '';
+      return `<span style="background:#2d3748;padding:2px 8px;border-radius:12px;margin:2px;display:inline-block;color:#e2e8f0;">🏠 ${escapeSvg(r.name)}${area}</span>`;
+    }).join(' ');
+
+    container.innerHTML = `
+      <div style="font-weight:600;margin-bottom:4px;color:#cbd5e0;">Erkannte Räume (${plan.rooms.length}):</div>
+      <div>${roomTags}</div>
+    `;
+  }
+}

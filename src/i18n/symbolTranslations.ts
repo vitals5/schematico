@@ -182,7 +182,26 @@ export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; descripti
   usb_c_socket_compact: { name: 'Compact USB-C Socket (1-Pin)', description: 'Compact USB-C socket with single connection point' },
   usb_c_socket_compact_h: { name: 'Compact USB-C Socket Horizontal (1-Pin)', description: 'Compact horizontal USB-C socket with single connection point' },
   rj45_socket_compact: { name: 'Compact RJ45 Socket (1-Pin)', description: 'Compact RJ45 network socket with single connection point' },
-  rj45_socket_compact_h: { name: 'Compact RJ45 Socket Horizontal (1-Pin)', description: 'Compact horizontal RJ45 network socket with single connection point' }
+  rj45_socket_compact_h: { name: 'Compact RJ45 Socket Horizontal (1-Pin)', description: 'Compact horizontal RJ45 network socket with single connection point' },
+  // Architectural Installation Symbols (DIN EN 60617-11)
+  inst_socket_single: { name: 'Single Socket Outlet (Schuko)', description: 'Single flush-mounted Schuko socket outlet (DIN EN 60617-11)' },
+  inst_socket_double: { name: 'Double Socket Outlet (Schuko)', description: 'Double flush-mounted Schuko socket outlet (DIN EN 60617-11)' },
+  inst_socket_triple: { name: 'Triple Socket Outlet (Schuko)', description: 'Triple flush-mounted Schuko socket outlet (DIN EN 60617-11)' },
+  inst_socket_ip44: { name: 'Damp-Proof Socket Outlet (IP44)', description: 'Moisture-proof IP44 Schuko socket outlet with hinged lid' },
+  inst_switch_off: { name: 'Light Switch (Single-Pole Off)', description: 'Single-pole on/off light switch (DIN EN 60617-11)' },
+  inst_switch_changeover: { name: 'Two-Way Switch (Changeover)', description: 'Two-way changeover switch for two locations (DIN EN 60617-11)' },
+  inst_switch_series: { name: 'Double Switch (Series)', description: 'Double two-circuit series switch (DIN EN 60617-11)' },
+  inst_switch_cross: { name: 'Intermediate Switch (Cross)', description: 'Intermediate cross switch for 3+ locations (DIN EN 60617-11)' },
+  inst_pushbutton: { name: 'Light Pushbutton', description: 'Momentary light pushbutton for pulse relay (DIN EN 60617-11)' },
+  inst_lamp_ceiling: { name: 'Ceiling Luminaire / Light Point', description: 'General ceiling luminaire outlet (DIN EN 60617-11)' },
+  inst_lamp_wall: { name: 'Wall Luminaire / Light Point', description: 'Wall mounted luminaire outlet (DIN EN 60617-11)' },
+  inst_downlight: { name: 'Recessed Spotlight / Downlight', description: 'Recessed ceiling spotlight downlight (DIN EN 60617-11)' },
+  inst_subdistribution: { name: 'Sub-Distribution Board (Panel)', description: 'Consumer unit / electrical sub-distribution board (DIN EN 60617-11)' },
+  inst_smoke_detector: { name: 'Smoke Alarm Detector', description: 'Optical smoke alarm detector (DIN EN 14604 / DIN 14676)' },
+  inst_thermostat: { name: 'Room Thermostat (HVAC)', description: 'Electronic room temperature thermostat (DIN EN 60617-11)' },
+  inst_data_socket: { name: 'RJ45 Data Outlet (Network)', description: 'Telecommunication and RJ45 Ethernet network outlet' },
+  inst_shutter_switch: { name: 'Roller Shutter Switch', description: 'Blind / roller shutter switch with up/down arrows' },
+  inst_motion_detector: { name: 'Motion Detector (PIR)', description: 'Passive infrared motion / presence detector (PIR)' }
 };
 
 const PHRASE_REPLACEMENTS: [RegExp, string][] = [

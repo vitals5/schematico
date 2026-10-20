@@ -1,4 +1,5 @@
 import { readAppSetting } from '../model/LegacyCompatibility';
+import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey } from '../ai/GeminiConfig';
 import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { AboutDialog } from './AboutDialog';
@@ -41,6 +42,7 @@ import { PlausibilityDialog } from './PlausibilityDialog';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { MacroManager, WindowMacro, PageMacro, MacroItem } from '../model/MacroManager';
 import { MacroSelectionDialog } from './MacroSelectionDialog';
+import { FloorPlanImportDialog } from './FloorPlanImportDialog';
 
 export class App {
   private project!: Project;
@@ -909,6 +911,7 @@ export class App {
     });
     bindMenuOpt('menuNewPage', () => this.addNewPage());
     bindMenuOpt('menuNewCoverPage',()=>this.addCoverPage());
+    bindMenuOpt('menuImportFloorPlan', () => this.openFloorPlanImport());
     bindMenuOpt('menuDeletePage', () => this.deletePage(this.project.activePageId));
     bindMenuOpt('menuInsertPageMacro', () => {
       this.openMacroSelectionDialog('page');
@@ -996,7 +999,8 @@ export class App {
     modal.style.cssText = 'position:fixed;inset:0;background:#000b;z-index:2200;display:flex;align-items:center;justify-content:center';
     const autoLoad = isAutoLoadProjectEnabled();
     const currentLang = getUiLanguage();
-    modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:440px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
+    const currentGeminiKey = getGeminiApiKey();
+    modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:480px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
       <h3 style="margin-top:0;margin-bottom:16px;">${t('generalSettingsTitle')}</h3>
 
       <div style="margin: 16px 0;">
@@ -1006,6 +1010,17 @@ export class App {
           <option value="en" ${currentLang === 'en' ? 'selected' : ''}>${t('langEnglish')}</option>
         </select>
         <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('uiLanguageDesc')}</p>
+      </div>
+
+      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
+        <label for="settingGeminiApiKey" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#e2e8f0;">${t('geminiApiKeyLabel')}</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="password" id="settingGeminiApiKey" class="form-input" style="flex:1;box-sizing:border-box;font-family:monospace;" placeholder="${t('geminiApiKeyPlaceholder')}" value="${escapeSvg(currentGeminiKey)}" />
+          <button type="button" class="btn" id="toggleGeminiKeyVisibility" style="padding:4px 8px;font-size:12px;" title="${t('geminiApiKeyShow')}">👁️</button>
+          <button type="button" class="btn" id="testGeminiApiKey" style="padding:4px 10px;font-size:11px;white-space:nowrap;">${t('geminiApiKeyTest')}</button>
+        </div>
+        <div id="geminiTestStatus" style="font-size:11px;margin-top:5px;display:none;"></div>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('geminiApiKeyDesc')}</p>
       </div>
 
       <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
@@ -1029,11 +1044,58 @@ export class App {
     </div>`;
     document.body.appendChild(modal);
     modal.querySelector('#settingsMacroFolder')!.appendChild(createMacroFolderPanel());
+
+    const keyInput = modal.querySelector('#settingGeminiApiKey') as HTMLInputElement;
+    const toggleBtn = modal.querySelector('#toggleGeminiKeyVisibility') as HTMLButtonElement;
+    const testBtn = modal.querySelector('#testGeminiApiKey') as HTMLButtonElement;
+    const testStatus = modal.querySelector('#geminiTestStatus') as HTMLDivElement;
+
+    toggleBtn?.addEventListener('click', () => {
+      if (keyInput.type === 'password') {
+        keyInput.type = 'text';
+        toggleBtn.textContent = '🔒';
+        toggleBtn.title = t('geminiApiKeyHide');
+      } else {
+        keyInput.type = 'password';
+        toggleBtn.textContent = '👁️';
+        toggleBtn.title = t('geminiApiKeyShow');
+      }
+    });
+
+    testBtn?.addEventListener('click', async () => {
+      const keyVal = keyInput.value.trim();
+      if (!keyVal) {
+        testStatus.style.display = 'block';
+        testStatus.style.color = '#fc8181';
+        testStatus.textContent = t('geminiApiKeyPlaceholder');
+        return;
+      }
+      testBtn.disabled = true;
+      testBtn.textContent = t('geminiApiKeyTesting');
+      testStatus.style.display = 'block';
+      testStatus.style.color = '#cbd5e0';
+      testStatus.textContent = t('geminiApiKeyTesting');
+      try {
+        const res = await testGeminiApiKey(keyVal);
+        testStatus.style.color = res.success ? '#68d391' : '#fc8181';
+        testStatus.textContent = res.message;
+      } catch (err: any) {
+        testStatus.style.color = '#fc8181';
+        testStatus.textContent = err?.message || 'Fehler beim Verbindungsaufbau';
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = t('geminiApiKeyTest');
+      }
+    });
+
     modal.querySelector('#cancelSettings')!.addEventListener('click', () => modal.remove());
     modal.querySelector('#saveSettings')!.addEventListener('click', () => {
       const selectedLang = (modal.querySelector('#settingUiLanguage') as HTMLSelectElement).value as Language;
       const chkAutoLoad = (modal.querySelector('#settingAutoLoadProject') as HTMLInputElement)?.checked;
       if (chkAutoLoad !== undefined) setAutoLoadProjectEnabled(chkAutoLoad);
+      if (keyInput) {
+        setGeminiApiKey(keyInput.value);
+      }
       const langChanged = selectedLang !== getUiLanguage();
       if (langChanged) {
         setUiLanguage(selectedLang);
@@ -1284,7 +1346,10 @@ export class App {
         <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">${t('projectPages')}</span>
         <button class="btn btn-primary" id="btnAddPage" style="padding: 2px 8px; font-size: 11px;">${t('btnNewPage')}</button>
       </div>
-      <button class="btn" id="btnAddCoverPage" style="width: 100%; margin-bottom: 8px;">${t('btnNewCover')}</button>
+      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+        <button class="btn" id="btnAddCoverPage" style="flex: 1; padding: 4px 6px; font-size: 11px;">${t('btnNewCover')}</button>
+        <button class="btn" id="btnImportFloorPlan" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="${t('importFloorPlanTitle')}">📐 Grundriss KI</button>
+      </div>
 
       <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
         <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${activePage ? `${sheetWord} ${escapeSvg(activePage.pageNumber)}: ${escapeSvg(activePage.title)}` : t('activePage')}">
@@ -1381,6 +1446,7 @@ export class App {
       this.addNewPage();
     });
     document.getElementById('btnAddCoverPage')?.addEventListener('click',()=>this.addCoverPage());
+    document.getElementById('btnImportFloorPlan')?.addEventListener('click', () => this.openFloorPlanImport());
   }
 
   public updateTotalSheets(): void {
@@ -1451,6 +1517,20 @@ export class App {
     new CoverPageDialog(page,this.project,{onSave:cover=>{
       page.coverPage=cover;this.notifyChange();
     }}).show();
+  }
+
+  private openFloorPlanImport(): void {
+    new FloorPlanImportDialog(this.project, {
+      onCreatePage: (newPage) => {
+        this.project.pages.push(newPage);
+        this.project.activePageId = newPage.id;
+        this.updateTotalSheets();
+        this.canvas.setPage(newPage.id);
+        this.notifyChange();
+        this.updateUI();
+      },
+      onOpenSettings: () => this.openSettings()
+    }).show();
   }
 
   private addNewPage(): void {

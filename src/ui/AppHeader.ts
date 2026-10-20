@@ -52,7 +52,7 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuInsertTrigger',t('menuInsert'),
           opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
           heading(t('headingMacros'))+opt('menuInsertMacro',t('menuInsertMacro'))+opt('menuInsertPageMacro',t('menuInsertPageMacro'))+separator+
-          heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
+          heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuImportFloorPlan',t('menuImportFloorPlan'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
         ${menu('menuViewTrigger',t('menuView'),
           opt('menuFit',t('menuFit'),t('keyF'))+opt('menuZoom100',t('menuZoom100'))+opt('menuZoomIn',t('menuZoomIn'))+opt('menuZoomOut',t('menuZoomOut'))+separator+
           heading(t('headingGrid'))+opt('menuGridFull',t('menuGridFull'),'Alt+1')+opt('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+opt('menuGridFine',t('menuGridFine'),'Alt+3')+opt('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
