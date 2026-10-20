@@ -1356,5 +1356,204 @@ export const STANDARD_IEC_SYMBOLS: SymbolDefinition[] = [
       <line x1="64" y1="40" x2="80" y2="40" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Drehstrom-Synchrongenerator mit PE-Anschluss'
+  },
+
+  // ==========================================
+  // --- 9. DATEN- & NETZWERKSCHNITTSTELLEN (USB, RJ45) ---
+  // ==========================================
+  {
+    id: 'usb_socket_type_a',
+    name: 'USB-Buchse (Typ A, 4-polig)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB-Schnittstelle',
+    width: 48,
+    height: 48,
+    pins: [
+      { id: '1', name: '1', x: 16, y: 0, direction: 'top', description: 'VBUS (+5V)' },
+      { id: '2', name: '2', x: 24, y: 0, direction: 'top', description: 'D- (Data -)' },
+      { id: '3', name: '3', x: 32, y: 0, direction: 'top', description: 'D+ (Data +)' },
+      { id: '4', name: '4', x: 40, y: 0, direction: 'top', description: 'GND (Masse)' },
+      { id: 'SH', name: 'SH', x: 24, y: 48, direction: 'bottom', description: 'Schirm (Shield)' }
+    ],
+    svgContent: `
+      <rect x="8" y="12" width="32" height="24" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="8" y1="20" x2="40" y2="20" stroke="currentColor" stroke-width="1"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="24" y1="0" x2="24" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="32" y1="0" x2="32" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="40" y1="0" x2="40" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="24" y1="36" x2="24" y2="48" stroke="currentColor" stroke-width="2"/>
+      <text x="24" y="31" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB</text>
+    `,
+    description: 'USB-Buchse Typ A 4-polig mit Schirmanschluss nach IEC 60617'
+  },
+  {
+    id: 'usb_socket_type_c',
+    name: 'USB-C Buchse (Typ C)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB-C Schnittstelle',
+    width: 64,
+    height: 48,
+    pins: [
+      { id: 'VBUS', name: 'VBUS', x: 16, y: 0, direction: 'top', description: 'VBUS Stromversorgung' },
+      { id: 'CC1', name: 'CC1', x: 24, y: 0, direction: 'top', description: 'CC1 Konfiguration' },
+      { id: 'DP', name: 'D+', x: 32, y: 0, direction: 'top', description: 'D+ Daten' },
+      { id: 'DM', name: 'D-', x: 40, y: 0, direction: 'top', description: 'D- Daten' },
+      { id: 'GND', name: 'GND', x: 48, y: 0, direction: 'top', description: 'GND Masse' },
+      { id: 'SH', name: 'SH', x: 32, y: 48, direction: 'bottom', description: 'Schirm (Shield / PE)' }
+    ],
+    svgContent: `
+      <rect x="8" y="14" width="48" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="8"/>
+      <line x1="16" y1="0" x2="16" y2="14" stroke="currentColor" stroke-width="2"/>
+      <line x1="24" y1="0" x2="24" y2="14" stroke="currentColor" stroke-width="2"/>
+      <line x1="32" y1="0" x2="32" y2="14" stroke="currentColor" stroke-width="2"/>
+      <line x1="40" y1="0" x2="40" y2="14" stroke="currentColor" stroke-width="2"/>
+      <line x1="48" y1="0" x2="48" y2="14" stroke="currentColor" stroke-width="2"/>
+      <line x1="32" y1="34" x2="32" y2="48" stroke="currentColor" stroke-width="2"/>
+      <text x="32" y="27" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB-C</text>
+    `,
+    description: 'USB-Buchse Typ C reversible Schnittstelle nach IEC 60617'
+  },
+  {
+    id: 'usb_socket_double',
+    name: 'USB-Doppelbuchse (2x Typ A)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB Doppelbuchse',
+    width: 64,
+    height: 48,
+    pins: [
+      { id: 'X1', name: 'X1', x: 16, y: 0, direction: 'top', description: 'USB Port 1' },
+      { id: 'X2', name: 'X2', x: 48, y: 0, direction: 'top', description: 'USB Port 2' },
+      { id: 'SH', name: 'SH', x: 32, y: 48, direction: 'bottom', description: 'Gemeinsamer Schirm (PE)' }
+    ],
+    svgContent: `
+      <rect x="6" y="12" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <rect x="34" y="12" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="48" y1="0" x2="48" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="18" y1="34" x2="32" y2="40" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="46" y1="34" x2="32" y2="40" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="32" y1="40" x2="32" y2="48" stroke="currentColor" stroke-width="2"/>
+      <text x="18" y="26" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB1</text>
+      <text x="46" y="26" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB2</text>
+    `,
+    description: 'Doppelte USB-Buchse (2x USB-A) für Schaltschrankeinbau'
+  },
+  {
+    id: 'usb_service_socket',
+    name: 'USB-Serviceschnittstelle',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'USB Serviceport',
+    width: 32,
+    height: 48,
+    pins: [
+      { id: 'INT', name: 'INT', x: 16, y: 0, direction: 'top', description: 'Intern (IPC / Steuerung)' },
+      { id: 'EXT', name: 'EXT', x: 16, y: 48, direction: 'bottom', description: 'Extern (Bedienfeld / Front)' }
+    ],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="14" stroke="currentColor" stroke-width="2"/>
+      <rect x="6" y="14" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="4" y1="24" x2="28" y2="24" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="16" y1="34" x2="16" y2="48" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="22" font-size="6" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB</text>
+      <text x="16" y="32" font-size="6" font-family="sans-serif" text-anchor="middle" fill="currentColor">FRONT</text>
+    `,
+    description: 'Schaltschrank-Wanddurchführung / USB-Frontschnittstelle'
+  },
+  {
+    id: 'rj45_socket_8p',
+    name: 'RJ45-Buchse (8-polig, Cat.6)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'RJ45 Cat.6',
+    width: 80,
+    height: 56,
+    pins: [
+      { id: '1', name: '1', x: 8, y: 0, direction: 'top', description: '1: TX+ (Weiß-Orange)' },
+      { id: '2', name: '2', x: 16, y: 0, direction: 'top', description: '2: TX- (Orange)' },
+      { id: '3', name: '3', x: 24, y: 0, direction: 'top', description: '3: RX+ (Weiß-Grün)' },
+      { id: '4', name: '4', x: 32, y: 0, direction: 'top', description: '4: BI_D3+ (Blau)' },
+      { id: '5', name: '5', x: 40, y: 0, direction: 'top', description: '5: BI_D3- (Weiß-Blau)' },
+      { id: '6', name: '6', x: 48, y: 0, direction: 'top', description: '6: RX- (Grün)' },
+      { id: '7', name: '7', x: 56, y: 0, direction: 'top', description: '7: BI_D4+ (Weiß-Braun)' },
+      { id: '8', name: '8', x: 64, y: 0, direction: 'top', description: '8: BI_D4- (Braun)' },
+      { id: 'SH', name: 'SH', x: 40, y: 56, direction: 'bottom', description: 'Schirm (Shield / PE)' }
+    ],
+    svgContent: `
+      <!-- RJ45 Kontur mit Rastnase -->
+      <path d="M 4 12 L 76 12 L 76 44 L 54 44 L 54 36 L 26 36 L 26 44 L 4 44 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="8" y1="0" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="24" y1="0" x2="24" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="32" y1="0" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="40" y1="0" x2="40" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="48" y1="0" x2="48" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="56" y1="0" x2="56" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="64" y1="0" x2="64" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="40" y1="44" x2="40" y2="56" stroke="currentColor" stroke-width="2"/>
+      <text x="40" y="27" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">RJ45 8P</text>
+    `,
+    description: 'RJ45-Netzwerkbuchse 8-polig (Gigabit / Cat.6) mit Schirmanschluss'
+  },
+  {
+    id: 'rj45_socket_4p',
+    name: 'RJ45-Buchse (4-polig, Industrial Ethernet)',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'PROFINET RJ45',
+    width: 64,
+    height: 48,
+    pins: [
+      { id: '1', name: '1', x: 16, y: 0, direction: 'top', description: '1: TD+ (Gelb)' },
+      { id: '2', name: '2', x: 24, y: 0, direction: 'top', description: '2: TD- (Orange)' },
+      { id: '3', name: '3', x: 32, y: 0, direction: 'top', description: '3: RD+ (Weiß)' },
+      { id: '6', name: '6', x: 40, y: 0, direction: 'top', description: '6: RD- (Blau)' },
+      { id: 'SH', name: 'SH', x: 32, y: 48, direction: 'bottom', description: 'Schirm (Shield / PE)' }
+    ],
+    svgContent: `
+      <path d="M 6 12 L 58 12 L 58 38 L 44 38 L 44 32 L 20 32 L 20 38 L 6 38 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="24" y1="0" x2="24" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="32" y1="0" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="40" y1="0" x2="40" y2="12" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="32" y1="38" x2="32" y2="48" stroke="currentColor" stroke-width="2"/>
+      <text x="32" y="25" font-size="7" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">PN / ETH</text>
+    `,
+    description: 'RJ45-Buchse 4-polig für Industrial Ethernet / PROFINET 100BASE-TX'
+  },
+  {
+    id: 'rj45_feedthrough',
+    name: 'RJ45-Schaltschrankkupplung',
+    category: 'terminals',
+    standard: 'DIN EN 60617',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'RJ45 Kupplung',
+    width: 48,
+    height: 48,
+    pins: [
+      { id: 'IN', name: 'IN', x: 24, y: 0, direction: 'top', description: 'Intern (Schaltschrank)' },
+      { id: 'OUT', name: 'OUT', x: 24, y: 48, direction: 'bottom', description: 'Extern (Feld / Service)' },
+      { id: 'SH', name: 'SH', x: 48, y: 24, direction: 'right', description: 'Schirmung' }
+    ],
+    svgContent: `
+      <line x1="24" y1="0" x2="24" y2="12" stroke="currentColor" stroke-width="2"/>
+      <rect x="10" y="12" width="28" height="24" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="24" y1="36" x2="24" y2="48" stroke="currentColor" stroke-width="2"/>
+      <line x1="38" y1="24" x2="48" y2="24" stroke="currentColor" stroke-width="2"/>
+      <text x="24" y="20" font-size="6" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">RJ45</text>
+      <text x="24" y="32" font-size="6" font-family="sans-serif" text-anchor="middle" fill="currentColor">FEED</text>
+    `,
+    description: 'RJ45-Schaltschrankdurchführung / Buchse-zu-Buchse Keystone Kupplung'
   }
 ];

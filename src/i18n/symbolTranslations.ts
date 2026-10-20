@@ -169,7 +169,14 @@ export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; descripti
   plug_socket_pair: { name: 'Plug & Socket Connector', description: 'Separable plug and socket connector pair' },
   motor_dc: { name: 'DC Motor', description: 'Direct current electric motor with brushes' },
   generator_dc: { name: 'DC Generator', description: 'Direct current electric generator' },
-  generator_3phase: { name: 'Three-Phase Generator (3~)', description: 'Three-phase synchronous generator' }
+  generator_3phase: { name: 'Three-Phase Generator (3~)', description: 'Three-phase synchronous generator' },
+  usb_socket_type_a: { name: 'USB Socket (Type A, 4-Pin)', description: 'USB Type-A 4-pin socket with shield' },
+  usb_socket_type_c: { name: 'USB-C Socket (Type C)', description: 'USB Type-C reversible interface connector' },
+  usb_socket_double: { name: 'Dual USB Socket (2x Type A)', description: 'Dual USB-A socket connector for panel mounting' },
+  usb_service_socket: { name: 'USB Service Interface', description: 'Cabinet bulkhead / front USB service port' },
+  rj45_socket_8p: { name: 'RJ45 Socket (8-Pin, Cat.6)', description: 'RJ45 8-pin Ethernet connector socket Cat.6 with shield' },
+  rj45_socket_4p: { name: 'RJ45 Socket (4-Pin, PROFINET)', description: 'RJ45 4-pin Industrial Ethernet / PROFINET socket' },
+  rj45_feedthrough: { name: 'RJ45 Panel Feedthrough', description: 'RJ45 bulkhead coupler / feedthrough jack' }
 };
 
 const PHRASE_REPLACEMENTS: [RegExp, string][] = [
