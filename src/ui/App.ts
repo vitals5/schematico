@@ -1368,7 +1368,7 @@ export class App {
     for (let idx = 0; idx < this.project.pages.length; idx++) {
       const page = this.project.pages[idx];
       const isActive = page.id === this.project.activePageId;
-      const icon = page.pageType === 'cover' ? '📄' : (page.pageType === 'schematic' ? '⚡' : '📋');
+      const icon = page.pageType === 'cover' ? '📄' : (page.pageType === 'installation' ? '🏠' : (page.pageType === 'schematic' ? '⚡' : '📋'));
       html += `
         <div class="tree-node page-tree-item ${isActive ? 'active' : ''}" data-page-id="${page.id}" data-page-index="${idx}" draggable="true" style="user-select: none;">
           <span style="cursor: grab;" title="${t('dragToReorder')}">${icon}</span>
@@ -2633,6 +2633,36 @@ export class App {
           ${t('pageProperties', { number: activePage?.pageNumber || '1' })}
         </div>
         ${activePage?.pageType==='cover'?`<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">${t('btnEditCoverPage')}</button>`:''}
+        ${activePage?.pageType==='installation' && activePage.floorPlan ? `
+          <div style="background:#232731;border:1px solid #4a5568;border-radius:6px;padding:10px;margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:8px;">
+              🏠 Installationsplan – Grundriss
+            </div>
+            ${activePage.floorPlan.backgroundImage ? `
+              <div style="margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" id="chkShowBlueprintBg" ${activePage.floorPlan.backgroundImage.visible ? 'checked' : ''} style="accent-color:#3182ce;" />
+                  <span>Bauplan-Hintergrund</span>
+                </label>
+              </div>
+              <div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                  <span>Deckkraft:</span>
+                  <span id="txtBlueprintOpacity">${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}%</span>
+                </div>
+                <input type="range" id="rngBlueprintOpacity" min="0" max="100" value="${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}" style="width:100%;accent-color:#3182ce;" />
+              </div>
+            ` : ''}
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="btn" id="btnDrawWall" style="flex:1;font-size:11px;padding:4px 8px;background:#2b6cb0;color:#fff;border:none;">
+                🧱 Wand zeichnen
+              </button>
+              <button type="button" class="btn" id="btnReimportFloorPlan" style="flex:1;font-size:11px;padding:4px 8px;">
+                🔄 Neu importieren
+              </button>
+            </div>
+          </div>
+        ` : ''}
 
         <div class="form-group">
           <label class="form-label">${t('fieldSheetNumber')}</label>
@@ -2681,6 +2711,31 @@ export class App {
       `;
 
       document.getElementById('btnEditCoverPage')?.addEventListener('click',()=>{if(activePage)this.openCoverPage(activePage);});
+      document.getElementById('chkShowBlueprintBg')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan?.backgroundImage) {
+          activePage.floorPlan.backgroundImage.visible = (e.target as HTMLInputElement).checked;
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('rngBlueprintOpacity')?.addEventListener('input', (e) => {
+        if (activePage?.floorPlan?.backgroundImage) {
+          const val = Number((e.target as HTMLInputElement).value);
+          activePage.floorPlan.backgroundImage.opacity = val / 100;
+          const txt = document.getElementById('txtBlueprintOpacity');
+          if (txt) txt.textContent = `${val}%`;
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('btnDrawWall')?.addEventListener('click', () => {
+        this.canvas.setMode('draw_wall');
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = 'Wand zeichnen: Startpunkt auf dem Grundriss anklicken, dann Endpunkt anklicken. Esc bricht ab.';
+      });
+      document.getElementById('btnReimportFloorPlan')?.addEventListener('click', () => {
+        this.openFloorPlanImport();
+      });
       document.getElementById('pageNumberInput')?.addEventListener('input', (e) => {
         if (activePage) {
           const val = (e.target as HTMLInputElement).value;

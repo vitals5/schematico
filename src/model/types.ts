@@ -20,6 +20,7 @@ export interface WallOpening {
   kind: 'door' | 'window';
   center: { x: number; y: number };
   width: number;
+  orientation?: 'horizontal' | 'vertical';
   swingAngle?: number;
   swingDirection?: 'left_in' | 'right_in' | 'left_out' | 'right_out' | 'none';
 }

@@ -15,7 +15,7 @@ import { plotFrameSvg } from '../model/PlotFrame';
 import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, WallSegment } from '../model/types';
 import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -28,7 +28,7 @@ import { floorPlanToSvg, findNearestWall } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
 
-export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box';
+export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall';
 
 export interface CadCanvasCallbacks {
   onSelectionChanged?: (selection: ElementSelection) => void;
@@ -94,6 +94,7 @@ export class CadCanvas {
 
   // Wiring State
   private wireStart: { componentId: string; pinId: string } | null = null;
+  private wallDraft: { start: { x: number; y: number }; end: { x: number; y: number } } | null = null;
   private currentMousePos: { x: number; y: number } = { x: 0, y: 0 };
 
   // Touch gesture state
@@ -214,6 +215,7 @@ export class CadCanvas {
   public setMode(mode: EditorMode): void {
     this.selectionWindow=undefined;this.cancelBoxInteraction();
     if(mode!=='place_image')this.activeImageToPlace=undefined;
+    if(mode!=='draw_wall')this.wallDraft=null;
     this.mode = mode;
     this.cableStart = undefined;
     this.wireStart = null;
@@ -692,7 +694,7 @@ export class CadCanvas {
       } else if (e.key === 'Escape') {
         if(this.selectionDrag)translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);
         this.selectionDrag=undefined;this.selectionWindow=undefined;this.setElementSelection(emptySelection());
-        this.cancelBoxInteraction();this.mode = 'select';this.activeImageToPlace=undefined;
+        this.cancelBoxInteraction();this.mode = 'select';this.activeImageToPlace=undefined;this.wallDraft=null;
         this.cableStart = undefined;
         this.wireStart = null;
         this.activeSymbolToPlace = null;
@@ -972,6 +974,17 @@ export class CadCanvas {
     const resize=(e.target as Element)?.closest?.('[data-box-resize]');
     if(this.mode==='select' && resize){const box=this.boxFromEvent(e);if(box){this.boxResize={box,width:box.width,height:box.height};return;}}
     if(this.mode==='place_image'){this.placeImageAt(world);return;}
+    if(this.mode==='draw_wall'){
+      const pt = { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
+      if (this.wallDraft) {
+        this.wallDraft.end = pt;
+        this.finishDrawWall();
+      } else {
+        this.wallDraft = { start: pt, end: pt };
+        this.render();
+      }
+      return;
+    }
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;
@@ -1092,7 +1105,10 @@ export class CadCanvas {
       this.hoveredPin = pin;
     }
 
-    if (this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || this.wireStart || pinChanged) {
+    if (this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || (this.mode === 'draw_wall' && this.wallDraft) || this.wireStart || pinChanged) {
+      if (this.mode === 'draw_wall' && this.wallDraft) {
+        this.wallDraft.end = { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
+      }
       this.render();
     }
   }
@@ -1564,8 +1580,9 @@ export class CadCanvas {
           ${this.renderAutoconnectPreview()}
         </g>
 
-        <!-- Interactive Temp Wire -->
+        <!-- Interactive Temp Wire & Wall Draft -->
         ${this.renderInteractiveWire()}
+        ${this.renderInteractiveWall?.() ?? ''}
 
         <!-- Pin Hover Snap Highlight -->
         ${this.renderHoveredPin()}
@@ -1948,6 +1965,46 @@ export class CadCanvas {
       <path d="${pathData}" fill="none" stroke="#63b3ed" stroke-width="2" stroke-dasharray="4,4"/>
       <circle cx="${startCoord.x}" cy="${startCoord.y}" r="4" fill="#63b3ed"/>
       <circle cx="${target.x}" cy="${target.y}" r="3" fill="#63b3ed"/>
+    `;
+  }
+
+  private finishDrawWall(): void {
+    if (!this.wallDraft) return;
+    const p1 = this.wallDraft.start;
+    const p2 = this.wallDraft.end;
+    this.wallDraft = null;
+    if (Math.hypot(p2.x - p1.x, p2.y - p1.y) < 6) {
+      this.render();
+      return;
+    }
+    if (!this.activePage.floorPlan) {
+      this.activePage.floorPlan = {
+        scale: { scaleRatio: 100, pixelPerMeter: 50 },
+        walls: [],
+        openings: [],
+        rooms: []
+      };
+    }
+    const newWall: WallSegment = {
+      id: `wall_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      start: p1,
+      end: p2,
+      thickness: 3.5,
+      isExterior: false
+    };
+    this.activePage.floorPlan.walls.push(newWall);
+    this.notifyModified();
+    this.render();
+  }
+
+  private renderInteractiveWall(): string {
+    if (!this.wallDraft) return '';
+    return `
+      <g class="interactive-wall-draft" pointer-events="none">
+        <line x1="${this.wallDraft.start.x}" y1="${this.wallDraft.start.y}" x2="${this.wallDraft.end.x}" y2="${this.wallDraft.end.y}" stroke="#63b3ed" stroke-width="3.5" stroke-dasharray="6,4" stroke-linecap="round" />
+        <circle cx="${this.wallDraft.start.x}" cy="${this.wallDraft.start.y}" r="4" fill="#63b3ed" />
+        <circle cx="${this.wallDraft.end.x}" cy="${this.wallDraft.end.y}" r="4" fill="#63b3ed" />
+      </g>
     `;
   }
 

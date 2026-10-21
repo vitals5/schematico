@@ -39,12 +39,55 @@ export interface RawAiFloorPlanResponse {
   rooms: RawAiRoom[];
 }
 
+export interface FitBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface SanitizeOptions {
-  canvasWidth?: number;  // Target drawing width in mm/units, e.g. 800
-  canvasHeight?: number; // Target drawing height in mm/units, e.g. 560
+  canvasWidth?: number;  // Target drawing width in mm/units, e.g. 840
+  canvasHeight?: number; // Target drawing height in mm/units, e.g. 594
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
+  imageBounds?: FitBounds;
   snapAngleToleranceDeg?: number; // e.g. 5°
-  cornerSnapDistance?: number;    // e.g. 10 units
-  defaultWallThickness?: number;  // e.g. 16 units
+  cornerSnapDistance?: number;    // e.g. 8 units
+  defaultWallThickness?: number;  // e.g. 3.5 units
+}
+
+/**
+ * Computes fitted bounding box for an image maintaining its natural aspect ratio.
+ */
+export function computeImageFitBounds(
+  imageWidth: number,
+  imageHeight: number,
+  targetBox: FitBounds = { x: 30, y: 25, width: 780, height: 530 }
+): FitBounds {
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    return targetBox;
+  }
+  const imgAspect = imageWidth / imageHeight;
+  const boxAspect = targetBox.width / targetBox.height;
+
+  let fitWidth: number;
+  let fitHeight: number;
+
+  if (imgAspect > boxAspect) {
+    // Image is wider than box -> width is constrained
+    fitWidth = targetBox.width;
+    fitHeight = Math.round(targetBox.width / imgAspect);
+  } else {
+    // Image is taller than box -> height is constrained
+    fitHeight = targetBox.height;
+    fitWidth = Math.round(targetBox.height * imgAspect);
+  }
+
+  const fitX = Math.round(targetBox.x + (targetBox.width - fitWidth) / 2);
+  const fitY = Math.round(targetBox.y + (targetBox.height - fitHeight) / 2);
+
+  return { x: fitX, y: fitY, width: fitWidth, height: fitHeight };
 }
 
 /**
@@ -76,6 +119,20 @@ export function snapWallOrientation(
     }
   }
 
+  // Exact axis alignment for 0, 90, 180, 270
+  if (bestAngle === 0) {
+    return { start, end: { x: Math.round((start.x + len) * 10) / 10, y: start.y } };
+  }
+  if (bestAngle === 180) {
+    return { start, end: { x: Math.round((start.x - len) * 10) / 10, y: start.y } };
+  }
+  if (bestAngle === 90) {
+    return { start, end: { x: start.x, y: Math.round((start.y + len) * 10) / 10 } };
+  }
+  if (bestAngle === 270) {
+    return { start, end: { x: start.x, y: Math.round((start.y - len) * 10) / 10 } };
+  }
+
   const rad = (bestAngle * Math.PI) / 180;
   return {
     start,
@@ -89,7 +146,7 @@ export function snapWallOrientation(
 /**
  * Snaps nearby endpoints to shared intersection corners.
  */
-export function snapCorners(walls: WallSegment[], snapDistance: number = 10): WallSegment[] {
+export function snapCorners(walls: WallSegment[], snapDistance: number = 8): WallSegment[] {
   const points: { x: number; y: number }[] = [];
 
   for (const w of walls) {
@@ -123,38 +180,41 @@ export function snapCorners(walls: WallSegment[], snapDistance: number = 10): Wa
 }
 
 /**
- * Transforms normalized 0..1000 AI coordinates into a clean FloorPlanData structure.
+ * Transforms normalized 0..1000 AI coordinates into a clean FloorPlanData structure,
+ * mapped exactly to the background image bounding box.
  */
 export function sanitizeFloorPlanGeometry(
   raw: RawAiFloorPlanResponse,
   options: SanitizeOptions = {}
 ): FloorPlanData {
-  const targetW = options.canvasWidth ?? 800;
-  const targetH = options.canvasHeight ?? 560;
-  const margin = 40;
-  const usableW = targetW - 2 * margin;
-  const usableH = targetH - 2 * margin;
+  const targetW = options.canvasWidth ?? 840;
+  const targetH = options.canvasHeight ?? 594;
+  const targetBox: FitBounds = {
+    x: 30,
+    y: 25,
+    width: targetW - 60,
+    height: targetH - 64
+  };
 
-  // Find bounding box of raw walls
-  let minX = 1000, maxX = 0, minY = 1000, maxY = 0;
-  for (const w of raw.walls) {
-    minX = Math.min(minX, w.x1, w.x2);
-    maxX = Math.max(maxX, w.x1, w.x2);
-    minY = Math.min(minY, w.y1, w.y2);
-    maxY = Math.max(maxY, w.y1, w.y2);
+  let bounds: FitBounds;
+  if (options.imageBounds) {
+    bounds = options.imageBounds;
+  } else if (options.imageNaturalWidth && options.imageNaturalHeight) {
+    bounds = computeImageFitBounds(options.imageNaturalWidth, options.imageNaturalHeight, targetBox);
+  } else {
+    // Default fallback: center within drawing area
+    bounds = {
+      x: 40,
+      y: 30,
+      width: Math.max(100, targetW - 80),
+      height: Math.max(100, targetH - 60)
+    };
   }
 
-  if (minX >= maxX || minY >= maxY) {
-    minX = 0; maxX = 1000; minY = 0; maxY = 1000;
-  }
-
-  const rawW = maxX - minX;
-  const rawH = maxY - minY;
-  const scaleFactor = Math.min(usableW / rawW, usableH / rawH);
-
+  // Direct 1-to-1 percentage mapping from normalized [0..1000] to fitted image bounds
   const toCanvas = (x: number, y: number) => ({
-    x: Math.round((margin + (x - minX) * scaleFactor) * 10) / 10,
-    y: Math.round((margin + (y - minY) * scaleFactor) * 10) / 10,
+    x: Math.round((bounds.x + (x / 1000) * bounds.width) * 10) / 10,
+    y: Math.round((bounds.y + (y / 1000) * bounds.height) * 10) / 10,
   });
 
   // 1. Process Walls
@@ -163,27 +223,32 @@ export function sanitizeFloorPlanGeometry(
     const end = toCanvas(w.x2, w.y2);
     const snapped = snapWallOrientation(start, end, options.snapAngleToleranceDeg ?? 6);
 
+    // Architectural CAD standard line weights:
+    // Exterior walls: 3.5 units, Interior partition walls: 2.0 units
+    const defaultThickness = w.isExterior ? 3.5 : 2.0;
+    const thickness = options.defaultWallThickness ?? (w.thickness ? Math.min(6, Math.max(1.5, w.thickness)) : defaultThickness);
+
     return {
       id: `wall_${idx + 1}`,
       start: snapped.start,
       end: snapped.end,
-      thickness: Math.max(8, Math.round((w.thickness ?? 16) * scaleFactor * 0.1) * 2),
+      thickness,
       isExterior: !!w.isExterior
     };
   });
 
-  const snappedWalls = snapCorners(processedWalls, options.cornerSnapDistance ?? 10);
+  const snappedWalls = snapCorners(processedWalls, options.cornerSnapDistance ?? 8);
 
   // 2. Process Openings (Doors / Windows)
   const processedOpenings: WallOpening[] = raw.openings.map((op, idx) => {
     const center = toCanvas(op.x, op.y);
-    const width = Math.max(16, Math.round(op.width * scaleFactor * 0.8));
 
     // Find nearest wall
     let nearestWallId: string | undefined;
     let minWallDist = Infinity;
+    let nearestWall: WallSegment | undefined;
+
     for (const wall of snappedWalls) {
-      // Distance from point to line segment
       const dx = wall.end.x - wall.start.x;
       const dy = wall.end.y - wall.start.y;
       const lenSq = dx * dx + dy * dy;
@@ -195,7 +260,26 @@ export function sanitizeFloorPlanGeometry(
       if (dist < minWallDist) {
         minWallDist = dist;
         nearestWallId = wall.id;
+        nearestWall = wall;
       }
+    }
+
+    let orientation = op.orientation;
+    if (!orientation && nearestWall) {
+      const dx = Math.abs(nearestWall.end.x - nearestWall.start.x);
+      const dy = Math.abs(nearestWall.end.y - nearestWall.start.y);
+      orientation = dy > dx ? 'vertical' : 'horizontal';
+    }
+
+    // Opening width in canvas units:
+    let width = op.width;
+    if (width > 0 && width <= 200) {
+      const refDim = orientation === 'vertical' ? bounds.height : bounds.width;
+      width = Math.max(16, Math.min(48, Math.round((width / 1000) * refDim)));
+    } else if (width > 200) {
+      width = Math.max(16, Math.min(48, Math.round(width * 0.1)));
+    } else {
+      width = 24;
     }
 
     return {
@@ -204,6 +288,7 @@ export function sanitizeFloorPlanGeometry(
       kind: op.kind,
       center,
       width,
+      orientation: orientation ?? 'horizontal',
       swingAngle: op.kind === 'door' ? 90 : undefined,
       swingDirection: op.swingDirection ?? (op.kind === 'door' ? 'left_in' : 'none'),
     };
@@ -215,8 +300,7 @@ export function sanitizeFloorPlanGeometry(
     let polygon = rm.polygon?.map(p => toCanvas(p.x, p.y)) ?? [];
 
     if (polygon.length < 3) {
-      // Generate a default rectangular room box around center if polygon was omitted
-      const halfSize = 40;
+      const halfSize = 36;
       polygon = [
         { x: center.x - halfSize, y: center.y - halfSize },
         { x: center.x + halfSize, y: center.y - halfSize },
@@ -235,9 +319,10 @@ export function sanitizeFloorPlanGeometry(
   });
 
   // 4. Scale Calibration
+  const scaleRatio = raw.scaleEstimate?.detectedScaleText?.includes('50') ? 50 : 100;
   const scale: ScaleCalibration = {
-    scaleRatio: raw.scaleEstimate?.detectedScaleText?.includes('50') ? 50 : 100,
-    pixelPerMeter: Math.round(scaleFactor * 80), // Approx. pixel/meter estimate
+    scaleRatio,
+    pixelPerMeter: Math.round((bounds.width / 12) * (scaleRatio === 50 ? 2 : 1)),
   };
 
   return {

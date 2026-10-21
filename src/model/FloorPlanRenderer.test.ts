@@ -44,12 +44,19 @@ const testPlan: FloorPlanData = {
   scale: { scaleRatio: 100, pixelPerMeter: 50 },
   walls,
   openings: [
-    { id: 'op1', kind: 'door', center: { x: 200, y: 100 }, width: 80 },
-    { id: 'op2', kind: 'window', center: { x: 400, y: 100 }, width: 100 }
+    { id: 'op1', kind: 'door', center: { x: 200, y: 100 }, width: 80, orientation: 'horizontal' },
+    { id: 'op2', kind: 'window', center: { x: 400, y: 100 }, width: 100, orientation: 'horizontal' },
+    { id: 'op3', kind: 'door', center: { x: 500, y: 250 }, width: 80, orientation: 'vertical', wallId: 'w2' }
   ],
   rooms: [
     { id: 'r1', name: 'Wohnzimmer', areaM2: 24.5, polygon: [{ x: 100, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 400 }, { x: 100, y: 400 }] }
-  ]
+  ],
+  backgroundImage: {
+    dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    opacity: 0.35,
+    visible: true,
+    bounds: { x: 93, y: 25, width: 655, height: 530 }
+  }
 };
 
 const svg = floorPlanToSvg(testPlan);
@@ -57,5 +64,7 @@ assert(svg.includes('class="floorplan-door"'), 'Must contain door');
 assert(svg.includes('class="floorplan-window"'), 'Must contain window');
 assert(svg.includes('Wohnzimmer'), 'Must render room label');
 assert(svg.includes('24.5 m²'), 'Must render room area');
+assert(svg.includes('<image href="data:image/png;base64,'), 'Must render background image');
+assert(svg.includes('width="655" height="530"'), 'Must use exact fitted image dimensions');
 
 console.log('✓ FloorPlanRenderer tests passed successfully!');

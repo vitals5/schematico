@@ -15,6 +15,8 @@ export interface FloorPlanImportDialogCallbacks {
 
 export class FloorPlanImportDialog {
   private rawImageDataUrl: string | null = null;
+  private imageNaturalWidth: number = 0;
+  private imageNaturalHeight: number = 0;
   private currentFloorPlan: FloorPlanData | null = null;
   private isProcessing: boolean = false;
 
@@ -227,8 +229,10 @@ export class FloorPlanImportDialog {
         progressFill.style.width = '45%';
         const plan = await vectorizeFloorPlanWithGemini(this.rawImageDataUrl, {
           userPromptHint: hint,
-          canvasWidth: 800,
-          canvasHeight: 560,
+          canvasWidth: 840,
+          canvasHeight: 594,
+          imageNaturalWidth: this.imageNaturalWidth,
+          imageNaturalHeight: this.imageNaturalHeight,
           onProgress: (status) => {
             statusText.textContent = status;
             progressFill.style.width = '75%';
@@ -308,6 +312,13 @@ export class FloorPlanImportDialog {
       const result = e.target?.result as string;
       if (result) {
         this.rawImageDataUrl = result;
+        const img = new Image();
+        img.onload = () => {
+          this.imageNaturalWidth = img.naturalWidth;
+          this.imageNaturalHeight = img.naturalHeight;
+          displayElem.textContent = `Ausgewählt: ${file.name} (${img.naturalWidth} × ${img.naturalHeight} px, ${Math.round(file.size / 1024)} KB)`;
+        };
+        img.src = result;
       }
     };
     reader.readAsDataURL(file);
@@ -325,8 +336,8 @@ export class FloorPlanImportDialog {
     });
 
     container.innerHTML = `
-      <svg viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg">
-        <rect width="800" height="560" fill="#181b22" />
+      <svg viewBox="0 0 840 594" xmlns="http://www.w3.org/2000/svg">
+        <rect width="840" height="594" fill="#181b22" />
         ${svgContent}
       </svg>
     `;

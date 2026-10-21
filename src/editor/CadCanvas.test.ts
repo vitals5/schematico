@@ -44,7 +44,7 @@ component.functionText = 'Geändert';
 const scene: any = { activePage: page, svg: { innerHTML: '' }, scale: 1, panX: 0, panY: 0,
   getEffectiveGridSize: () => 8, renderPlotFrame: () => '<g id="normal-frame"/>',
 };
-for (const name of ['renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderHoveredPin', 'renderGhostSymbol']) scene[name] = () => '';
+for (const name of ['renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderInteractiveWall', 'renderHoveredPin', 'renderGhostSymbol']) scene[name] = () => '';
 CadCanvas.prototype.render.call(scene);
 assert.match(scene.svg.innerHTML, /fill="#1a202c"/);
 assert.match(scene.svg.innerHTML, /fill="url\(#cadGrid\)"/);

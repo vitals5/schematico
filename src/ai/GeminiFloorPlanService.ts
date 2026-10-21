@@ -4,23 +4,36 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { getGeminiApiKey } from './GeminiConfig';
 import { FloorPlanData } from '../model/types';
-import { sanitizeFloorPlanGeometry, RawAiFloorPlanResponse, SanitizeOptions } from './GeometrySanitizer';
+import { sanitizeFloorPlanGeometry, RawAiFloorPlanResponse, SanitizeOptions, computeImageFitBounds } from './GeometrySanitizer';
 
 const SYSTEM_INSTRUCTION = `Du bist ein hochpräziser Architektur- und Elektro-CAD-Analyst.
-Deine Aufgabe ist es, aus hochgeladenen Architektur-Grundrissen, Bauplänen, Skizzen oder Fotos einen sauberen, präzisen Vektorgrundriss zu extrahieren.
+Deine Aufgabe ist es, aus hochgeladenen Architektur-Grundrissen, Bauplänen, Skizzen oder Fotos einen vollständigen, sauberen, präzisen Vektorgrundriss zu extrahieren.
 
-REGELN:
-1. IGNORIERE alle Möbel, Schraffuren, Detailbemaßungen, Maßhilfslinien, Schriftfelder, Legenden, Stempel, Notizen und Wasserzeichen.
-2. EXTRAHIERE alle tragenden und nichttragenden Wände als zusammenhängende Liniensegmente mit normalisierten Start- und Endkoordinaten im Bereich [0..1000].
-3. EXTRAHIERE alle Wandöffnungen:
-   - Türen (kind: "door") mit Position, Breite und Anschlag/Aufschlagrichtung (swingDirection: left_in, right_in, left_out, right_out, none)
-   - Fenster (kind: "window") mit Position und Breite.
-4. EXTRAHIERE alle Räume (z. B. Wohnen/Essen, Küche, Schlafzimmer, Bad, WC, Flur/Diele, HWR, Büro, Kind, Keller) mit:
-   - Deutschem Raumnamen (name)
-   - Geschätzter oder abgelesener Quadratmeterzahl (approxAreaM2), falls vorhanden
-   - Mittelpunkt des Raumes (centerX, centerY)
-   - Eckpunkten des Raumpolygons (polygon).
-5. EXTRAHIERE falls lesbar die Maßstabsangabe (z. B. "1:50", "1:100") oder eine Referenzlänge in Metern.
+KOORDINATENSYSTEM (SEHR WICHTIG):
+- Der Koordinatenbereich ist strikt normalisiert von 0 bis 1000 für die GESAMTE Bildbreite und Bildhöhe.
+- (x=0, y=0) ist die alleräußerste obere linke Bildecke.
+- (x=1000, y=1000) ist die alleräußerste untere rechte Bildecke.
+- Jedes Wandsegment (x1, y1) bis (x2, y2), jede Tür und jedes Fenster muss EXAKT auf den im Bild sichtbaren Wänden liegen.
+
+REGELN ZUR VOLLSTÄNDIGKEIT:
+1. GEBÄUDEUMRISS & ANBAUTEN:
+   - Erfasse nicht nur das Haupthaus, sondern auch ALLE angebauten oder freistehenden Bauteile (z. B. Garage, Carport, Abstellraum, Geräteraum, HWR, Windfang, Erker, Vorbauten, Terrassenüberdachung).
+   - Wenn rechts eine Garage oder links ein Nebengebäude angebaut ist, erfasse deren Außenwände und Trennwände vollständig!
+2. INNENWÄNDE & RÄUME:
+   - Jeder im Grundriss beschriftete Raum (z. B. Wohnen, Essen, Kochen/Küche, Speis/Speisekammer, Flur, Diele, Windfang, Gäste-WC, Bad, Treppe, HWR/Technik, Garage) MUSS durch Wände abgegrenzt sein.
+   - Wände von Ecke zu Ecke zeichnen. An T-Kreuzungen und Ecken müssen die Koordinaten exakt übereinstimmen.
+   - Übersehe keine kleinen Räume wie Speisekammer (Speis), WC oder Windfang!
+3. WANDTYPEN:
+   - isExterior: true für Außenwände (Umfassungswände des Gebäudes und der Garage).
+   - isExterior: false für Innenwände (Trennwände zwischen Räumen).
+4. WANDÖFFNUNGEN (TÜREN & FENSTER):
+   - Jede Tür (kind: "door") und jedes Fenster (kind: "window") MUSS genau auf der Linie eines Wandsegments liegen.
+   - Gib für jede Öffnung orientation ("horizontal" oder "vertical") an.
+   - Gib für Türen swingDirection an (left_in, right_in, left_out, right_out).
+5. SCHUTZ VOR RAHMEN & BESCHRIFTUNGEN:
+   - Ignoriere Möbel, Maßlinien, Maßzahlen, Schriftfelder, Legenden und Stempel. Konzentriere dich rein auf das architektonische Mauerwerk und die Wandöffnungen.
+6. MAẞSTAB:
+   - Falls im Plan lesbar, extrahiere den Maßstab (z. B. "1:100" oder "1:50") oder eine lesbare Bemaßung.
 `;
 
 export const FLOORPLAN_RESPONSE_SCHEMA = {
@@ -123,8 +136,8 @@ export async function vectorizeFloorPlanWithGemini(
   const client = new GoogleGenAI({ apiKey });
 
   const userPrompt = options.userPromptHint
-    ? `Analysiere diesen Grundriss und extrahiere Wände, Türen, Fenster und Räume. Hinweis des Nutzers: ${options.userPromptHint}`
-    : 'Analysiere diesen Grundriss und extrahiere präzise alle Wände, Türen, Fenster und Räume als Vektorgeometrie.';
+    ? `Analysiere diesen Grundriss sorgfältig. Extrahiere ALLE Außen- und Innenwände (einschließlich Garage, Speisekammer, WC, Windfang, HWR), alle Türen, Fenster und Räume als Vektorgeometrie. Hinweis des Nutzers: ${options.userPromptHint}`
+    : 'Analysiere diesen Grundriss sorgfältig und vollständig. Extrahiere ALLE Außen- und Innenwände (einschließlich Garage, Speisekammer, WC, Windfang, HWR, Treppen), alle Türen, Fenster und Räume mit exakten Koordinaten [0..1000].';
 
   options.onProgress?.('KI analysiert den Grundriss und extrahiert Vektoren...');
 
@@ -171,19 +184,35 @@ export async function vectorizeFloorPlanWithGemini(
     throw new Error('Die KI konnte im hochgeladenen Bild keine Wände erkennen. Bitte Bildqualität oder Kontrast prüfen.');
   }
 
-  const floorPlan = sanitizeFloorPlanGeometry(rawOutput, options);
+  // Calculate target fitted bounds for the background image and vectors
+  const targetW = options.canvasWidth ?? 840;
+  const targetH = options.canvasHeight ?? 594;
+  const targetBox = {
+    x: 30,
+    y: 25,
+    width: targetW - 60,
+    height: targetH - 64
+  };
 
-  // Attach background image for visual reference
+  const imageBounds = options.imageBounds ?? (
+    options.imageNaturalWidth && options.imageNaturalHeight
+      ? computeImageFitBounds(options.imageNaturalWidth, options.imageNaturalHeight, targetBox)
+      : { x: 40, y: 30, width: targetW - 80, height: targetH - 60 }
+  );
+
+  const floorPlan = sanitizeFloorPlanGeometry(rawOutput, {
+    ...options,
+    canvasWidth: targetW,
+    canvasHeight: targetH,
+    imageBounds
+  });
+
+  // Attach background image with the EXACT SAME bounds as the vector coordinates
   floorPlan.backgroundImage = {
     dataUrl: imageDataUrl,
     opacity: 0.35,
     visible: true,
-    bounds: {
-      x: 0,
-      y: 0,
-      width: options.canvasWidth ?? 800,
-      height: options.canvasHeight ?? 560
-    }
+    bounds: imageBounds
   };
 
   options.onProgress?.('Grundriss erfolgreich vektorisiert!');
