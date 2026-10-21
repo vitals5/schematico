@@ -22,6 +22,7 @@ const paths:Record<string,string>={
   pdf:'M6 2h8l4 4v6 M14 2v5h5 M6 11V2 M5 21v-6h3a2 2 0 0 1 0 4H5 M12 15v6h1a3 3 0 0 0 0-6z M18 21v-6h4 M18 18h3',
   left:'M3 4h18v16H3z M9 4v16',
   right:'M3 4h18v16H3z M15 4v16',
+  wall:'M3 5h18v14H3z M3 12h18 M12 5v7 M7 12v7 M17 12v7',
   menu:'M4 6h16 M4 12h16 M4 18h16'
 };
 export const headerIcon=(name:string)=>`<svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[name]??paths.add}"/></svg>`;
@@ -73,7 +74,7 @@ export function renderAppHeader(projectName:string):string {
         </div>
         <div class="toolbar-group history-tools" role="group" aria-label="${t('menuUndo')}">${tool('btnUndo',t('toolUndo'),'undo')}${tool('btnRedo',t('toolRedo'),'redo')}</div>
         <div class="toolbar-group draw-tools" role="group" aria-label="${t('toolWire')}">
-          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}
+          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}${tool('btnFloorPlanEdit','Grundriss bearbeiten','wall','Grundriss')}
           <div class="insert-split">
             ${tool('btnOpenSymbolSelection',t('toolInsertSym'),'add',t('toolInsertSymLabel'),'btn-primary')}
             ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">${t('toolMoreInsert')}</span>`,

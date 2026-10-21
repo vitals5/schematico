@@ -17,7 +17,7 @@ export interface WallSegment {
 export interface WallOpening {
   id: string;
   wallId?: string;
-  kind: 'door' | 'window';
+  kind: 'door' | 'window' | 'opening' | 'garage_door';
   center: { x: number; y: number };
   width: number;
   orientation?: 'horizontal' | 'vertical';
@@ -70,6 +70,7 @@ export interface FloorPlanData {
   rooms: RoomDefinition[];
   circuits?: InstallationCircuit[];
   arcWires?: InstallationArcWire[];
+  showRoomLabels?: boolean;
   backgroundImage?: {
     dataUrl: string;
     opacity: number;

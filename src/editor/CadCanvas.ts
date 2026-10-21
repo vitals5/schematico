@@ -82,6 +82,7 @@ export class CadCanvas {
   public selectedImageId: string | null = null;
   public selectedWallId: string | null = null;
   public selectedOpeningId: string | null = null;
+  public floorPlanEditMode: boolean = false;
   private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number } } | null = null;
   private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
@@ -466,7 +467,15 @@ export class CadCanvas {
     const element=this.svg.getElementById(component.id);if(!element)return;
     element.setAttribute('transform',`translate(${component.x},${component.y}) rotate(${component.rotation},${sym.width/2},${sym.height/2})`);
     const graphic=element.querySelector(':scope > g[color]');if(graphic)graphic.innerHTML=drawingToSvg(sym.importedGraphics??[]);
-    for(const selector of ['.box-hit-target','.selection-rect']){element.querySelector(selector)?.setAttribute('width',String(sym.width));element.querySelector(selector)?.setAttribute('height',String(sym.height));}
+    element.querySelector('.box-hit-target')?.setAttribute('width',String(sym.width));element.querySelector('.box-hit-target')?.setAttribute('height',String(sym.height));
+    const selRect = element.querySelector('.selection-rect');
+    if (selRect) {
+      const p = component.deviceBox ? 0 : 2;
+      selRect.setAttribute('x', String(-p));
+      selRect.setAttribute('y', String(-p));
+      selRect.setAttribute('width', String(sym.width + p * 2));
+      selRect.setAttribute('height', String(sym.height + p * 2));
+    }
     element.querySelector('.box-resize-handle')?.setAttribute('x',String(sym.width-4));element.querySelector('.box-resize-handle')?.setAttribute('y',String(sym.height-4));
     for(const [key,pos]of Object.entries({bmkPosition:computeBmkPosition(component,sym),functionTextPosition:computeFunctionTextPosition(component,sym),technicalDataPosition:computeTechnicalDataPosition(component,sym),additionalTextPosition:computeAdditionalTextPosition(component,sym)})){
       const label=element.querySelector(`[data-label="${key}"]`);if(!label)continue;label.setAttribute('x',String(pos.x));label.setAttribute('y',String(pos.y));
@@ -771,13 +780,13 @@ export class CadCanvas {
   private onContextMenu(e: MouseEvent): void {
     e.preventDefault();
     const world = this.screenToWorld(e.clientX, e.clientY);
-    const targetOpening = this.openingFromEvent(e);
+    const targetOpening = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.openingFromEvent(e) : null;
     if (targetOpening) {
       this.selectOpening(targetOpening);
       this.showContextMenu(e.clientX, e.clientY, null, null);
       return;
     }
-    const targetWall = this.wallFromEvent(e);
+    const targetWall = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.wallFromEvent(e) : null;
     if (targetWall) {
       this.selectWall(targetWall.wall);
       this.showContextMenu(e.clientX, e.clientY, null, null);
@@ -1100,7 +1109,7 @@ export class CadCanvas {
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;
-    const wallHit = this.wallFromEvent(e);
+    const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e) : null;
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
       const isHandle = !!wallHit.handle;
@@ -1115,7 +1124,7 @@ export class CadCanvas {
       return;
     }
 
-    const clickedOpening = this.openingFromEvent(e);
+    const clickedOpening = this.floorPlanEditMode ? this.openingFromEvent(e) : null;
     if (clickedOpening && this.mode === 'select') {
       this.selectOpening(clickedOpening);
       this.openingDrag = {
@@ -1715,7 +1724,7 @@ export class CadCanvas {
   }
 
   private findComponentAt(x: number, y: number, isTouch: boolean = false): PlacedComponent | null {
-    const pad = isTouch ? 20 : 6;
+    const pad = isTouch ? 12 : 2;
     let frame:PlacedComponent|null=null;
     for (let i = this.activePage.components.length - 1; i >= 0; i--) {
       const comp = this.activePage.components[i];
@@ -1824,7 +1833,7 @@ export class CadCanvas {
         ${coverPageSvg(this.activePage, this.project)}
 
         <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
-        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: true })}</g>` : ''}
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: this.floorPlanEditMode || this.mode === 'draw_wall' })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">
@@ -2040,7 +2049,18 @@ export class CadCanvas {
     this.render();
   }
 
-  public addOpening(kind: 'door' | 'window', position?: { x: number; y: number }, wallId?: string): WallOpening | null {
+  public setFloorPlanEditMode(enabled: boolean): void {
+    this.floorPlanEditMode = enabled;
+    if (!enabled) {
+      this.selectedWallId = null;
+      this.selectedOpeningId = null;
+      this.callbacks.onSelectWall?.(null);
+      this.callbacks.onSelectOpening?.(null);
+    }
+    this.render();
+  }
+
+  public addOpening(kind: 'door' | 'window' | 'opening' | 'garage_door', position?: { x: number; y: number }, wallId?: string): WallOpening | null {
     if (!this.activePage.floorPlan) {
       this.activePage.floorPlan = {
         scale: { scaleRatio: 100, pixelPerMeter: 50 },
@@ -2084,12 +2104,18 @@ export class CadCanvas {
       }
     }
 
+    const pxPerMeter = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+    const defWidthM = kind === 'door' ? 0.885
+      : kind === 'window' ? 1.01
+      : kind === 'garage_door' ? 2.50
+      : 0.885;
+
     const newOpening: WallOpening = {
       id: `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       kind,
       wallId: targetWall?.id,
       center: { x: this.snap(center.x), y: this.snap(center.y, false, 'y') },
-      width: kind === 'door' ? 88.5 : 100,
+      width: Math.round(defWidthM * pxPerMeter),
       orientation,
       swingDirection: kind === 'door' ? 'left_in' : undefined
     };
@@ -2202,7 +2228,7 @@ export class CadCanvas {
           
           ${comp.deviceBox?`<rect class="box-hit-target" x="0" y="0" width="${sym.width}" height="${sym.height}" fill="none" stroke="transparent" stroke-width="12" vector-effect="non-scaling-stroke" pointer-events="stroke"/>`:''}
           <!-- Selection Highlight -->
-          <rect class="selection-rect" pointer-events="none" x="${comp.deviceBox?0:-8}" y="${comp.deviceBox?0:-8}" width="${sym.width + (comp.deviceBox?0:16)}" height="${comp.deviceBox?sym.height:isConn ? sym.height + 16 : sym.height + 36}" fill="${comp.deviceBox?'none':'rgba(99, 179, 237, 0.15)'}" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="3,2" rx="4" style="display: ${isSelected ? 'block' : 'none'};"/>
+          <rect class="selection-rect" pointer-events="none" x="${comp.deviceBox?0:-2}" y="${comp.deviceBox?0:-2}" width="${sym.width + (comp.deviceBox?0:4)}" height="${sym.height + (comp.deviceBox?0:4)}" fill="${comp.deviceBox?'none':'rgba(99, 179, 237, 0.15)'}" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="3,2" rx="${comp.deviceBox?0:2}" style="display: ${isSelected ? 'block' : 'none'};"/>
 
           ${!isConn && !isTerminal ? `
             <!-- BMK Label (z.B. -K1, -Q1) -->

@@ -750,6 +750,12 @@ export class App {
       this.canvas.deleteSelected();
     });
 
+    document.getElementById('btnFloorPlanEdit')?.addEventListener('click', () => {
+      this.canvas.setFloorPlanEditMode(!this.canvas.floorPlanEditMode);
+      this.updateFloorPlanEditButtonState();
+      this.renderRightTab();
+    });
+
     document.getElementById('btnOpenConnections')?.addEventListener('click', () => this.openConnectionSelection());
     document.getElementById('btnDeviceBox')?.addEventListener('click',()=>this.startDeviceBox());
     document.getElementById('btnAddImage')?.addEventListener('click',()=>document.getElementById('imageFileInput')?.click());
@@ -979,6 +985,17 @@ export class App {
     ['btnToolSelect', 'btnToolWire', 'btnCableDefinition','btnDeviceBox'].forEach(id => {
       document.getElementById(id)?.classList.toggle('active', id === activeId);
     });
+  }
+
+  public updateFloorPlanEditButtonState(): void {
+    const isEdit = !!this.canvas?.floorPlanEditMode;
+    const btn = document.getElementById('btnFloorPlanEdit');
+    if (btn) {
+      btn.classList.toggle('active', isEdit);
+      btn.setAttribute('aria-pressed', String(isEdit));
+      btn.style.background = isEdit ? '#2b6cb0' : '';
+      btn.style.color = isEdit ? '#ffffff' : '';
+    }
   }
 
   public updateGridButtonState(): void {
@@ -1332,6 +1349,7 @@ export class App {
     if (projNameEl) {projNameEl.textContent = this.project.name;projNameEl.title=this.project.name;}
 
     this.updateGridButtonState();
+    this.updateFloorPlanEditButtonState();
     this.renderLeftTab();
     if (!editing) this.renderRightTab();
     this.triggerAutoSave();
@@ -2347,14 +2365,17 @@ export class App {
   }
 
   private renderWallProperties(container: HTMLElement, wall: WallSegment): void {
-    const isExt = !!wall.isExterior;
-    const thickness = wall.thickness || (isExt ? 3.5 : 2.0);
-    const dx = wall.end.x - wall.start.x;
-    const dy = wall.end.y - wall.start.y;
-    const lenPx = Math.hypot(dx, dy);
     const page = this.project.pages.find(p => p.id === this.project.activePageId);
     const scale = page?.floorPlan?.scale;
     const pxPerMeter = scale?.pixelPerMeter || 50;
+
+    const isExt = !!wall.isExterior;
+    const thicknessM = wall.thickness
+      ? (wall.thickness < 1 ? wall.thickness : wall.thickness / pxPerMeter)
+      : (isExt ? 0.24 : 0.115);
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const lenPx = Math.hypot(dx, dy);
     const lenM = (lenPx / pxPerMeter).toFixed(2);
     const angleDeg = (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1);
 
@@ -2372,29 +2393,29 @@ export class App {
       </div>
 
       <div class="form-group">
-        <label class="form-label">Wandstärke / Dicke (px)</label>
-        <input class="form-input" id="propWallThickness" type="number" min="0.5" max="20" step="0.5" value="${thickness}">
-        <div style="display:flex;gap:4px;margin-top:6px;">
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="1.5" style="flex:1;font-size:10px;padding:3px;">1.5 (Dünn)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="2.0" style="flex:1;font-size:10px;padding:3px;">2.0 (Innen)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="3.5" style="flex:1;font-size:10px;padding:3px;">3.5 (Außen)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="5.0" style="flex:1;font-size:10px;padding:3px;">5.0 (Massiv)</button>
+        <label class="form-label">Wandstärke / Dicke (m)</label>
+        <input class="form-input" id="propWallThickness" type="number" min="0.05" max="1.50" step="0.005" value="${thicknessM.toFixed(3)}">
+        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.115" style="flex:1;font-size:10px;padding:3px;">0.115 m (Innen)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.175" style="flex:1;font-size:10px;padding:3px;">0.175 m (Tragend)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.240" style="flex:1;font-size:10px;padding:3px;">0.240 m (Außen)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.365" style="flex:1;font-size:10px;padding:3px;">0.365 m (Massiv)</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Startpunkt (X₁, Y₁)</label>
+        <label class="form-label">Startpunkt (m) [X₁, Y₁]</label>
         <div style="display:flex;gap:6px;">
-          <input class="form-input" id="propWallStartX" type="number" step="1" value="${Math.round(wall.start.x)}">
-          <input class="form-input" id="propWallStartY" type="number" step="1" value="${Math.round(wall.start.y)}">
+          <input class="form-input" id="propWallStartX" type="number" step="0.01" value="${(wall.start.x / pxPerMeter).toFixed(2)}">
+          <input class="form-input" id="propWallStartY" type="number" step="0.01" value="${(wall.start.y / pxPerMeter).toFixed(2)}">
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Endpunkt (X₂, Y₂)</label>
+        <label class="form-label">Endpunkt (m) [X₂, Y₂]</label>
         <div style="display:flex;gap:6px;">
-          <input class="form-input" id="propWallEndX" type="number" step="1" value="${Math.round(wall.end.x)}">
-          <input class="form-input" id="propWallEndY" type="number" step="1" value="${Math.round(wall.end.y)}">
+          <input class="form-input" id="propWallEndX" type="number" step="0.01" value="${(wall.end.x / pxPerMeter).toFixed(2)}">
+          <input class="form-input" id="propWallEndY" type="number" step="0.01" value="${(wall.end.y / pxPerMeter).toFixed(2)}">
         </div>
       </div>
 
@@ -2409,12 +2430,35 @@ export class App {
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
-        <button type="button" class="btn btn-primary" id="btnWallAddDoor" style="font-size:11px;padding:6px;">
-          🚪 Tür auf dieser Wand einfügen
+      <!-- Scale Calibration from Reference Wall -->
+      <div class="form-group" style="background:rgba(49, 130, 206, 0.12);border:1px solid rgba(49, 130, 206, 0.35);padding:10px;border-radius:6px;margin-bottom:12px;">
+        <label class="form-label" style="color:#63b3ed;font-weight:bold;margin-bottom:4px;">📏 Maßstab über diese Wand kalibrieren</label>
+        <div style="font-size:10px;color:#cbd5e0;margin-bottom:6px;">
+          Erkannte Länge: <strong>${lenM} m</strong> (${Math.round(lenPx)} px) bei 1 : ${scale?.scaleRatio || 100}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="form-input" id="propCalibRealLenM" type="number" step="0.05" min="0.1" max="100" placeholder="Wahre Länge" value="${lenM}" style="flex:1;font-size:11px;padding:4px 6px;">
+          <span style="font-size:11px;color:#cbd5e0;">m</span>
+          <button type="button" class="btn btn-primary" id="btnCalibWallScale" style="font-size:11px;padding:5px 10px;background:#3182ce;white-space:nowrap;">
+            📐 Kalibrieren
+          </button>
+        </div>
+        <div id="txtCalibWallFeedback" style="font-size:10px;color:#68d391;margin-top:4px;"></div>
+      </div>
+
+      <div style="font-size:10px;font-weight:bold;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Öffnung auf dieser Wand:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+        <button type="button" class="btn btn-primary" id="btnWallAddDoor" style="font-size:11px;padding:5px;">
+          🚪 Tür
         </button>
-        <button type="button" class="btn" id="btnWallAddWindow" style="font-size:11px;padding:6px;">
-          🪟 Fenster auf dieser Wand einfügen
+        <button type="button" class="btn btn-primary" id="btnWallAddWindow" style="font-size:11px;padding:5px;">
+          🪟 Fenster
+        </button>
+        <button type="button" class="btn btn-primary" id="btnWallAddOpening" style="font-size:11px;padding:5px;">
+          🚪 Durchgang
+        </button>
+        <button type="button" class="btn btn-primary" id="btnWallAddGarage" style="font-size:11px;padding:5px;">
+          🚗 Garagentor
         </button>
       </div>
 
@@ -2426,18 +2470,17 @@ export class App {
     container.querySelector('#propWallType')?.addEventListener('change', (e) => {
       const val = (e.target as HTMLSelectElement).value;
       wall.isExterior = val === 'exterior';
-      if (!wall.thickness || wall.thickness === 2.0 || wall.thickness === 3.5) {
-        wall.thickness = wall.isExterior ? 3.5 : 2.0;
-      }
+      const defM = wall.isExterior ? 0.240 : 0.115;
+      wall.thickness = defM * pxPerMeter;
       this.notifyChange();
       this.canvas.render();
       this.renderWallProperties(container, wall);
     });
 
     container.querySelector('#propWallThickness')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val) && val > 0) {
-        wall.thickness = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM) && valM > 0) {
+        wall.thickness = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
@@ -2445,48 +2488,69 @@ export class App {
 
     container.querySelectorAll('.btnWallThickPreset').forEach(btn => {
       btn.addEventListener('click', () => {
-        const t = parseFloat((btn as HTMLElement).dataset.thick || '2.0');
-        wall.thickness = t;
+        const valM = parseFloat((btn as HTMLElement).dataset.thick || '0.115');
+        wall.thickness = valM * pxPerMeter;
         const input = container.querySelector('#propWallThickness') as HTMLInputElement;
-        if (input) input.value = String(t);
+        if (input) input.value = valM.toFixed(3);
         this.notifyChange();
         this.canvas.render();
       });
     });
 
     container.querySelector('#propWallStartX')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        wall.start.x = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        wall.start.x = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
     });
 
     container.querySelector('#propWallStartY')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        wall.start.y = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        wall.start.y = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
     });
 
     container.querySelector('#propWallEndX')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        wall.end.x = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        wall.end.x = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
     });
 
     container.querySelector('#propWallEndY')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        wall.end.y = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        wall.end.y = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
+      }
+    });
+
+    container.querySelector('#btnCalibWallScale')?.addEventListener('click', () => {
+      const realM = parseFloat((container.querySelector('#propCalibRealLenM') as HTMLInputElement).value);
+      if (!isNaN(realM) && realM > 0 && lenPx > 0 && page?.floorPlan) {
+        const newPpm = lenPx / realM;
+        const drawingUnits = getDrawingUnitsPerMm(this.project) || 2;
+        const newRatio = Math.max(1, Math.round((1000 * drawingUnits) / newPpm));
+        page.floorPlan.scale.pixelPerMeter = newPpm;
+        page.floorPlan.scale.scaleRatio = newRatio;
+        page.floorPlan.scale.referenceDistance = {
+          pointA: { ...wall.start },
+          pointB: { ...wall.end },
+          realLengthMeters: realM
+        };
+        const fb = container.querySelector('#txtCalibWallFeedback');
+        if (fb) fb.textContent = `✓ Maßstab: 1 : ${newRatio} (${newPpm.toFixed(1)} px/m)`;
+        this.notifyChange();
+        this.canvas.render();
+        this.renderWallProperties(container, wall);
       }
     });
 
@@ -2498,39 +2562,79 @@ export class App {
       this.canvas.addOpening('window', undefined, wall.id);
     });
 
+    container.querySelector('#btnWallAddOpening')?.addEventListener('click', () => {
+      this.canvas.addOpening('opening', undefined, wall.id);
+    });
+
+    container.querySelector('#btnWallAddGarage')?.addEventListener('click', () => {
+      this.canvas.addOpening('garage_door', undefined, wall.id);
+    });
+
     container.querySelector('#btnWallDelete')?.addEventListener('click', () => {
       this.canvas.deleteSelected();
     });
   }
 
   private renderOpeningProperties(container: HTMLElement, op: WallOpening): void {
-    const isDoor = op.kind === 'door';
-    const width = op.width || (isDoor ? 88.5 : 100);
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    const scale = page?.floorPlan?.scale;
+    const pxPerMeter = scale?.pixelPerMeter || 50;
+
+    const kind = op.kind || 'door';
+    const isDoor = kind === 'door';
+    const isWindow = kind === 'window';
+    const isOpening = kind === 'opening';
+    const isGarage = kind === 'garage_door';
+
+    const widthM = op.width
+      ? (op.width < 5 ? op.width : op.width / pxPerMeter)
+      : (isGarage ? 2.50 : isDoor ? 0.885 : isWindow ? 1.01 : 0.885);
     const orientation = op.orientation || 'horizontal';
-    const swing = op.swingDirection || 'in-left';
+    const swing = op.swingDirection || 'left_in';
+
+    const titleIcon = isDoor ? '🚪 Tür' : isWindow ? '🪟 Fenster' : isGarage ? '🚗 Garagentor' : '🚪 Wandöffnung';
 
     container.innerHTML = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-        ${isDoor ? '🚪 Tür' : '🪟 Fenster'} Eigenschaften
+        ${titleIcon} Eigenschaften
       </div>
 
       <div class="form-group">
         <label class="form-label">Art der Öffnung</label>
         <select class="form-input" id="propOpeningKind">
-          <option value="door" ${isDoor ? 'selected' : ''}>Tür (mit Aufschlagbogen)</option>
-          <option value="window" ${!isDoor ? 'selected' : ''}>Fenster (Verglasung)</option>
+          <option value="door" ${isDoor ? 'selected' : ''}>🚪 Tür (mit Aufschlagbogen)</option>
+          <option value="window" ${isWindow ? 'selected' : ''}>🪟 Fenster (Verglasung)</option>
+          <option value="opening" ${isOpening ? 'selected' : ''}>🚪 Wandöffnung / Durchgang</option>
+          <option value="garage_door" ${isGarage ? 'selected' : ''}>🚗 Garagentor (Sektionaltor)</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Breite (cm)</label>
-        <input class="form-input" id="propOpeningWidth" type="number" min="30" max="400" step="1" value="${width}">
+        <label class="form-label">Breite (m)</label>
+        <input class="form-input" id="propOpeningWidth" type="number" min="0.30" max="8.00" step="0.005" value="${widthM.toFixed(3)}">
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
-          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="75" style="flex:1;font-size:10px;padding:3px;">75</button>
-          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="88.5" style="flex:1;font-size:10px;padding:3px;">88.5</button>
-          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="101" style="flex:1;font-size:10px;padding:3px;">101</button>
-          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="125" style="flex:1;font-size:10px;padding:3px;">125</button>
-          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="150" style="flex:1;font-size:10px;padding:3px;">150</button>
+          ${isDoor ? `
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;">0.75 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;">0.885 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;">1.25 m</button>
+          ` : isWindow ? `
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;">0.75 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;">1.25 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;">1.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;">2.00 m</button>
+          ` : isGarage ? `
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.500" style="flex:1;font-size:10px;padding:3px;">2.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="3.000" style="flex:1;font-size:10px;padding:3px;">3.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="4.000" style="flex:1;font-size:10px;padding:3px;">4.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="5.000" style="flex:1;font-size:10px;padding:3px;">5.00 m</button>
+          ` : `
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;">0.885 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;">1.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;">2.00 m</button>
+          `}
         </div>
       </div>
 
@@ -2556,10 +2660,10 @@ export class App {
       ` : ''}
 
       <div class="form-group">
-        <label class="form-label">Position Mitte (X, Y)</label>
+        <label class="form-label">Position Mitte (m) [X, Y]</label>
         <div style="display:flex;gap:6px;">
-          <input class="form-input" id="propOpeningCenterX" type="number" step="1" value="${Math.round(op.center.x)}">
-          <input class="form-input" id="propOpeningCenterY" type="number" step="1" value="${Math.round(op.center.y)}">
+          <input class="form-input" id="propOpeningCenterX" type="number" step="0.01" value="${(op.center.x / pxPerMeter).toFixed(2)}">
+          <input class="form-input" id="propOpeningCenterY" type="number" step="0.01" value="${(op.center.y / pxPerMeter).toFixed(2)}">
         </div>
       </div>
 
@@ -2575,10 +2679,13 @@ export class App {
     `;
 
     container.querySelector('#propOpeningKind')?.addEventListener('change', (e) => {
-      const val = (e.target as HTMLSelectElement).value as 'door' | 'window';
+      const val = (e.target as HTMLSelectElement).value as 'door' | 'window' | 'opening' | 'garage_door';
       op.kind = val;
       if (val === 'door' && !op.swingDirection) {
         op.swingDirection = 'left_in';
+      }
+      if (val === 'garage_door' && op.width < 1.5 * pxPerMeter) {
+        op.width = 2.50 * pxPerMeter;
       }
       this.notifyChange();
       this.canvas.render();
@@ -2586,9 +2693,9 @@ export class App {
     });
 
     container.querySelector('#propOpeningWidth')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val) && val > 0) {
-        op.width = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM) && valM > 0) {
+        op.width = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
@@ -2596,10 +2703,10 @@ export class App {
 
     container.querySelectorAll('.btnOpWidthPreset').forEach(btn => {
       btn.addEventListener('click', () => {
-        const w = parseFloat((btn as HTMLElement).dataset.w || '88.5');
-        op.width = w;
+        const valM = parseFloat((btn as HTMLElement).dataset.w || '0.885');
+        op.width = valM * pxPerMeter;
         const input = container.querySelector('#propOpeningWidth') as HTMLInputElement;
-        if (input) input.value = String(w);
+        if (input) input.value = valM.toFixed(3);
         this.notifyChange();
         this.canvas.render();
       });
@@ -2618,18 +2725,18 @@ export class App {
     });
 
     container.querySelector('#propOpeningCenterX')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        op.center.x = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        op.center.x = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
     });
 
     container.querySelector('#propOpeningCenterY')?.addEventListener('input', (e) => {
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      if (!isNaN(val)) {
-        op.center.y = val;
+      const valM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(valM)) {
+        op.center.y = valM * pxPerMeter;
         this.notifyChange();
         this.canvas.render();
       }
@@ -2961,39 +3068,80 @@ export class App {
         ${activePage?.pageType==='cover'?`<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">${t('btnEditCoverPage')}</button>`:''}
         ${activePage?.pageType==='installation' && activePage.floorPlan ? `
           <div style="background:#232731;border:1px solid #4a5568;border-radius:6px;padding:10px;margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:8px;">
-              🏠 Installationsplan – Grundriss
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;">
+                🏠 Installationsplan – Grundriss
+              </div>
+              <span style="font-size:10px;color:#a0aec0;font-weight:bold;">1 : ${activePage.floorPlan.scale?.scaleRatio || 100}</span>
             </div>
+
+            <!-- Floor plan edit mode toggle button -->
+            <button type="button" class="btn" id="btnToggleFloorPlanEditCard" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;font-weight:bold;background:${this.canvas?.floorPlanEditMode ? '#2b6cb0' : '#2d3748'};color:#ffffff;border:1px solid ${this.canvas?.floorPlanEditMode ? '#63b3ed' : '#4a5568'};">
+              ${this.canvas?.floorPlanEditMode ? '🧱 Grundriss-Bearbeitung: AKTIV' : '🧱 Grundriss bearbeiten (Aktivieren)'}
+            </button>
+
+            <!-- Show room labels toggle -->
+            <div style="margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
+                <input type="checkbox" id="chkShowRoomLabels" ${activePage.floorPlan.showRoomLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
+                <span>Raumnamen & Flächen (m²) einblenden</span>
+              </label>
+            </div>
+
             ${activePage.floorPlan.backgroundImage ? `
               <div style="margin-bottom:8px;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;">
                   <input type="checkbox" id="chkShowBlueprintBg" ${activePage.floorPlan.backgroundImage.visible ? 'checked' : ''} style="accent-color:#3182ce;" />
                   <span>Bauplan-Hintergrund</span>
                 </label>
               </div>
               <div style="margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px;">
                   <span>Deckkraft:</span>
                   <span id="txtBlueprintOpacity">${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}%</span>
                 </div>
                 <input type="range" id="rngBlueprintOpacity" min="0" max="100" value="${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}" style="width:100%;accent-color:#3182ce;" />
               </div>
             ` : ''}
-            <div style="display:flex;gap:6px;margin-bottom:6px;">
-              <button type="button" class="btn" id="btnDrawWall" style="flex:1;font-size:11px;padding:4px 8px;background:#2b6cb0;color:#fff;border:none;">
+
+            <!-- Quick Add Elements -->
+            <div style="font-size:10px;font-weight:bold;color:#a0aec0;text-transform:uppercase;margin-bottom:4px;">Elemente einfügen:</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+              <button type="button" class="btn" id="btnDrawWall" style="font-size:11px;padding:4px 6px;background:#2b6cb0;color:#fff;border:none;">
                 🧱 Wand zeichnen
               </button>
-              <button type="button" class="btn" id="btnReimportFloorPlan" style="flex:1;font-size:11px;padding:4px 8px;">
+              <button type="button" class="btn" id="btnAddDoorQuick" style="font-size:11px;padding:4px 6px;">
+                🚪 Tür
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+              <button type="button" class="btn" id="btnAddWindowQuick" style="font-size:11px;padding:4px 6px;">
+                🪟 Fenster
+              </button>
+              <button type="button" class="btn" id="btnAddOpeningQuick" style="font-size:11px;padding:4px 6px;">
+                🚪 Durchgang
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+              <button type="button" class="btn" id="btnAddGarageQuick" style="font-size:11px;padding:4px 6px;">
+                🚗 Garagentor
+              </button>
+              <button type="button" class="btn" id="btnReimportFloorPlan" style="font-size:11px;padding:4px 6px;">
                 🔄 Neu importieren
               </button>
             </div>
-            <div style="display:flex;gap:6px;">
-              <button type="button" class="btn" id="btnAddDoorQuick" style="flex:1;font-size:11px;padding:4px 8px;">
-                🚪 Tür einfügen
-              </button>
-              <button type="button" class="btn" id="btnAddWindowQuick" style="flex:1;font-size:11px;padding:4px 8px;">
-                🪟 Fenster einfügen
-              </button>
+
+            <!-- Scale setting -->
+            <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;margin-top:6px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:10px;color:#a0aec0;">Ziel-Maßstab:</span>
+                <span style="font-size:10px;color:#68d391;">${(activePage.floorPlan.scale?.pixelPerMeter || 50).toFixed(1)} px/m</span>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center;">
+                <span style="font-size:11px;color:#cbd5e0;">1 :</span>
+                <input type="number" id="inpFloorPlanScaleRatio" class="form-input" min="1" max="1000" value="${activePage.floorPlan.scale?.scaleRatio || 100}" style="font-size:11px;padding:2px 6px;width:70px;" />
+                <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;">Übernehmen</button>
+              </div>
             </div>
           </div>
         ` : ''}
@@ -3045,6 +3193,18 @@ export class App {
       `;
 
       document.getElementById('btnEditCoverPage')?.addEventListener('click',()=>{if(activePage)this.openCoverPage(activePage);});
+      document.getElementById('btnToggleFloorPlanEditCard')?.addEventListener('click', () => {
+        this.canvas.setFloorPlanEditMode(!this.canvas.floorPlanEditMode);
+        this.updateFloorPlanEditButtonState();
+        this.renderRightTab();
+      });
+      document.getElementById('chkShowRoomLabels')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          activePage.floorPlan.showRoomLabels = (e.target as HTMLInputElement).checked;
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
       document.getElementById('chkShowBlueprintBg')?.addEventListener('change', (e) => {
         if (activePage?.floorPlan?.backgroundImage) {
           activePage.floorPlan.backgroundImage.visible = (e.target as HTMLInputElement).checked;
@@ -3072,6 +3232,24 @@ export class App {
       });
       document.getElementById('btnAddWindowQuick')?.addEventListener('click', () => {
         this.canvas.addOpening('window');
+      });
+      document.getElementById('btnAddOpeningQuick')?.addEventListener('click', () => {
+        this.canvas.addOpening('opening');
+      });
+      document.getElementById('btnAddGarageQuick')?.addEventListener('click', () => {
+        this.canvas.addOpening('garage_door');
+      });
+      document.getElementById('btnApplyFloorPlanScale')?.addEventListener('click', () => {
+        const inp = document.getElementById('inpFloorPlanScaleRatio') as HTMLInputElement;
+        const newRatio = parseInt(inp?.value || '100', 10);
+        if (newRatio > 0 && activePage?.floorPlan) {
+          activePage.floorPlan.scale.scaleRatio = newRatio;
+          const drawingUnits = getDrawingUnitsPerMm(this.project) || 2;
+          activePage.floorPlan.scale.pixelPerMeter = Math.max(5, (1000 * drawingUnits) / newRatio);
+          this.notifyChange();
+          this.canvas.render();
+          this.renderRightTab();
+        }
       });
       document.getElementById('btnReimportFloorPlan')?.addEventListener('click', () => {
         this.openFloorPlanImport();

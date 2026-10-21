@@ -229,6 +229,7 @@ const floorPlanPage: Page = {
 const fpCanvas = Object.assign(Object.create(CadCanvas.prototype), {
   activePage: floorPlanPage,
   project,
+  floorPlanEditMode: false,
   callbacks: {
     onSelectComponent: () => {},
     onSelectWire: () => {},
@@ -265,5 +266,17 @@ assert.equal(floorPlanPage.floorPlan!.walls.length, 1);
 assert.equal(floorPlanPage.floorPlan!.walls[0].id, 'w2');
 assert.equal(floorPlanPage.floorPlan!.openings.length, 0); // door d1 was removed with w1
 assert.equal(fpCanvas.selectedWallId, null);
+
+// Test floorPlanEditMode toggle and new opening kinds
+assert.equal(fpCanvas.floorPlanEditMode, false, 'Default floorPlanEditMode should be false');
+fpCanvas.setFloorPlanEditMode(true);
+assert.equal(fpCanvas.floorPlanEditMode, true);
+const opPassage = fpCanvas.addOpening('opening', { x: 200, y: 150 });
+assert.equal(opPassage?.kind, 'opening');
+const opGarage = fpCanvas.addOpening('garage_door', { x: 250, y: 150 });
+assert.equal(opGarage?.kind, 'garage_door');
+fpCanvas.setFloorPlanEditMode(false);
+assert.equal(fpCanvas.floorPlanEditMode, false);
+assert.equal(fpCanvas.selectedOpeningId, null, 'Deselect opening when edit mode is toggled off');
 
 console.log('✓ Architectural floor plan walls and openings: selection, addition, editing and deletion verified');

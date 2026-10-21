@@ -79,4 +79,28 @@ assert(selectedSvg.includes('class="floorplan-wall selected"'), 'Must mark selec
 assert(selectedSvg.includes('class="floorplan-door selected"'), 'Must mark selected door');
 assert(selectedSvg.includes('class="floorplan-opening-handle"'), 'Must render opening handle');
 
+// 4. Test door swing right, simple opening, garage door, and showRoomLabels toggle
+const advancedPlan: FloorPlanData = {
+  scale: { scaleRatio: 100, pixelPerMeter: 50 },
+  walls,
+  openings: [
+    { id: 'door_right', kind: 'door', center: { x: 200, y: 100 }, width: 80, orientation: 'horizontal', swingDirection: 'right_in' },
+    { id: 'open1', kind: 'opening', center: { x: 300, y: 100 }, width: 80, orientation: 'horizontal' },
+    { id: 'garage1', kind: 'garage_door', center: { x: 400, y: 100 }, width: 120, orientation: 'horizontal' }
+  ],
+  rooms: [
+    { id: 'r1', name: 'Wohnzimmer', areaM2: 24.5, polygon: [{ x: 100, y: 100 }, { x: 500, y: 100 }, { x: 500, y: 400 }, { x: 100, y: 400 }] }
+  ]
+};
+
+const advSvg = floorPlanToSvg(advancedPlan, { interactive: false });
+assert(advSvg.includes('class="floorplan-opening"'), 'Must render passage opening');
+assert(advSvg.includes('class="floorplan-garage"'), 'Must render garage door');
+assert(advSvg.includes('stroke-dasharray="3,3"'), 'Must render overhead tracks for garage door');
+assert(!advSvg.includes('floorplan-wall-hit'), 'Non-interactive mode must not include wall hit lines');
+
+// Test showRoomLabels: false
+const noRoomLabelsSvg = floorPlanToSvg(advancedPlan, { showRoomLabels: false });
+assert(!noRoomLabelsSvg.includes('Wohnzimmer'), 'Must not render room labels when showRoomLabels is false');
+
 console.log('✓ FloorPlanRenderer tests passed successfully!');

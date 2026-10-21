@@ -87,7 +87,12 @@ export class FloorPlanImportDialog {
                   <option value="50">1 : 50 (Detail)</option>
                   <option value="100" selected>1 : 100 (Standard)</option>
                   <option value="200">1 : 200 (Übersicht)</option>
+                  <option value="custom">Manuell (1 : X)</option>
                 </select>
+                <div id="fpi-custom-scale-wrap" style="display:none;margin-top:6px;align-items:center;gap:6px;">
+                  <span style="font-size:11px;color:#cbd5e0;">1 :</span>
+                  <input type="number" id="fpi-custom-scale" class="form-input" min="1" max="1000" value="75" style="width:80px;padding:3px 6px;font-size:11px;" />
+                </div>
               </div>
               <div class="fpi-field">
                 <label for="fpi-page-num">Blattnummer</label>
@@ -137,6 +142,25 @@ export class FloorPlanImportDialog {
                 Noch kein Grundriss geladen.<br/>
                 <span style="font-size:11px;color:#4a5568;">Lade links ein Bild hoch und starte die KI-Vektorisierung.</span>
               </div>
+            </div>
+
+            <!-- Reference Wall Scale Calibration Panel -->
+            <div id="fpi-calibration-panel" style="display:none;background:#232731;border:1px solid #4a5568;border-radius:6px;padding:8px 12px;">
+              <div style="font-size:11px;font-weight:bold;color:#63b3ed;margin-bottom:6px;">📏 Maßstab über Referenzwand kalibrieren</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+                <div class="fpi-field" style="margin:0;">
+                  <label for="fpi-calib-wall" style="font-size:10px;">Referenzwand:</label>
+                  <select id="fpi-calib-wall" class="form-input" style="font-size:11px;padding:3px 6px;"></select>
+                </div>
+                <div class="fpi-field" style="margin:0;">
+                  <label for="fpi-calib-len" style="font-size:10px;">Wahre Länge (m):</label>
+                  <input type="number" id="fpi-calib-len" class="form-input" step="0.05" min="0.1" max="100" placeholder="z. B. 5.40" style="font-size:11px;padding:3px 6px;" />
+                </div>
+                <button type="button" id="fpi-btn-calibrate" class="btn btn-primary" style="font-size:11px;padding:5px 10px;background:#3182ce;height:28px;">
+                  Kalibrieren
+                </button>
+              </div>
+              <div id="fpi-calib-info" style="font-size:10px;color:#a0aec0;margin-top:4px;"></div>
             </div>
 
             <!-- Detected Rooms Summary -->
@@ -210,6 +234,99 @@ export class FloorPlanImportDialog {
       }
     });
 
+    const scaleSelect = modal.querySelector('#fpi-scale') as HTMLSelectElement;
+    const customScaleWrap = modal.querySelector('#fpi-custom-scale-wrap') as HTMLElement;
+    const customScaleInput = modal.querySelector('#fpi-custom-scale') as HTMLInputElement;
+    const calibPanel = modal.querySelector('#fpi-calibration-panel') as HTMLElement;
+    const calibWallSelect = modal.querySelector('#fpi-calib-wall') as HTMLSelectElement;
+    const calibLenInput = modal.querySelector('#fpi-calib-len') as HTMLInputElement;
+    const btnCalibrate = modal.querySelector('#fpi-btn-calibrate') as HTMLButtonElement;
+    const calibInfo = modal.querySelector('#fpi-calib-info') as HTMLElement;
+
+    scaleSelect.addEventListener('change', () => {
+      customScaleWrap.style.display = scaleSelect.value === 'custom' ? 'flex' : 'none';
+      if (this.currentFloorPlan) {
+        const ratio = scaleSelect.value === 'custom' ? Number(customScaleInput.value) || 100 : Number(scaleSelect.value);
+        this.currentFloorPlan.scale.scaleRatio = ratio;
+        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
+        this.updatePreview(previewContainer);
+        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
+      }
+    });
+
+    customScaleInput.addEventListener('input', () => {
+      const ratio = Number(customScaleInput.value);
+      if (ratio > 0 && this.currentFloorPlan) {
+        this.currentFloorPlan.scale.scaleRatio = ratio;
+        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
+        this.updatePreview(previewContainer);
+        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
+      }
+    });
+
+    // Populate walls for calibration
+    const updateCalibWalls = (plan: FloorPlanData) => {
+      calibWallSelect.innerHTML = '';
+      if (!plan.walls || plan.walls.length === 0) {
+        calibPanel.style.display = 'none';
+        return;
+      }
+      calibPanel.style.display = 'block';
+      const ppm = plan.scale?.pixelPerMeter || 50;
+      plan.walls.forEach((w, idx) => {
+        const lenPx = Math.hypot(w.end.x - w.start.x, w.end.y - w.start.y);
+        const lenM = (lenPx / ppm).toFixed(2);
+        const opt = document.createElement('option');
+        opt.value = w.id;
+        opt.textContent = `Wand ${idx + 1} (${lenM} m, ${w.isExterior ? 'Außen' : 'Innen'})`;
+        calibWallSelect.appendChild(opt);
+      });
+      syncCalibInput();
+    };
+
+    const syncCalibInput = () => {
+      if (!this.currentFloorPlan) return;
+      const wallId = calibWallSelect.value;
+      const wall = this.currentFloorPlan.walls?.find(w => w.id === wallId);
+      if (wall) {
+        const ppm = this.currentFloorPlan.scale?.pixelPerMeter || 50;
+        const lenPx = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+        calibLenInput.value = (lenPx / ppm).toFixed(2);
+      }
+    };
+
+    calibWallSelect.addEventListener('change', syncCalibInput);
+
+    btnCalibrate.addEventListener('click', () => {
+      if (!this.currentFloorPlan) return;
+      const wallId = calibWallSelect.value;
+      const wall = this.currentFloorPlan.walls?.find(w => w.id === wallId);
+      const realM = parseFloat(calibLenInput.value);
+      if (!wall || isNaN(realM) || realM <= 0) return;
+
+      const lenPx = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+      if (lenPx <= 0) return;
+
+      const newPpm = lenPx / realM;
+      const newRatio = Math.max(1, Math.round((1000 * 2) / newPpm));
+      this.currentFloorPlan.scale.pixelPerMeter = newPpm;
+      this.currentFloorPlan.scale.scaleRatio = newRatio;
+      this.currentFloorPlan.scale.referenceDistance = {
+        pointA: wall.start,
+        pointB: wall.end,
+        realLengthMeters: realM
+      };
+
+      scaleSelect.value = 'custom';
+      customScaleWrap.style.display = 'flex';
+      customScaleInput.value = String(newRatio);
+      calibInfo.textContent = `✓ Maßstab kalibriert: 1 : ${newRatio} (${newPpm.toFixed(1)} px/m)`;
+
+      updateCalibWalls(this.currentFloorPlan);
+      this.updatePreview(previewContainer);
+      this.renderRoomsSummary(this.currentFloorPlan, roomsList);
+    });
+
     // AI Start
     btnStartAi.addEventListener('click', async () => {
       if (!this.rawImageDataUrl) {
@@ -223,7 +340,9 @@ export class FloorPlanImportDialog {
       statusText.textContent = t('vectorizingProgress');
 
       const hint = (modal.querySelector('#fpi-hint') as HTMLTextAreaElement).value.trim();
-      const scaleVal = Number((modal.querySelector('#fpi-scale') as HTMLSelectElement).value);
+      const scaleVal = scaleSelect.value === 'custom'
+        ? (Number(customScaleInput.value) || 100)
+        : Number(scaleSelect.value);
 
       try {
         progressFill.style.width = '45%';
@@ -240,6 +359,7 @@ export class FloorPlanImportDialog {
         });
 
         plan.scale.scaleRatio = scaleVal;
+        plan.scale.pixelPerMeter = Math.round((1000 * 2) / scaleVal);
         this.currentFloorPlan = plan;
         progressFill.style.width = '100%';
         statusText.style.color = '#68d391';
@@ -249,6 +369,7 @@ export class FloorPlanImportDialog {
         opacityControl.style.display = 'flex';
         this.updatePreview(previewContainer);
         this.renderRoomsSummary(plan, roomsList);
+        updateCalibWalls(plan);
 
         btnCreateSheet.disabled = false;
       } catch (err: any) {
