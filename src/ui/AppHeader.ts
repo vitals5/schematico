@@ -23,6 +23,7 @@ const paths:Record<string,string>={
   left:'M3 4h18v16H3z M9 4v16',
   right:'M3 4h18v16H3z M15 4v16',
   wall:'M3 5h18v14H3z M3 12h18 M12 5v7 M7 12v7 M17 12v7',
+  text:'M4 7V4h16v3 M12 4v16 M9 20h6',
   menu:'M4 6h16 M4 12h16 M4 18h16'
 };
 export const headerIcon=(name:string)=>`<svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[name]??paths.add}"/></svg>`;
@@ -51,7 +52,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuRotate',t('menuRotate'),t('keyR'))+opt('menuDelete',t('menuDelete'),t('keyDel'))+separator+
           opt('menuGroup',t('menuGroup'),t('keyCtrlG'))+opt('menuUngroup',t('menuUngroup'),t('keyCtrlShiftG')),'menu-item')}
         ${menu('menuInsertTrigger',t('menuInsert'),
-          opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
+          opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertText',t('menuInsertText'),'T')+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
           heading(t('headingMacros'))+opt('menuInsertMacro',t('menuInsertMacro'))+opt('menuInsertPageMacro',t('menuInsertPageMacro'))+separator+
           heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuImportFloorPlan',t('menuImportFloorPlan'))+opt('menuImportFloorPlanPage',t('menuImportFloorPlanPage'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
         ${menu('menuViewTrigger',t('menuView'),
@@ -74,11 +75,11 @@ export function renderAppHeader(projectName:string):string {
         </div>
         <div class="toolbar-group history-tools" role="group" aria-label="${t('menuUndo')}">${tool('btnUndo',t('toolUndo'),'undo')}${tool('btnRedo',t('toolRedo'),'redo')}</div>
         <div class="toolbar-group draw-tools" role="group" aria-label="${t('toolWire')}">
-          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}${tool('btnFloorPlanEdit','Grundriss bearbeiten','wall','Grundriss')}
+          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}${tool('btnToolText',t('toolText'),'text',t('toolTextLabel'))}${tool('btnFloorPlanEdit','Grundriss bearbeiten','wall','Grundriss')}
           <div class="insert-split">
             ${tool('btnOpenSymbolSelection',t('toolInsertSym'),'add',t('toolInsertSymLabel'),'btn-primary')}
             ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">${t('toolMoreInsert')}</span>`,
-              opt('btnOpenConnections',t('menuInsertConnections'))+opt('btnDeviceBox',t('menuInsertBox'))+opt('btnCableDefinition',t('menuInsertCable'))+opt('btnAddImage',t('menuInsertImage'))+separator+
+              opt('btnOpenConnections',t('menuInsertConnections'))+opt('btnInsertText',t('menuInsertText'))+opt('btnDeviceBox',t('menuInsertBox'))+opt('btnCableDefinition',t('menuInsertCable'))+opt('btnAddImage',t('menuInsertImage'))+separator+
               proxy('menuInsertMacro',t('menuInsertMacro'))+proxy('menuInsertPageMacro',t('menuInsertPageMacro')),'insert-menu')}
           </div>
         </div>

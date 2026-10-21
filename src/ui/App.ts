@@ -21,7 +21,7 @@ import { cableCrossings } from '../model/CableDefinition';
 // src/ui/App.ts
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
 
-import { Project, Page, PlacedComponent, Wire, CableDefinition, WallSegment, WallOpening } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening, RoomDefinition } from '../model/types';
 import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm, getComponentSymbolLibrary } from '../model/symbols';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
@@ -52,8 +52,10 @@ export class App {
   private selectedComponent: PlacedComponent | null = null;
   private selectedWire: Wire | null = null;
   private selectedCable: CableDefinition | null = null;
+  private selectedText: PageText | null = null;
   private selectedWall: WallSegment | null = null;
   private selectedOpening: WallOpening | null = null;
+  private selectedRoom: RoomDefinition | null = null;
   private activeLeftTab: 'pages' | 'symbols' | 'connections' | 'macros' | 'terminals' | 'bom' | 'parts' = 'pages';
   private symbolCategoryFilter: string = 'all';
   private connectionCategoryFilter: string = 'all';
@@ -305,21 +307,35 @@ export class App {
 
     this.canvas = new CadCanvas(container, this.project, {
       onSelectComponent: (comp) => {
-        this.selectedCable=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedComponent = comp;
         if (comp) this.selectedWire = null;
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectWire: (wire) => {
-        this.selectedCable=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedWire = wire;
         if (wire) this.selectedComponent = null;
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
+      onSelectText: text => {
+        this.selectedText = text;
+        if (text) {
+          this.selectedComponent = null;
+          this.selectedWire = null;
+          this.selectedCable = null;
+          this.selectedWall = null;
+          this.selectedOpening = null;
+          this.selectedRoom = null;
+          if (this.isRightCollapsed) this.setRightPanelCollapsed(false);
+        }
+        this.updateFloatingSelectionBar();
+        this.renderRightTab();
+      },
       onSelectCable: cable => {
-        this.selectedCable=cable;this.selectedWall=null;this.selectedOpening=null;
+        this.selectedCable=cable;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;
         if(cable){this.selectedComponent=null;this.selectedWire=null;}
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
@@ -329,7 +345,9 @@ export class App {
           this.selectedComponent = null;
           this.selectedWire = null;
           this.selectedCable = null;
+          this.selectedText = null;
           this.selectedOpening = null;
+          this.selectedRoom = null;
         }
         this.updateFloatingSelectionBar();
         this.renderRightTab();
@@ -340,12 +358,33 @@ export class App {
           this.selectedComponent = null;
           this.selectedWire = null;
           this.selectedCable = null;
+          this.selectedText = null;
           this.selectedWall = null;
+          this.selectedRoom = null;
+        }
+        this.updateFloatingSelectionBar();
+        this.renderRightTab();
+      },
+      onSelectRoom: room => {
+        this.selectedRoom = room;
+        if (room) {
+          this.selectedComponent = null;
+          this.selectedWire = null;
+          this.selectedCable = null;
+          this.selectedText = null;
+          this.selectedWall = null;
+          this.selectedOpening = null;
         }
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectionChanged: selection => {
+        if (selection.textIds?.length === 1) {
+          const page = this.project.pages.find(p => p.id === this.project.activePageId);
+          this.selectedText = page?.texts?.find(t => t.id === selection.textIds![0]) ?? null;
+        } else if (selectionCount(selection) === 0 || !selection.textIds?.length) {
+          this.selectedText = null;
+        }
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
       onOpenSelectionProperties: () => this.openSelectionProperties(),
@@ -746,6 +785,13 @@ export class App {
       this.updateToolButtons('btnToolWire');
     });
 
+    document.getElementById('btnToolText')?.addEventListener('click', () => {
+      this.canvas.setMode('place_text');
+      this.updateToolButtons('btnToolText');
+      const status = document.getElementById('statusLeft');
+      if (status) status.textContent = 'Text platzieren: Position auf der Seite anklicken. Esc bricht ab.';
+    });
+
     document.getElementById('btnToolRotate')?.addEventListener('click', () => {
       this.canvas.rotateSelected();
     });
@@ -875,6 +921,18 @@ export class App {
     });
 
     bindMenuOpt('menuInsertCable', () => this.startCableDefinition());
+    bindMenuOpt('menuInsertText', () => {
+      this.canvas.setMode('place_text');
+      this.updateToolButtons('btnToolText');
+      const status = document.getElementById('statusLeft');
+      if (status) status.textContent = 'Text platzieren: Position auf der Seite anklicken. Esc bricht ab.';
+    });
+    bindMenuOpt('btnInsertText', () => {
+      this.canvas.setMode('place_text');
+      this.updateToolButtons('btnToolText');
+      const status = document.getElementById('statusLeft');
+      if (status) status.textContent = 'Text platzieren: Position auf der Seite anklicken. Esc bricht ab.';
+    });
     bindMenuOpt('menuSettings', () => this.openSettings());
     bindMenuOpt('menuInsertConnections', () => this.openConnectionSelection());
     bindMenuOpt('menuSave', () => this.saveProjectJson());
@@ -990,7 +1048,7 @@ export class App {
   }
 
   private updateToolButtons(activeId: string): void {
-    ['btnToolSelect', 'btnToolWire', 'btnCableDefinition','btnDeviceBox'].forEach(id => {
+    ['btnToolSelect', 'btnToolWire', 'btnToolText', 'btnCableDefinition','btnDeviceBox'].forEach(id => {
       document.getElementById(id)?.classList.toggle('active', id === activeId);
     });
   }
@@ -1225,10 +1283,12 @@ export class App {
       const lang = (modal.querySelector('#projSettingLanguage') as HTMLSelectElement).value as 'de' | 'en';
       const side = (modal.querySelector('#projInterruptionSide') as HTMLSelectElement).value as 'source' | 'before' | 'after';
 
-      if (name) this.project.name = name;
-      this.project.description = desc;
-      this.project.company = company;
-      this.project.author = author;
+      this.updateProjectProperties({
+        name: name || undefined,
+        description: desc,
+        company,
+        author
+      });
       if (standard) this.project.standard = standard;
       this.project.settings = { ...this.project.settings, interruptionLabelSide: side };
 
@@ -1238,7 +1298,7 @@ export class App {
         if (!this.project.plotFrameTemplate || this.project.plotFrameTemplate.id === 'default-a3') {
           this.project.plotFrameTemplate = defaultPlotFrame(lang);
         }
-        if (!this.project.coverPageTemplate || this.project.coverPageTemplate.id === 'default-f26') {
+        if (!this.project.coverPageTemplate || this.project.coverPageTemplate.id === 'default-f26' || this.project.coverPageTemplate.id === 'default-f01') {
           this.project.coverPageTemplate = defaultCoverPageTemplate(lang);
         }
         for (const p of this.project.pages) {
@@ -1400,10 +1460,6 @@ export class App {
         <button class="btn" id="btnAddCoverPage" style="flex: 1; padding: 4px 6px; font-size: 11px;">${t('btnNewCover')}</button>
         <button class="btn" id="btnImportFloorPlan" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="${t('importFloorPlanTitle')}">📐 Grundriss</button>
       </div>
-      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-        <button class="btn" id="btnImportFloorPlanPageDirect" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="Grundriss-Seite importieren (.floorplan.json, .ems)">📥 Grundriss import</button>
-        <button class="btn" id="btnExportFloorPlanPageDirect" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="Aktuelle Grundriss-Seite exportieren (.floorplan.json)">📤 Grundriss export</button>
-      </div>
 
       <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
         <span style="font-size: 11px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${activePage ? `${sheetWord} ${escapeSvg(activePage.pageNumber)}: ${escapeSvg(activePage.title)}` : t('activePage')}">
@@ -1501,8 +1557,6 @@ export class App {
     });
     document.getElementById('btnAddCoverPage')?.addEventListener('click',()=>this.addCoverPage());
     document.getElementById('btnImportFloorPlan')?.addEventListener('click', () => this.openFloorPlanImport());
-    document.getElementById('btnImportFloorPlanPageDirect')?.addEventListener('click', () => this.triggerImportFloorPlanPage());
-    document.getElementById('btnExportFloorPlanPageDirect')?.addEventListener('click', () => this.exportFloorPlanPage());
   }
 
   public updateTotalSheets(): void {
@@ -1512,6 +1566,31 @@ export class App {
         page.plotFrame.titleBlock.totalSheets = total;
       }
     }
+  }
+
+  public updateProjectProperties(updates: { name?: string; company?: string; author?: string; description?: string }): void {
+    if (updates.name !== undefined) {
+      this.project.name = updates.name;
+      const projNameEl = document.getElementById('currentProjectName');
+      if (projNameEl) {
+        projNameEl.textContent = updates.name;
+        projNameEl.title = updates.name;
+      }
+    }
+    if (updates.company !== undefined) this.project.company = updates.company;
+    if (updates.author !== undefined) this.project.author = updates.author;
+    if (updates.description !== undefined) this.project.description = updates.description;
+
+    for (const page of this.project.pages) {
+      if (page.plotFrame?.titleBlock) {
+        if (updates.name !== undefined) page.plotFrame.titleBlock.projectTitle = updates.name;
+        if (updates.company !== undefined) page.plotFrame.titleBlock.company = updates.company;
+        if (updates.author !== undefined) page.plotFrame.titleBlock.author = updates.author;
+      }
+    }
+
+    this.notifyChange();
+    this.canvas.render();
   }
 
   public movePage(pageId: string, direction: 'up' | 'down'): void {
@@ -1596,7 +1675,9 @@ export class App {
         this.notifyChange();
         this.updateUI();
       },
-      onOpenSettings: () => this.openSettings()
+      onOpenSettings: () => this.openSettings(),
+      onImportFloorPlanPage: () => this.triggerImportFloorPlanPage(),
+      onImportFloorPlanPageFromFile: (file: File) => this.importFloorPlanPageFromFile(file)
     }).show();
   }
 
@@ -2100,6 +2181,104 @@ export class App {
     }
   }
 
+  public rescaleFloorPlanToScale(targetRatio: number): void {
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    if (!page?.floorPlan) return;
+    const fp = page.floorPlan;
+    const currentPpm = fp.scale?.pixelPerMeter || 50;
+    if (currentPpm <= 0 || targetRatio <= 0) return;
+
+    const drawingUnits = getDrawingUnitsPerMm(this.project) || 2;
+    const targetPpm = Math.max(5, (1000 * drawingUnits) / targetRatio);
+    const factor = targetPpm / currentPpm;
+    if (!isFinite(factor) || factor <= 0 || Math.abs(factor - 1) < 1e-4) return;
+
+    // Calculate center of current elements
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasBounds = false;
+
+    if (fp.walls?.length) {
+      for (const w of fp.walls) {
+        minX = Math.min(minX, w.start.x, w.end.x);
+        maxX = Math.max(maxX, w.start.x, w.end.x);
+        minY = Math.min(minY, w.start.y, w.end.y);
+        maxY = Math.max(maxY, w.start.y, w.end.y);
+        hasBounds = true;
+      }
+    }
+    if (fp.backgroundImage?.bounds) {
+      const b = fp.backgroundImage.bounds;
+      minX = Math.min(minX, b.x);
+      maxX = Math.max(maxX, b.x + b.width);
+      minY = Math.min(minY, b.y);
+      maxY = Math.max(maxY, b.y + b.height);
+      hasBounds = true;
+    }
+
+    const cx = hasBounds ? Math.round((minX + maxX) / 2) : 400;
+    const cy = hasBounds ? Math.round((minY + maxY) / 2) : 300;
+
+    // 1. Rescale walls
+    if (fp.walls) {
+      for (const w of fp.walls) {
+        w.start.x = Math.round(cx + (w.start.x - cx) * factor);
+        w.start.y = Math.round(cy + (w.start.y - cy) * factor);
+        w.end.x = Math.round(cx + (w.end.x - cx) * factor);
+        w.end.y = Math.round(cy + (w.end.y - cy) * factor);
+        if (w.thickness && w.thickness > 2) {
+          w.thickness = Math.max(1, Math.round(w.thickness * factor));
+        }
+      }
+    }
+
+    // 2. Rescale background image
+    if (fp.backgroundImage?.bounds) {
+      const b = fp.backgroundImage.bounds;
+      b.x = Math.round(cx + (b.x - cx) * factor);
+      b.y = Math.round(cy + (b.y - cy) * factor);
+      b.width = Math.max(10, Math.round(b.width * factor));
+      b.height = Math.max(10, Math.round(b.height * factor));
+    }
+
+    // 3. Rescale room polygons
+    if (fp.rooms) {
+      for (const r of fp.rooms) {
+        if (r.polygon) {
+          for (const pt of r.polygon) {
+            pt.x = Math.round(cx + (pt.x - cx) * factor);
+            pt.y = Math.round(cy + (pt.y - cy) * factor);
+          }
+        }
+      }
+    }
+
+    // 4. Rescale placed components
+    for (const comp of page.components) {
+      comp.x = Math.round(cx + (comp.x - cx) * factor);
+      comp.y = Math.round(cy + (comp.y - cy) * factor);
+    }
+
+    // 5. Update scale metadata
+    fp.scale.pixelPerMeter = targetPpm;
+    fp.scale.scaleRatio = targetRatio;
+    if (fp.scale.referenceDistance) {
+      const rd = fp.scale.referenceDistance;
+      rd.pointA.x = Math.round(cx + (rd.pointA.x - cx) * factor);
+      rd.pointA.y = Math.round(cy + (rd.pointA.y - cy) * factor);
+      rd.pointB.x = Math.round(cx + (rd.pointB.x - cx) * factor);
+      rd.pointB.y = Math.round(cy + (rd.pointB.y - cy) * factor);
+    }
+
+    this.notifyChange();
+    this.canvas.render();
+    this.renderRightTab();
+
+    const status = document.getElementById('statusLeft');
+    if (status) {
+      status.textContent = `✓ Grundriss & Vorlage auf 1 : ${targetRatio} skaliert (${targetPpm.toFixed(1)} px/m).`;
+    }
+  }
+
   public triggerImportFloorPlanPage(): void {
     const input = document.createElement('input');
     input.type = 'file';
@@ -2546,6 +2725,60 @@ export class App {
     container.querySelector('#cableDelete')?.addEventListener('click',()=>this.canvas.deleteSelected());
   }
 
+  private renderRoomProperties(container: HTMLElement, room: RoomDefinition): void {
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    container.innerHTML = `
+      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>🏠 Raum-Eigenschaften</span>
+        <button class="btn btn-sm" id="btnDeselectRoom" style="font-size:10px;padding:2px 6px;">✕ Schließen</button>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label" style="font-size:11px;font-weight:600;margin-bottom:4px;display:block;">Raumname:</label>
+        <input type="text" class="form-input" id="propRoomName" value="${escapeSvg(room.name)}" style="width:100%;font-size:12px;padding:6px 8px;" placeholder="z.B. Wohnzimmer, Küche, Bad..." />
+      </div>
+
+      ${room.areaM2 ? `
+        <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">
+          Fläche: <strong style="color:#e2e8f0;">${room.areaM2.toFixed(1)} m²</strong>
+        </div>
+      ` : ''}
+
+      <div style="display:flex;gap:6px;margin-top:16px;">
+        <button class="btn btn-primary" id="btnApplyRoomName" style="flex:1;font-size:11px;padding:6px 8px;background:#3182ce;">Übernehmen</button>
+        <button class="btn btn-danger" id="btnDeleteRoom" style="padding:6px 8px;color:#fc8181;border-color:rgba(229,62,62,0.4);" title="Raum löschen">🗑️</button>
+      </div>
+    `;
+
+    const inp = container.querySelector('#propRoomName') as HTMLInputElement;
+    const saveName = () => {
+      if (inp) {
+        room.name = inp.value.trim() || 'Raum';
+        this.notifyChange();
+        this.canvas.render();
+      }
+    };
+
+    inp?.addEventListener('input', saveName);
+    inp?.addEventListener('change', saveName);
+    container.querySelector('#btnApplyRoomName')?.addEventListener('click', saveName);
+    container.querySelector('#btnDeselectRoom')?.addEventListener('click', () => {
+      this.selectedRoom = null;
+      if (this.canvas) this.canvas.selectedRoomId = null;
+      this.renderRightTab();
+    });
+    container.querySelector('#btnDeleteRoom')?.addEventListener('click', () => {
+      if (page?.floorPlan?.rooms) {
+        page.floorPlan.rooms = page.floorPlan.rooms.filter(r => r.id !== room.id);
+        this.selectedRoom = null;
+        if (this.canvas) this.canvas.selectedRoomId = null;
+        this.notifyChange();
+        this.canvas.render();
+        this.renderRightTab();
+      }
+    });
+  }
+
   private renderWallProperties(container: HTMLElement, wall: WallSegment): void {
     const page = this.project.pages.find(p => p.id === this.project.activePageId);
     const scale = page?.floorPlan?.scale;
@@ -2630,6 +2863,14 @@ export class App {
           🎯 Andere Wand per Klick auswählen
         </button>
         <div id="txtCalibWallFeedback" style="font-size:10px;color:#68d391;margin-top:4px;"></div>
+        <div id="boxCalibScalePresets" style="margin-top:8px;padding-top:6px;border-top:1px dashed #4a5568;">
+          <div style="font-size:10px;color:#a0aec0;margin-bottom:4px;">Auf Norm-Maßstab skalieren (A3):</div>
+          <div style="display:flex;gap:4px;">
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:50 skalieren">1:50</button>
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:75 skalieren">1:75</button>
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:100 skalieren">1:100</button>
+          </div>
+        </div>
       </div>
 
       <div style="font-size:10px;font-weight:bold;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Öffnung auf dieser Wand:</div>
@@ -2755,6 +2996,13 @@ export class App {
         this.canvas.render();
         this.renderWallProperties(container, wall);
       }
+    });
+
+    container.querySelectorAll('.btn-rescale-wall-preset').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const sc = Number((e.currentTarget as HTMLElement).dataset.scale);
+        if (sc > 0) this.rescaleFloorPlanToScale(sc);
+      });
     });
 
     container.querySelector('#btnWallCalibPickOther')?.addEventListener('click', () => {
@@ -2961,6 +3209,204 @@ export class App {
     });
   }
 
+  private renderTextProperties(container: HTMLElement, text: PageText): void {
+    const units = getDrawingUnitsPerMm(this.project);
+    const colorHex = (text.fontColor && /^#[0-9a-fA-F]{6}$/.test(text.fontColor)) ? text.fontColor : '#cbd5e0';
+
+    container.innerHTML = `
+      <div class="properties-panel text-properties" style="padding: 10px 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <h3 style="margin: 0; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: rgba(99, 179, 237, 0.2); color: #63b3ed; border-radius: 4px; font-weight: bold; font-size: 13px;">T</span>
+            ${t('textHeading')}
+          </h3>
+          <button type="button" class="btn btn-sm" id="btnDeleteText" title="${t('textDelete')}" style="color: var(--danger); border-color: rgba(229,62,62,0.4); padding: 3px 8px; font-size: 11px;">
+            🗑️ ${t('textDelete')}
+          </button>
+        </div>
+
+        <!-- Text Content -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: 500; color: var(--text-muted);">${t('textContent')}:</label>
+          <textarea id="propTextContent" class="form-input" rows="4" style="width: 100%; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.4; box-sizing: border-box;">${escapeSvg(text.text || '')}</textarea>
+        </div>
+
+        <!-- Typography: Size, Bold, Italic -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">${t('textFontSize')}:</label>
+            <input type="number" id="propTextFontSize" class="form-input" min="3" max="100" step="0.5" value="${Number((text.fontSize || 9).toFixed(1))}" style="width: 100%; box-sizing: border-box;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">Format:</label>
+            <div style="display: flex; gap: 4px;">
+              <button type="button" id="propTextBold" class="btn ${text.fontWeight === 'bold' ? 'btn-primary active' : ''}" style="flex: 1; font-weight: bold; padding: 4px 6px;" title="${t('textBold')}">B</button>
+              <button type="button" id="propTextItalic" class="btn ${text.fontStyle === 'italic' ? 'btn-primary active' : ''}" style="flex: 1; font-style: italic; font-family: serif; padding: 4px 6px;" title="${t('textItalic')}">I</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alignment & Rotation -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">${t('textAlign')}:</label>
+            <div style="display: flex; gap: 2px;">
+              <button type="button" class="btn btn-align ${(!text.align || text.align === 'start' || text.align === 'left') ? 'btn-primary active' : ''}" data-align="start" style="flex: 1; padding: 4px 2px;" title="${t('textAlignLeft')}">⇤</button>
+              <button type="button" class="btn btn-align ${(text.align === 'center' || text.align === 'middle') ? 'btn-primary active' : ''}" data-align="center" style="flex: 1; padding: 4px 2px;" title="${t('textAlignCenter')}">↔</button>
+              <button type="button" class="btn btn-align ${(text.align === 'end' || text.align === 'right') ? 'btn-primary active' : ''}" data-align="end" style="flex: 1; padding: 4px 2px;" title="${t('textAlignRight')}">⇥</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">${t('textRotation')}:</label>
+            <select id="propTextRotation" class="form-input" style="width: 100%; box-sizing: border-box;">
+              <option value="0" ${(text.rotation || 0) === 0 ? 'selected' : ''}>0°</option>
+              <option value="90" ${text.rotation === 90 ? 'selected' : ''}>90°</option>
+              <option value="180" ${text.rotation === 180 ? 'selected' : ''}>180°</option>
+              <option value="270" ${text.rotation === 270 ? 'selected' : ''}>270°</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Text Color -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">${t('textFontColor')}:</label>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input type="color" id="propTextColorPicker" value="${colorHex}" style="width: 32px; height: 26px; padding: 1px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; background: transparent;">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              ${['#cbd5e0', '#63b3ed', '#0000ff', '#ffffff', '#68d391', '#f6e05e', '#f56565', '#a0aec0'].map(c => `
+                <button type="button" class="btn-color-swatch" data-color="${c}" style="width: 20px; height: 20px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); background: ${c}; cursor: pointer; padding: 0;" title="${c}"></button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Position X / Y -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">X (mm):</label>
+            <input type="number" id="propTextX" class="form-input" step="any" value="${Number((text.x / units).toFixed(2))}" style="width: 100%; box-sizing: border-box;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display: block; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">Y (mm):</label>
+            <input type="number" id="propTextY" class="form-input" step="any" value="${Number((text.y / units).toFixed(2))}" style="width: 100%; box-sizing: border-box;">
+          </div>
+        </div>
+
+        <!-- Actions: Duplicate -->
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn" id="btnDuplicateText" style="flex: 1; padding: 6px 10px; font-size: 12px;">
+            📑 ${t('textDuplicate')}
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Event listeners
+    container.querySelector('#propTextContent')?.addEventListener('input', (e) => {
+      text.text = (e.target as HTMLTextAreaElement).value;
+      this.notifyChange();
+      this.canvas.render();
+    });
+
+    container.querySelector('#propTextFontSize')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val) && val > 0) {
+        text.fontSize = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propTextBold')?.addEventListener('click', () => {
+      text.fontWeight = text.fontWeight === 'bold' ? 'normal' : 'bold';
+      this.notifyChange();
+      this.canvas.render();
+      this.renderRightTab();
+    });
+
+    container.querySelector('#propTextItalic')?.addEventListener('click', () => {
+      text.fontStyle = text.fontStyle === 'italic' ? 'normal' : 'italic';
+      this.notifyChange();
+      this.canvas.render();
+      this.renderRightTab();
+    });
+
+    container.querySelectorAll('.btn-align').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const align = target.dataset.align as any;
+        text.align = align;
+        this.notifyChange();
+        this.canvas.render();
+        this.renderRightTab();
+      });
+    });
+
+    container.querySelector('#propTextRotation')?.addEventListener('change', (e) => {
+      text.rotation = parseInt((e.target as HTMLSelectElement).value, 10) as any;
+      this.notifyChange();
+      this.canvas.render();
+    });
+
+    container.querySelector('#propTextColorPicker')?.addEventListener('input', (e) => {
+      text.fontColor = (e.target as HTMLInputElement).value;
+      this.notifyChange();
+      this.canvas.render();
+    });
+
+    container.querySelectorAll('.btn-color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', (e) => {
+        const color = (e.currentTarget as HTMLElement).dataset.color;
+        if (color) {
+          text.fontColor = color;
+          this.notifyChange();
+          this.canvas.render();
+          this.renderRightTab();
+        }
+      });
+    });
+
+    container.querySelector('#propTextX')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        text.x = val * units;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propTextY')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        text.y = val * units;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#btnDuplicateText')?.addEventListener('click', () => {
+      const page = this.project.pages.find(p => p.id === this.project.activePageId);
+      if (page) {
+        const dup: PageText = {
+          ...JSON.parse(JSON.stringify(text)),
+          id: 'text_' + Math.random().toString(36).substring(2, 9),
+          x: text.x + 20,
+          y: text.y + 20
+        };
+        (page.texts ??= []).push(dup);
+        this.canvas.selectText(dup);
+        this.notifyChange();
+        this.renderRightTab();
+      }
+    });
+
+    container.querySelector('#btnDeleteText')?.addEventListener('click', () => {
+      this.canvas.deleteSelected();
+      this.selectedText = null;
+      this.renderRightTab();
+    });
+  }
+
   private renderPropertiesTab(container: HTMLElement): void {
     if (this.selectedWall) {
       this.renderWallProperties(container, this.selectedWall);
@@ -2969,6 +3415,23 @@ export class App {
     if (this.selectedOpening) {
       this.renderOpeningProperties(container, this.selectedOpening);
       return;
+    }
+    if (this.selectedRoom) {
+      this.renderRoomProperties(container, this.selectedRoom);
+      return;
+    }
+    if (this.selectedText) {
+      this.renderTextProperties(container, this.selectedText);
+      return;
+    }
+    if (this.canvas?.selectedTextId) {
+      const page = this.project.pages.find(p => p.id === this.project.activePageId);
+      const text = page?.texts?.find(t => t.id === this.canvas.selectedTextId);
+      if (text) {
+        this.selectedText = text;
+        this.renderTextProperties(container, text);
+        return;
+      }
     }
     if(this.canvas?.selectedBoxId){
       const page=this.project.pages.find(p=>p.id===this.project.activePageId),box=page?.boxes?.find(c=>c.id===this.canvas.selectedBoxId);
@@ -3448,17 +3911,43 @@ export class App {
               </button>
             </div>
 
-            <!-- Scale setting -->
+            <!-- Scale setting with A3 Norm presets -->
             <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;margin-top:6px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <span style="font-size:10px;color:#a0aec0;">Ziel-Maßstab:</span>
-                <span style="font-size:10px;color:#68d391;">${(activePage.floorPlan.scale?.pixelPerMeter || 50).toFixed(1)} px/m</span>
+                <span style="font-size:10px;color:#a0aec0;">Ziel-Maßstab (A3):</span>
+                <span style="font-size:10px;color:#68d391;">1 : ${activePage.floorPlan.scale?.scaleRatio || 100} (${(activePage.floorPlan.scale?.pixelPerMeter || 50).toFixed(1)} px/m)</span>
+              </div>
+              <div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 50 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:50 Detailmaßstab skalieren">1:50</button>
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 75 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:75 Maßstab skalieren">1:75</button>
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 100 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:100 Gesamtgrundriss skalieren">1:100</button>
               </div>
               <div style="display:flex;gap:4px;align-items:center;">
                 <span style="font-size:11px;color:#cbd5e0;">1 :</span>
                 <input type="number" id="inpFloorPlanScaleRatio" class="form-input" min="1" max="1000" value="${activePage.floorPlan.scale?.scaleRatio || 100}" style="font-size:11px;padding:2px 6px;width:70px;" />
-                <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;">Übernehmen</button>
+                <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;" title="Grundriss & Vorlage auf diesen Maßstab skalieren">Skalieren</button>
               </div>
+            </div>
+
+            <!-- Rooms list -->
+            <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;margin-top:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:10px;font-weight:bold;color:#a0aec0;text-transform:uppercase;">Räume (${activePage.floorPlan.rooms?.length || 0}):</span>
+                <button type="button" class="btn btn-sm" id="btnAddRoomQuick" style="font-size:10px;padding:2px 6px;background:#2d3748;color:#cbd5e0;">+ Raum</button>
+              </div>
+              ${(!activePage.floorPlan.rooms || activePage.floorPlan.rooms.length === 0) ? `
+                <div style="font-size:10px;color:var(--text-muted);font-style:italic;">Keine Räume eingetragen.</div>
+              ` : `
+                <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+                  ${activePage.floorPlan.rooms.map(room => `
+                    <div style="display:flex;align-items:center;gap:4px;background:#2d3748;border:1px solid ${this.selectedRoom?.id === room.id ? '#63b3ed' : '#4a5568'};border-radius:3px;padding:2px 4px;">
+                      <span style="font-size:11px;">🏠</span>
+                      <input type="text" class="form-input inp-edit-room-name" data-room-id="${room.id}" value="${escapeSvg(room.name)}" style="flex:1;font-size:11px;padding:2px 4px;background:transparent;border:none;color:#e2e8f0;" title="Raumnamen bearbeiten" />
+                      <button type="button" class="btn btn-sm btn-del-room" data-room-id="${room.id}" title="Raum entfernen" style="padding:1px 5px;font-size:10px;color:#fc8181;background:transparent;border:none;">✕</button>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
             </div>
           </div>
         ` : ''}
@@ -3609,9 +4098,50 @@ export class App {
         const inp = document.getElementById('inpFloorPlanScaleRatio') as HTMLInputElement;
         const newRatio = parseInt(inp?.value || '100', 10);
         if (newRatio > 0 && activePage?.floorPlan) {
-          activePage.floorPlan.scale.scaleRatio = newRatio;
-          const drawingUnits = getDrawingUnitsPerMm(this.project) || 2;
-          activePage.floorPlan.scale.pixelPerMeter = Math.max(5, (1000 * drawingUnits) / newRatio);
+          this.rescaleFloorPlanToScale(newRatio);
+        }
+      });
+      container.querySelectorAll('.btn-scale-preset').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const sc = Number((e.currentTarget as HTMLElement).dataset.scale);
+          if (sc > 0) this.rescaleFloorPlanToScale(sc);
+        });
+      });
+      container.querySelectorAll('.inp-edit-room-name').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+          const rId = (e.currentTarget as HTMLElement).dataset.roomId;
+          const r = activePage?.floorPlan?.rooms?.find(rm => rm.id === rId);
+          if (r) {
+            r.name = (e.target as HTMLInputElement).value;
+            this.notifyChange();
+            this.canvas.render();
+          }
+        });
+      });
+      container.querySelectorAll('.btn-del-room').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const rId = (e.currentTarget as HTMLElement).dataset.roomId;
+          if (activePage?.floorPlan?.rooms) {
+            activePage.floorPlan.rooms = activePage.floorPlan.rooms.filter(rm => rm.id !== rId);
+            if (this.selectedRoom?.id === rId) this.selectedRoom = null;
+            if (this.canvas) this.canvas.selectedRoomId = null;
+            this.notifyChange();
+            this.canvas.render();
+            this.renderRightTab();
+          }
+        });
+      });
+      document.getElementById('btnAddRoomQuick')?.addEventListener('click', () => {
+        if (activePage?.floorPlan) {
+          if (!activePage.floorPlan.rooms) activePage.floorPlan.rooms = [];
+          const newRoom: RoomDefinition = {
+            id: 'room_' + Math.random().toString(36).substring(2, 7),
+            name: 'Neuer Raum',
+            polygon: []
+          };
+          activePage.floorPlan.rooms.push(newRoom);
+          this.selectedRoom = newRoom;
+          if (this.canvas) this.canvas.selectedRoomId = newRoom.id;
           this.notifyChange();
           this.canvas.render();
           this.renderRightTab();
@@ -3660,16 +4190,13 @@ export class App {
         if (activePage) this.deletePage(activePage.id);
       });
       document.getElementById('projNameInput')?.addEventListener('input', (e) => {
-        this.project.name = (e.target as HTMLInputElement).value;
-        this.notifyChange();
+        this.updateProjectProperties({ name: (e.target as HTMLInputElement).value });
       });
       document.getElementById('projCompanyInput')?.addEventListener('input', (e) => {
-        this.project.company = (e.target as HTMLInputElement).value;
-        this.notifyChange();
+        this.updateProjectProperties({ company: (e.target as HTMLInputElement).value });
       });
       document.getElementById('projAuthorInput')?.addEventListener('input', (e) => {
-        this.project.author = (e.target as HTMLInputElement).value;
-        this.notifyChange();
+        this.updateProjectProperties({ author: (e.target as HTMLInputElement).value });
       });
     }
   }

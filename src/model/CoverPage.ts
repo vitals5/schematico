@@ -44,7 +44,7 @@ export function defaultCoverPageTemplate(lang: 'de' | 'en' = 'de'):CoverPageTemp
   add('modified-label',20,234.727,lang === 'en' ? 'Edited on' : 'Bearbeitet am');add('modified',76,234.727,undefined,10023);
   add('author-label',140.6,234.727,lang === 'en' ? 'By (Initials)' : 'von (Kürzel)');add('author',168,234.727,undefined,10022);
   add('count-label',350.5,234.727,lang === 'en' ? 'Number of Pages' : 'Anzahl der Seiten');add('count',400,234.727,undefined,10300,3.5*1.242,'end');
-  return {id:'default-f26',name:'F26_001',width:420,height:297,graphics,texts};
+  return {id:'default-f01',name:'F01',width:420,height:297,graphics,texts};
 }
 export const coverPageTemplate = (project:Project) => project.coverPageTemplate ?? defaultCoverPageTemplate(project.language ?? 'de');
 const dateText = (value:string) => /^\d{4}-\d{2}-\d{2}/.test(value)?value.slice(0,10).split('-').reverse().join('.'):value;
@@ -52,7 +52,7 @@ export function coverFieldValue(text:FrameText,page:Page,project:Project,templat
   if(text.text!==undefined)return text.text;
   const key=coverFieldKey(text);
   if(text.property===10300)return String(project.pages.length);
-  if(text.property===11015)return template.name;
+  if(text.property===11015)return template.name==='F26_001'?'F01':template.name;
   if(page.coverPage?.values && Object.hasOwn(page.coverPage.values,key))return page.coverPage.values[key];
   const live:Record<number,string>={10000:project.name,10011:project.description,10015:project.company};
   if(text.property!==undefined && live[text.property]!==undefined)return live[text.property];

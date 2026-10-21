@@ -1,4 +1,5 @@
 import { migrateLegacyData, normalizeLegacyProjectXml } from '../model/LegacyCompatibility';
+import { convertAnnotationComponentsToTexts } from '../model/PresentationNaming';
 // src/packages/PackageHandler.ts
 // Parser and generator for CAD project archive files:
 // - .zw1: Project Backup Archive (ZIP or 7z containing native project data)
@@ -85,6 +86,7 @@ export class PackageHandler {
     } else if (lowerName.endsWith('.json')) {
       const text = await file.text();
       const proj = migrateLegacyData(JSON.parse(text)) as Project;
+      convertAnnotationComponentsToTexts(proj);
       return {
         filename,
         projectName: proj.name || 'Imported Project',
@@ -395,19 +397,26 @@ export class PackageHandler {
           || typeof component.symbolId !== 'string' || !Number.isFinite(component.x) || !Number.isFinite(component.y)))) {
       throw new Error(`${source} enthält keine gültige Projektstruktur.`);
     }
-    return migrateLegacyData(project);
+    const migrated = migrateLegacyData(project);
+    convertAnnotationComponentsToTexts(migrated);
+    return migrated;
   }
 
   /** Prefer saved app data over any native database files bundled alongside it. */
   private static async extractSavedProject(zip: JSZip): Promise<Project | undefined> {
-    const entries = zip.file(/(?:^|\/)project_data\.json$/i);
+    let entries = zip.file(/(?:^|\/)project_data\.json$/i);
+    if (entries.length === 0) {
+      entries = zip.file(/^(?!__MACOSX\/).*\.json$/i);
+    }
     if (entries.length === 0) return undefined;
-    if (entries.length !== 1) throw new Error('Projektarchiv enthält mehrere widersprüchliche project_data.json Dateien.');
+    if (entries.length > 1 && !entries.some(e => /(?:^|\/)project_data\.json$/i.test(e.name))) {
+      entries.sort((a, b) => ((b as any)._data?.uncompressedSize ?? 0) - ((a as any)._data?.uncompressedSize ?? 0));
+    }
     const entry = entries[0];
     if (((entry as any)._data?.uncompressedSize ?? 0) > 64 * 1024 * 1024) {
       throw new Error('Schematico-Projektarchiv überschreitet die maximal unterstützte Größe von 64 MiB.');
     }
-    return this.readProjectJson(await entry.async('text'), 'Schematico-Projektarchiv');
+    return this.readProjectJson(await entry.async('text'), entry.name || 'Schematico-Projektarchiv');
   }
 
   /**

@@ -32,7 +32,8 @@ export function findNearestWall(
   point: { x: number; y: number },
   walls: WallSegment[],
   maxDistance: number = 30,
-  pixelPerMeter: number = 50
+  pixelPerMeter: number = 50,
+  tierStep?: number
 ): WallSnapResult | null {
   let best: WallSnapResult | null = null;
   let minDistance = maxDistance;
@@ -87,8 +88,17 @@ export function findNearestWall(
       const wallThickness = wall.thickness ?? 0.24;
       const wallThickPx = wallThickness < 2 ? wallThickness * pixelPerMeter : wallThickness;
       const halfThick = wallThickPx / 2;
-      const surfaceX = projX + nx * halfThick;
-      const surfaceY = projY + ny * halfThick;
+
+      let offset = halfThick;
+      if (tierStep && tierStep > 4 && dist > halfThick + 4) {
+        const tier = Math.round((dist - halfThick) / tierStep);
+        if (tier > 0) {
+          offset = halfThick + tier * tierStep;
+        }
+      }
+
+      const surfaceX = projX + nx * offset;
+      const surfaceY = projY + ny * offset;
 
       best = {
         wall,
@@ -198,9 +208,10 @@ export function floorPlanToSvg(
           cy = Math.round(cy / room.polygon.length);
         }
         const labelText = escapeSvg(room.name);
+        const isInteractive = options.interactive !== false;
         parts.push(`
-          <g class="room-label" style="pointer-events:none;user-select:none;">
-            <text x="${cx}" y="${cy}" font-size="10" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" fill="#a0aec0" text-anchor="middle">${labelText}</text>
+          <g class="room-label floorplan-room-label" data-room-id="${room.id}" style="${isInteractive ? 'cursor:pointer;pointer-events:all;' : 'pointer-events:none;'}user-select:none;">
+            <text x="${cx}" y="${cy}" font-size="10" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" fill="#cbd5e0" text-anchor="middle" title="Raum: ${labelText} (Klick / Doppelklick zum Umbenennen)">${labelText}</text>
           </g>
         `);
       }

@@ -260,7 +260,10 @@ export interface PageText {
   fontSize?: number;
   fontColor?: string;
   fontWeight?: 'normal' | 'bold';
-  rotation?: 0 | 90 | 180 | 270;
+  fontStyle?: 'normal' | 'italic';
+  fontFamily?: string;
+  align?: 'start' | 'center' | 'end' | 'left' | 'middle' | 'right';
+  rotation?: 0 | 90 | 180 | 270 | number;
 }
 
 export interface PageBox {

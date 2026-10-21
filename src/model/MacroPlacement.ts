@@ -40,11 +40,12 @@ export function macroForPlacement(macro: MacroItem): WindowMacro {
     const height = Math.max(size, text.text.split('\n').length * size * 1.2);
     const c = addAnnotation(`text_${text.id}`, width, height);
     for(const group of page.groups??[])for(const member of group.members)if(member.kind==='text'&&member.id===text.id){member.kind='component';member.id=c.id;}
-    c.rotation = text.rotation ?? 0; c.functionText = text.text;
+    const rot: 0 | 90 | 180 | 270 = (((Math.round((text.rotation ?? 0) / 90) % 4) + 4) % 4) * 90 as 0 | 90 | 180 | 270;
+    c.rotation = rot; c.functionText = text.text;
     const baseline = rotatedLocalPoint({ x: 0, y: size }, library.find(s => s.id === c.symbolId)!, c.rotation);
     c.x = text.x - baseline.x; c.y = text.y - baseline.y;
     c.functionTextPosition = { ...at(c, 0, size, size, height + 12, text.fontColor ?? (size >= 11 ? '#63b3ed' : '#cbd5e0')),
-      rotation: text.rotation ?? 0, fontWeight: text.fontWeight ?? (size >= 11 ? 'bold' : 'normal') };
+      rotation: rot, fontWeight: text.fontWeight ?? (size >= 11 ? 'bold' : 'normal') };
   }
   const images = page.images ?? [], cables = page.cables ?? [], boxes=page.boxes ?? [], points: { x: number; y: number }[] = [];
   const definition = (c: PlacedComponent) => {

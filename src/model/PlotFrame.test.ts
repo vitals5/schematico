@@ -18,4 +18,15 @@ const svg=plotFrameSvg(page,project);
 assert.match(svg,/clipPath/);assert.match(svg,/clip-path="url\(#frame-clip-page-title\)"/);
 assert(!svg.includes('<Raum & Text>'));
 assert.match(svg,/Firma &amp; Partner/);
+
+// Updating title block data (author, company, project title) updates bottom title block text
+page.plotFrame.titleBlock.author = 'Max Mustermann';
+page.plotFrame.titleBlock.company = 'Elektrotechnik Mustermann GmbH';
+page.plotFrame.titleBlock.projectTitle = 'Neubau MFH';
+const updatedSvg = plotFrameSvg(page, project);
+assert.match(updatedSvg, /Max Mustermann/);
+assert.match(updatedSvg, /Elektrotechnik Mustermann GmbH/);
+assert.equal(frameTextValue(template.texts.find(t => t.property === 11022)!, page, project, template), 'Max Mustermann');
+assert.equal(frameTextValue(template.texts.find(t => t.property === 10015)!, page, project, template), 'Elektrotechnik Mustermann GmbH');
+
 console.log('✓ Shared norm-sheet fields, wrapping, escaping and bounded title text');

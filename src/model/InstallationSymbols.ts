@@ -163,6 +163,105 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Schutzkontakt-Steckdose mit integriertem USB-A/C Ladeport'
   },
   {
+    id: 'inst_socket_single_alt',
+    name: 'Einfachsteckdose (Wandanschluss)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Steckdose',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <!-- Wandanschluss-Stift oben, Basis und Bogen nach unten -->
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Einfachsteckdose mit Wandanschluss-Stift oben (DIN 18015 / DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_socket_multi_2',
+    name: 'Mehrfachsteckdose 2-fach',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Mehrfachsteckdose 2-fach',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
+      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
+    `,
+    description: 'Mehrfachsteckdose 2-fach mit Schrägstrich und Kennzahl 2 (DIN 18015)'
+  },
+  {
+    id: 'inst_socket_multi_3',
+    name: 'Mehrfachsteckdose 3-fach',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Mehrfachsteckdose 3-fach',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
+      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">3</text>
+    `,
+    description: 'Mehrfachsteckdose 3-fach mit Schrägstrich und Kennzahl 3 (DIN 18015)'
+  },
+  {
+    id: 'inst_socket_multi_4',
+    name: 'Mehrfachsteckdose 4-fach',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Mehrfachsteckdose 4-fach',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
+      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">4</text>
+    `,
+    description: 'Mehrfachsteckdose 4-fach mit Schrägstrich und Kennzahl 4 (DIN 18015)'
+  },
+  {
+    id: 'inst_socket_multi_5',
+    name: 'Mehrfachsteckdose 5-fach',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Mehrfachsteckdose 5-fach',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
+      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">5</text>
+    `,
+    description: 'Mehrfachsteckdose 5-fach mit Schrägstrich und Kennzahl 5 (DIN 18015)'
+  },
+  {
     id: 'inst_switch_off',
     name: 'Ausschalter (1-polig)',
     category: 'installation',
@@ -234,6 +333,89 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Kreuzschalter für 3 oder mehr Schaltstellen (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_switch_off_alt',
+    name: 'Schalter (1-polig, Hebel)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-S',
+    defaultFunctionText: 'Schalter',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <!-- Kreis mit 45°-Hebel und Haken nach DIN EN 60617-11 -->
+      <circle cx="16" cy="18" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="13.8" x2="28" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="28" y1="6" x2="31" y2="9" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Schalter (1-polig Ausschalter) mit schrägem Betätigungshebel und Haken (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_switch_changeover_alt',
+    name: 'Wechselschalter (2 Hebel)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-S',
+    defaultFunctionText: 'Wechselschalter',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <circle cx="16" cy="16" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19.9" y1="12.1" x2="27" y2="5" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="5" x2="30" y2="8" stroke="currentColor" stroke-width="2"/>
+      <line x1="12.1" y1="19.9" x2="5" y2="27" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="27" x2="2" y2="24" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Wechselschalter mit zwei gegenüberliegenden Hebeln und Haken (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_switch_cross_alt',
+    name: 'Kreuzschalter (4 Hebel)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-S',
+    defaultFunctionText: 'Kreuzschalter',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="19.5" y1="12.5" x2="26" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="26" y1="6" x2="29" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="12.5" y1="12.5" x2="6" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="6" x2="3" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="12.5" y1="19.5" x2="6" y2="26" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="26" x2="3" y2="23" stroke="currentColor" stroke-width="2"/>
+      <line x1="19.5" y1="19.5" x2="26" y2="26" stroke="currentColor" stroke-width="2"/>
+      <line x1="26" y1="26" x2="29" y2="23" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Kreuzschalter mit vier kreuzförmigen Hebeln und Haken (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_switch_series_alt',
+    name: 'Serienschalter (Doppelhebel)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-S',
+    defaultFunctionText: 'Serienschalter',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <circle cx="16" cy="20" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="12.1" y1="16.1" x2="6" y2="10" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="10" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
+      <line x1="19.9" y1="16.1" x2="26" y2="10" stroke="currentColor" stroke-width="2"/>
+      <line x1="26" y1="10" x2="29" y2="13" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Serienschalter mit zwei oberen Hebeln und Haken (DIN EN 60617-11)'
   },
   {
     id: 'inst_pushbutton',

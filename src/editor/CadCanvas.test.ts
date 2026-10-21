@@ -280,3 +280,75 @@ assert.equal(fpCanvas.floorPlanEditMode, false);
 assert.equal(fpCanvas.selectedOpeningId, null, 'Deselect opening when edit mode is toggled off');
 
 console.log('✓ Architectural floor plan walls and openings: selection, addition, editing and deletion verified');
+
+// Text elements: rendering, selection, rotation, and deletion
+const textPage: Page = {
+  ...page,
+  texts: [
+    {
+      id: 'txt1',
+      text: 'Hauptverteilung EG\nFeld A',
+      x: 150,
+      y: 200,
+      fontSize: 14,
+      fontColor: '#48bb78',
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      align: 'center',
+      rotation: 0
+    }
+  ]
+};
+
+let selectedTextCallback: any = null;
+const textCanvas = Object.assign(Object.create(CadCanvas.prototype), {
+  activePage: textPage,
+  project,
+  selectedTextId: null,
+  callbacks: {
+    onSelectComponent: () => {},
+    onSelectWire: () => {},
+    onSelectText: (t: any) => { selectedTextCallback = t; },
+    onProjectModified: () => {}
+  },
+  getElementSelection: () => ({ textIds: textCanvas.selectedTextId ? [textCanvas.selectedTextId] : [] }),
+  setElementSelection: () => {},
+  clearMultipleSelection: () => {},
+  render: () => {},
+  notifyModified: () => {}
+});
+
+// Render unselected text
+const renderedUnselected = textCanvas.renderTexts() as string;
+assert.match(renderedUnselected, /data-text-id="txt1"/);
+assert.match(renderedUnselected, /font-size="14"/);
+assert.match(renderedUnselected, /font-weight="bold"/);
+assert.match(renderedUnselected, /font-style="italic"/);
+assert.match(renderedUnselected, /fill="#48bb78"/);
+assert.match(renderedUnselected, /text-anchor="middle"/);
+assert.match(renderedUnselected, /<tspan[^>]*>Hauptverteilung EG<\/tspan>/);
+assert.match(renderedUnselected, /<tspan[^>]*>Feld A<\/tspan>/);
+assert.doesNotMatch(renderedUnselected, /stroke-dasharray="3,2"/);
+
+// Select text
+textCanvas.selectText(textPage.texts![0]);
+assert.equal(textCanvas.selectedTextId, 'txt1');
+assert.equal(selectedTextCallback?.id, 'txt1');
+
+// Render selected text (must contain selection outline)
+const renderedSelected = textCanvas.renderTexts() as string;
+assert.match(renderedSelected, /class="canvas-text selected"/);
+assert.match(renderedSelected, /stroke-dasharray="3,2"/);
+
+// Rotate selected text
+textCanvas.rotateSelected(90);
+assert.equal(textPage.texts![0].rotation, 90);
+const renderedRotated = textCanvas.renderTexts() as string;
+assert.match(renderedRotated, /transform="rotate\(90, 150, 200\)"/);
+
+// Delete selected text
+textCanvas.deleteSelected();
+assert.equal(textPage.texts?.length, 0);
+assert.equal(textCanvas.selectedTextId, null);
+
+console.log('✓ Text elements: rendering, multiline tspans, formatting, selection, rotation and deletion verified');

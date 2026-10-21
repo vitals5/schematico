@@ -12,6 +12,8 @@ import { computeImageFitBounds } from '../ai/GeometrySanitizer';
 export interface FloorPlanImportDialogCallbacks {
   onCreatePage: (page: Page) => void;
   onOpenSettings?: () => void;
+  onImportFloorPlanPage?: () => void;
+  onImportFloorPlanPageFromFile?: (file: File) => Promise<void>;
 }
 
 export class FloorPlanImportDialog {
@@ -70,12 +72,24 @@ export class FloorPlanImportDialog {
 
             <!-- File Upload Dropzone -->
             <div class="dropzone" id="fpi-dropzone">
-              <input type="file" id="fpi-file-input" accept="image/png,image/jpeg,image/webp,application/pdf" style="display:none;" />
+              <input type="file" id="fpi-file-input" accept="image/png,image/jpeg,image/webp,application/pdf,.json,.floorplan.json,.ems" style="display:none;" />
+              <input type="file" id="fpi-json-file-input" accept=".json,.floorplan.json,.ems" style="display:none;" />
               <div style="font-size:28px;margin-bottom:6px;">📄</div>
               <div style="font-size:13px;font-weight:600;">${t('dropFloorPlanFile')}</div>
               <div style="font-size:11px;color:#a0aec0;margin-top:4px;">${t('supportedFormats')}</div>
               <div id="fpi-file-name" style="font-size:12px;color:#68d391;margin-top:8px;font-weight:bold;display:none;"></div>
             </div>
+
+            <!-- Import existing floor plan page JSON button -->
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+              <div style="flex:1;height:1px;background:#3e4656;"></div>
+              <span style="font-size:10px;color:#a0aec0;text-transform:uppercase;font-weight:600;">oder</span>
+              <div style="flex:1;height:1px;background:#3e4656;"></div>
+            </div>
+            <button type="button" id="fpi-btn-import-json" class="btn" style="width:100%;padding:8px 12px;font-size:12px;font-weight:600;background:#2d3748;border:1px solid #4a5568;color:#edf2f7;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s;">
+              <span>📥</span>
+              <span>${t('btnImportFloorPlanJson')}</span>
+            </button>
 
             <div class="fpi-field">
               <label for="fpi-hint">${t('floorPlanHintLabel')}</label>
@@ -255,7 +269,20 @@ export class FloorPlanImportDialog {
       syncCalibInput();
     };
 
+    const jsonFileInput = modal.querySelector('#fpi-json-file-input') as HTMLInputElement;
+
     const onFileSelected = (file: File) => {
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith('.json') || lower.endsWith('.ems')) {
+        modal.remove();
+        if (this.callbacks.onImportFloorPlanPageFromFile) {
+          void this.callbacks.onImportFloorPlanPageFromFile(file);
+        } else {
+          this.callbacks.onImportFloorPlanPage?.();
+        }
+        return;
+      }
+
       this.handleFile(
         file,
         fileNameDisplay,
@@ -270,6 +297,17 @@ export class FloorPlanImportDialog {
         updateCalibWalls
       );
     };
+
+    modal.querySelector('#fpi-btn-import-json')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      jsonFileInput?.click();
+    });
+
+    jsonFileInput?.addEventListener('change', () => {
+      if (jsonFileInput.files && jsonFileInput.files.length > 0) {
+        onFileSelected(jsonFileInput.files[0]);
+      }
+    });
 
     // File selection
     dropzone.addEventListener('click', () => fileInput.click());
@@ -588,13 +626,30 @@ export class FloorPlanImportDialog {
     }
 
     container.style.display = 'block';
-    const roomTags = plan.rooms.map(r => {
-      return `<span style="background:#2d3748;padding:2px 8px;border-radius:12px;margin:2px;display:inline-block;color:#e2e8f0;">🏠 ${escapeSvg(r.name)}</span>`;
+    const roomTags = plan.rooms.map((r, idx) => {
+      return `
+        <div style="display:inline-flex;align-items:center;gap:4px;background:#2d3748;padding:2px 6px;border-radius:6px;margin:2px;border:1px solid #4a5568;">
+          <span style="font-size:11px;">🏠</span>
+          <input type="text" class="fpi-room-name-inp" data-room-index="${idx}" value="${escapeSvg(r.name)}" style="background:#1a202c;border:1px solid #4a5568;color:#e2e8f0;font-size:11px;padding:1px 5px;border-radius:3px;width:110px;" title="Raumnamen anpassen" />
+        </div>
+      `;
     }).join(' ');
 
     container.innerHTML = `
-      <div style="font-weight:600;margin-bottom:4px;color:#cbd5e0;">Erkannte Räume (${plan.rooms.length}):</div>
-      <div>${roomTags}</div>
+      <div style="font-weight:600;margin-bottom:6px;color:#cbd5e0;display:flex;justify-content:space-between;align-items:center;">
+        <span>Erkannte Räume (${plan.rooms.length}):</span>
+        <span style="font-size:10px;font-weight:normal;color:#a0aec0;">(Namen können hier direkt editiert werden)</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">${roomTags}</div>
     `;
+
+    container.querySelectorAll('.fpi-room-name-inp').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const idx = Number((e.target as HTMLElement).dataset.roomIndex);
+        if (plan.rooms[idx]) {
+          plan.rooms[idx].name = (e.target as HTMLInputElement).value;
+        }
+      });
+    });
   }
 }

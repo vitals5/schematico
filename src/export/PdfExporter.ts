@@ -239,19 +239,33 @@ export class PdfExporter {
       const yMm = t.y * scaleY;
       const isHeader = Boolean(t.fontSize && t.fontSize >= 11);
       const isMonochrome = colorMode === 'monochrome';
+      const isBold = t.fontWeight === 'bold' || isHeader;
+      const isItalic = t.fontStyle === 'italic';
 
-      doc.setFont('helvetica', (t.fontWeight === 'bold' || isHeader) ? 'bold' : 'normal');
+      const style = isBold && isItalic ? 'bolditalic' : isBold ? 'bold' : isItalic ? 'italic' : 'normal';
+      doc.setFont('helvetica', style);
       doc.setFontSize(Math.max(6, (t.fontSize || 9) * 0.75));
 
       if (isMonochrome) {
         doc.setTextColor(0, 0, 0);
+      } else if (t.fontColor && /^#[0-9a-fA-F]{6}$/.test(t.fontColor)) {
+        const r = parseInt(t.fontColor.slice(1, 3), 16);
+        const g = parseInt(t.fontColor.slice(3, 5), 16);
+        const b = parseInt(t.fontColor.slice(5, 7), 16);
+        doc.setTextColor(r, g, b);
       } else if (isHeader) {
         doc.setTextColor(43, 108, 176);
       } else {
         doc.setTextColor(74, 85, 104);
       }
 
-      doc.text(t.text, xMm, yMm);
+      const align = (t.align === 'center' || t.align === 'middle') ? 'center' : (t.align === 'end' || t.align === 'right') ? 'right' : undefined;
+      const options: any = {};
+      if (align) options.align = align;
+      if (t.rotation) options.angle = t.rotation;
+
+      const lines = (t.text || '').split(/\r?\n/);
+      doc.text(lines, xMm, yMm, options);
     }
   }
 

@@ -32,5 +32,80 @@ if(fixture){
   assert.equal(project.coverPageTemplate.images.length,0);assert.equal(page.coverPage.logo,null);assert.equal(page.images.length,0);
   page.coverPage.logo=custom;prepareProjectPresentation(project);assert.deepEqual(page.coverPage.logo,custom);
 }
+
+// Annotation component conversion to PageText
+const projWithAnnotation = {
+  id: 'p2',
+  name: 'Haus',
+  pages: [{
+    id: 'page-1',
+    components: [
+      {
+        id: 'comp_text_1',
+        symbolId: 'native:annotation:14:120:24:0:0',
+        bmk: 'TXT1',
+        functionText: 'de_DE@Erdgeschoss Grundriss;',
+        x: 100,
+        y: 200,
+        rotation: 0,
+        pins: {},
+        functionTextPosition: {
+          fontSize: 14,
+          fontColor: '#ff0000',
+          fontWeight: 'bold',
+          offsetX: -60,
+          offsetY: -22
+        }
+      },
+      {
+        id: 'comp_elec_1',
+        symbolId: 'native:IEC:1:0',
+        bmk: '-Q1',
+        functionText: 'Hauptschalter',
+        x: 50,
+        y: 50,
+        rotation: 0,
+        pins: {}
+      }
+    ],
+    texts: []
+  }],
+  symbolLibrary: [
+    {
+      id: 'native:annotation:14:120:24:0:0',
+      name: 'Projekttext',
+      description: 'Editierbarer Projekttext',
+      width: 120,
+      height: 24,
+      pins: [],
+      svgContent: ''
+    },
+    {
+      id: 'native:IEC:1:0',
+      name: 'Schalter',
+      description: 'Schalter',
+      width: 40,
+      height: 40,
+      pins: [],
+      svgContent: ''
+    }
+  ]
+} as unknown as Project;
+
+prepareProjectPresentation(projWithAnnotation);
+assert.equal(projWithAnnotation.pages[0].components.length, 1);
+assert.equal(projWithAnnotation.pages[0].components[0].id, 'comp_elec_1');
+assert.equal(projWithAnnotation.pages[0].texts?.length, 1);
+const converted = projWithAnnotation.pages[0].texts![0];
+assert.equal(converted.id, 'comp_text_1');
+assert.equal(converted.text, 'Erdgeschoss Grundriss');
+assert.equal(converted.fontSize, 14);
+assert.equal(converted.fontColor, '#ff0000');
+assert.equal(converted.fontWeight, 'bold');
+assert.equal(converted.x, 100);
+assert.equal(converted.y, 214);
+assert.equal(projWithAnnotation.symbolLibrary?.length, 1);
+assert.equal(projWithAnnotation.symbolLibrary?.[0].id, 'native:IEC:1:0');
+
 const before=JSON.stringify(project);prepareProjectPresentation(project);assert.equal(JSON.stringify(project),before,'Repeated loading does not change migrated data');
 console.log('✓ Neutral application wording, legacy example migration, supplier-logo removal and preserved custom/electrical data');

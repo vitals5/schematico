@@ -107,4 +107,17 @@ assert(!advSvg.includes('floorplan-wall-hit'), 'Non-interactive mode must not in
 const noRoomLabelsSvg = floorPlanToSvg(advancedPlan, { showRoomLabels: false });
 assert(!noRoomLabelsSvg.includes('Wohnzimmer'), 'Must not render room labels when showRoomLabels is false');
 
+// 5. Test interactive room labels and multi-tier snapping
+const interactiveSvg = floorPlanToSvg(advancedPlan, { interactive: true });
+assert(interactiveSvg.includes('class="room-label floorplan-room-label"'), 'Must render interactive room label');
+assert(interactiveSvg.includes('data-room-id="r1"'), 'Must include data-room-id on interactive room label');
+assert(interactiveSvg.includes('Wohnzimmer'), 'Must render room name');
+
+// Test multi-tier snapping
+const tier0Snap = findNearestWall({ x: 250, y: 110 }, walls, 40, 50, 16);
+assert(tier0Snap, 'Must snap to wall');
+const tier1Snap = findNearestWall({ x: 250, y: 130 }, walls, 50, 50, 16);
+assert(tier1Snap, 'Must snap to wall tier');
+assert(tier1Snap.snappedPoint.y > tier0Snap.snappedPoint.y, 'Tier 1 must be further away from wall than Tier 0');
+
 console.log('✓ FloorPlanRenderer tests passed successfully!');

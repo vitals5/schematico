@@ -8,7 +8,9 @@ const project={id:'test',name:'Haus',description:'Einfamilienhaus',company:'Hers
 const page=createCoverPage(project);project.pages.push(page);project.activePageId=page.id;
 assert.equal(page.pageType,'cover');assert(Math.abs(page.plotFrame.height/page.plotFrame.width-297/420)<1e-12);
 const template=defaultCoverPageTemplate();project.coverPageTemplate={...template,properties:{'10100:0':'Customer','10013:0':'PN123','10023:0':'18.09.2026','10300:0':'45'}};
+assert.equal(template.name, 'F01', 'Form template name must be F01 instead of proprietary F26_001');
 const fields=coverPageFields(page,project);
+assert.equal(fields.find(f => f.key === '11015:0')?.value, 'F01', 'Formular field in cover editor must show F01');
 assert.equal(new Set(fields.map(f=>f.key)).size,fields.length,'Repeated fields are edited once');
 assert.equal(fields.find(f=>f.key==='10021:0')!.value,'14.05.2026');
 assert.equal(fields.find(f=>f.key==='10300:0')!.value,'1','Source sheet-count cache must not replace the current page count');

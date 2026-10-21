@@ -15,7 +15,7 @@ import { plotFrameSvg } from '../model/PlotFrame';
 import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, WallSegment, WallOpening } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, PageText, WallSegment, WallOpening, RoomDefinition } from '../model/types';
 import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -28,17 +28,19 @@ import { floorPlanToSvg, findNearestWall, getAutoSymbolScale } from '../model/Fl
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
 
-export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall' | 'place_opening';
+export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall' | 'place_opening' | 'place_text';
 
 export interface CadCanvasCallbacks {
   onSelectionChanged?: (selection: ElementSelection) => void;
   onOpenSelectionProperties?: () => void;
   onOpenCoverPage?: () => void;
   onSelectComponent: (component: PlacedComponent | null) => void;
+  onSelectText?: (text: PageText | null) => void;
   onSelectCable?: (cable: CableDefinition | null) => void;
   onSelectWire: (wire: Wire | null) => void;
   onSelectWall?: (wall: WallSegment | null) => void;
   onSelectOpening?: (opening: WallOpening | null) => void;
+  onSelectRoom?: (room: RoomDefinition | null) => void;
   onOpenProperties?: (component: PlacedComponent) => void;
   onOpenSymbolSelection?: () => void;
   onOpenMacroSelection?: () => void;
@@ -82,6 +84,7 @@ export class CadCanvas {
   public selectedImageId: string | null = null;
   public selectedWallId: string | null = null;
   public selectedOpeningId: string | null = null;
+  public selectedRoomId: string | null = null;
   public activeOpeningKindToPlace: 'door' | 'window' | 'opening' | 'garage_door' | null = null;
   public floorPlanEditMode: boolean = false;
   public isCalibratingWall: boolean = false;
@@ -111,6 +114,7 @@ export class CadCanvas {
     this.svg.style.cursor = '';
     this.render();
   }
+  public selectedTextId: string | null = null;
   private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number } } | null = null;
   private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
@@ -174,10 +178,12 @@ export class CadCanvas {
       this.selectedComponentId = null;
       this.selectedWireId = null;
       this.selectedImageId=null;this.selectedBoxId=null;this.activeImageToPlace=undefined;
-      if(this.mode==='place_image'||this.mode==='device_box')this.mode='select';
+      this.selectedTextId = null;
+      if(this.mode==='place_image'||this.mode==='device_box'||this.mode==='place_text')this.mode='select';
       this.boxDraft=undefined;this.boxResize=undefined;
       this.selectedCableId = null; this.cableDrag = undefined; this.cableStart = undefined;
       this.callbacks.onSelectCable?.(null);
+      this.callbacks.onSelectText?.(null);
       this.callbacks.onSelectComponent(null);
       this.callbacks.onSelectWire(null);
       if (this.autoconnectEnabled) {
@@ -198,8 +204,10 @@ export class CadCanvas {
     this.selectedComponentId = null;
     this.selectedWireId = null;
     this.selectedImageId=null;this.selectedBoxId=null;this.activeImageToPlace=undefined;
+    this.selectedTextId = null;
     this.selectedCableId = null; this.cableDrag = undefined; this.cableStart = undefined;
     this.callbacks.onSelectCable?.(null);
+    this.callbacks.onSelectText?.(null);
     if (recompute) {
       CrossReferenceEngine.updateProjectCrossReferences(this.project);
       if (this.autoconnectEnabled) AutoconnectEngine.updatePageAutoconnections(this.activePage);
@@ -390,6 +398,16 @@ export class CadCanvas {
 
   public rotateSelected(delta: number = 90): void {
     if(this.multipleSelection)return;
+    if (this.selectedTextId) {
+      const text = this.activePage.texts?.find(t => t.id === this.selectedTextId);
+      if (text) {
+        text.rotation = (((text.rotation || 0) + delta + 360) % 360) as any;
+        this.notifyModified();
+        this.render();
+        this.callbacks.onSelectText?.(text);
+        return;
+      }
+    }
     const cable = this.activePage.cables?.find(c=>c.id===this.selectedCableId);
     if (cable) {
       const cx=cable.start.x,cy=cable.start.y,a=delta*Math.PI/180;
@@ -597,6 +615,15 @@ export class CadCanvas {
       if(this.autoconnectEnabled && ids.size)AutoconnectEngine.updatePageAutoconnections(this.activePage);
       this.notifyModified();this.render();return;
     }
+    if (this.selectedTextId) {
+      this.activePage.texts = (this.activePage.texts ?? []).filter(t => t.id !== this.selectedTextId);
+      this.selectedTextId = null;
+      this.callbacks.onSelectText?.(null);
+      this.setElementSelection(emptySelection());
+      this.notifyModified();
+      this.render();
+      return;
+    }
     if(this.selectedBoxId){this.activePage.boxes=this.activePage.boxes?.filter(c=>c.id!==this.selectedBoxId);this.setElementSelection(emptySelection());this.notifyModified();this.render();return;}
     if(this.selectedImageId){this.activePage.images=this.activePage.images?.filter(c=>c.id!==this.selectedImageId);this.setElementSelection(emptySelection());this.notifyModified();this.render();return;}
     if (this.selectedWallId) {
@@ -713,14 +740,86 @@ export class CadCanvas {
 
   private placementPosition(x: number, y: number, symbol: NonNullable<ReturnType<typeof getSymbolById>>): { x: number; y: number } {
     const s = this.getComponentScale();
-    if (this.activePage.floorPlan?.walls?.length) {
-      const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
-      const snap = findNearestWall({ x, y }, this.activePage.floorPlan.walls, 24, ppm);
-      if (snap) {
-        this.ghostRotation = snap.rotation;
-        return positionAtInsertionPoint(snap.snappedPoint, symbol, snap.rotation, s);
+    const symW = symbol.width * s;
+    const symH = symbol.height * s;
+
+    if (this.activePage.floorPlan) {
+      // 1. Check for stacking snap onto existing nearby components
+      const snapRadius = Math.max(26, symW * 1.5);
+      let closestComp: PlacedComponent | null = null;
+      let minCompDist = snapRadius;
+
+      for (const comp of this.activePage.components) {
+        if (comp.id === '__ghost__' || comp.id === this.selectedComponentId) continue;
+        const cSym = getSymbolForComponent(comp, this.project);
+        if (!cSym) continue;
+        const cScale = this.getComponentScale(comp);
+        const cW = cSym.width * cScale;
+        const cH = cSym.height * cScale;
+        const cCenterX = comp.x + cW / 2;
+        const cCenterY = comp.y + cH / 2;
+        const dist = Math.hypot(x - cCenterX, y - cCenterY);
+        if (dist < minCompDist) {
+          minCompDist = dist;
+          closestComp = comp;
+        }
+      }
+
+      if (closestComp) {
+        const cSym = getSymbolForComponent(closestComp, this.project);
+        const cScale = this.getComponentScale(closestComp);
+        const cW = (cSym?.width || 32) * cScale;
+        const cH = (cSym?.height || 32) * cScale;
+
+        // Candidate stacking positions around closestComp
+        // Vertical stacking (directly above / below in plan)
+        const candDown = { x: closestComp.x, y: closestComp.y + cH };
+        const candUp = { x: closestComp.x, y: closestComp.y - symH };
+        // Horizontal stacking (side-by-side)
+        const candRight = { x: closestComp.x + cW, y: closestComp.y };
+        const candLeft = { x: closestComp.x - symW, y: closestComp.y };
+
+        const candidates = [candDown, candUp, candRight, candLeft];
+
+        // If attached to a wall, also add candidate perpendicular into the room
+        if (this.activePage.floorPlan.walls?.length) {
+          const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+          const wallSnap = findNearestWall({ x: closestComp.x + cW / 2, y: closestComp.y + cH / 2 }, this.activePage.floorPlan.walls, 40, ppm);
+          if (wallSnap) {
+            const nx = Math.cos(wallSnap.angleRad);
+            const ny = Math.sin(wallSnap.angleRad);
+            candidates.push({
+              x: Math.round(closestComp.x + nx * symW),
+              y: Math.round(closestComp.y + ny * symH)
+            });
+          }
+        }
+
+        let bestCandidate = candidates[0];
+        let bestDist = Infinity;
+        for (const cand of candidates) {
+          const d = Math.hypot(x - (cand.x + symW / 2), y - (cand.y + symH / 2));
+          if (d < bestDist) {
+            bestDist = d;
+            bestCandidate = cand;
+          }
+        }
+
+        this.ghostRotation = closestComp.rotation || 0;
+        return bestCandidate;
+      }
+
+      // 2. Wall snap with multi-tier stacking away from wall
+      if (this.activePage.floorPlan.walls?.length) {
+        const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+        const snap = findNearestWall({ x, y }, this.activePage.floorPlan.walls, 36, ppm, symH);
+        if (snap) {
+          this.ghostRotation = snap.rotation;
+          return positionAtInsertionPoint(snap.snappedPoint, symbol, snap.rotation, s);
+        }
       }
     }
+
     return positionAtInsertionPoint({ x: this.snap(x), y: this.snap(y, false, 'y') }, symbol, this.ghostRotation, s);
   }
 
@@ -812,6 +911,8 @@ export class CadCanvas {
         this.callbacks.onOpenSymbolSelection?.();
       } else if (e.key === 'w' || e.key === 'W' || e.key === 'd' || e.key === 'D') {
         this.setMode(this.mode === 'wire' ? 'select' : 'wire');
+      } else if (e.key === 't' || e.key === 'T') {
+        this.setMode(this.mode === 'place_text' ? 'select' : 'place_text');
       } else if (e.key === 'f' || e.key === 'F') {
         this.fitToScreen();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -860,6 +961,23 @@ export class CadCanvas {
   }
 
   private onDoubleClick(e: MouseEvent): void {
+    if (this.floorPlanEditMode && this.activePage.floorPlan?.rooms) {
+      const roomEl = (e.target as Element)?.closest?.('[data-room-id]');
+      if (roomEl) {
+        const roomId = roomEl.getAttribute('data-room-id');
+        const room = this.activePage.floorPlan.rooms.find(r => r.id === roomId);
+        if (room) {
+          const newName = prompt('Raumnamen bearbeiten:', room.name);
+          if (newName !== null && newName.trim().length > 0) {
+            room.name = newName.trim();
+            this.notifyModified();
+            this.callbacks.onSelectRoom?.(room);
+            this.render();
+          }
+          return;
+        }
+      }
+    }
     if(this.selectedImageId||this.selectedBoxId){this.callbacks.onOpenSelectionProperties?.();return;}
     if(this.multipleSelection){this.callbacks.onOpenSelectionProperties?.();return;}
     if ((e.target as Element)?.closest?.('[data-crossref-source],[data-cable-id]')) return;
@@ -1228,6 +1346,28 @@ export class CadCanvas {
     const resize=(e.target as Element)?.closest?.('[data-box-resize]');
     if(this.mode==='select' && resize){const box=this.boxFromEvent(e);if(box){this.boxResize={box,width:box.width,height:box.height};return;}}
     if(this.mode==='place_image'){this.placeImageAt(world);return;}
+    if(this.mode==='place_text'){
+      const snapX = this.snap(world.x, false, 'x');
+      const snapY = this.snap(world.y, false, 'y');
+      const newText: PageText = {
+        id: 'text_' + Math.random().toString(36).substring(2, 9),
+        text: 'Text',
+        x: snapX,
+        y: snapY,
+        fontSize: 10,
+        fontColor: '#cbd5e0',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        align: 'start',
+        rotation: 0
+      };
+      (this.activePage.texts ??= []).push(newText);
+      this.mode = 'select';
+      this.selectText(newText);
+      this.notifyModified();
+      this.render();
+      return;
+    }
     if(this.mode==='draw_wall'){
       const pt = { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
       if (this.wallDraft) {
@@ -1241,7 +1381,23 @@ export class CadCanvas {
     }
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
-    this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;
+    this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
+    if (this.mode === 'select' && this.floorPlanEditMode && this.activePage.floorPlan?.rooms) {
+      const roomEl = (e.target as Element)?.closest?.('[data-room-id]');
+      if (roomEl) {
+        const roomId = roomEl.getAttribute('data-room-id');
+        const room = this.activePage.floorPlan.rooms.find(r => r.id === roomId);
+        if (room) {
+          this.selectedRoomId = room.id;
+          this.selectedWallId = null;
+          this.selectedOpeningId = null;
+          this.selectedComponentId = null;
+          this.callbacks.onSelectRoom?.(room);
+          this.render();
+          return;
+        }
+      }
+    }
     const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e) : null;
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
@@ -1418,19 +1574,11 @@ export class CadCanvas {
         const rawY = world.y - this.dragOffset.y;
         const isModifier = e.shiftKey || e.altKey;
         const s = this.getComponentScale(comp);
-        if (this.activePage.floorPlan?.walls?.length) {
-          const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
-          const snap = findNearestWall({ x: world.x, y: world.y }, this.activePage.floorPlan.walls, 24, ppm);
-          if (snap && sym) {
-            comp.rotation = snap.rotation;
-            comp.installationMetadata = { ...(comp.installationMetadata || {}), attachedWallId: snap.wall.id };
-            const placed = positionAtInsertionPoint(snap.snappedPoint, sym, snap.rotation, s);
-            comp.x = placed.x;
-            comp.y = placed.y;
-          } else if (sym) {
-            Object.assign(comp, snapSymbolPosition({ x: rawX, y: rawY }, sym, comp.rotation,
-              gridForPage(this.activePage, this.gridSize), this.getEffectiveGridSize(isModifier)));
-          }
+        if (this.activePage.floorPlan && sym) {
+          const placed = this.placementPosition(world.x, world.y, sym);
+          comp.rotation = this.ghostRotation;
+          comp.x = placed.x;
+          comp.y = placed.y;
         } else if (sym) {
           Object.assign(comp, snapSymbolPosition({ x: rawX, y: rawY }, sym, comp.rotation,
             gridForPage(this.activePage, this.gridSize), this.getEffectiveGridSize(isModifier)));
@@ -1481,7 +1629,15 @@ export class CadCanvas {
     }
     if(this.selectionDrag){
       const moved=this.selectionDrag.dx!==0||this.selectionDrag.dy!==0;this.selectionDrag=undefined;
-      if(moved){this.lastMousePress=null;for(const id of this.getElementSelection().componentIds)AutoconnectEngine.clearSuppressedForComponent(this.activePage,id);if(this.autoconnectEnabled && this.getElementSelection().componentIds.length)AutoconnectEngine.updatePageAutoconnections(this.activePage);this.notifyModified();}
+      if(moved){
+        this.lastMousePress=null;
+        for(const id of this.getElementSelection().componentIds)AutoconnectEngine.clearSuppressedForComponent(this.activePage,id);
+        if(this.autoconnectEnabled && this.getElementSelection().componentIds.length)AutoconnectEngine.updatePageAutoconnections(this.activePage);
+        if (this.selectedTextId) {
+          this.callbacks.onSelectText?.(this.activePage.texts?.find(t => t.id === this.selectedTextId) ?? null);
+        }
+        this.notifyModified();
+      }
       this.render();
     }
     if (this.cableDrag) { const moved=this.cableDrag.moved;this.cableDrag=undefined;if(moved)this.notifyModified();this.render(); }
@@ -2105,7 +2261,21 @@ export class CadCanvas {
     if(!current[key]?.includes(id)&&(selectionCount(hit)>1||textId||box||image)){
       this.setElementSelection(hit);current=this.getElementSelection();
     }
-    if((this.multipleSelection||box||image)&&current[key]?.includes(id)){
+    if((this.multipleSelection||box||image||textId)&&current[key]?.includes(id)){
+      if (textId) {
+        this.selectedTextId = textId;
+        this.selectedComponentId = null;
+        this.selectedWireId = null;
+        this.selectedCableId = null;
+        this.selectedImageId = null;
+        this.selectedBoxId = null;
+        this.selectedWallId = null;
+        this.selectedOpeningId = null;
+        this.selectedRoomId = null;
+        this.callbacks.onSelectText?.(this.activePage.texts?.find(t => t.id === textId) ?? null);
+        this.callbacks.onSelectComponent?.(null);
+        this.callbacks.onSelectWire?.(null);
+      }
       if(this.lastMousePress?.componentId===id&&e.timeStamp-this.lastMousePress.time<350){this.lastMousePress=null;this.callbacks.onOpenSelectionProperties?.();return true;}
       this.lastMousePress={componentId:id,time:e.timeStamp};
       this.selectionDrag={origin:world,snapshot:captureSelectionMove(this.activePage,current),dx:0,dy:0};return true;
@@ -2128,7 +2298,14 @@ export class CadCanvas {
     }
     for(const original of drag.snapshot.boxes ?? [])this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
     for(const original of drag.snapshot.images ?? [])this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
-    for(const original of drag.snapshot.texts??[])this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
+    for(const original of drag.snapshot.texts??[]){
+      const el = this.svg.getElementById(original.id);
+      if (el) {
+        const textObj = this.activePage.texts?.find(t => t.id === original.id);
+        const rot = textObj?.rotation || 0;
+        el.setAttribute('transform', `translate(${dx},${dy})` + (rot ? ` rotate(${rot},${original.x},${original.y})` : ''));
+      }
+    }
     for(const original of drag.snapshot.cables)this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
     const wires=this.svg.getElementById('wiresLayer');if(wires)wires.innerHTML=this.renderWires();this.updateSelectionOverlay();
   }
@@ -2179,6 +2356,30 @@ export class CadCanvas {
   private openingFromEvent(e: Event): WallOpening | undefined {
     const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
     return this.activePage.floorPlan?.openings?.find(op => op.id === id);
+  }
+
+  public selectText(text: PageText | null): void {
+    this.clearMultipleSelection();
+    this.selectedComponentId = null;
+    this.selectedWireId = null;
+    this.selectedImageId = null;
+    this.selectedBoxId = null;
+    this.selectedCableId = null;
+    this.selectedOpeningId = null;
+    this.selectedWallId = null;
+    this.selectedRoomId = null;
+    this.callbacks.onSelectComponent(null);
+    this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectCable?.(null);
+    this.callbacks.onSelectOpening?.(null);
+    this.callbacks.onSelectWall?.(null);
+    this.callbacks.onSelectRoom?.(null);
+    this.selectedTextId = text ? text.id : null;
+    if (text) {
+      this.setElementSelection({ ...emptySelection(), textIds: [text.id] });
+    }
+    this.callbacks.onSelectText?.(text);
+    this.render();
   }
 
   public selectWall(wall: WallSegment | null): void {
@@ -2551,13 +2752,37 @@ export class CadCanvas {
 
   private renderTexts(): string {
     if (!this.activePage.texts || this.activePage.texts.length === 0) return '';
+    const selectedIds = this.getElementSelection().textIds ?? [];
     return this.activePage.texts.map(t => {
-      const isHeader = t.fontSize && t.fontSize >= 11;
+      const isSelected = selectedIds.includes(t.id) || this.selectedTextId === t.id;
+      const isHeader = Boolean(t.fontSize && t.fontSize >= 11);
       const color = t.fontColor || (isHeader ? '#63b3ed' : '#cbd5e0');
       const weight = t.fontWeight || (isHeader ? 'bold' : 'normal');
+      const style = t.fontStyle === 'italic' ? 'italic' : 'normal';
       const size = t.fontSize || 9;
-      const rot = t.rotation ? `transform="rotate(${t.rotation}, ${t.x}, ${t.y})"` : '';
-      return `<g id="${escapeSvg(t.id)}" data-text-id="${escapeSvg(t.id)}" style="cursor:move"><text x="${t.x}" y="${t.y}" font-size="${size}" font-family="sans-serif" font-weight="${weight}" fill="${color}" ${rot} pointer-events="all">${escapeSvg(t.text)}</text></g>`;
+      const rot = t.rotation ? `rotate(${t.rotation}, ${t.x}, ${t.y})` : '';
+      const transform = rot ? `transform="${rot}"` : '';
+      const anchor = (t.align === 'center' || t.align === 'middle') ? 'middle' : (t.align === 'end' || t.align === 'right') ? 'end' : 'start';
+
+      const lines = (t.text || '').split(/\r?\n/);
+      const tspans = lines.map((line, idx) =>
+        `<tspan x="${t.x}" dy="${idx === 0 ? 0 : size * 1.25}">${escapeSvg(line)}</tspan>`
+      ).join('');
+
+      let selectionOutline = '';
+      if (isSelected) {
+        const lineCount = Math.max(1, lines.length);
+        const maxLen = Math.max(1, ...lines.map(l => l.length));
+        const estWidth = maxLen * size * 0.6;
+        const estHeight = lineCount * size * 1.25;
+        let boxX = t.x - 3;
+        if (anchor === 'middle') boxX = t.x - estWidth / 2 - 3;
+        else if (anchor === 'end') boxX = t.x - estWidth - 3;
+        const boxY = t.y - size - 2;
+        selectionOutline = `<rect x="${boxX}" y="${boxY}" width="${estWidth + 6}" height="${estHeight + 4}" fill="rgba(99, 179, 237, 0.12)" stroke="#63b3ed" stroke-width="1.2" stroke-dasharray="3,2" rx="2" pointer-events="none"/>`;
+      }
+
+      return `<g id="${escapeSvg(t.id)}" data-text-id="${escapeSvg(t.id)}" class="canvas-text ${isSelected ? 'selected' : ''}" style="cursor:move" ${transform}>${selectionOutline}<text x="${t.x}" y="${t.y}" font-size="${size}" font-family="sans-serif" font-weight="${weight}" font-style="${style}" fill="${color}" text-anchor="${anchor}" pointer-events="all">${tspans}</text></g>`;
     }).join('');
   }
 
@@ -2738,6 +2963,17 @@ export class CadCanvas {
   }
 
   private renderGhostSymbol(): string {
+    if (this.mode === 'place_text') {
+      const p = this.currentMousePos;
+      const sx = this.snap(p.x, false, 'x');
+      const sy = this.snap(p.y, false, 'y');
+      return `
+        <g id="ghostLayer" transform="translate(${sx}, ${sy})" opacity="0.85" pointer-events="none">
+          <circle cx="0" cy="0" r="3" fill="#63b3ed"/>
+          <text x="5" y="0" font-size="10" font-family="sans-serif" fill="#63b3ed" font-weight="bold">Text</text>
+        </g>
+      `;
+    }
     if(this.mode==='place_image' && this.activeImageToPlace){const p=this.currentMousePos,i=this.activeImageToPlace;return `<image href="${escapeSvg(i.dataUrl)}" x="${this.snap(p.x,false,'x')}" y="${this.snap(p.y,false,'y')}" width="${i.width}" height="${i.height}" opacity=".55" pointer-events="none"/>`;}
     if (this.mode === 'place_macro' && this.activeMacroToPlace) {
       const macro = this.activeMacroToPlace;
