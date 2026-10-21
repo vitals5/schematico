@@ -231,10 +231,12 @@ export function floorPlanToSvg(
         </g>
       `);
       parts.push(
-        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />`
+        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="18" fill="transparent" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />
+        <circle cx="${wall.start.x}" cy="${wall.start.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
       );
       parts.push(
-        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />`
+        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="18" fill="transparent" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />
+        <circle cx="${wall.end.x}" cy="${wall.end.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
       );
     }
   };
@@ -282,7 +284,10 @@ export function floorPlanToSvg(
           <line x1="${(p1x - 1.5 * nx).toFixed(1)}" y1="${(p1y - 1.5 * ny).toFixed(1)}" x2="${(p2x - 1.5 * nx).toFixed(1)}" y2="${(p2y - 1.5 * ny).toFixed(1)}" stroke="${glassColor}" stroke-width="${isSelected ? 2.5 : 1.5}" />
           <line x1="${(p1x - 3 * nx).toFixed(1)}" y1="${(p1y - 3 * ny).toFixed(1)}" x2="${(p1x + 3 * nx).toFixed(1)}" y2="${(p1y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
           <line x1="${(p2x - 3 * nx).toFixed(1)}" y1="${(p2y - 3 * ny).toFixed(1)}" x2="${(p2x + 3 * nx).toFixed(1)}" y2="${(p2y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
-          ${isSelected && isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
+          ${isSelected && isInteractive ? `
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+          ` : ''}
         </g>
       `);
     } else if (op.kind === 'opening') {
@@ -293,7 +298,10 @@ export function floorPlanToSvg(
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
           <line x1="${(p1x - 3.5 * nx).toFixed(1)}" y1="${(p1y - 3.5 * ny).toFixed(1)}" x2="${(p1x + 3.5 * nx).toFixed(1)}" y2="${(p1y + 3.5 * ny).toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#cbd5e0'}" stroke-width="2" />
           <line x1="${(p2x - 3.5 * nx).toFixed(1)}" y1="${(p2y - 3.5 * ny).toFixed(1)}" x2="${(p2x + 3.5 * nx).toFixed(1)}" y2="${(p2y + 3.5 * ny).toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#cbd5e0'}" stroke-width="2" />
-          ${isSelected && isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
+          ${isSelected && isInteractive ? `
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+          ` : ''}
         </g>
       `);
     } else if (op.kind === 'garage_door') {
@@ -315,7 +323,10 @@ export function floorPlanToSvg(
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${t1x.toFixed(1)}" y2="${t1y.toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#718096'}" stroke-width="1.4" stroke-dasharray="3,3" />
           <line x1="${p2x.toFixed(1)}" y1="${p2y.toFixed(1)}" x2="${t2x.toFixed(1)}" y2="${t2y.toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#718096'}" stroke-width="1.4" stroke-dasharray="3,3" />
           <line x1="${t1x.toFixed(1)}" y1="${t1y.toFixed(1)}" x2="${t2x.toFixed(1)}" y2="${t2y.toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#718096'}" stroke-width="1.4" stroke-dasharray="3,3" />
-          ${isSelected && isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
+          ${isSelected && isInteractive ? `
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+          ` : ''}
         </g>
       `);
     } else {
@@ -346,7 +357,10 @@ export function floorPlanToSvg(
           ` : `
             <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="${leafColor}" stroke-width="1.5" stroke-dasharray="4,4" />
           `}
-          ${isSelected && isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
+          ${isSelected && isInteractive ? `
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+          ` : ''}
         </g>
       `);
     }

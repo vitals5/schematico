@@ -352,3 +352,41 @@ assert.equal(textPage.texts?.length, 0);
 assert.equal(textCanvas.selectedTextId, null);
 
 console.log('✓ Text elements: rendering, multiline tspans, formatting, selection, rotation and deletion verified');
+
+// Touch hit target padding and mobile optimization tests
+{
+  const touchTestComp: PlacedComponent = {
+    id: 'touch_comp', symbolId: symbol.id, bmk: '-Q50', functionText: 'TouchTest', technicalCharacteristics: '',
+    x: 200, y: 300, rotation: 0, pins: { '1': {} }
+  };
+  const touchPage = {
+    id: 'tp', pageNumber: '3', title: 'TouchSheet', higherLevel: '', location: '',
+    components: [touchTestComp], wires: [], plotFrame: { width: 1000, height: 700 }
+  } as unknown as Page;
+  const touchCanvas = Object.assign(Object.create(CadCanvas.prototype), {
+    activePage: touchPage,
+    project: { pages: [touchPage], symbolLibrary: [symbol] },
+    getComponentScale: () => 1,
+    getPinCoordinates: (cid: string, pid: string) => {
+      if (cid === 'touch_comp' && pid === '1') return { x: 210, y: 300 };
+      return null;
+    }
+  });
+
+  // Test findComponentAt: at distance 10px outside the visual box
+  // symbol width=20, height=30. cx=210, cy=315. Right edge is at x=220.
+  // Query at x=228 (8px past the visual boundary):
+  const mouseCompHit = (touchCanvas as any).findComponentAt(228, 315, false);
+  const touchCompHit = (touchCanvas as any).findComponentAt(228, 315, true);
+  assert.equal(mouseCompHit, null, 'Desktop mouse with pad=2 must strictly ignore clicks 8px outside component');
+  assert.equal(touchCompHit?.id, 'touch_comp', 'Touch interaction with pad=18 must generously hit 8px outside for fingers');
+
+  // Test findPinAt: at distance 12px away from pin center (210, 300)
+  // Query at (210, 312) which is exactly 12px away
+  const mousePinHit = (touchCanvas as any).findPinAt(210, 312, false);
+  const touchPinHit = (touchCanvas as any).findPinAt(210, 312, true);
+  assert.equal(mousePinHit, null, 'Desktop mouse with pinRadius=8 must ignore pin 12px away');
+  assert.deepEqual(touchPinHit, { componentId: 'touch_comp', pinId: '1' }, 'Touch interaction with pinRadius=16 must reliably hit pin 12px away for fingers');
+
+  console.log('✓ Touch hit targets: verified separate generous touch padding (components, pins) without altering mouse precision');
+}

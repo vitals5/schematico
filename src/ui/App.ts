@@ -459,14 +459,16 @@ export class App {
 
     for(const [id,enabled]of [['menuGroup',this.canvas?.canGroupSelection()],['menuUngroup',this.canvas?.canUngroupSelection()]] as const){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!enabled;}
     const imageSelected=!!this.canvas?.selectedImageId,boxSelected=!!this.canvas?.selectedBoxId;
+    const textSelected=!!this.selectedText || (this.canvas?.getElementSelection().textIds?.length === 1);
+    const wallSelected=!!this.selectedWall, openingSelected=!!this.selectedOpening;
     const multiple=this.canvas && selectionCount(this.canvas.getElementSelection())>1;
-    const hasSelection=this.canvas && selectionCount(this.canvas.getElementSelection())>0;
+    const hasSelection=(this.canvas && selectionCount(this.canvas.getElementSelection())>0) || wallSelected || openingSelected;
     const hasClip=this.canvas?.hasClipboard() ?? false;
-    for(const id of ['btnToolCopy','menuCopy','menuCut']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection;}
+    for(const id of ['btnToolCopy','menuCopy','menuCut']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||wallSelected||openingSelected;}
     for(const id of ['btnToolPaste','menuPaste']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasClip;}
-    for(const id of ['btnToolDuplicate','menuDuplicate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection;}
-    for(const id of ['btnToolRotate','menuRotate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||!!multiple||imageSelected||boxSelected;}
-    const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
+    for(const id of ['btnToolDuplicate','menuDuplicate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||wallSelected||openingSelected;}
+    for(const id of ['btnToolRotate','menuRotate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||!!multiple||imageSelected||boxSelected||wallSelected||openingSelected;}
+    const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||textSelected||wallSelected||openingSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
     if (bar && tag) {
       if (multiple) {
         tag.textContent = `${this.canvas.canUngroupSelection() ? t('menuGroup') + ': ' : ''}${t('foundElements', { count: selectionCount(this.canvas.getElementSelection()) })}`;
@@ -476,6 +478,27 @@ export class App {
         tag.textContent=t('boxHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingBoxDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
       } else if(imageSelected) {
         tag.textContent=t('imageHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingImageDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
+      } else if (this.selectedText) {
+        const preview = this.selectedText.text.length > 16 ? this.selectedText.text.substring(0, 16) + '...' : this.selectedText.text;
+        tag.textContent = `📝 "${preview || 'Text'}"`;
+        if (btnEdit) btnEdit.style.display = 'inline-flex';
+        if (btnRot) btnRot.style.display = 'inline-block';
+        if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
+        bar.style.display = 'flex';
+      } else if (this.selectedWall) {
+        const len = Math.round(Math.hypot(this.selectedWall.end.x - this.selectedWall.start.x, this.selectedWall.end.y - this.selectedWall.start.y));
+        tag.textContent = `🧱 Wand (${len} mm)`;
+        if (btnEdit) btnEdit.style.display = 'inline-flex';
+        if (btnRot) btnRot.style.display = 'none';
+        if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
+        bar.style.display = 'flex';
+      } else if (this.selectedOpening) {
+        const typeName = this.selectedOpening.kind === 'door' ? 'Tür' : this.selectedOpening.kind === 'window' ? 'Fenster' : this.selectedOpening.kind === 'garage_door' ? 'Garagentor' : 'Öffnung';
+        tag.textContent = `🚪 ${typeName} (${this.selectedOpening.width} mm)`;
+        if (btnEdit) btnEdit.style.display = 'inline-flex';
+        if (btnRot) btnRot.style.display = 'none';
+        if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
+        bar.style.display = 'flex';
       } else if (this.selectedComponent) {
         const sym = getSymbolForComponent(this.selectedComponent);
         const locSym = sym ? getLocalizedSymbol(sym) : undefined;
@@ -691,8 +714,8 @@ export class App {
       if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties();return;}
       if (this.selectedComponent) {
         this.openPropertiesDialog(this.selectedComponent);
-      } else if (this.selectedCable) {
-        this.setRightPanelCollapsed(false);this.renderRightTab();
+      } else if (this.selectedCable || this.selectedText || this.selectedWall || this.selectedOpening) {
+        this.openSelectionProperties();
       } else {
         alert('Bitte tippen Sie zuerst ein Bauteil im Plan an.');
       }
@@ -701,7 +724,7 @@ export class App {
     document.getElementById('btnFloatingEdit')?.addEventListener('click', () => {
       if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties();return;}
       if (this.selectedComponent) this.openPropertiesDialog(this.selectedComponent);
-      else if (this.selectedCable) { this.setRightPanelCollapsed(false);this.renderRightTab(); }
+      else if (this.selectedCable || this.selectedText || this.selectedWall || this.selectedOpening) { this.openSelectionProperties(); }
     });
 
     document.getElementById('btnFloatingExportMacro')?.addEventListener('click', () => {

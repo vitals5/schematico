@@ -144,6 +144,16 @@ export class CadCanvas {
   private initialPan: { x: number; y: number } = { x: 0, y: 0 };
   private lastTapTime: number = 0;
   private lastTapComponentId: string | null = null;
+  private longPressTimer: any = null;
+  private touchStartPos: { x: number; y: number } | null = null;
+  private longPressTriggered: boolean = false;
+
+  private clearLongPressTimer(): void {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
 
   constructor(container: HTMLElement, project: Project, callbacks: CadCanvasCallbacks) {
     this.container = container;
@@ -973,37 +983,37 @@ export class CadCanvas {
     }
   }
 
-  private onContextMenu(e: MouseEvent): void {
-    e.preventDefault();
-    const world = this.screenToWorld(e.clientX, e.clientY);
-    const targetOpening = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.openingFromEvent(e) : null;
+  public triggerContextMenu(clientX: number, clientY: number, target?: Element | null): void {
+    const world = this.screenToWorld(clientX, clientY);
+    const mockEv = { target } as any;
+    const targetOpening = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.openingFromEvent(mockEv) : null;
     if (targetOpening) {
       this.selectOpening(targetOpening);
-      this.showContextMenu(e.clientX, e.clientY, null, null);
+      this.showContextMenu(clientX, clientY, null, null);
       return;
     }
-    const targetWall = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.wallFromEvent(e) : null;
+    const targetWall = (this.floorPlanEditMode || this.mode === 'draw_wall') ? this.wallFromEvent(mockEv) : null;
     if (targetWall) {
       this.selectWall(targetWall.wall);
-      this.showContextMenu(e.clientX, e.clientY, null, null);
+      this.showContextMenu(clientX, clientY, null, null);
       return;
     }
-    const targetBox=this.boxFromEvent(e),targetCable=this.cableFromEvent(e),targetImage=this.imageFromEvent(e),targetComp=this.componentFromEvent(e)??this.findComponentAt(world.x,world.y);
-    const targetText=(e.target as Element)?.closest?.('[data-text-id]')?.getAttribute('data-text-id'),targetWire=!targetBox&&!targetCable&&!targetImage&&!targetComp?this.findWireAt(world.x,world.y):null;
+    const targetBox=this.boxFromEvent(mockEv),targetCable=this.cableFromEvent(mockEv),targetImage=this.imageFromEvent(mockEv),targetComp=this.componentFromEvent(mockEv)??this.findComponentAt(world.x,world.y,true);
+    const targetText=target?.closest?.('[data-text-id]')?.getAttribute('data-text-id'),targetWire=!targetBox&&!targetCable&&!targetImage&&!targetComp?this.findWireAt(world.x,world.y,true):null;
     const key=targetBox?'boxIds':targetCable?'cableIds':targetImage?'imageIds':targetText?'textIds':targetComp?'componentIds':'wireIds';
     const id=targetText??(targetBox??targetCable??targetImage??targetComp??targetWire)?.id;
-    if(id&&this.multipleSelection?.[key]?.includes(id)){this.showContextMenu(e.clientX,e.clientY,null,null);return;}
-    if(targetText){this.setElementSelection({...emptySelection(),textIds:[targetText]});this.showContextMenu(e.clientX,e.clientY,null,null);return;}
-    if(id){const hit={...emptySelection(),[key]:[id]};if(selectedRootGroups(this.activePage,hit).length){if(!this.getElementSelection()[key]?.includes(id))this.setElementSelection(hit);this.showContextMenu(e.clientX,e.clientY,null,null);return;}}
-    const box=this.boxFromEvent(e);
-    if(box){if(!this.multipleSelection?.boxIds?.includes(box.id))this.setElementSelection({componentIds:[],cableIds:[],boxIds:[box.id]});this.showContextMenu(e.clientX,e.clientY,null,null);return;}
+    if(id&&this.multipleSelection?.[key]?.includes(id)){this.showContextMenu(clientX,clientY,null,null);return;}
+    if(targetText){this.setElementSelection({...emptySelection(),textIds:[targetText]});this.showContextMenu(clientX,clientY,null,null);return;}
+    if(id){const hit={...emptySelection(),[key]:[id]};if(selectedRootGroups(this.activePage,hit).length){if(!this.getElementSelection()[key]?.includes(id))this.setElementSelection(hit);this.showContextMenu(clientX,clientY,null,null);return;}}
+    const box=this.boxFromEvent(mockEv);
+    if(box){if(!this.multipleSelection?.boxIds?.includes(box.id))this.setElementSelection({componentIds:[],cableIds:[],boxIds:[box.id]});this.showContextMenu(clientX,clientY,null,null);return;}
     this.selectedBoxId=null;
-    const comp = this.componentFromEvent(e)??this.findComponentAt(world.x, world.y),image=this.imageFromEvent(e);
-    if(image){if(!this.multipleSelection?.imageIds?.includes(image.id))this.setElementSelection({componentIds:[],cableIds:[],imageIds:[image.id]});this.showContextMenu(e.clientX,e.clientY,null,null);return;}
+    const comp = this.componentFromEvent(mockEv)??this.findComponentAt(world.x, world.y, true),image=this.imageFromEvent(mockEv);
+    if(image){if(!this.multipleSelection?.imageIds?.includes(image.id))this.setElementSelection({componentIds:[],cableIds:[],imageIds:[image.id]});this.showContextMenu(clientX,clientY,null,null);return;}
     this.selectedImageId=null;this.selectedBoxId=null;
-    if(this.multipleSelection && (comp && this.multipleSelection.componentIds.includes(comp.id) || this.cableFromEvent(e) && this.multipleSelection.cableIds.includes(this.cableFromEvent(e)!.id))){this.showContextMenu(e.clientX,e.clientY,null,null);return;}
+    if(this.multipleSelection && (comp && this.multipleSelection.componentIds.includes(comp.id) || targetCable && this.multipleSelection.cableIds.includes(targetCable.id))){this.showContextMenu(clientX,clientY,null,null);return;}
     this.clearMultipleSelection();
-    const wire = this.findWireAt(world.x, world.y);
+    const wire = this.findWireAt(world.x, world.y, true);
 
     if (comp) {
       this.selectedComponentId = comp.id;
@@ -1019,7 +1029,12 @@ export class CadCanvas {
       this.render();
     }
 
-    this.showContextMenu(e.clientX, e.clientY, comp, wire);
+    this.showContextMenu(clientX, clientY, comp, wire);
+  }
+
+  private onContextMenu(e: MouseEvent): void {
+    e.preventDefault();
+    this.triggerContextMenu(e.clientX, e.clientY, e.target as Element);
   }
 
   private showContextMenu(clientX: number, clientY: number, comp: PlacedComponent | null, wire: Wire | null): void {
@@ -1030,14 +1045,31 @@ export class CadCanvas {
     menu.id = 'ecadContextMenu';
     menu.className = 'ecad-context-menu';
     menu.style.position = 'fixed';
-    menu.style.left = `${clientX}px`;
-    menu.style.top = `${clientY}px`;
+    const menuW = 240, menuH = 320;
+    const left = Math.max(8, Math.min(clientX, (window.innerWidth || 400) - menuW - 10));
+    const top = Math.max(8, Math.min(clientY, (window.innerHeight || 600) - menuH - 10));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
     menu.style.zIndex = '3000';
 
     let items = '';
     if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} Elemente ausgewählt</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Gemeinsame Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Auswahl löschen <span class="ctx-key">Entf</span></div>`;}
     else if(this.selectedBoxId){items=`<div class="ctx-header">Gerätekasten</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Gerätekasten löschen <span class="ctx-key">Entf</span></div>`;}
     else if(this.selectedImageId){items=`<div class="ctx-header">Bild</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Bild löschen <span class="ctx-key">Entf</span></div>`;}
+    else if (this.selectedTextId) {
+      const txt = this.activePage.texts?.find(t => t.id === this.selectedTextId);
+      const preview = (txt?.text || 'Text').split(/\r?\n/)[0].slice(0, 18);
+      items = `
+        <div class="ctx-header">Text: <strong>${escapeSvg(preview)}</strong></div>
+        <div class="ctx-item" data-action="text-edit">✏️ Text bearbeiten… <span class="ctx-key">F2</span></div>
+        <div class="ctx-item" data-action="rotate">🔄 Um 90° drehen <span class="ctx-key">R</span></div>
+        <div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div>
+        <div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div>
+        <div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Text löschen <span class="ctx-key">Entf</span></div>
+      `;
+    }
     else if (this.selectedWallId) {
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === this.selectedWallId);
       items = `
@@ -1061,6 +1093,7 @@ export class CadCanvas {
     }
     else if (comp) {
       const sym = getSymbolForComponent(comp, this.project);
+      const refTargets = this.getComponentReferenceTargets(comp);
       items += `
         <div class="ctx-header"><strong>${escapeSvg(comp.bmk)}</strong> (${sym?.name || 'Bauteil'})</div>
         <div class="ctx-item" data-action="properties">⚙️ Eigenschaften... <span class="ctx-key">DblClick</span></div>
@@ -1070,7 +1103,7 @@ export class CadCanvas {
         <div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>
         ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>' : ''}
         <div class="ctx-item" data-action="export-macro">📦 Als .ema Fenstermakro speichern...</div>
-        ${comp.crossRef ? `<div class="ctx-item" data-action="jump-crossref">🔗 Querverweis folgen (${escapeSvg(comp.crossRef)})</div>` : ''}
+        ${refTargets.length > 0 ? `<div class="ctx-item" data-action="jump-ref-target">🔗 Zum Verweis-Gegenstück springen (${refTargets.length})</div>` : (comp.crossRef ? `<div class="ctx-item" data-action="jump-crossref">🔗 Querverweis folgen (${escapeSvg(comp.crossRef)})</div>` : '')}
         <div class="ctx-sep"></div>
         <div class="ctx-item ctx-danger" data-action="delete">🗑️ Löschen <span class="ctx-key">Entf</span></div>
       `;
@@ -1098,16 +1131,29 @@ export class CadCanvas {
     menu.innerHTML = items;
     document.body.appendChild(menu);
 
-    const closeMenu = () => menu.remove();
+    const closeMenu = (ev?: Event) => {
+      if (ev && menu.contains(ev.target as Node)) return;
+      menu.remove();
+      window.removeEventListener('click', closeMenu);
+      window.removeEventListener('contextmenu', closeMenu);
+      window.removeEventListener('touchstart', closeMenu);
+    };
     setTimeout(() => {
       window.addEventListener('click', closeMenu, { once: true });
       window.addEventListener('contextmenu', closeMenu, { once: true });
+      window.addEventListener('touchstart', closeMenu, { passive: true });
     }, 10);
 
     menu.querySelectorAll('.ctx-item').forEach(el => {
       el.addEventListener('click', (e) => {
         const action = (e.currentTarget as HTMLElement).dataset.action;
         closeMenu();
+        if(action==='text-edit'){this.callbacks.onOpenSelectionProperties?.();return;}
+        if(action==='jump-ref-target' && comp){
+          const refTargets = this.getComponentReferenceTargets(comp);
+          if (refTargets.length > 0) this.jumpToReferenceTarget(comp, refTargets);
+          return;
+        }
         if(action==='group'){this.groupSelected();return;}
         if(action==='ungroup'){this.ungroupSelected();return;}
         if(action==='cut'){this.cutSelected();return;}
@@ -1649,6 +1695,7 @@ export class CadCanvas {
 
   private onTouchStart(e: TouchEvent): void {
     if (e.touches.length === 2) {
+      this.clearLongPressTimer();
       e.preventDefault();
       if(this.selectionDrag){translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);this.selectionDrag=undefined;this.render();}
       this.cancelBoxInteraction();this.touchMode = 'pinch';
@@ -1668,9 +1715,30 @@ export class CadCanvas {
     }
 
     if (e.touches.length === 1) {
+      this.clearLongPressTimer();
+      const touch = e.touches[0];
+      this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+      this.longPressTriggered = false;
+      const targetEl = e.target as Element;
+
+      this.longPressTimer = setTimeout(() => {
+        this.longPressTriggered = true;
+        this.clearLongPressTimer();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(40); } catch (_) {}
+        }
+        this.touchMode = 'none';
+        this.isPanning = false;
+        this.isDraggingComponent = false;
+        this.selectionDrag = undefined;
+        this.wallDrag = null;
+        this.openingDrag = null;
+        this.cableDrag = undefined;
+        this.triggerContextMenu(touch.clientX, touch.clientY, targetEl);
+      }, 480);
+
       if (this.referenceFromEvent(e)) return;
       this.referenceMarker = undefined;
-      const touch = e.touches[0];
       const world = this.screenToWorld(touch.clientX, touch.clientY);
 
       if(this.mode==='select'&&!(e.target as Element)?.closest?.('[data-box-resize]')&&this.handleSelectionMouseDown(e as unknown as MouseEvent,world)){e.preventDefault();return;}
@@ -1743,7 +1811,7 @@ export class CadCanvas {
 
       // Check pin in wire mode only
       if (this.mode === 'wire' || this.wireStart !== null) {
-        const clickedPin = this.findPinAt(world.x, world.y);
+        const clickedPin = this.findPinAt(world.x, world.y, true);
         if (clickedPin) {
           e.preventDefault();
           this.handlePinClick(clickedPin);
@@ -1807,6 +1875,16 @@ export class CadCanvas {
   }
 
   private onTouchMove(e: TouchEvent): void {
+    if (this.longPressTriggered) {
+      e.preventDefault();
+      return;
+    }
+    if (this.longPressTimer && this.touchStartPos && e.touches.length === 1) {
+      const dist = Math.hypot(e.touches[0].clientX - this.touchStartPos.x, e.touches[0].clientY - this.touchStartPos.y);
+      if (dist > 8) {
+        this.clearLongPressTimer();
+      }
+    }
     if(this.elementBoxResize&&e.touches.length===1){e.preventDefault();const t=e.touches[0];this.resizeElementBox(this.screenToWorld(t.clientX,t.clientY));return;}
     if((this.boxDraft||this.boxResize)&&e.touches.length===1){e.preventDefault();const touch=e.touches[0],world=this.screenToWorld(touch.clientX,touch.clientY);if(this.boxResize)this.resizeBox(world);else{this.boxDraft!.end=this.boxPoint(world);this.updateSelectionOverlay();}return;}
     if(this.selectionDrag && e.touches.length===1){e.preventDefault();const t=e.touches[0],world=this.screenToWorld(t.clientX,t.clientY),step=this.getEffectiveGridSize(false);this.moveElementSelection(snapCoordinate(world.x-this.selectionDrag.origin.x,step),snapCoordinate(world.y-this.selectionDrag.origin.y,step));return;}
@@ -1926,6 +2004,12 @@ export class CadCanvas {
   }
 
   private onTouchEnd(e: TouchEvent): void {
+    this.clearLongPressTimer();
+    if (this.longPressTriggered) {
+      this.longPressTriggered = false;
+      e.preventDefault();
+      return;
+    }
     if(e.type==='touchcancel' && (this.boxDraft||this.boxResize||this.elementBoxResize)){this.cancelBoxInteraction();this.render();return;}
     if((this.cableDrag || this.wallDrag || this.openingDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
     if (this.touchMode === 'pinch' && e.touches.length < 2) {
@@ -2006,7 +2090,7 @@ export class CadCanvas {
   }
 
   private findComponentAt(x: number, y: number, isTouch: boolean = false): PlacedComponent | null {
-    const pad = isTouch ? 12 : 2;
+    const pad = isTouch ? 18 : 2;
     let frame:PlacedComponent|null=null;
     for (let i = this.activePage.components.length - 1; i >= 0; i--) {
       const comp = this.activePage.components[i];
@@ -2038,8 +2122,8 @@ export class CadCanvas {
     const id=(event.target as Element)?.closest?.('.component')?.getAttribute('id');return this.activePage.components.find(c=>c.id===id);
   }
 
-  private findPinAt(x: number, y: number): { componentId: string; pinId: string } | null {
-    const pinRadius = 8;
+  private findPinAt(x: number, y: number, isTouch: boolean = false): { componentId: string; pinId: string } | null {
+    const pinRadius = isTouch ? 16 : 8;
     for (const comp of this.activePage.components) {
       const sym = getSymbolForComponent(comp, this.project);
       if (!sym) continue;
