@@ -15,7 +15,7 @@ import { plotFrameSvg } from '../model/PlotFrame';
 import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, WallSegment } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, WallSegment, WallOpening } from '../model/types';
 import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -37,6 +37,8 @@ export interface CadCanvasCallbacks {
   onSelectComponent: (component: PlacedComponent | null) => void;
   onSelectCable?: (cable: CableDefinition | null) => void;
   onSelectWire: (wire: Wire | null) => void;
+  onSelectWall?: (wall: WallSegment | null) => void;
+  onSelectOpening?: (opening: WallOpening | null) => void;
   onOpenProperties?: (component: PlacedComponent) => void;
   onOpenSymbolSelection?: () => void;
   onOpenMacroSelection?: () => void;
@@ -78,6 +80,10 @@ export class CadCanvas {
   private elementBoxResize?: {component:PlacedComponent;original:PlacedComponent;anchor:{x:number;y:number}};
   private boxResize?: {box:PageBox;width:number;height:number};
   public selectedImageId: string | null = null;
+  public selectedWallId: string | null = null;
+  public selectedOpeningId: string | null = null;
+  private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number } } | null = null;
+  private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
   private multipleSelection?: ElementSelection;
   private selectionWindow?: {start:{x:number;y:number};end:{x:number;y:number};client:{x:number;y:number};moved:boolean;base:ElementSelection;additive:boolean};
@@ -499,6 +505,29 @@ export class CadCanvas {
     }
     if(this.selectedBoxId){this.activePage.boxes=this.activePage.boxes?.filter(c=>c.id!==this.selectedBoxId);this.setElementSelection(emptySelection());this.notifyModified();this.render();return;}
     if(this.selectedImageId){this.activePage.images=this.activePage.images?.filter(c=>c.id!==this.selectedImageId);this.setElementSelection(emptySelection());this.notifyModified();this.render();return;}
+    if (this.selectedWallId) {
+      if (this.activePage.floorPlan?.walls) {
+        this.activePage.floorPlan.walls = this.activePage.floorPlan.walls.filter(w => w.id !== this.selectedWallId);
+        if (this.activePage.floorPlan.openings) {
+          this.activePage.floorPlan.openings = this.activePage.floorPlan.openings.filter(op => op.wallId !== this.selectedWallId);
+        }
+      }
+      this.selectedWallId = null;
+      this.callbacks.onSelectWall?.(null);
+      this.notifyModified();
+      this.render();
+      return;
+    }
+    if (this.selectedOpeningId) {
+      if (this.activePage.floorPlan?.openings) {
+        this.activePage.floorPlan.openings = this.activePage.floorPlan.openings.filter(op => op.id !== this.selectedOpeningId);
+      }
+      this.selectedOpeningId = null;
+      this.callbacks.onSelectOpening?.(null);
+      this.notifyModified();
+      this.render();
+      return;
+    }
     if (this.selectedCableId) {
       this.activePage.cables = (this.activePage.cables ?? []).filter(c=>c.id!==this.selectedCableId);
       this.selectedCableId=null; this.callbacks.onSelectCable?.(null);this.notifyModified();this.render();return;
@@ -742,6 +771,18 @@ export class CadCanvas {
   private onContextMenu(e: MouseEvent): void {
     e.preventDefault();
     const world = this.screenToWorld(e.clientX, e.clientY);
+    const targetOpening = this.openingFromEvent(e);
+    if (targetOpening) {
+      this.selectOpening(targetOpening);
+      this.showContextMenu(e.clientX, e.clientY, null, null);
+      return;
+    }
+    const targetWall = this.wallFromEvent(e);
+    if (targetWall) {
+      this.selectWall(targetWall.wall);
+      this.showContextMenu(e.clientX, e.clientY, null, null);
+      return;
+    }
     const targetBox=this.boxFromEvent(e),targetCable=this.cableFromEvent(e),targetImage=this.imageFromEvent(e),targetComp=this.componentFromEvent(e)??this.findComponentAt(world.x,world.y);
     const targetText=(e.target as Element)?.closest?.('[data-text-id]')?.getAttribute('data-text-id'),targetWire=!targetBox&&!targetCable&&!targetImage&&!targetComp?this.findWireAt(world.x,world.y):null;
     const key=targetBox?'boxIds':targetCable?'cableIds':targetImage?'imageIds':targetText?'textIds':targetComp?'componentIds':'wireIds';
@@ -792,6 +833,27 @@ export class CadCanvas {
     if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} Elemente ausgewählt</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Gemeinsame Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Auswahl löschen <span class="ctx-key">Entf</span></div>`;}
     else if(this.selectedBoxId){items=`<div class="ctx-header">Gerätekasten</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Gerätekasten löschen <span class="ctx-key">Entf</span></div>`;}
     else if(this.selectedImageId){items=`<div class="ctx-header">Bild</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Bild löschen <span class="ctx-key">Entf</span></div>`;}
+    else if (this.selectedWallId) {
+      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === this.selectedWallId);
+      items = `
+        <div class="ctx-header">Wand (${wall?.isExterior ? 'Außenwand' : 'Innenwand'}, ${wall?.thickness || 2}px)</div>
+        <div class="ctx-item" data-action="wall-toggle-type">🔄 Als ${wall?.isExterior ? 'Innenwand' : 'Außenwand'} festlegen</div>
+        <div class="ctx-item" data-action="wall-add-door">🚪 Tür auf dieser Wand einfügen</div>
+        <div class="ctx-item" data-action="wall-add-window">🪟 Fenster auf dieser Wand einfügen</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Wand löschen <span class="ctx-key">Entf</span></div>
+      `;
+    } else if (this.selectedOpeningId) {
+      const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+      items = `
+        <div class="ctx-header">Öffnung: <strong>${op?.kind === 'door' ? 'Tür' : 'Fenster'}</strong> (${op?.width || 80} cm)</div>
+        <div class="ctx-item" data-action="opening-toggle-kind">🔄 Als ${op?.kind === 'door' ? 'Fenster' : 'Tür'} umschalten</div>
+        <div class="ctx-item" data-action="opening-toggle-orientation">📐 Ausrichtung drehen (horizontal/vertikal)</div>
+        ${op?.kind === 'door' ? '<div class="ctx-item" data-action="door-flip-swing">🚪 Türanschlag spiegeln</div>' : ''}
+        <div class="ctx-sep"></div>
+        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Öffnung löschen <span class="ctx-key">Entf</span></div>
+      `;
+    }
     else if (comp) {
       const sym = getSymbolForComponent(comp, this.project);
       items += `
@@ -846,6 +908,56 @@ export class CadCanvas {
         if(action==='cut'){this.cutSelected();return;}
         if(action==='copy'){this.copySelected();return;}
         if(action==='paste'){this.paste(this.screenToWorld(clientX, clientY));return;}
+        if(action==='wall-toggle-type' && this.selectedWallId){
+          const wall = this.activePage.floorPlan?.walls?.find(w => w.id === this.selectedWallId);
+          if (wall) {
+            wall.isExterior = !wall.isExterior;
+            wall.thickness = wall.isExterior ? 3.5 : 2.0;
+            this.notifyModified();
+            this.callbacks.onSelectWall?.(wall);
+            this.render();
+          }
+          return;
+        }
+        if(action==='wall-add-door' && this.selectedWallId){
+          this.addOpening('door', undefined, this.selectedWallId);
+          return;
+        }
+        if(action==='wall-add-window' && this.selectedWallId){
+          this.addOpening('window', undefined, this.selectedWallId);
+          return;
+        }
+        if(action==='opening-toggle-kind' && this.selectedOpeningId){
+          const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+          if (op) {
+            op.kind = op.kind === 'door' ? 'window' : 'door';
+            if (op.kind === 'door' && !op.swingDirection) op.swingDirection = 'left_in';
+            this.notifyModified();
+            this.callbacks.onSelectOpening?.(op);
+            this.render();
+          }
+          return;
+        }
+        if(action==='opening-toggle-orientation' && this.selectedOpeningId){
+          const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+          if (op) {
+            op.orientation = op.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+            this.notifyModified();
+            this.callbacks.onSelectOpening?.(op);
+            this.render();
+          }
+          return;
+        }
+        if(action==='door-flip-swing' && this.selectedOpeningId){
+          const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+          if (op) {
+            op.swingDirection = op.swingDirection?.includes('out') ? 'left_in' : 'left_out';
+            this.notifyModified();
+            this.callbacks.onSelectOpening?.(op);
+            this.render();
+          }
+          return;
+        }
         if(action==='properties' && (this.multipleSelection || this.selectedImageId || this.selectedBoxId)){this.callbacks.onOpenSelectionProperties?.();}
         else if (action === 'properties' && comp) {
           this.callbacks.onOpenProperties?.(comp);
@@ -988,6 +1100,35 @@ export class CadCanvas {
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;
+    const wallHit = this.wallFromEvent(e);
+    if (wallHit && this.mode === 'select') {
+      this.selectWall(wallHit.wall);
+      const isHandle = !!wallHit.handle;
+      this.wallDrag = {
+        wall: wallHit.wall,
+        handle: wallHit.handle ?? 'both',
+        startPos: { ...wallHit.wall.start },
+        startEnd: { ...wallHit.wall.end },
+        isMovingWholeWall: !isHandle,
+        mouseStart: { ...world }
+      };
+      return;
+    }
+
+    const clickedOpening = this.openingFromEvent(e);
+    if (clickedOpening && this.mode === 'select') {
+      this.selectOpening(clickedOpening);
+      this.openingDrag = {
+        opening: clickedOpening,
+        startCenter: { ...clickedOpening.center },
+        mouseStart: { ...world }
+      };
+      return;
+    }
+
+    if (this.selectedWallId) { this.selectedWallId = null; this.callbacks.onSelectWall?.(null); }
+    if (this.selectedOpeningId) { this.selectedOpeningId = null; this.callbacks.onSelectOpening?.(null); }
+
     const clickedCable = this.cableFromEvent(e);
     if (clickedCable) {
       this.selectCable(clickedCable);
@@ -1079,6 +1220,54 @@ export class CadCanvas {
     }
     if (this.cableDrag) { this.moveCable(world);return; }
 
+    if (this.wallDrag) {
+      const drag = this.wallDrag;
+      const dx = world.x - drag.mouseStart.x;
+      const dy = world.y - drag.mouseStart.y;
+      if (drag.handle === 'start') {
+        drag.wall.start.x = this.snap(drag.startPos.x + dx);
+        drag.wall.start.y = this.snap(drag.startPos.y + dy, false, 'y');
+      } else if (drag.handle === 'end') {
+        drag.wall.end.x = this.snap(drag.startEnd!.x + dx);
+        drag.wall.end.y = this.snap(drag.startEnd!.y + dy, false, 'y');
+      } else {
+        const snappedDx = this.snap(drag.startPos.x + dx) - drag.startPos.x;
+        const snappedDy = this.snap(drag.startPos.y + dy, false, 'y') - drag.startPos.y;
+        drag.wall.start.x = drag.startPos.x + snappedDx;
+        drag.wall.start.y = drag.startPos.y + snappedDy;
+        drag.wall.end.x = drag.startEnd!.x + snappedDx;
+        drag.wall.end.y = drag.startEnd!.y + snappedDy;
+      }
+      this.callbacks.onSelectWall?.(drag.wall);
+      this.render();
+      return;
+    }
+
+    if (this.openingDrag) {
+      const drag = this.openingDrag;
+      const dx = world.x - drag.mouseStart.x;
+      const dy = world.y - drag.mouseStart.y;
+      const newX = this.snap(drag.startCenter.x + dx);
+      const newY = this.snap(drag.startCenter.y + dy, false, 'y');
+      drag.opening.center.x = newX;
+      drag.opening.center.y = newY;
+
+      if (this.activePage.floorPlan?.walls) {
+        const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 25);
+        if (nearest) {
+          drag.opening.wallId = nearest.wall.id;
+          drag.opening.center.x = Math.round(nearest.snappedPoint.x);
+          drag.opening.center.y = Math.round(nearest.snappedPoint.y);
+          const wdx = nearest.wall.end.x - nearest.wall.start.x;
+          const wdy = nearest.wall.end.y - nearest.wall.start.y;
+          drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
+        }
+      }
+      this.callbacks.onSelectOpening?.(drag.opening);
+      this.render();
+      return;
+    }
+
     if (this.isDraggingComponent && this.selectedComponentId) {
       const comp = this.activePage.components.find(c => c.id === this.selectedComponentId);
       if (comp) {
@@ -1128,6 +1317,16 @@ export class CadCanvas {
       this.render();
     }
     if (this.cableDrag) { const moved=this.cableDrag.moved;this.cableDrag=undefined;if(moved)this.notifyModified();this.render(); }
+    if (this.wallDrag) {
+      this.wallDrag = null;
+      this.notifyModified();
+      this.render();
+    }
+    if (this.openingDrag) {
+      this.openingDrag = null;
+      this.notifyModified();
+      this.render();
+    }
     if (this.isPanning) {
       this.isPanning = false;
     }
@@ -1199,6 +1398,35 @@ export class CadCanvas {
       const image=this.imageFromEvent(e);
       if(image && this.mode==='select'){e.preventDefault();const selection=this.getElementSelection();if(!selection.imageIds?.includes(image.id))this.setElementSelection({componentIds:[],cableIds:[],imageIds:[image.id]});this.selectionDrag={origin:world,snapshot:captureSelectionMove(this.activePage,this.getElementSelection()),dx:0,dy:0};return;}
       this.selectedImageId=null;this.selectedBoxId=null;
+
+      const wallHit = this.wallFromEvent(e);
+      if (wallHit && this.mode === 'select') {
+        e.preventDefault();
+        this.selectWall(wallHit.wall);
+        const isHandle = !!wallHit.handle;
+        this.wallDrag = {
+          wall: wallHit.wall,
+          handle: wallHit.handle ?? 'both',
+          startPos: { ...wallHit.wall.start },
+          startEnd: { ...wallHit.wall.end },
+          isMovingWholeWall: !isHandle,
+          mouseStart: { ...world }
+        };
+        return;
+      }
+
+      const clickedOpening = this.openingFromEvent(e);
+      if (clickedOpening && this.mode === 'select') {
+        e.preventDefault();
+        this.selectOpening(clickedOpening);
+        this.openingDrag = {
+          opening: clickedOpening,
+          startCenter: { ...clickedOpening.center },
+          mouseStart: { ...world }
+        };
+        return;
+      }
+
       if (this.mode === 'cable') { e.preventDefault();this.placeCablePoint(world);return; }
       const cable=this.cableFromEvent(e);
       if(cable){e.preventDefault();this.selectCable(cable);this.cableDrag={cable,start:{...cable.start},end:{...cable.end},origin:world,moved:false};return;}
@@ -1330,6 +1558,60 @@ export class CadCanvas {
 
       if(this.cableDrag && e.touches.length===1){e.preventDefault();const t=e.touches[0];this.moveCable(this.screenToWorld(t.clientX,t.clientY));return;}
 
+      if (this.wallDrag && e.touches.length === 1) {
+        e.preventDefault();
+        const t = e.touches[0];
+        const world = this.screenToWorld(t.clientX, t.clientY);
+        const drag = this.wallDrag;
+        const dx = world.x - drag.mouseStart.x;
+        const dy = world.y - drag.mouseStart.y;
+        if (drag.handle === 'start') {
+          drag.wall.start.x = this.snap(drag.startPos.x + dx);
+          drag.wall.start.y = this.snap(drag.startPos.y + dy, false, 'y');
+        } else if (drag.handle === 'end') {
+          drag.wall.end.x = this.snap(drag.startEnd!.x + dx);
+          drag.wall.end.y = this.snap(drag.startEnd!.y + dy, false, 'y');
+        } else {
+          const snappedDx = this.snap(drag.startPos.x + dx) - drag.startPos.x;
+          const snappedDy = this.snap(drag.startPos.y + dy, false, 'y') - drag.startPos.y;
+          drag.wall.start.x = drag.startPos.x + snappedDx;
+          drag.wall.start.y = drag.startPos.y + snappedDy;
+          drag.wall.end.x = drag.startEnd!.x + snappedDx;
+          drag.wall.end.y = drag.startEnd!.y + snappedDy;
+        }
+        this.callbacks.onSelectWall?.(drag.wall);
+        this.render();
+        return;
+      }
+
+      if (this.openingDrag && e.touches.length === 1) {
+        e.preventDefault();
+        const t = e.touches[0];
+        const world = this.screenToWorld(t.clientX, t.clientY);
+        const drag = this.openingDrag;
+        const dx = world.x - drag.mouseStart.x;
+        const dy = world.y - drag.mouseStart.y;
+        const newX = this.snap(drag.startCenter.x + dx);
+        const newY = this.snap(drag.startCenter.y + dy, false, 'y');
+        drag.opening.center.x = newX;
+        drag.opening.center.y = newY;
+
+        if (this.activePage.floorPlan?.walls) {
+          const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 25);
+          if (nearest) {
+            drag.opening.wallId = nearest.wall.id;
+            drag.opening.center.x = Math.round(nearest.snappedPoint.x);
+            drag.opening.center.y = Math.round(nearest.snappedPoint.y);
+            const wdx = nearest.wall.end.x - nearest.wall.start.x;
+            const wdy = nearest.wall.end.y - nearest.wall.start.y;
+            drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
+          }
+        }
+        this.callbacks.onSelectOpening?.(drag.opening);
+        this.render();
+        return;
+      }
+
     if (this.touchMode === 'drag' && this.isDraggingComponent && this.selectedComponentId) {
         e.preventDefault();
         const world = this.screenToWorld(touch.clientX, touch.clientY);
@@ -1354,7 +1636,7 @@ export class CadCanvas {
 
   private onTouchEnd(e: TouchEvent): void {
     if(e.type==='touchcancel' && (this.boxDraft||this.boxResize||this.elementBoxResize)){this.cancelBoxInteraction();this.render();return;}
-    if((this.cableDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
+    if((this.cableDrag || this.wallDrag || this.openingDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
     if (this.touchMode === 'pinch' && e.touches.length < 2) {
       this.touchMode = 'none';
     }
@@ -1542,7 +1824,7 @@ export class CadCanvas {
         ${coverPageSvg(this.activePage, this.project)}
 
         <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
-        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components })}</g>` : ''}
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: true })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">
@@ -1702,10 +1984,129 @@ export class CadCanvas {
     return this.activePage.cables?.find(c=>c.id===id);
   }
 
+  private wallFromEvent(e: Event): { wall: WallSegment; handle?: 'start' | 'end' } | undefined {
+    const handleEl = (e.target as Element)?.closest?.('[data-wall-handle]');
+    if (handleEl) {
+      const wallId = handleEl.getAttribute('data-wall-id');
+      const handle = handleEl.getAttribute('data-wall-handle') as 'start' | 'end';
+      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
+      if (wall) return { wall, handle };
+    }
+    const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
+    if (wallEl) {
+      const wallId = wallEl.getAttribute('data-wall-id');
+      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
+      if (wall) return { wall };
+    }
+    return undefined;
+  }
+
+  private openingFromEvent(e: Event): WallOpening | undefined {
+    const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
+    return this.activePage.floorPlan?.openings?.find(op => op.id === id);
+  }
+
+  public selectWall(wall: WallSegment | null): void {
+    this.clearMultipleSelection();
+    this.selectedComponentId = null;
+    this.selectedWireId = null;
+    this.selectedImageId = null;
+    this.selectedBoxId = null;
+    this.selectedCableId = null;
+    this.selectedOpeningId = null;
+    this.callbacks.onSelectComponent(null);
+    this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectCable?.(null);
+    this.callbacks.onSelectOpening?.(null);
+    this.selectedWallId = wall ? wall.id : null;
+    this.callbacks.onSelectWall?.(wall);
+    this.render();
+  }
+
+  public selectOpening(opening: WallOpening | null): void {
+    this.clearMultipleSelection();
+    this.selectedComponentId = null;
+    this.selectedWireId = null;
+    this.selectedImageId = null;
+    this.selectedBoxId = null;
+    this.selectedCableId = null;
+    this.selectedWallId = null;
+    this.callbacks.onSelectComponent(null);
+    this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectCable?.(null);
+    this.callbacks.onSelectWall?.(null);
+    this.selectedOpeningId = opening ? opening.id : null;
+    this.callbacks.onSelectOpening?.(opening);
+    this.render();
+  }
+
+  public addOpening(kind: 'door' | 'window', position?: { x: number; y: number }, wallId?: string): WallOpening | null {
+    if (!this.activePage.floorPlan) {
+      this.activePage.floorPlan = {
+        scale: { scaleRatio: 100, pixelPerMeter: 50 },
+        walls: [],
+        openings: [],
+        rooms: []
+      };
+    }
+    if (!this.activePage.floorPlan.openings) {
+      this.activePage.floorPlan.openings = [];
+    }
+
+    const walls = this.activePage.floorPlan.walls || [];
+    let targetWall = wallId
+      ? walls.find(w => w.id === wallId)
+      : (this.selectedWallId ? walls.find(w => w.id === this.selectedWallId) : undefined);
+
+    let center = position;
+    let orientation: 'horizontal' | 'vertical' = 'horizontal';
+
+    if (!center && targetWall) {
+      center = {
+        x: Math.round((targetWall.start.x + targetWall.end.x) / 2),
+        y: Math.round((targetWall.start.y + targetWall.end.y) / 2)
+      };
+      const dx = targetWall.end.x - targetWall.start.x;
+      const dy = targetWall.end.y - targetWall.start.y;
+      orientation = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+    } else if (!center) {
+      if (walls.length > 0) {
+        targetWall = walls[0];
+        center = {
+          x: Math.round((targetWall.start.x + targetWall.end.x) / 2),
+          y: Math.round((targetWall.start.y + targetWall.end.y) / 2)
+        };
+        const dx = targetWall.end.x - targetWall.start.x;
+        const dy = targetWall.end.y - targetWall.start.y;
+        orientation = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+      } else {
+        center = { x: 400, y: 300 };
+      }
+    }
+
+    const newOpening: WallOpening = {
+      id: `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      kind,
+      wallId: targetWall?.id,
+      center: { x: this.snap(center.x), y: this.snap(center.y, false, 'y') },
+      width: kind === 'door' ? 88.5 : 100,
+      orientation,
+      swingDirection: kind === 'door' ? 'left_in' : undefined
+    };
+
+    this.activePage.floorPlan.openings.push(newOpening);
+    this.selectOpening(newOpening);
+    this.notifyModified();
+    this.render();
+    return newOpening;
+  }
+
   public selectCable(cable: CableDefinition): void {
     this.clearMultipleSelection();
     this.selectedComponentId=null;this.selectedWireId=null;this.selectedImageId=null;this.selectedBoxId=null;
+    this.selectedWallId=null;this.selectedOpeningId=null;
     this.callbacks.onSelectComponent(null);this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectWall?.(null);this.callbacks.onSelectOpening?.(null);
     this.selectedCableId=cable.id;this.callbacks.onSelectCable?.(cable);this.updateSelectionClasses();
   }
 
@@ -1993,6 +2394,7 @@ export class CadCanvas {
       isExterior: false
     };
     this.activePage.floorPlan.walls.push(newWall);
+    this.selectWall(newWall);
     this.notifyModified();
     this.render();
   }

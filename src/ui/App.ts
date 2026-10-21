@@ -21,7 +21,7 @@ import { cableCrossings } from '../model/CableDefinition';
 // src/ui/App.ts
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
 
-import { Project, Page, PlacedComponent, Wire, CableDefinition } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, WallSegment, WallOpening } from '../model/types';
 import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm } from '../model/symbols';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
@@ -52,6 +52,8 @@ export class App {
   private selectedComponent: PlacedComponent | null = null;
   private selectedWire: Wire | null = null;
   private selectedCable: CableDefinition | null = null;
+  private selectedWall: WallSegment | null = null;
+  private selectedOpening: WallOpening | null = null;
   private activeLeftTab: 'pages' | 'symbols' | 'connections' | 'macros' | 'terminals' | 'bom' | 'parts' = 'pages';
   private symbolCategoryFilter: string = 'all';
   private connectionCategoryFilter: string = 'all';
@@ -303,23 +305,45 @@ export class App {
 
     this.canvas = new CadCanvas(container, this.project, {
       onSelectComponent: (comp) => {
-        this.selectedCable=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedComponent = comp;
         if (comp) this.selectedWire = null;
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectWire: (wire) => {
-        this.selectedCable=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedWire = wire;
         if (wire) this.selectedComponent = null;
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectCable: cable => {
-        this.selectedCable=cable;
+        this.selectedCable=cable;this.selectedWall=null;this.selectedOpening=null;
         if(cable){this.selectedComponent=null;this.selectedWire=null;}
         this.updateFloatingSelectionBar();this.renderRightTab();
+      },
+      onSelectWall: wall => {
+        this.selectedWall = wall;
+        if (wall) {
+          this.selectedComponent = null;
+          this.selectedWire = null;
+          this.selectedCable = null;
+          this.selectedOpening = null;
+        }
+        this.updateFloatingSelectionBar();
+        this.renderRightTab();
+      },
+      onSelectOpening: opening => {
+        this.selectedOpening = opening;
+        if (opening) {
+          this.selectedComponent = null;
+          this.selectedWire = null;
+          this.selectedCable = null;
+          this.selectedWall = null;
+        }
+        this.updateFloatingSelectionBar();
+        this.renderRightTab();
       },
       onSelectionChanged: selection => {
         this.updateFloatingSelectionBar();this.renderRightTab();
@@ -2322,7 +2346,309 @@ export class App {
     container.querySelector('#cableDelete')?.addEventListener('click',()=>this.canvas.deleteSelected());
   }
 
+  private renderWallProperties(container: HTMLElement, wall: WallSegment): void {
+    const isExt = !!wall.isExterior;
+    const thickness = wall.thickness || (isExt ? 3.5 : 2.0);
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const lenPx = Math.hypot(dx, dy);
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    const scale = page?.floorPlan?.scale;
+    const pxPerMeter = scale?.pixelPerMeter || 50;
+    const lenM = (lenPx / pxPerMeter).toFixed(2);
+    const angleDeg = (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1);
+
+    container.innerHTML = `
+      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
+        🧱 Wand Eigenschaften
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Wandtyp</label>
+        <select class="form-input" id="propWallType">
+          <option value="exterior" ${isExt ? 'selected' : ''}>Außenwand (tragend)</option>
+          <option value="interior" ${!isExt ? 'selected' : ''}>Innenwand (nicht tragend)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Wandstärke / Dicke (px)</label>
+        <input class="form-input" id="propWallThickness" type="number" min="0.5" max="20" step="0.5" value="${thickness}">
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="1.5" style="flex:1;font-size:10px;padding:3px;">1.5 (Dünn)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="2.0" style="flex:1;font-size:10px;padding:3px;">2.0 (Innen)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="3.5" style="flex:1;font-size:10px;padding:3px;">3.5 (Außen)</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="5.0" style="flex:1;font-size:10px;padding:3px;">5.0 (Massiv)</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Startpunkt (X₁, Y₁)</label>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" id="propWallStartX" type="number" step="1" value="${Math.round(wall.start.x)}">
+          <input class="form-input" id="propWallStartY" type="number" step="1" value="${Math.round(wall.start.y)}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Endpunkt (X₂, Y₂)</label>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" id="propWallEndX" type="number" step="1" value="${Math.round(wall.end.x)}">
+          <input class="form-input" id="propWallEndY" type="number" step="1" value="${Math.round(wall.end.y)}">
+        </div>
+      </div>
+
+      <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:4px;padding:8px;font-size:11px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="color:var(--text-muted);">Länge:</span>
+          <strong>${lenM} m (${Math.round(lenPx)} px)</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--text-muted);">Winkel:</span>
+          <span>${angleDeg}°</span>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        <button type="button" class="btn btn-primary" id="btnWallAddDoor" style="font-size:11px;padding:6px;">
+          🚪 Tür auf dieser Wand einfügen
+        </button>
+        <button type="button" class="btn" id="btnWallAddWindow" style="font-size:11px;padding:6px;">
+          🪟 Fenster auf dieser Wand einfügen
+        </button>
+      </div>
+
+      <button type="button" class="btn btn-danger" id="btnWallDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);">
+        🗑️ Wand löschen
+      </button>
+    `;
+
+    container.querySelector('#propWallType')?.addEventListener('change', (e) => {
+      const val = (e.target as HTMLSelectElement).value;
+      wall.isExterior = val === 'exterior';
+      if (!wall.thickness || wall.thickness === 2.0 || wall.thickness === 3.5) {
+        wall.thickness = wall.isExterior ? 3.5 : 2.0;
+      }
+      this.notifyChange();
+      this.canvas.render();
+      this.renderWallProperties(container, wall);
+    });
+
+    container.querySelector('#propWallThickness')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val) && val > 0) {
+        wall.thickness = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelectorAll('.btnWallThickPreset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = parseFloat((btn as HTMLElement).dataset.thick || '2.0');
+        wall.thickness = t;
+        const input = container.querySelector('#propWallThickness') as HTMLInputElement;
+        if (input) input.value = String(t);
+        this.notifyChange();
+        this.canvas.render();
+      });
+    });
+
+    container.querySelector('#propWallStartX')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        wall.start.x = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propWallStartY')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        wall.start.y = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propWallEndX')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        wall.end.x = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propWallEndY')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        wall.end.y = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#btnWallAddDoor')?.addEventListener('click', () => {
+      this.canvas.addOpening('door', undefined, wall.id);
+    });
+
+    container.querySelector('#btnWallAddWindow')?.addEventListener('click', () => {
+      this.canvas.addOpening('window', undefined, wall.id);
+    });
+
+    container.querySelector('#btnWallDelete')?.addEventListener('click', () => {
+      this.canvas.deleteSelected();
+    });
+  }
+
+  private renderOpeningProperties(container: HTMLElement, op: WallOpening): void {
+    const isDoor = op.kind === 'door';
+    const width = op.width || (isDoor ? 88.5 : 100);
+    const orientation = op.orientation || 'horizontal';
+    const swing = op.swingDirection || 'in-left';
+
+    container.innerHTML = `
+      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
+        ${isDoor ? '🚪 Tür' : '🪟 Fenster'} Eigenschaften
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Art der Öffnung</label>
+        <select class="form-input" id="propOpeningKind">
+          <option value="door" ${isDoor ? 'selected' : ''}>Tür (mit Aufschlagbogen)</option>
+          <option value="window" ${!isDoor ? 'selected' : ''}>Fenster (Verglasung)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Breite (cm)</label>
+        <input class="form-input" id="propOpeningWidth" type="number" min="30" max="400" step="1" value="${width}">
+        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="75" style="flex:1;font-size:10px;padding:3px;">75</button>
+          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="88.5" style="flex:1;font-size:10px;padding:3px;">88.5</button>
+          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="101" style="flex:1;font-size:10px;padding:3px;">101</button>
+          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="125" style="flex:1;font-size:10px;padding:3px;">125</button>
+          <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="150" style="flex:1;font-size:10px;padding:3px;">150</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Ausrichtung</label>
+        <select class="form-input" id="propOpeningOrientation">
+          <option value="horizontal" ${orientation === 'horizontal' ? 'selected' : ''}>Horizontal (Waagerecht)</option>
+          <option value="vertical" ${orientation === 'vertical' ? 'selected' : ''}>Vertikal (Senkrecht)</option>
+        </select>
+      </div>
+
+      ${isDoor ? `
+        <div class="form-group">
+          <label class="form-label">Anschlagrichtung (Türblatt)</label>
+          <select class="form-input" id="propOpeningSwing">
+            <option value="left_in" ${swing === 'left_in' ? 'selected' : ''}>Einwärts links (DIN Links)</option>
+            <option value="right_in" ${swing === 'right_in' ? 'selected' : ''}>Einwärts rechts (DIN Rechts)</option>
+            <option value="left_out" ${swing === 'left_out' ? 'selected' : ''}>Auswärts links (DIN Links)</option>
+            <option value="right_out" ${swing === 'right_out' ? 'selected' : ''}>Auswärts rechts (DIN Rechts)</option>
+            <option value="none" ${swing === 'none' ? 'selected' : ''}>Kein Bogen (Schiebetür/Durchgang)</option>
+          </select>
+        </div>
+      ` : ''}
+
+      <div class="form-group">
+        <label class="form-label">Position Mitte (X, Y)</label>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" id="propOpeningCenterX" type="number" step="1" value="${Math.round(op.center.x)}">
+          <input class="form-input" id="propOpeningCenterY" type="number" step="1" value="${Math.round(op.center.y)}">
+        </div>
+      </div>
+
+      ${op.wallId ? `
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+          Zugeordnete Wand: <code style="color:#63b3ed;">${escapeSvg(op.wallId)}</code>
+        </div>
+      ` : ''}
+
+      <button type="button" class="btn btn-danger" id="btnOpeningDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);">
+        🗑️ Öffnung löschen
+      </button>
+    `;
+
+    container.querySelector('#propOpeningKind')?.addEventListener('change', (e) => {
+      const val = (e.target as HTMLSelectElement).value as 'door' | 'window';
+      op.kind = val;
+      if (val === 'door' && !op.swingDirection) {
+        op.swingDirection = 'left_in';
+      }
+      this.notifyChange();
+      this.canvas.render();
+      this.renderOpeningProperties(container, op);
+    });
+
+    container.querySelector('#propOpeningWidth')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val) && val > 0) {
+        op.width = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelectorAll('.btnOpWidthPreset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const w = parseFloat((btn as HTMLElement).dataset.w || '88.5');
+        op.width = w;
+        const input = container.querySelector('#propOpeningWidth') as HTMLInputElement;
+        if (input) input.value = String(w);
+        this.notifyChange();
+        this.canvas.render();
+      });
+    });
+
+    container.querySelector('#propOpeningOrientation')?.addEventListener('change', (e) => {
+      op.orientation = (e.target as HTMLSelectElement).value as 'horizontal' | 'vertical';
+      this.notifyChange();
+      this.canvas.render();
+    });
+
+    container.querySelector('#propOpeningSwing')?.addEventListener('change', (e) => {
+      op.swingDirection = (e.target as HTMLSelectElement).value as any;
+      this.notifyChange();
+      this.canvas.render();
+    });
+
+    container.querySelector('#propOpeningCenterX')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        op.center.x = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#propOpeningCenterY')?.addEventListener('input', (e) => {
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(val)) {
+        op.center.y = val;
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
+    container.querySelector('#btnOpeningDelete')?.addEventListener('click', () => {
+      this.canvas.deleteSelected();
+    });
+  }
+
   private renderPropertiesTab(container: HTMLElement): void {
+    if (this.selectedWall) {
+      this.renderWallProperties(container, this.selectedWall);
+      return;
+    }
+    if (this.selectedOpening) {
+      this.renderOpeningProperties(container, this.selectedOpening);
+      return;
+    }
     if(this.canvas?.selectedBoxId){
       const page=this.project.pages.find(p=>p.id===this.project.activePageId),box=page?.boxes?.find(c=>c.id===this.canvas.selectedBoxId);
       if(box)renderDeviceBoxProperties(container,box,getDrawingUnitsPerMm(this.project),()=>{this.notifyChange();this.renderRightTab();},()=>this.canvas.deleteSelected());
@@ -2653,12 +2979,20 @@ export class App {
                 <input type="range" id="rngBlueprintOpacity" min="0" max="100" value="${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}" style="width:100%;accent-color:#3182ce;" />
               </div>
             ` : ''}
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
               <button type="button" class="btn" id="btnDrawWall" style="flex:1;font-size:11px;padding:4px 8px;background:#2b6cb0;color:#fff;border:none;">
                 🧱 Wand zeichnen
               </button>
               <button type="button" class="btn" id="btnReimportFloorPlan" style="flex:1;font-size:11px;padding:4px 8px;">
                 🔄 Neu importieren
+              </button>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="btn" id="btnAddDoorQuick" style="flex:1;font-size:11px;padding:4px 8px;">
+                🚪 Tür einfügen
+              </button>
+              <button type="button" class="btn" id="btnAddWindowQuick" style="flex:1;font-size:11px;padding:4px 8px;">
+                🪟 Fenster einfügen
               </button>
             </div>
           </div>
@@ -2732,6 +3066,12 @@ export class App {
         this.canvas.setMode('draw_wall');
         const status = document.getElementById('statusLeft');
         if (status) status.textContent = 'Wand zeichnen: Startpunkt auf dem Grundriss anklicken, dann Endpunkt anklicken. Esc bricht ab.';
+      });
+      document.getElementById('btnAddDoorQuick')?.addEventListener('click', () => {
+        this.canvas.addOpening('door');
+      });
+      document.getElementById('btnAddWindowQuick')?.addEventListener('click', () => {
+        this.canvas.addOpening('window');
       });
       document.getElementById('btnReimportFloorPlan')?.addEventListener('click', () => {
         this.openFloorPlanImport();

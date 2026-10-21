@@ -210,3 +210,60 @@ const hitCanvas=Object.assign(Object.create(CadCanvas.prototype),{activePage:{..
   cableFromEvent:()=>undefined,imageFromEvent:()=>hitImage,findComponentAt:()=>{throw new Error('A direct image target must not use a loose component hitbox');}});
 assert.equal(hitCanvas.handleSelectionMouseDown({}, {x:20,y:30}),true);
 assert.equal(hitCanvas.selectedImageId,'hit-image');assert(hitCanvas.selectionDrag);
+
+// Architectural walls and openings are selectable, editable and deletable
+const floorPlanPage: Page = {
+  ...page,
+  floorPlan: {
+    scale: { scaleRatio: 100, pixelPerMeter: 50 },
+    walls: [
+      { id: 'w1', start: { x: 100, y: 100 }, end: { x: 300, y: 100 }, thickness: 3.5, isExterior: true },
+      { id: 'w2', start: { x: 300, y: 100 }, end: { x: 300, y: 300 }, thickness: 2.0, isExterior: false }
+    ],
+    openings: [
+      { id: 'd1', kind: 'door', center: { x: 200, y: 100 }, width: 88.5, orientation: 'horizontal', wallId: 'w1' }
+    ],
+    rooms: []
+  }
+};
+const fpCanvas = Object.assign(Object.create(CadCanvas.prototype), {
+  activePage: floorPlanPage,
+  project,
+  callbacks: {
+    onSelectComponent: () => {},
+    onSelectWire: () => {},
+    onSelectWall: (w: any) => { fpCanvas.selectedWall = w; },
+    onSelectOpening: (op: any) => { fpCanvas.selectedOpening = op; },
+    onProjectModified: () => {}
+  },
+  render: () => {},
+  notifyModified: () => {},
+  snap: (val: number) => val,
+  clearMultipleSelection: () => {}
+});
+
+// Select wall
+fpCanvas.selectWall(floorPlanPage.floorPlan!.walls[0]);
+assert.equal(fpCanvas.selectedWallId, 'w1');
+
+// Add window
+const newWin = fpCanvas.addOpening('window', { x: 300, y: 200 }, 'w2');
+assert.equal(newWin.kind, 'window');
+assert.equal(floorPlanPage.floorPlan!.openings.length, 2);
+assert.equal(fpCanvas.selectedOpeningId, newWin.id);
+
+// Delete opening
+fpCanvas.deleteSelected();
+assert.equal(floorPlanPage.floorPlan!.openings.length, 1);
+assert.equal(floorPlanPage.floorPlan!.openings[0].id, 'd1');
+assert.equal(fpCanvas.selectedOpeningId, null);
+
+// Delete wall w1 - should also remove door d1 attached to w1
+fpCanvas.selectWall(floorPlanPage.floorPlan!.walls[0]);
+fpCanvas.deleteSelected();
+assert.equal(floorPlanPage.floorPlan!.walls.length, 1);
+assert.equal(floorPlanPage.floorPlan!.walls[0].id, 'w2');
+assert.equal(floorPlanPage.floorPlan!.openings.length, 0); // door d1 was removed with w1
+assert.equal(fpCanvas.selectedWallId, null);
+
+console.log('✓ Architectural floor plan walls and openings: selection, addition, editing and deletion verified');

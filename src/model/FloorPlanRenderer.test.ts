@@ -67,4 +67,16 @@ assert(svg.includes('24.5 m²'), 'Must render room area');
 assert(svg.includes('<image href="data:image/png;base64,'), 'Must render background image');
 assert(svg.includes('width="655" height="530"'), 'Must use exact fitted image dimensions');
 
+// Test wall and opening interactive selection
+const selectedSvg = floorPlanToSvg(testPlan, {
+  selectedWallId: 'w1',
+  selectedOpeningId: 'op1',
+  interactive: true
+});
+assert(selectedSvg.includes('data-wall-handle="start"'), 'Must render start handle for selected wall');
+assert(selectedSvg.includes('data-wall-handle="end"'), 'Must render end handle for selected wall');
+assert(selectedSvg.includes('class="floorplan-wall selected"'), 'Must mark selected wall');
+assert(selectedSvg.includes('class="floorplan-door selected"'), 'Must mark selected door');
+assert(selectedSvg.includes('class="floorplan-opening-handle"'), 'Must render opening handle');
+
 console.log('✓ FloorPlanRenderer tests passed successfully!');

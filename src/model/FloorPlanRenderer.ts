@@ -116,6 +116,9 @@ export interface RenderFloorPlanOptions {
   showOpenings?: boolean;
   showWires?: boolean;
   components?: PlacedComponent[];
+  selectedWallId?: string | null;
+  selectedOpeningId?: string | null;
+  interactive?: boolean;
 }
 
 /**
@@ -169,20 +172,44 @@ export function floorPlanToSvg(
     }
   }
 
-  // 3. Walls (architectural line weights: exterior 3.5, interior 2.0)
+  // 3. Walls (architectural line weights: exterior 3.5, interior 2.0; interactive selection & handles)
   if (options.showWalls !== false && plan.walls) {
     for (const wall of plan.walls) {
+      const isSelected = options.selectedWallId === wall.id;
       const strokeWidth = wall.thickness || (wall.isExterior ? 3.5 : 2.0);
-      const strokeColor = wall.isExterior ? '#cbd5e0' : '#a0aec0';
+      const strokeColor = isSelected ? '#3182ce' : (wall.isExterior ? '#cbd5e0' : '#a0aec0');
+
+      // Visual line
       parts.push(
-        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linecap="round" />`
+        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linecap="round" data-wall-id="${wall.id}" class="floorplan-wall ${isSelected ? 'selected' : ''}" />`
       );
+
+      // Hit area for clicking/dragging
+      if (options.interactive !== false) {
+        parts.push(
+          `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="transparent" stroke-width="${Math.max(16, strokeWidth + 10)}" stroke-linecap="round" data-wall-id="${wall.id}" class="floorplan-wall-hit" style="cursor:pointer;" />`
+        );
+      }
+
+      // If selected: render selection halo and endpoint handles
+      if (isSelected) {
+        parts.push(
+          `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="#63b3ed" stroke-width="${strokeWidth + 4}" stroke-linecap="round" opacity="0.35" pointer-events="none" />`
+        );
+        parts.push(
+          `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="6" fill="#3182ce" stroke="#ffffff" stroke-width="2" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />`
+        );
+        parts.push(
+          `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="6" fill="#3182ce" stroke="#ffffff" stroke-width="2" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />`
+        );
+      }
     }
   }
 
-  // 4. Openings (Doors & Windows with proper orientation and CAD symbols)
+  // 4. Openings (Doors & Windows with proper orientation and CAD symbols; interactive selection)
   if (options.showOpenings !== false && plan.openings) {
     for (const op of plan.openings) {
+      const isSelected = options.selectedOpeningId === op.id;
       const hw = op.width / 2;
       const wall = op.wallId ? wallMap.get(op.wallId) : undefined;
       let ux = 1, uy = 0, nx = 0, ny = 1;
@@ -207,15 +234,21 @@ export function floorPlanToSvg(
       const p2x = op.center.x + hw * ux;
       const p2y = op.center.y + hw * uy;
 
+      const glassColor = isSelected ? '#3182ce' : '#63b3ed';
+      const leafColor = isSelected ? '#3182ce' : '#e2e8f0';
+      const arcColor = isSelected ? '#3182ce' : '#90cdf4';
+
       if (op.kind === 'window') {
         // Window: wall gap + double glass lines + jamb ticks
         parts.push(`
-          <g class="floorplan-window">
-            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="5" stroke-linecap="butt" />
-            <line x1="${(p1x + 1.5 * nx).toFixed(1)}" y1="${(p1y + 1.5 * ny).toFixed(1)}" x2="${(p2x + 1.5 * nx).toFixed(1)}" y2="${(p2y + 1.5 * ny).toFixed(1)}" stroke="#63b3ed" stroke-width="1.5" />
-            <line x1="${(p1x - 1.5 * nx).toFixed(1)}" y1="${(p1y - 1.5 * ny).toFixed(1)}" x2="${(p2x - 1.5 * nx).toFixed(1)}" y2="${(p2y - 1.5 * ny).toFixed(1)}" stroke="#63b3ed" stroke-width="1.5" />
+          <g ${isSelected ? 'class="floorplan-window selected"' : 'class="floorplan-window"'} data-opening-id="${op.id}" style="cursor:pointer;">
+            <rect x="${Math.min(p1x, p2x) - 6}" y="${Math.min(p1y, p2y) - 6}" width="${Math.abs(p2x - p1x) + 12}" height="${Math.abs(p2y - p1y) + 12}" fill="transparent" pointer-events="all" />
+            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
+            <line x1="${(p1x + 1.5 * nx).toFixed(1)}" y1="${(p1y + 1.5 * ny).toFixed(1)}" x2="${(p2x + 1.5 * nx).toFixed(1)}" y2="${(p2y + 1.5 * ny).toFixed(1)}" stroke="${glassColor}" stroke-width="${isSelected ? 2.5 : 1.5}" />
+            <line x1="${(p1x - 1.5 * nx).toFixed(1)}" y1="${(p1y - 1.5 * ny).toFixed(1)}" x2="${(p2x - 1.5 * nx).toFixed(1)}" y2="${(p2y - 1.5 * ny).toFixed(1)}" stroke="${glassColor}" stroke-width="${isSelected ? 2.5 : 1.5}" />
             <line x1="${(p1x - 3 * nx).toFixed(1)}" y1="${(p1y - 3 * ny).toFixed(1)}" x2="${(p1x + 3 * nx).toFixed(1)}" y2="${(p1y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
             <line x1="${(p2x - 3 * nx).toFixed(1)}" y1="${(p2y - 3 * ny).toFixed(1)}" x2="${(p2x + 3 * nx).toFixed(1)}" y2="${(p2y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
+            ${isSelected ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="6" fill="#3182ce" stroke="#ffffff" stroke-width="2" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
           </g>
         `);
       } else {
@@ -225,10 +258,12 @@ export function floorPlanToSvg(
         const leafEndY = p1y + op.width * ny * swingSign;
 
         parts.push(`
-          <g class="floorplan-door">
-            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="5" stroke-linecap="butt" />
-            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${leafEndX.toFixed(1)}" y2="${leafEndY.toFixed(1)}" stroke="#e2e8f0" stroke-width="1.8" />
-            <path d="M ${leafEndX.toFixed(1)} ${leafEndY.toFixed(1)} A ${op.width} ${op.width} 0 0 ${swingSign > 0 ? 1 : 0} ${p2x.toFixed(1)} ${p2y.toFixed(1)}" fill="none" stroke="#90cdf4" stroke-width="1.2" stroke-dasharray="2.5,2.5" />
+          <g ${isSelected ? 'class="floorplan-door selected"' : 'class="floorplan-door"'} data-opening-id="${op.id}" style="cursor:pointer;">
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="${Math.max(16, hw + 4)}" fill="transparent" pointer-events="all" />
+            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
+            <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${leafEndX.toFixed(1)}" y2="${leafEndY.toFixed(1)}" stroke="${leafColor}" stroke-width="${isSelected ? 2.5 : 1.8}" />
+            <path d="M ${leafEndX.toFixed(1)} ${leafEndY.toFixed(1)} A ${op.width} ${op.width} 0 0 ${swingSign > 0 ? 1 : 0} ${p2x.toFixed(1)} ${p2y.toFixed(1)}" fill="none" stroke="${arcColor}" stroke-width="${isSelected ? 1.8 : 1.2}" stroke-dasharray="2.5,2.5" />
+            ${isSelected ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="6" fill="#3182ce" stroke="#ffffff" stroke-width="2" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />` : ''}
           </g>
         `);
       }
