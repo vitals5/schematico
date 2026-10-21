@@ -71,6 +71,8 @@ export interface FloorPlanData {
   circuits?: InstallationCircuit[];
   arcWires?: InstallationArcWire[];
   showRoomLabels?: boolean;
+  symbolScale?: number;
+  hideSymbolLabels?: boolean;
   backgroundImage?: {
     dataUrl: string;
     opacity: number;
@@ -172,6 +174,8 @@ export interface PlacedComponent {
   x: number;
   y: number;
   rotation: 0 | 90 | 180 | 270;
+  scale?: number;
+  showLabels?: boolean;
   pins: {
     [pinId: string]: {
       wireIds?: string[];

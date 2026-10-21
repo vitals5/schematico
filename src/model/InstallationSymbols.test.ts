@@ -3,8 +3,6 @@ import { INSTALLATION_SYMBOLS } from './InstallationSymbols';
 import { SYMBOL_DEFINITIONS, getSymbolById } from './symbols';
 import { ELEMENT_CATEGORIES } from './SymbolCatalogue';
 import { getLocalizedSymbol } from '../i18n';
-import { snapSymbolPosition } from './DrawingGrid';
-import { rotatedLocalPoint, scaleSymbolDefinition } from './SymbolGeometry';
 
 console.log(`Testing ${INSTALLATION_SYMBOLS.length} Architectural Installation Symbols (DIN EN 60617-11)...`);
 
@@ -18,30 +16,12 @@ for (const sym of INSTALLATION_SYMBOLS) {
   assert.equal(sym.width % 8, 0, `${sym.id}: width (${sym.width}) must be divisible by 8`);
   assert.equal(sym.height % 8, 0, `${sym.id}: height (${sym.height}) must be divisible by 8`);
 
-  // At least 1 pin
-  assert(sym.pins.length > 0, `${sym.id}: must have at least one pin`);
+  // CRITICAL REQUIREMENT: Installation symbols have NO electrical connection pins ("keine Verbindungspunkte")
+  assert.equal(sym.pins.length, 0, `${sym.id}: architectural installation symbols must have no connection points (pins.length === 0)`);
 
-  // Unique pin IDs & grid alignment
-  const pinIds = new Set<string>();
-  for (const pin of sym.pins) {
-    assert(!pinIds.has(pin.id), `${sym.id}: duplicate pin ID ${pin.id}`);
-    pinIds.add(pin.id);
-
-    // CRITICAL: Connection points strictly on the 8-unit standard grid!
-    assert.equal(pin.x % 8, 0, `${sym.id} pin ${pin.id}: X coordinate (${pin.x}) must be on 8-unit grid`);
-    assert.equal(pin.y % 8, 0, `${sym.id} pin ${pin.id}: Y coordinate (${pin.y}) must be on 8-unit grid`);
-
-    // Port directions must be outward-facing
-    if (pin.direction === 'top') {
-      assert.equal(pin.y, 0, `${sym.id} top pin ${pin.id} must be at y = 0`);
-    } else if (pin.direction === 'bottom') {
-      assert.equal(pin.y, sym.height, `${sym.id} bottom pin ${pin.id} must be at y = ${sym.height}`);
-    } else if (pin.direction === 'left') {
-      assert.equal(pin.x, 0, `${sym.id} left pin ${pin.id} must be at x = 0`);
-    } else if (pin.direction === 'right') {
-      assert.equal(pin.x, sym.width, `${sym.id} right pin ${pin.id} must be at x = ${sym.width}`);
-    }
-  }
+  // Must have an explicit insertion point for wall placement
+  assert(sym.insertionPoint, `${sym.id}: must have an insertionPoint defined`);
+  assert(typeof sym.insertionPoint.x === 'number' && typeof sym.insertionPoint.y === 'number', `${sym.id}: valid insertionPoint coords`);
 
   // Lookup in SYMBOL_DEFINITIONS
   const lookup = getSymbolById(sym.id);
@@ -57,29 +37,10 @@ for (const sym of INSTALLATION_SYMBOLS) {
   assert(en.name && en.name.length > 0, `${sym.id}: English name missing`);
   assert(en.description && en.description.length > 0, `${sym.id}: English description missing`);
   assert.notEqual(en.name, '', `${sym.id}: English name should not be empty`);
-
-  // Grid alignment after rotations (0°, 90°, 180°, 270°)
-  for (const unitsPerMm of [2, 4]) {
-    for (const rotation of [0, 90, 180, 270] as const) {
-      const scaled = scaleSymbolDefinition(sym, unitsPerMm);
-      const step = 4 * unitsPerMm;
-      const origin = { x: 0, y: 0 };
-      const pos = snapSymbolPosition({ x: 160, y: 240 }, scaled, rotation, { spacing: step, origin }, step);
-      for (const pin of scaled.pins) {
-        const p = rotatedLocalPoint(pin, scaled, rotation);
-        const worldX = pos.x + p.x;
-        const worldY = pos.y + p.y;
-        const diffX = Math.abs((worldX - origin.x) / step - Math.round((worldX - origin.x) / step));
-        const diffY = Math.abs((worldY - origin.y) / step - Math.round((worldY - origin.y) / step));
-        assert(diffX < 1e-9, `${sym.id} pin ${pin.id}: X grid mismatch at ${rotation}°: ${worldX}`);
-        assert(diffY < 1e-9, `${sym.id} pin ${pin.id}: Y grid mismatch at ${rotation}°: ${worldY}`);
-      }
-    }
-  }
 }
 
 // Global Uniqueness
 const allIds = SYMBOL_DEFINITIONS.map(s => s.id);
 assert.equal(new Set(allIds).size, allIds.length, 'Every symbol ID in SYMBOL_DEFINITIONS must be unique');
 
-console.log(`✓ All ${INSTALLATION_SYMBOLS.length} DIN EN 60617-11 symbols verified: 8-grid connections, rotations, outward ports, and DE/EN localization!`);
+console.log(`✓ All ${INSTALLATION_SYMBOLS.length} DIN EN 60617-11 symbols verified: no connection points, wall insertion points, and DE/EN localization!`);

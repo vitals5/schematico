@@ -7,18 +7,32 @@ import { escapeSvg } from './ImportedDrawing';
 export interface WallSnapResult {
   wall: WallSegment;
   snappedPoint: { x: number; y: number };
+  wallCenterPoint?: { x: number; y: number };
   distance: number;
   rotation: 0 | 90 | 180 | 270; // Rotation aligned outward from the wall
   angleRad: number;
 }
 
 /**
- * Calculates nearest wall and normal orientation for magnetic symbol snapping.
+ * Calculates adaptive symbol scale based on floor plan scale ratio (1:X).
+ */
+export function getAutoSymbolScale(scaleRatio?: number): number {
+  const ratio = scaleRatio ?? 100;
+  if (ratio >= 150) return 0.35;
+  if (ratio >= 100) return 0.45;
+  if (ratio >= 75) return 0.55;
+  if (ratio >= 50) return 0.65;
+  return 0.85;
+}
+
+/**
+ * Calculates nearest wall, outer surface point and perpendicular orientation for magnetic symbol snapping.
  */
 export function findNearestWall(
   point: { x: number; y: number },
   walls: WallSegment[],
-  maxDistance: number = 30
+  maxDistance: number = 30,
+  pixelPerMeter: number = 50
 ): WallSnapResult | null {
   let best: WallSnapResult | null = null;
   let minDistance = maxDistance;
@@ -28,41 +42,61 @@ export function findNearestWall(
     const dy = wall.end.y - wall.start.y;
     const lenSq = dx * dx + dy * dy;
     if (lenSq === 0) continue;
+    const len = Math.sqrt(lenSq);
 
     let t = ((point.x - wall.start.x) * dx + (point.y - wall.start.y) * dy) / lenSq;
     t = Math.max(0, Math.min(1, t));
 
     const projX = wall.start.x + t * dx;
     const projY = wall.start.y + t * dy;
-    const dist = Math.hypot(point.x - projX, point.y - projY);
+    const vx = point.x - projX;
+    const vy = point.y - projY;
+    const dist = Math.hypot(vx, vy);
 
     if (dist < minDistance) {
       minDistance = dist;
 
-      // Wall angle
-      let wallAngle = Math.atan2(dy, dx);
-      // Wall normal pointing toward the mouse pointer
-      let normalAngle = wallAngle + Math.PI / 2;
-      const normalX = Math.cos(normalAngle);
-      const normalY = Math.sin(normalAngle);
-      const dot = normalX * (point.x - projX) + normalY * (point.y - projY);
-      if (dot < 0) {
-        normalAngle -= Math.PI;
+      // Normal pointing towards the cursor side of the wall
+      let nx = 0, ny = 0;
+      if (dist > 1e-4) {
+        nx = vx / dist;
+        ny = vy / dist;
+      } else {
+        nx = -dy / len;
+        ny = dx / len;
       }
 
-      // Convert normalAngle to discrete 0, 90, 180, 270 deg for symbol rotation
-      let deg = ((normalAngle * 180) / Math.PI + 360) % 360;
+      // Convert normal vector to discrete rotation (0, 90, 180, 270).
+      // Standard installation symbols have back (wall attachment) at y=0,
+      // and face into direction +Y (DOWN, 90 deg in screen coords).
+      // When normal points DOWN (90° screen): rot = 0°
+      // When normal points LEFT (180° screen): rot = 90°
+      // When normal points UP (270° screen): rot = 180°
+      // When normal points RIGHT (0° screen): rot = 270°
+      const angleRad = Math.atan2(ny, nx);
+      const angleDeg = ((angleRad * 180) / Math.PI + 360) % 360;
+      const diff = ((angleDeg - 90) % 360 + 360) % 360;
+
       let rot: 0 | 90 | 180 | 270 = 0;
-      if (deg >= 45 && deg < 135) rot = 90;
-      else if (deg >= 135 && deg < 225) rot = 180;
-      else if (deg >= 225 && deg < 315) rot = 270;
+      if (diff >= 45 && diff < 135) rot = 90;
+      else if (diff >= 135 && diff < 225) rot = 180;
+      else if (diff >= 225 && diff < 315) rot = 270;
+      else rot = 0;
+
+      // Outer surface of wall on the side of the mouse cursor
+      const wallThickness = wall.thickness ?? 0.24;
+      const wallThickPx = wallThickness < 2 ? wallThickness * pixelPerMeter : wallThickness;
+      const halfThick = wallThickPx / 2;
+      const surfaceX = projX + nx * halfThick;
+      const surfaceY = projY + ny * halfThick;
 
       best = {
         wall,
-        snappedPoint: { x: Math.round(projX), y: Math.round(projY) },
+        snappedPoint: { x: Math.round(surfaceX), y: Math.round(surfaceY) },
+        wallCenterPoint: { x: Math.round(projX), y: Math.round(projY) },
         distance: dist,
         rotation: rot,
-        angleRad: normalAngle
+        angleRad
       };
     }
   }

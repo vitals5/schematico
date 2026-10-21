@@ -2443,6 +2443,9 @@ export class App {
             📐 Kalibrieren
           </button>
         </div>
+        <button type="button" class="btn" id="btnWallCalibPickOther" style="width:100%;font-size:10px;padding:4px;margin-top:6px;background:#2d3748;color:#cbd5e0;border:1px solid #4a5568;">
+          🎯 Andere Wand per Klick auswählen
+        </button>
         <div id="txtCalibWallFeedback" style="font-size:10px;color:#68d391;margin-top:4px;"></div>
       </div>
 
@@ -2552,6 +2555,17 @@ export class App {
         this.canvas.render();
         this.renderWallProperties(container, wall);
       }
+    });
+
+    container.querySelector('#btnWallCalibPickOther')?.addEventListener('click', () => {
+      const status = document.getElementById('statusLeft');
+      if (status) status.textContent = '📏 Bitte eine Wand auf dem Grundriss anklicken, deren wahre Länge bekannt ist.';
+      this.canvas.startWallCalibrationPick((pickedWall) => {
+        this.selectedWall = pickedWall;
+        this.canvas.selectedWallId = pickedWall.id;
+        this.renderRightTab();
+        if (status) status.textContent = 'Wand ausgewählt. Bitte wahre Länge eingeben und auf "📐 Kalibrieren" klicken.';
+      });
     });
 
     container.querySelector('#btnWallAddDoor')?.addEventListener('click', () => {
@@ -2766,6 +2780,7 @@ export class App {
     if (this.selectedCable) { this.renderCableProperties(container,this.selectedCable);return; }
     if (this.selectedComponent) {
       const comp = this.selectedComponent;
+      const page = this.project.pages.find(p => p.id === this.project.activePageId);
       const sym = getSymbolForComponent(comp);
 
       const units = getDrawingUnitsPerMm(this.project);
@@ -2822,6 +2837,27 @@ export class App {
           <label class="form-label">${t('labelTechnical')}</label>
           <input class="form-input" id="propTechnical" value="${escapeSvg(comp.technicalCharacteristics || '')}">
         </div>
+
+        ${page?.floorPlan ? `
+          <div class="form-group" style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-bottom:12px;">
+            <div style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:6px;">🏠 Grundriss-Darstellung</div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;margin-bottom:6px;color:#cbd5e0;">
+              <input type="checkbox" id="propCompShowLabel" ${comp.showLabels ? 'checked' : ''} style="accent-color:#3182ce;" />
+              <span>Beschriftung (BMK) am Symbol anzeigen</span>
+            </label>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:10px;color:#a0aec0;">Symbol-Skalierung:</span>
+              <select id="propCompScale" class="form-input" style="font-size:10px;padding:2px 4px;width:120px;">
+                <option value="inherit" ${!comp.scale ? 'selected' : ''}>Plan-Standard</option>
+                <option value="0.35" ${comp.scale === 0.35 ? 'selected' : ''}>35% (Sehr klein)</option>
+                <option value="0.45" ${comp.scale === 0.45 ? 'selected' : ''}>45% (Kompakt)</option>
+                <option value="0.6" ${comp.scale === 0.6 ? 'selected' : ''}>60% (Mittel)</option>
+                <option value="0.75" ${comp.scale === 0.75 ? 'selected' : ''}>75% (Groß)</option>
+                <option value="1.0" ${comp.scale === 1.0 ? 'selected' : ''}>100% (Original)</option>
+              </select>
+            </div>
+          </div>
+        ` : ''}
 
         <div class="form-group" style="background: rgba(99, 179, 237, 0.08); padding: 8px; border-radius: 4px; border: 1px dashed var(--accent);">
           <label class="form-label" style="color: var(--accent-bright);">${t('labelAssignPart')}</label>
@@ -3002,6 +3038,22 @@ export class App {
         this.notifyChange();
       });
 
+      document.getElementById('propCompShowLabel')?.addEventListener('change', (e) => {
+        comp.showLabels = (e.target as HTMLInputElement).checked;
+        this.notifyChange();
+        this.canvas.render();
+      });
+      document.getElementById('propCompScale')?.addEventListener('change', (e) => {
+        const val = (e.target as HTMLSelectElement).value;
+        if (val === 'inherit') {
+          delete comp.scale;
+        } else {
+          comp.scale = parseFloat(val);
+        }
+        this.notifyChange();
+        this.canvas.render();
+      });
+
       document.getElementById('btnPropRotate')?.addEventListener('click', () => this.canvas.rotateSelected());
       document.getElementById('btnPropDelete')?.addEventListener('click', () => this.canvas.deleteSelected());
 
@@ -3080,12 +3132,41 @@ export class App {
               ${this.canvas?.floorPlanEditMode ? '🧱 Grundriss-Bearbeitung: AKTIV' : '🧱 Grundriss bearbeiten (Aktivieren)'}
             </button>
 
+            <!-- Wall Calibration Pick Button -->
+            <button type="button" class="btn" id="btnPickCalibWall" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;background:#2b6cb0;color:#fff;border:1px solid #63b3ed;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;">
+              <span>📏 Wand anklicken zum Kalibrieren</span>
+            </button>
+
             <!-- Show room labels toggle -->
-            <div style="margin-bottom:8px;">
+            <div style="margin-bottom:6px;">
               <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
                 <input type="checkbox" id="chkShowRoomLabels" ${activePage.floorPlan.showRoomLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
                 <span>Raumnamen & Flächen (m²) einblenden</span>
               </label>
+            </div>
+
+            <!-- Hide symbol labels toggle -->
+            <div style="margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
+                <input type="checkbox" id="chkHideSymbolLabels" ${activePage.floorPlan.hideSymbolLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
+                <span>Symbol-Beschriftungen (BMK) ausblenden</span>
+              </label>
+            </div>
+
+            <!-- Symbol Scale setting -->
+            <div style="margin-bottom:10px;background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:10px;color:#a0aec0;">Symbolgröße im Plan:</span>
+                <span style="font-size:10px;color:#68d391;">${activePage.floorPlan.symbolScale ? `${Math.round(activePage.floorPlan.symbolScale * 100)}%` : 'Auto'}</span>
+              </div>
+              <select id="selFloorPlanSymbolScale" class="form-input" style="font-size:11px;padding:3px 6px;width:100%;">
+                <option value="auto" ${!activePage.floorPlan.symbolScale ? 'selected' : ''}>Auto (nach Maßstab)</option>
+                <option value="0.35" ${activePage.floorPlan.symbolScale === 0.35 ? 'selected' : ''}>Sehr klein (35%)</option>
+                <option value="0.45" ${activePage.floorPlan.symbolScale === 0.45 ? 'selected' : ''}>Kompakt / 1:100 (45%)</option>
+                <option value="0.60" ${activePage.floorPlan.symbolScale === 0.60 ? 'selected' : ''}>Mittel / 1:50 (60%)</option>
+                <option value="0.75" ${activePage.floorPlan.symbolScale === 0.75 ? 'selected' : ''}>Groß (75%)</option>
+                <option value="1.0" ${activePage.floorPlan.symbolScale === 1.0 ? 'selected' : ''}>Originalgröße (100%)</option>
+              </select>
             </div>
 
             ${activePage.floorPlan.backgroundImage ? `
@@ -3197,6 +3278,47 @@ export class App {
         this.canvas.setFloorPlanEditMode(!this.canvas.floorPlanEditMode);
         this.updateFloorPlanEditButtonState();
         this.renderRightTab();
+      });
+      document.getElementById('btnPickCalibWall')?.addEventListener('click', () => {
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = '📏 Bitte eine Wand auf dem Grundriss anklicken, deren wahre Länge bekannt ist.';
+        this.canvas.startWallCalibrationPick((wall) => {
+          this.selectedWall = wall;
+          this.selectedComponent = null;
+          this.selectedWire = null;
+          this.selectedCable = null;
+          this.selectedOpening = null;
+          this.canvas.selectedWallId = wall.id;
+          this.renderRightTab();
+          if (status) status.textContent = 'Wand ausgewählt. Bitte wahre Länge eingeben und auf "📐 Kalibrieren" klicken.';
+          setTimeout(() => {
+            const input = document.getElementById('propCalibRealLenM') as HTMLInputElement;
+            if (input) {
+              input.focus();
+              input.select();
+            }
+          }, 60);
+        });
+      });
+      document.getElementById('chkHideSymbolLabels')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          activePage.floorPlan.hideSymbolLabels = (e.target as HTMLInputElement).checked;
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('selFloorPlanSymbolScale')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          const val = (e.target as HTMLSelectElement).value;
+          if (val === 'auto') {
+            delete activePage.floorPlan.symbolScale;
+          } else {
+            activePage.floorPlan.symbolScale = parseFloat(val);
+          }
+          this.canvas.render();
+          this.notifyChange();
+          this.renderRightTab();
+        }
       });
       document.getElementById('chkShowRoomLabels')?.addEventListener('change', (e) => {
         if (activePage?.floorPlan) {

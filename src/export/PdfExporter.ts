@@ -5,6 +5,7 @@ import { prepareProjectPresentation } from '../model/PresentationNaming';
 import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '../model/PlotFrame';
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
+import { getAutoSymbolScale } from '../model/FloorPlanRenderer';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
 // - Multi-page vector PDF (DIN A3 / DIN A4 Landscape)
@@ -327,13 +328,16 @@ export class PdfExporter {
   ): void {
     const superseded = supersededConnectionGraphics(page, project);
     const graphicWires = connectionGraphicWires(page, project);
+    const isFloorPlan = !!page.floorPlan;
+    const hideLabels = isFloorPlan && (page.floorPlan?.hideSymbolLabels !== false);
     for (const comp of page.components) {
       const sym = getSymbolForComponent(comp, project);
       if (!sym) continue;
 
+      const s = comp.scale ?? (isFloorPlan ? (page.floorPlan?.symbolScale ?? getAutoSymbolScale(page.floorPlan?.scale?.scaleRatio)) : 1);
       const sx = wMm / page.plotFrame.width, sy = hMm / page.plotFrame.height;
       const compX = comp.x * sx, compY = comp.y * sy;
-      const compW = sym.width * sx, compH = sym.height * sy;
+      const compW = sym.width * sx * s, compH = sym.height * sy * s;
 
       const routingGlyph = isConnectionGraphic(comp, sym);
       const isConnection = !sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
@@ -441,14 +445,16 @@ export class PdfExporter {
           doc.setTextColor(rgb[0], rgb[1], rgb[2]);
           doc.text(text, px * sx, py * sy, { align: pos.anchor === 'middle' ? 'center' : pos.anchor === 'end' ? 'right' : 'left', angle: -pos.rotation });
         };
-        if (!isConnection && (!isTerminal || !comp.bmk.startsWith('comp_')))
-          drawLabel(comp.bmk, computeBmkPosition(comp, sym), true, [140, 95, 0]);
-        if (!isConnection && !isTerminal) {
-          drawLabel(comp.functionText, computeFunctionTextPosition(comp, sym), false, [0, 0, 0]);
-          const tech = comp.deviceTag ? comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : '') : comp.technicalCharacteristics || '';
-          drawLabel(tech, computeTechnicalDataPosition(comp, sym), false, [25, 100, 45]);
+        if (!hideLabels || comp.showLabels) {
+          if (!isConnection && (!isTerminal || !comp.bmk.startsWith('comp_')))
+            drawLabel(comp.bmk, computeBmkPosition(comp, sym), true, [140, 95, 0]);
+          if (!isConnection && !isTerminal) {
+            drawLabel(comp.functionText, computeFunctionTextPosition(comp, sym), false, [0, 0, 0]);
+            const tech = comp.deviceTag ? comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : '') : comp.technicalCharacteristics || '';
+            drawLabel(tech, computeTechnicalDataPosition(comp, sym), false, [25, 100, 45]);
+          }
+          drawLabel(comp.additionalText || '', computeAdditionalTextPosition(comp, sym), false, [0, 0, 0]);
         }
-        drawLabel(comp.additionalText || '', computeAdditionalTextPosition(comp, sym), false, [0, 0, 0]);
       }
 
       // SMART PDF: Interactive Cross-References (Kontaktspiegel & Querverweise)

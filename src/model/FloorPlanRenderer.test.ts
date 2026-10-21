@@ -10,20 +10,24 @@ const walls: WallSegment[] = [
   { id: 'w2', start: { x: 500, y: 100 }, end: { x: 500, y: 400 }, thickness: 12, isExterior: false }
 ];
 
-// Point near horizontal wall w1 at y = 115
+// Point near horizontal wall w1 at y = 115 (below wall)
 const snapHorizontal = findNearestWall({ x: 250, y: 115 }, walls, 30);
 assert(snapHorizontal, 'Should find nearest wall');
 assert.equal(snapHorizontal.wall.id, 'w1');
 assert.equal(snapHorizontal.snappedPoint.x, 250);
-assert.equal(snapHorizontal.snappedPoint.y, 100);
+assert.equal(snapHorizontal.snappedPoint.y, 108); // Outer surface: 100 + halfThickness (8)
+assert.equal(snapHorizontal.wallCenterPoint?.y, 100);
+assert.equal(snapHorizontal.rotation, 0); // Faces DOWN into room
 assert(snapHorizontal.distance <= 15.1);
 
-// Point near vertical wall w2 at x = 490
+// Point near vertical wall w2 at x = 490 (left of wall)
 const snapVertical = findNearestWall({ x: 490, y: 250 }, walls, 30);
 assert(snapVertical, 'Should find nearest wall');
 assert.equal(snapVertical.wall.id, 'w2');
-assert.equal(snapVertical.snappedPoint.x, 500);
+assert.equal(snapVertical.snappedPoint.x, 494); // Outer surface: 500 - halfThickness (6)
 assert.equal(snapVertical.snappedPoint.y, 250);
+assert.equal(snapVertical.wallCenterPoint?.x, 500);
+assert.equal(snapVertical.rotation, 90); // Faces LEFT into room
 
 // Point too far from any wall
 const snapTooFar = findNearestWall({ x: 300, y: 300 }, walls, 20);

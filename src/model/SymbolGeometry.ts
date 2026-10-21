@@ -22,8 +22,11 @@ export function componentInsertionPoint(component: PlacedComponent, symbol: Symb
   return { x: component.x + offset.x, y: component.y + offset.y };
 }
 
-export function positionAtInsertionPoint(point: Point, symbol: SymbolDefinition, rotation: number): Point {
-  const offset = rotatedLocalPoint(symbolInsertionPoint(symbol), symbol, rotation);
+export function positionAtInsertionPoint(point: Point, symbol: SymbolDefinition, rotation: number, scale: number = 1): Point {
+  const raw = symbolInsertionPoint(symbol);
+  const scaledPoint = { x: raw.x * scale, y: raw.y * scale };
+  const scaledSym: SymbolDefinition = { ...symbol, width: symbol.width * scale, height: symbol.height * scale };
+  const offset = rotatedLocalPoint(scaledPoint, scaledSym, rotation);
   return { x: point.x - offset.x, y: point.y - offset.y };
 }
 

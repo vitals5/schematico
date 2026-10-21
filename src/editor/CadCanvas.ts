@@ -24,7 +24,7 @@ import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextP
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
-import { floorPlanToSvg, findNearestWall } from '../model/FloorPlanRenderer';
+import { floorPlanToSvg, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
 
@@ -67,7 +67,7 @@ export class CadCanvas {
   public mode: EditorMode = 'select';
   public gridSnap: boolean = true;
   public gridSize: number = 8; // Legacy fallback; imported pages own their physical grid.
-  public gridResolution: GridResolution = 'full';
+  public gridResolution: GridResolution = 'fine';
   public autoconnectEnabled: boolean = true;
   public activeSymbolToPlace: string | null = null;
   public activeMacroToPlace: WindowMacro | null = null;
@@ -83,6 +83,22 @@ export class CadCanvas {
   public selectedWallId: string | null = null;
   public selectedOpeningId: string | null = null;
   public floorPlanEditMode: boolean = false;
+  public isCalibratingWall: boolean = false;
+  private onWallCalibratePicked?: (wall: WallSegment) => void;
+
+  public startWallCalibrationPick(callback: (wall: WallSegment) => void): void {
+    this.isCalibratingWall = true;
+    this.onWallCalibratePicked = callback;
+    this.svg.style.cursor = 'crosshair';
+    this.render();
+  }
+
+  public cancelWallCalibrationPick(): void {
+    this.isCalibratingWall = false;
+    this.onWallCalibratePicked = undefined;
+    this.svg.style.cursor = '';
+    this.render();
+  }
   private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number } } | null = null;
   private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
@@ -318,7 +334,8 @@ export class CadCanvas {
       const symbol = getSymbolForComponent(comp, this.project);
       const insertion = symbol && componentInsertionPoint(comp, symbol);
       comp.rotation = (((comp.rotation || 0) + delta + 360) % 360) as any;
-      if (symbol && insertion) Object.assign(comp, positionAtInsertionPoint(insertion, symbol, comp.rotation));
+      const s = this.getComponentScale(comp);
+      if (symbol && insertion) Object.assign(comp, positionAtInsertionPoint(insertion, symbol, comp.rotation, s));
       AutoconnectEngine.clearSuppressedForComponent(this.activePage, comp.id);
       if (this.autoconnectEnabled) {
         AutoconnectEngine.updatePageAutoconnections(this.activePage);
@@ -618,15 +635,25 @@ export class CadCanvas {
     return snapCoordinate(val, step, gridForPage(this.activePage, this.gridSize).origin[axis]);
   }
 
+  public getComponentScale(comp?: PlacedComponent): number {
+    if (comp?.scale !== undefined) return comp.scale;
+    if (this.activePage.floorPlan) {
+      return this.activePage.floorPlan.symbolScale ?? getAutoSymbolScale(this.activePage.floorPlan.scale?.scaleRatio);
+    }
+    return 1;
+  }
+
   private placementPosition(x: number, y: number, symbol: NonNullable<ReturnType<typeof getSymbolById>>): { x: number; y: number } {
+    const s = this.getComponentScale();
     if (this.activePage.floorPlan?.walls?.length) {
-      const snap = findNearestWall({ x, y }, this.activePage.floorPlan.walls, 24);
+      const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+      const snap = findNearestWall({ x, y }, this.activePage.floorPlan.walls, 24, ppm);
       if (snap) {
         this.ghostRotation = snap.rotation;
-        return positionAtInsertionPoint(snap.snappedPoint, symbol, snap.rotation);
+        return positionAtInsertionPoint(snap.snappedPoint, symbol, snap.rotation, s);
       }
     }
-    return positionAtInsertionPoint({ x: this.snap(x), y: this.snap(y, false, 'y') }, symbol, this.ghostRotation);
+    return positionAtInsertionPoint({ x: this.snap(x), y: this.snap(y, false, 'y') }, symbol, this.ghostRotation, s);
   }
 
   private macroPlacementPosition(x: number, y: number, macro: WindowMacro): { x: number; y: number } {
@@ -1006,8 +1033,9 @@ export class CadCanvas {
     const isInterruption = isInterruptionSymbol(sym);
     const bmk = isInterruption ? (sym.defaultFunctionText || 'L1') : nextDeviceTag(this.project, sym.defaultBmkPrefix);
 
+    const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
     const snap = this.activePage.floorPlan?.walls?.length
-      ? findNearestWall({ x: worldX, y: worldY }, this.activePage.floorPlan.walls, 24)
+      ? findNearestWall({ x: worldX, y: worldY }, this.activePage.floorPlan.walls, 24, ppm)
       : null;
 
     const newComp: PlacedComponent = {
@@ -1023,6 +1051,7 @@ export class CadCanvas {
       manufacturer: sym.manufacturer || '',
       ...this.placementPosition(worldX, worldY, sym),
       rotation: (snap ? snap.rotation : this.ghostRotation) || 0,
+      ...(this.activePage.floorPlan ? { showLabels: false } : {}),
       ...(snap ? { installationMetadata: { attachedWallId: snap.wall.id } } : {}),
       pins: Object.fromEntries(sym.pins.map(pin => [pin.id, { customLabel: pin.name, wireIds: [] }]))
     };
@@ -1075,6 +1104,23 @@ export class CadCanvas {
     this.referenceMarker = undefined;
 
     const world = this.screenToWorld(e.clientX, e.clientY);
+
+    if (this.isCalibratingWall) {
+      let wallHit = this.wallFromEvent(e);
+      let wall = wallHit?.wall;
+      if (!wall && this.activePage.floorPlan?.walls) {
+        const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+        const snap = findNearestWall({ x: world.x, y: world.y }, this.activePage.floorPlan.walls, 30, ppm);
+        if (snap) wall = snap.wall;
+      }
+      if (wall) {
+        this.selectWall(wall);
+        const cb = this.onWallCalibratePicked;
+        this.cancelWallCalibrationPick();
+        cb?.(wall);
+        return;
+      }
+    }
 
     if (this.mode === 'place_symbol' && this.activeSymbolToPlace) {
       this.placeSymbolAt(world.x, world.y);
@@ -1284,11 +1330,27 @@ export class CadCanvas {
         const rawX = world.x - this.dragOffset.x;
         const rawY = world.y - this.dragOffset.y;
         const isModifier = e.shiftKey || e.altKey;
-        if (sym) Object.assign(comp, snapSymbolPosition({ x: rawX, y: rawY }, sym, comp.rotation,
-          gridForPage(this.activePage, this.gridSize), this.getEffectiveGridSize(isModifier)));
+        const s = this.getComponentScale(comp);
+        if (this.activePage.floorPlan?.walls?.length) {
+          const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+          const snap = findNearestWall({ x: world.x, y: world.y }, this.activePage.floorPlan.walls, 24, ppm);
+          if (snap && sym) {
+            comp.rotation = snap.rotation;
+            comp.installationMetadata = { ...(comp.installationMetadata || {}), attachedWallId: snap.wall.id };
+            const placed = positionAtInsertionPoint(snap.snappedPoint, sym, snap.rotation, s);
+            comp.x = placed.x;
+            comp.y = placed.y;
+          } else if (sym) {
+            Object.assign(comp, snapSymbolPosition({ x: rawX, y: rawY }, sym, comp.rotation,
+              gridForPage(this.activePage, this.gridSize), this.getEffectiveGridSize(isModifier)));
+          }
+        } else if (sym) {
+          Object.assign(comp, snapSymbolPosition({ x: rawX, y: rawY }, sym, comp.rotation,
+            gridForPage(this.activePage, this.gridSize), this.getEffectiveGridSize(isModifier)));
+        }
         const el = this.svg.getElementById(comp.id);
         if (el && sym) {
-          el.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${comp.rotation || 0}, ${sym.width / 2}, ${sym.height / 2})`);
+          el.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${comp.rotation || 0}, ${(sym.width * s) / 2}, ${(sym.height * s) / 2})`);
         }
         this.updateConnectedWiresFast(comp.id);
         this.updateAutoconnectPreviewLayer();
@@ -1731,14 +1793,17 @@ export class CadCanvas {
       const sym = getSymbolForComponent(comp, this.project);
       if (!sym) continue;
       
+      const s = this.getComponentScale(comp);
       const rot = comp.rotation || 0;
-      const cx = comp.x + sym.width / 2;
-      const cy = comp.y + sym.height / 2;
-      let halfW = sym.width / 2;
-      let halfH = sym.height / 2;
+      const w = sym.width * s;
+      const h = sym.height * s;
+      const cx = comp.x + w / 2;
+      const cy = comp.y + h / 2;
+      let halfW = w / 2;
+      let halfH = h / 2;
       if (rot === 90 || rot === 270) {
-        halfW = sym.height / 2;
-        halfH = sym.width / 2;
+        halfW = h / 2;
+        halfH = w / 2;
       }
 
       if (x >= cx - halfW - pad && x <= cx + halfW + pad && y >= cy - halfH - pad && y <= cy + halfH + pad) {
@@ -1833,7 +1898,7 @@ export class CadCanvas {
         ${coverPageSvg(this.activePage, this.project)}
 
         <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
-        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: this.floorPlanEditMode || this.mode === 'draw_wall' })}</g>` : ''}
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: this.floorPlanEditMode || this.mode === 'draw_wall' || this.isCalibratingWall })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">
@@ -1958,7 +2023,10 @@ export class CadCanvas {
     const drag=this.selectionDrag!;drag.dx=dx;drag.dy=dy;translateSelection(this.activePage,drag.snapshot,dx,dy);
     for(const original of drag.snapshot.components){
       const c=this.activePage.components.find(c=>c.id===original.id)!,sym=getSymbolForComponent(c,this.project);
-      if(sym)this.svg.getElementById(c.id)?.setAttribute('transform',`translate(${c.x},${c.y}) rotate(${c.rotation || 0},${sym.width/2},${sym.height/2})`);
+      if(sym) {
+        const s = this.getComponentScale(c);
+        this.svg.getElementById(c.id)?.setAttribute('transform',`translate(${c.x},${c.y}) rotate(${c.rotation || 0},${sym.width * s / 2},${sym.height * s / 2})`);
+      }
     }
     for(const original of drag.snapshot.boxes ?? [])this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
     for(const original of drag.snapshot.images ?? [])this.svg.getElementById(original.id)?.setAttribute('transform',`translate(${dx},${dy})`);
@@ -2172,6 +2240,12 @@ export class CadCanvas {
       const sym = getSymbolForComponent(comp, this.project);
       if (!sym) return '';
 
+      const isFloorPlan = !!this.activePage.floorPlan;
+      const hideLabels = isFloorPlan && (this.activePage.floorPlan?.hideSymbolLabels !== false) && !comp.showLabels;
+      const s = this.getComponentScale(comp);
+      const scaledW = sym.width * s;
+      const scaledH = sym.height * s;
+
       const isConn = !sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
       const isTerminal = sym.id === 'terminal_single';
       const isSelected = this.getElementSelection().componentIds.includes(comp.id);
@@ -2223,14 +2297,14 @@ export class CadCanvas {
 
       return `
         <g id="${comp.id}" class="component ${comp.deviceBox?'device-box ':''}${isSelected ? 'selected' : ''}"
-           transform="translate(${comp.x}, ${comp.y}) rotate(${comp.rotation || 0}, ${sym.width / 2}, ${sym.height / 2})"
+           transform="translate(${comp.x}, ${comp.y}) rotate(${comp.rotation || 0}, ${scaledW / 2}, ${scaledH / 2})"
            style="cursor: pointer;">
           
-          ${comp.deviceBox?`<rect class="box-hit-target" x="0" y="0" width="${sym.width}" height="${sym.height}" fill="none" stroke="transparent" stroke-width="12" vector-effect="non-scaling-stroke" pointer-events="stroke"/>`:''}
+          ${comp.deviceBox?`<rect class="box-hit-target" x="0" y="0" width="${scaledW}" height="${scaledH}" fill="none" stroke="transparent" stroke-width="12" vector-effect="non-scaling-stroke" pointer-events="stroke"/>`:''}
           <!-- Selection Highlight -->
-          <rect class="selection-rect" pointer-events="none" x="${comp.deviceBox?0:-2}" y="${comp.deviceBox?0:-2}" width="${sym.width + (comp.deviceBox?0:4)}" height="${sym.height + (comp.deviceBox?0:4)}" fill="${comp.deviceBox?'none':'rgba(99, 179, 237, 0.15)'}" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="3,2" rx="${comp.deviceBox?0:2}" style="display: ${isSelected ? 'block' : 'none'};"/>
+          <rect class="selection-rect" pointer-events="none" x="${comp.deviceBox?0:-2}" y="${comp.deviceBox?0:-2}" width="${scaledW + (comp.deviceBox?0:4)}" height="${scaledH + (comp.deviceBox?0:4)}" fill="${comp.deviceBox?'none':'rgba(99, 179, 237, 0.15)'}" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="3,2" rx="${comp.deviceBox?0:2}" style="display: ${isSelected ? 'block' : 'none'};"/>
 
-          ${!isConn && !isTerminal ? `
+          ${!isConn && !isTerminal && !hideLabels ? `
             <!-- BMK Label (z.B. -K1, -Q1) -->
             ${bmkPos.visible ? `
               <text data-label="bmkPosition" x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="${escapeSvg(bmkPos.fontColor || '#f6e05e')}" text-anchor="${bmkPos.anchor}" ${bmkPos.transform}>${labelText(comp.bmk, bmkPos.x, bmkPos.fontSize)}</text>
@@ -2247,7 +2321,7 @@ export class CadCanvas {
             ` : ''}
 
             <!-- Cross Reference -->
-          ` : isTerminal ? `
+          ` : isTerminal && !hideLabels ? `
             <!-- Terminal designation and BMK -->
             <text ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1'}</text>
             ${comp.bmk && bmkPos.visible && !comp.bmk.startsWith('comp_') ? `
@@ -2258,12 +2332,12 @@ export class CadCanvas {
             return `<text x="${pos.x}" y="${pos.y}" ${labelTransform(pos.x, pos.y, comp.rotation)} font-size="${comp.functionTextPosition?.fontSize ?? 8.5}" font-weight="bold" font-family="monospace" fill="#f56565" text-anchor="${pos.anchor}">${escapeSvg(comp.functionText || comp.bmk)}</text>`;
           })() : '')}
 
-          ${additionalPos.visible && comp.additionalText ? `<text data-label="additionalTextPosition" class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${labelText(comp.additionalText, additionalPos.x, additionalPos.fontSize)}</text>` : ''}
+          ${!hideLabels && additionalPos.visible && comp.additionalText ? `<text data-label="additionalTextPosition" class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${labelText(comp.additionalText, additionalPos.x, additionalPos.fontSize)}</text>` : ''}
 
-          ${crossRefDisplay}
+          ${!hideLabels ? crossRefDisplay : ''}
 
           <!-- Symbol Vector Graphics -->
-          <g color="${strokeColor}" ${comp.deviceBox?'pointer-events="none"':''}>
+          <g ${s !== 1 ? `transform="scale(${s})"` : ''} color="${strokeColor}" ${comp.deviceBox?'pointer-events="none"':''}>
             ${superseded.has(comp.id) || comp.source?.routingUsed === false && !isSelected ? '' : sym.importedGraphics ? drawingToSvg(sym.importedGraphics, { color: 'currentColor', componentRotation: comp.rotation }) : uprightSymbolSvg(sym.svgContent, comp.rotation)}
           </g>
 
@@ -2503,21 +2577,25 @@ export class CadCanvas {
     const sym = getSymbolById(this.activeSymbolToPlace, this.project);
     if (!sym) return '';
 
+    const s = this.getComponentScale();
+    const isFloorPlan = !!this.activePage.floorPlan;
     const { x: gx, y: gy } = this.placementPosition(this.currentMousePos.x, this.currentMousePos.y, sym);
 
     const isInterruption = isInterruptionSymbol(sym);
     const bmk = isInterruption ? (sym.defaultFunctionText || 'L1') : (nextDeviceTag(this.project, sym.defaultBmkPrefix) || sym.name);
+    const scaledW = sym.width * s;
+    const scaledH = sym.height * s;
 
     return `
-      <g id="ghostLayer" transform="translate(${gx}, ${gy}) rotate(${this.ghostRotation || 0}, ${sym.width / 2}, ${sym.height / 2})" opacity="0.75" pointer-events="none">
+      <g id="ghostLayer" transform="translate(${gx}, ${gy}) rotate(${this.ghostRotation || 0}, ${scaledW / 2}, ${scaledH / 2})" opacity="0.75" pointer-events="none">
         <!-- Placement target box -->
-        <rect x="-4" y="-4" width="${sym.width + 8}" height="${sym.height + 8}" fill="rgba(99, 179, 237, 0.15)" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="4,3" rx="4"/>
+        <rect x="-2" y="-2" width="${scaledW + 4}" height="${scaledH + 4}" fill="rgba(99, 179, 237, 0.15)" stroke="#63b3ed" stroke-width="1.5" stroke-dasharray="3,2" rx="2"/>
         
         <!-- BMK hint -->
-        <text ${labelTransform(sym.width / 2, -8, this.ghostRotation)} x="${sym.width / 2}" y="-8" font-size="10" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="middle">${bmk} (Klick: Platzieren | Tab / R: Drehen)</text>
+        ${!isFloorPlan ? `<text ${labelTransform(scaledW / 2, -8, this.ghostRotation)} x="${scaledW / 2}" y="-8" font-size="10" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="middle">${bmk} (Klick: Platzieren | Tab / R: Drehen)</text>` : ''}
 
         <!-- Symbol Graphics -->
-        <g color="#63b3ed">
+        <g ${s !== 1 ? `transform="scale(${s})"` : ''} color="#63b3ed">
           ${sym.importedGraphics ? drawingToSvg(sym.importedGraphics, { color: 'currentColor', componentRotation: this.ghostRotation }) : uprightSymbolSvg(sym.svgContent, this.ghostRotation)}
         </g>
       </g>

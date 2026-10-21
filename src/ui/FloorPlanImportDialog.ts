@@ -19,6 +19,7 @@ export class FloorPlanImportDialog {
   private imageNaturalHeight: number = 0;
   private currentFloorPlan: FloorPlanData | null = null;
   private isProcessing: boolean = false;
+  private selectedCalibWallId: string | null = null;
 
   constructor(
     private readonly project: Project,
@@ -146,7 +147,10 @@ export class FloorPlanImportDialog {
 
             <!-- Reference Wall Scale Calibration Panel -->
             <div id="fpi-calibration-panel" style="display:none;background:#232731;border:1px solid #4a5568;border-radius:6px;padding:8px 12px;">
-              <div style="font-size:11px;font-weight:bold;color:#63b3ed;margin-bottom:6px;">📏 Maßstab über Referenzwand kalibrieren</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:11px;font-weight:bold;color:#63b3ed;">📏 Maßstab über Referenzwand kalibrieren</span>
+                <span style="font-size:10px;color:#90cdf4;">💡 Klick auf Wand in Vorschau wählt sie aus</span>
+              </div>
               <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
                 <div class="fpi-field" style="margin:0;">
                   <label for="fpi-calib-wall" style="font-size:10px;">Referenzwand:</label>
@@ -273,12 +277,16 @@ export class FloorPlanImportDialog {
       }
       calibPanel.style.display = 'block';
       const ppm = plan.scale?.pixelPerMeter || 50;
+      if (!this.selectedCalibWallId || !plan.walls.some(w => w.id === this.selectedCalibWallId)) {
+        this.selectedCalibWallId = plan.walls[0].id;
+      }
       plan.walls.forEach((w, idx) => {
         const lenPx = Math.hypot(w.end.x - w.start.x, w.end.y - w.start.y);
         const lenM = (lenPx / ppm).toFixed(2);
         const opt = document.createElement('option');
         opt.value = w.id;
         opt.textContent = `Wand ${idx + 1} (${lenM} m, ${w.isExterior ? 'Außen' : 'Innen'})`;
+        if (w.id === this.selectedCalibWallId) opt.selected = true;
         calibWallSelect.appendChild(opt);
       });
       syncCalibInput();
@@ -287,6 +295,7 @@ export class FloorPlanImportDialog {
     const syncCalibInput = () => {
       if (!this.currentFloorPlan) return;
       const wallId = calibWallSelect.value;
+      this.selectedCalibWallId = wallId;
       const wall = this.currentFloorPlan.walls?.find(w => w.id === wallId);
       if (wall) {
         const ppm = this.currentFloorPlan.scale?.pixelPerMeter || 50;
@@ -295,7 +304,28 @@ export class FloorPlanImportDialog {
       }
     };
 
-    calibWallSelect.addEventListener('change', syncCalibInput);
+    calibWallSelect.addEventListener('change', () => {
+      syncCalibInput();
+      this.updatePreview(previewContainer);
+    });
+
+    previewContainer.addEventListener('click', (e) => {
+      if (!this.currentFloorPlan?.walls?.length) return;
+      const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
+      const wallId = wallEl?.getAttribute('data-wall-id');
+      const wall = wallId ? this.currentFloorPlan.walls.find(w => w.id === wallId) : null;
+      if (wall) {
+        this.selectedCalibWallId = wall.id;
+        calibWallSelect.value = wall.id;
+        const ppm = this.currentFloorPlan.scale?.pixelPerMeter || 50;
+        const lenPx = Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+        calibLenInput.value = (lenPx / ppm).toFixed(2);
+        calibLenInput.focus();
+        calibLenInput.select();
+        calibInfo.textContent = `🎯 Wand ausgewählt (${(lenPx / ppm).toFixed(2)} m). Reale Länge eintragen & kalibrieren.`;
+        this.updatePreview(previewContainer);
+      }
+    });
 
     btnCalibrate.addEventListener('click', () => {
       if (!this.currentFloorPlan) return;
@@ -453,11 +483,13 @@ export class FloorPlanImportDialog {
       showRooms: true,
       showWalls: true,
       showOpenings: true,
-      showWires: true
+      showWires: true,
+      selectedWallId: this.selectedCalibWallId ?? undefined,
+      interactive: true
     });
 
     container.innerHTML = `
-      <svg viewBox="0 0 840 594" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 840 594" xmlns="http://www.w3.org/2000/svg" style="cursor:pointer;">
         <rect width="840" height="594" fill="#181b22" />
         ${svgContent}
       </svg>
