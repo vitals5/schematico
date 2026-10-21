@@ -67,7 +67,7 @@ export interface FloorPlanData {
   scale: ScaleCalibration;
   walls: WallSegment[];
   openings: WallOpening[];
-  rooms: RoomDefinition[];
+  rooms?: RoomDefinition[];
   circuits?: InstallationCircuit[];
   arcWires?: InstallationArcWire[];
   showRoomLabels?: boolean;

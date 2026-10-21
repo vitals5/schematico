@@ -21,7 +21,7 @@ import { cableCrossings } from '../model/CableDefinition';
 // src/ui/App.ts
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
 
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening, RoomDefinition } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening } from '../model/types';
 import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm, getComponentSymbolLibrary } from '../model/symbols';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
@@ -55,7 +55,6 @@ export class App {
   private selectedText: PageText | null = null;
   private selectedWall: WallSegment | null = null;
   private selectedOpening: WallOpening | null = null;
-  private selectedRoom: RoomDefinition | null = null;
   private activeLeftTab: 'pages' | 'symbols' | 'connections' | 'macros' | 'terminals' | 'bom' | 'parts' = 'pages';
   private symbolCategoryFilter: string = 'all';
   private connectionCategoryFilter: string = 'all';
@@ -307,14 +306,14 @@ export class App {
 
     this.canvas = new CadCanvas(container, this.project, {
       onSelectComponent: (comp) => {
-        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedComponent = comp;
         if (comp) this.selectedWire = null;
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectWire: (wire) => {
-        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;if(this.canvas)this.canvas.selectedCableId=null;
+        this.selectedCable=null;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;if(this.canvas)this.canvas.selectedCableId=null;
         this.selectedWire = wire;
         if (wire) this.selectedComponent = null;
         this.updateFloatingSelectionBar();
@@ -328,14 +327,13 @@ export class App {
           this.selectedCable = null;
           this.selectedWall = null;
           this.selectedOpening = null;
-          this.selectedRoom = null;
           if (this.isRightCollapsed) this.setRightPanelCollapsed(false);
         }
         this.updateFloatingSelectionBar();
         this.renderRightTab();
       },
       onSelectCable: cable => {
-        this.selectedCable=cable;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;this.selectedRoom=null;
+        this.selectedCable=cable;this.selectedText=null;this.selectedWall=null;this.selectedOpening=null;
         if(cable){this.selectedComponent=null;this.selectedWire=null;}
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
@@ -347,7 +345,6 @@ export class App {
           this.selectedCable = null;
           this.selectedText = null;
           this.selectedOpening = null;
-          this.selectedRoom = null;
         }
         this.updateFloatingSelectionBar();
         this.renderRightTab();
@@ -360,20 +357,6 @@ export class App {
           this.selectedCable = null;
           this.selectedText = null;
           this.selectedWall = null;
-          this.selectedRoom = null;
-        }
-        this.updateFloatingSelectionBar();
-        this.renderRightTab();
-      },
-      onSelectRoom: room => {
-        this.selectedRoom = room;
-        if (room) {
-          this.selectedComponent = null;
-          this.selectedWire = null;
-          this.selectedCable = null;
-          this.selectedText = null;
-          this.selectedWall = null;
-          this.selectedOpening = null;
         }
         this.updateFloatingSelectionBar();
         this.renderRightTab();
@@ -2206,6 +2189,15 @@ export class App {
         hasBounds = true;
       }
     }
+    if (fp.openings?.length) {
+      for (const op of fp.openings) {
+        minX = Math.min(minX, op.center.x);
+        maxX = Math.max(maxX, op.center.x);
+        minY = Math.min(minY, op.center.y);
+        maxY = Math.max(maxY, op.center.y);
+        hasBounds = true;
+      }
+    }
     if (fp.backgroundImage?.bounds) {
       const b = fp.backgroundImage.bounds;
       minX = Math.min(minX, b.x);
@@ -2231,7 +2223,16 @@ export class App {
       }
     }
 
-    // 2. Rescale background image
+    // 2. Rescale openings (doors, windows, wall openings, garage doors)
+    if (fp.openings) {
+      for (const op of fp.openings) {
+        op.center.x = Math.round(cx + (op.center.x - cx) * factor);
+        op.center.y = Math.round(cy + (op.center.y - cy) * factor);
+        op.width = Math.max(4, Math.round(op.width * factor));
+      }
+    }
+
+    // 3. Rescale background image
     if (fp.backgroundImage?.bounds) {
       const b = fp.backgroundImage.bounds;
       b.x = Math.round(cx + (b.x - cx) * factor);
@@ -2240,25 +2241,21 @@ export class App {
       b.height = Math.max(10, Math.round(b.height * factor));
     }
 
-    // 3. Rescale room polygons
-    if (fp.rooms) {
-      for (const r of fp.rooms) {
-        if (r.polygon) {
-          for (const pt of r.polygon) {
-            pt.x = Math.round(cx + (pt.x - cx) * factor);
-            pt.y = Math.round(cy + (pt.y - cy) * factor);
-          }
-        }
-      }
-    }
-
     // 4. Rescale placed components
     for (const comp of page.components) {
       comp.x = Math.round(cx + (comp.x - cx) * factor);
       comp.y = Math.round(cy + (comp.y - cy) * factor);
     }
 
-    // 5. Update scale metadata
+    // 5. Rescale page texts
+    if (page.texts) {
+      for (const t of page.texts) {
+        t.x = Math.round(cx + (t.x - cx) * factor);
+        t.y = Math.round(cy + (t.y - cy) * factor);
+      }
+    }
+
+    // 6. Update scale metadata
     fp.scale.pixelPerMeter = targetPpm;
     fp.scale.scaleRatio = targetRatio;
     if (fp.scale.referenceDistance) {
@@ -2723,60 +2720,6 @@ export class App {
     cable.cores.forEach((core,i)=>{bindText('cableCoreColor'+i,v=>core.color=v);bindText('cableCoreName'+i,v=>core.designation=v);});
     container.querySelector('#cableRotate')?.addEventListener('click',()=>{this.canvas.rotateSelected();this.renderCableProperties(container,cable);});
     container.querySelector('#cableDelete')?.addEventListener('click',()=>this.canvas.deleteSelected());
-  }
-
-  private renderRoomProperties(container: HTMLElement, room: RoomDefinition): void {
-    const page = this.project.pages.find(p => p.id === this.project.activePageId);
-    container.innerHTML = `
-      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
-        <span>🏠 Raum-Eigenschaften</span>
-        <button class="btn btn-sm" id="btnDeselectRoom" style="font-size:10px;padding:2px 6px;">✕ Schließen</button>
-      </div>
-
-      <div class="form-group" style="margin-bottom:12px;">
-        <label class="form-label" style="font-size:11px;font-weight:600;margin-bottom:4px;display:block;">Raumname:</label>
-        <input type="text" class="form-input" id="propRoomName" value="${escapeSvg(room.name)}" style="width:100%;font-size:12px;padding:6px 8px;" placeholder="z.B. Wohnzimmer, Küche, Bad..." />
-      </div>
-
-      ${room.areaM2 ? `
-        <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">
-          Fläche: <strong style="color:#e2e8f0;">${room.areaM2.toFixed(1)} m²</strong>
-        </div>
-      ` : ''}
-
-      <div style="display:flex;gap:6px;margin-top:16px;">
-        <button class="btn btn-primary" id="btnApplyRoomName" style="flex:1;font-size:11px;padding:6px 8px;background:#3182ce;">Übernehmen</button>
-        <button class="btn btn-danger" id="btnDeleteRoom" style="padding:6px 8px;color:#fc8181;border-color:rgba(229,62,62,0.4);" title="Raum löschen">🗑️</button>
-      </div>
-    `;
-
-    const inp = container.querySelector('#propRoomName') as HTMLInputElement;
-    const saveName = () => {
-      if (inp) {
-        room.name = inp.value.trim() || 'Raum';
-        this.notifyChange();
-        this.canvas.render();
-      }
-    };
-
-    inp?.addEventListener('input', saveName);
-    inp?.addEventListener('change', saveName);
-    container.querySelector('#btnApplyRoomName')?.addEventListener('click', saveName);
-    container.querySelector('#btnDeselectRoom')?.addEventListener('click', () => {
-      this.selectedRoom = null;
-      if (this.canvas) this.canvas.selectedRoomId = null;
-      this.renderRightTab();
-    });
-    container.querySelector('#btnDeleteRoom')?.addEventListener('click', () => {
-      if (page?.floorPlan?.rooms) {
-        page.floorPlan.rooms = page.floorPlan.rooms.filter(r => r.id !== room.id);
-        this.selectedRoom = null;
-        if (this.canvas) this.canvas.selectedRoomId = null;
-        this.notifyChange();
-        this.canvas.render();
-        this.renderRightTab();
-      }
-    });
   }
 
   private renderWallProperties(container: HTMLElement, wall: WallSegment): void {
@@ -3416,10 +3359,6 @@ export class App {
       this.renderOpeningProperties(container, this.selectedOpening);
       return;
     }
-    if (this.selectedRoom) {
-      this.renderRoomProperties(container, this.selectedRoom);
-      return;
-    }
     if (this.selectedText) {
       this.renderTextProperties(container, this.selectedText);
       return;
@@ -3828,14 +3767,6 @@ export class App {
               <span>📏 Wand anklicken zum Kalibrieren</span>
             </button>
 
-            <!-- Show room labels toggle -->
-            <div style="margin-bottom:6px;">
-              <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
-                <input type="checkbox" id="chkShowRoomLabels" ${activePage.floorPlan.showRoomLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
-                <span>Raumnamen einblenden</span>
-              </label>
-            </div>
-
             <!-- Hide symbol labels toggle -->
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
@@ -3927,27 +3858,6 @@ export class App {
                 <input type="number" id="inpFloorPlanScaleRatio" class="form-input" min="1" max="1000" value="${activePage.floorPlan.scale?.scaleRatio || 100}" style="font-size:11px;padding:2px 6px;width:70px;" />
                 <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;" title="Grundriss & Vorlage auf diesen Maßstab skalieren">Skalieren</button>
               </div>
-            </div>
-
-            <!-- Rooms list -->
-            <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;margin-top:6px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span style="font-size:10px;font-weight:bold;color:#a0aec0;text-transform:uppercase;">Räume (${activePage.floorPlan.rooms?.length || 0}):</span>
-                <button type="button" class="btn btn-sm" id="btnAddRoomQuick" style="font-size:10px;padding:2px 6px;background:#2d3748;color:#cbd5e0;">+ Raum</button>
-              </div>
-              ${(!activePage.floorPlan.rooms || activePage.floorPlan.rooms.length === 0) ? `
-                <div style="font-size:10px;color:var(--text-muted);font-style:italic;">Keine Räume eingetragen.</div>
-              ` : `
-                <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
-                  ${activePage.floorPlan.rooms.map(room => `
-                    <div style="display:flex;align-items:center;gap:4px;background:#2d3748;border:1px solid ${this.selectedRoom?.id === room.id ? '#63b3ed' : '#4a5568'};border-radius:3px;padding:2px 4px;">
-                      <span style="font-size:11px;">🏠</span>
-                      <input type="text" class="form-input inp-edit-room-name" data-room-id="${room.id}" value="${escapeSvg(room.name)}" style="flex:1;font-size:11px;padding:2px 4px;background:transparent;border:none;color:#e2e8f0;" title="Raumnamen bearbeiten" />
-                      <button type="button" class="btn btn-sm btn-del-room" data-room-id="${room.id}" title="Raum entfernen" style="padding:1px 5px;font-size:10px;color:#fc8181;background:transparent;border:none;">✕</button>
-                    </div>
-                  `).join('')}
-                </div>
-              `}
             </div>
           </div>
         ` : ''}
@@ -4045,13 +3955,6 @@ export class App {
           this.renderRightTab();
         }
       });
-      document.getElementById('chkShowRoomLabels')?.addEventListener('change', (e) => {
-        if (activePage?.floorPlan) {
-          activePage.floorPlan.showRoomLabels = (e.target as HTMLInputElement).checked;
-          this.canvas.render();
-          this.notifyChange();
-        }
-      });
       document.getElementById('chkShowBlueprintBg')?.addEventListener('change', (e) => {
         if (activePage?.floorPlan?.backgroundImage) {
           activePage.floorPlan.backgroundImage.visible = (e.target as HTMLInputElement).checked;
@@ -4106,46 +4009,6 @@ export class App {
           const sc = Number((e.currentTarget as HTMLElement).dataset.scale);
           if (sc > 0) this.rescaleFloorPlanToScale(sc);
         });
-      });
-      container.querySelectorAll('.inp-edit-room-name').forEach(inp => {
-        inp.addEventListener('input', (e) => {
-          const rId = (e.currentTarget as HTMLElement).dataset.roomId;
-          const r = activePage?.floorPlan?.rooms?.find(rm => rm.id === rId);
-          if (r) {
-            r.name = (e.target as HTMLInputElement).value;
-            this.notifyChange();
-            this.canvas.render();
-          }
-        });
-      });
-      container.querySelectorAll('.btn-del-room').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const rId = (e.currentTarget as HTMLElement).dataset.roomId;
-          if (activePage?.floorPlan?.rooms) {
-            activePage.floorPlan.rooms = activePage.floorPlan.rooms.filter(rm => rm.id !== rId);
-            if (this.selectedRoom?.id === rId) this.selectedRoom = null;
-            if (this.canvas) this.canvas.selectedRoomId = null;
-            this.notifyChange();
-            this.canvas.render();
-            this.renderRightTab();
-          }
-        });
-      });
-      document.getElementById('btnAddRoomQuick')?.addEventListener('click', () => {
-        if (activePage?.floorPlan) {
-          if (!activePage.floorPlan.rooms) activePage.floorPlan.rooms = [];
-          const newRoom: RoomDefinition = {
-            id: 'room_' + Math.random().toString(36).substring(2, 7),
-            name: 'Neuer Raum',
-            polygon: []
-          };
-          activePage.floorPlan.rooms.push(newRoom);
-          this.selectedRoom = newRoom;
-          if (this.canvas) this.canvas.selectedRoomId = newRoom.id;
-          this.notifyChange();
-          this.canvas.render();
-          this.renderRightTab();
-        }
       });
       document.getElementById('btnReimportFloorPlan')?.addEventListener('click', () => {
         this.openFloorPlanImport();

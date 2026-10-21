@@ -16,10 +16,10 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <!-- Halbkreis mit Basis an Wand nach DIN EN 60617-11 / RAL-RG 678 -->
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
+      <!-- Halbkreisbogen nach unten mit Wandanschluss-Stift und Basis nach DIN EN 60617-11 -->
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Schutzkontakt-Steckdose 1-fach, Unterputz (DIN EN 60617-11)'
   },
@@ -35,12 +35,13 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
-      <text x="24" y="9" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
     `,
-    description: 'Mehrfachsteckdose nach DIN EN 60617-11'
+    description: 'Mehrfachsteckdose 2-fach nach DIN EN 60617-11'
   },
   {
     id: 'inst_socket_double',
@@ -54,11 +55,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="13" y1="0" x2="13" y2="9.5" stroke="currentColor" stroke-width="2"/>
-      <line x1="19" y1="0" x2="19" y2="9.5" stroke="currentColor" stroke-width="2"/>
-      <text x="28" y="10" font-size="7.5" font-family="sans-serif" font-weight="bold" fill="currentColor">2</text>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
     `,
     description: 'Schutzkontakt-Steckdose 2-fach, Unterputz (DIN EN 60617-11)'
   },
@@ -74,12 +75,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="11" y1="0" x2="11" y2="8.5" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
-      <line x1="21" y1="0" x2="21" y2="8.5" stroke="currentColor" stroke-width="2"/>
-      <text x="28" y="10" font-size="7.5" font-family="sans-serif" font-weight="bold" fill="currentColor">3</text>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">3</text>
     `,
     description: 'Schutzkontakt-Steckdose 3-fach, Unterputz (DIN EN 60617-11)'
   },
@@ -95,13 +95,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="10" y1="0" x2="10" y2="8" stroke="currentColor" stroke-width="1.8"/>
-      <line x1="14" y1="0" x2="14" y2="9.8" stroke="currentColor" stroke-width="1.8"/>
-      <line x1="18" y1="0" x2="18" y2="9.8" stroke="currentColor" stroke-width="1.8"/>
-      <line x1="22" y1="0" x2="22" y2="8" stroke="currentColor" stroke-width="1.8"/>
-      <text x="28" y="10" font-size="7.5" font-family="sans-serif" font-weight="bold" fill="currentColor">4</text>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">4</text>
     `,
     description: 'Schutzkontakt-Steckdose 4-fach, Unterputz (DIN EN 60617-11)'
   },
@@ -117,9 +115,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0 Z" fill="currentColor" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="#181b22" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22 Z" fill="currentColor" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Feuchtraum-Steckdose IP44 mit Klappdeckel (DIN EN 60617-11)'
   },
@@ -135,11 +133,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
-      <line x1="6" y1="0" x2="2" y2="6" stroke="currentColor" stroke-width="2"/>
-      <circle cx="2" cy="6" r="1.5" fill="currentColor"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="22" x2="2" y2="26" stroke="currentColor" stroke-width="2"/>
+      <circle cx="2" cy="26" r="1.5" fill="currentColor"/>
     `,
     description: 'Schaltbare Schutzkontakt-Steckdose (DIN EN 60617-11)'
   },
@@ -155,10 +153,10 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
-      <rect x="23" y="2" width="7" height="4" fill="none" stroke="currentColor" stroke-width="1.2" rx="1"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="27" font-size="6" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USB</text>
     `,
     description: 'Schutzkontakt-Steckdose mit integriertem USB-A/C Ladeport'
   },
@@ -177,7 +175,7 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <!-- Wandanschluss-Stift oben, Basis und Bogen nach unten -->
       <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
       <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Einfachsteckdose mit Wandanschluss-Stift oben (DIN 18015 / DIN EN 60617-11)'
   },
@@ -195,9 +193,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
       <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
-      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
     `,
     description: 'Mehrfachsteckdose 2-fach mit Schrägstrich und Kennzahl 2 (DIN 18015)'
   },
@@ -215,9 +213,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
       <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
-      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">3</text>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">3</text>
     `,
     description: 'Mehrfachsteckdose 3-fach mit Schrägstrich und Kennzahl 3 (DIN 18015)'
   },
@@ -235,9 +233,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
       <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
-      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">4</text>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">4</text>
     `,
     description: 'Mehrfachsteckdose 4-fach mit Schrägstrich und Kennzahl 4 (DIN 18015)'
   },
@@ -255,9 +253,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
       <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 12 A 10 10 0 0 0 26 12" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19" y1="16" x2="24" y2="23" stroke="currentColor" stroke-width="1.8"/>
-      <text x="24.5" y="19.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">5</text>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="22" y1="21" x2="27" y2="16" stroke="currentColor" stroke-width="1.8"/>
+      <text x="27.5" y="16.5" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">5</text>
     `,
     description: 'Mehrfachsteckdose 5-fach mit Schrägstrich und Kennzahl 5 (DIN 18015)'
   },
@@ -273,10 +271,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="24" y2="3" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="18" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="13.8" x2="27" y2="7" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="7" x2="30" y2="10" stroke="currentColor" stroke-width="2"/>
     `,
-    description: 'Ausschalter / Einpoliger Lichtschalter nach DIN EN 60617-11'
+    description: 'Ausschalter / Einpoliger Lichtschalter mit Hebel und Haken nach DIN EN 60617-11'
   },
   {
     id: 'inst_switch_changeover',
@@ -290,11 +289,13 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="24" y2="3" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="8" y2="3" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="12.8" x2="27" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="6" x2="30" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="21.2" x2="5" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="28" x2="2" y2="25" stroke="currentColor" stroke-width="2"/>
     `,
-    description: 'Wechselschalter für 2 Schaltstellen (DIN EN 60617-11)'
+    description: 'Wechselschalter mit zwei gegenüberliegenden Hebeln und Haken (DIN EN 60617-11)'
   },
   {
     id: 'inst_switch_series',
@@ -308,11 +309,13 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="24" y2="3" stroke="currentColor" stroke-width="2"/>
-      <line x1="18" y1="6" x2="26" y2="6" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="19" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="14.8" x2="5" y2="8" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="8" x2="2" y2="11" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="14.8" x2="27" y2="8" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="8" x2="30" y2="11" stroke="currentColor" stroke-width="2"/>
     `,
-    description: 'Serienschalter für 2 unabhängige Leuchtengruppen (DIN EN 60617-11)'
+    description: 'Serienschalter mit zwei oberen Hebeln und Haken in V-Form (DIN EN 60617-11)'
   },
   {
     id: 'inst_switch_cross',
@@ -326,13 +329,17 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="24" y2="3" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="3" x2="8" y2="3" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="2"/>
-      <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="12.8" x2="27" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="6" x2="30" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="12.8" x2="5" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="6" x2="2" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="21.2" x2="5" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="28" x2="2" y2="25" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="21.2" x2="27" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="28" x2="30" y2="25" stroke="currentColor" stroke-width="2"/>
     `,
-    description: 'Kreuzschalter für 3 oder mehr Schaltstellen (DIN EN 60617-11)'
+    description: 'Kreuzschalter mit vier kreuzförmigen Hebeln und Haken (DIN EN 60617-11)'
   },
   {
     id: 'inst_switch_off_alt',
@@ -348,8 +355,8 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <!-- Kreis mit 45°-Hebel und Haken nach DIN EN 60617-11 -->
       <circle cx="16" cy="18" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="20.2" y1="13.8" x2="28" y2="6" stroke="currentColor" stroke-width="2"/>
-      <line x1="28" y1="6" x2="31" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="13.8" x2="27" y2="7" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="7" x2="30" y2="10" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Schalter (1-polig Ausschalter) mit schrägem Betätigungshebel und Haken (DIN EN 60617-11)'
   },
@@ -365,11 +372,11 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="16" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19.9" y1="12.1" x2="27" y2="5" stroke="currentColor" stroke-width="2"/>
-      <line x1="27" y1="5" x2="30" y2="8" stroke="currentColor" stroke-width="2"/>
-      <line x1="12.1" y1="19.9" x2="5" y2="27" stroke="currentColor" stroke-width="2"/>
-      <line x1="5" y1="27" x2="2" y2="24" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="12.8" x2="27" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="6" x2="30" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="21.2" x2="5" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="28" x2="2" y2="25" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Wechselschalter mit zwei gegenüberliegenden Hebeln und Haken (DIN EN 60617-11)'
   },
@@ -385,15 +392,15 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="19.5" y1="12.5" x2="26" y2="6" stroke="currentColor" stroke-width="2"/>
-      <line x1="26" y1="6" x2="29" y2="9" stroke="currentColor" stroke-width="2"/>
-      <line x1="12.5" y1="12.5" x2="6" y2="6" stroke="currentColor" stroke-width="2"/>
-      <line x1="6" y1="6" x2="3" y2="9" stroke="currentColor" stroke-width="2"/>
-      <line x1="12.5" y1="19.5" x2="6" y2="26" stroke="currentColor" stroke-width="2"/>
-      <line x1="6" y1="26" x2="3" y2="23" stroke="currentColor" stroke-width="2"/>
-      <line x1="19.5" y1="19.5" x2="26" y2="26" stroke="currentColor" stroke-width="2"/>
-      <line x1="26" y1="26" x2="29" y2="23" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="12.8" x2="27" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="6" x2="30" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="12.8" x2="5" y2="6" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="6" x2="2" y2="9" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="21.2" x2="5" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="28" x2="2" y2="25" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="21.2" x2="27" y2="28" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="28" x2="30" y2="25" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Kreuzschalter mit vier kreuzförmigen Hebeln und Haken (DIN EN 60617-11)'
   },
@@ -409,13 +416,13 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="20" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="12.1" y1="16.1" x2="6" y2="10" stroke="currentColor" stroke-width="2"/>
-      <line x1="6" y1="10" x2="3" y2="13" stroke="currentColor" stroke-width="2"/>
-      <line x1="19.9" y1="16.1" x2="26" y2="10" stroke="currentColor" stroke-width="2"/>
-      <line x1="26" y1="10" x2="29" y2="13" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="19" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="11.8" y1="14.8" x2="5" y2="8" stroke="currentColor" stroke-width="2"/>
+      <line x1="5" y1="8" x2="2" y2="11" stroke="currentColor" stroke-width="2"/>
+      <line x1="20.2" y1="14.8" x2="27" y2="8" stroke="currentColor" stroke-width="2"/>
+      <line x1="27" y1="8" x2="30" y2="11" stroke="currentColor" stroke-width="2"/>
     `,
-    description: 'Serienschalter mit zwei oberen Hebeln und Haken (DIN EN 60617-11)'
+    description: 'Serienschalter mit zwei oberen Hebeln und Haken in V-Form (DIN EN 60617-11)'
   },
   {
     id: 'inst_pushbutton',
@@ -429,8 +436,8 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <circle cx="16" cy="10" r="2.5" fill="currentColor"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="17" r="2.5" fill="currentColor"/>
     `,
     description: 'Taster mit Schließerkontakt für Stromstoßschaltung'
   },
@@ -446,9 +453,9 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <circle cx="16" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="11" y1="15" x2="21" y2="5" stroke="currentColor" stroke-width="1.8"/>
-      <polygon points="22,3 17,5 20,8" fill="currentColor"/>
+      <circle cx="16" cy="17" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="11" y1="22" x2="21" y2="12" stroke="currentColor" stroke-width="1.8"/>
+      <polygon points="22,10 17,12 20,15" fill="currentColor"/>
     `,
     description: 'Elektronischer Drehdimmer oder Tastdimmer für Beleuchtung'
   },

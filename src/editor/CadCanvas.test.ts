@@ -335,10 +335,10 @@ textCanvas.selectText(textPage.texts![0]);
 assert.equal(textCanvas.selectedTextId, 'txt1');
 assert.equal(selectedTextCallback?.id, 'txt1');
 
-// Render selected text (must contain selection outline)
+// Render selected text (must NOT contain dashed outline)
 const renderedSelected = textCanvas.renderTexts() as string;
 assert.match(renderedSelected, /class="canvas-text selected"/);
-assert.match(renderedSelected, /stroke-dasharray="3,2"/);
+assert.doesNotMatch(renderedSelected, /stroke-dasharray="3,2"/);
 
 // Rotate selected text
 textCanvas.rotateSelected(90);

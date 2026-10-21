@@ -228,4 +228,102 @@ for (const symbolId of connectionSymbolIds) {
   );
 }
 
+// Test floor plan rendering in PDF export (walls, openings, arcWires, background image)
+{
+  const fpPage: Page = {
+    id: 'fp_page',
+    pageNumber: '2',
+    title: 'Grundriss OG',
+    pageType: 'installation',
+    higherLevel: '',
+    location: '',
+    components: [
+      { id: 'c1', symbolId: 'inst_socket_single', x: 100, y: 100, rotation: 0, bmk: '-X1', functionText: '', pins: {} },
+      { id: 'c2', symbolId: 'inst_switch_off', x: 200, y: 100, rotation: 0, bmk: '-Q1', functionText: '', pins: {} },
+    ],
+    wires: [],
+    plotFrame: {
+      type: 'DIN_A3_LANDSCAPE',
+      width: 1000,
+      height: 700,
+      columns: 10,
+      rows: ['A'],
+      titleBlock: {
+        projectTitle: '',
+        commission: '',
+        company: '',
+        author: '',
+        date: '',
+        revision: '',
+        sheetNumber: '2',
+        totalSheets: '2',
+      },
+    },
+    floorPlan: {
+      walls: [
+        { id: 'w1', start: { x: 50, y: 50 }, end: { x: 300, y: 50 }, thickness: 24, isExterior: true },
+        { id: 'w2', start: { x: 300, y: 50 }, end: { x: 300, y: 300 }, thickness: 12, isExterior: false },
+      ],
+      openings: [
+        { id: 'op1', wallId: 'w1', kind: 'door', center: { x: 150, y: 50 }, width: 80, swingDirection: 'right_in' },
+        { id: 'op2', wallId: 'w1', kind: 'window', center: { x: 250, y: 50 }, width: 60 },
+        { id: 'op3', wallId: 'w2', kind: 'opening', center: { x: 300, y: 150 }, width: 70 },
+        { id: 'op4', wallId: 'w2', kind: 'garage_door', center: { x: 300, y: 240 }, width: 50 },
+      ],
+      arcWires: [
+        { id: 'aw1', fromComponentId: 'c1', toComponentId: 'c2', curvature: 0.3, circuitId: 'circ1' },
+      ],
+      backgroundImage: {
+        dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        bounds: { x: 20, y: 20, width: 400, height: 300 },
+        opacity: 0.5,
+        visible: true,
+      },
+      scale: {
+        scaleRatio: 100,
+        pixelPerMeter: 50,
+      },
+    },
+  };
+
+  const lines: number[][] = [];
+  const addedImages: any[] = [];
+  let saveGraphicsStateCalled = false;
+  let restoreGraphicsStateCalled = false;
+
+  const mockPdf: any = {};
+  for (const name of [
+    'setLineWidth', 'setLineDashPattern', 'setTextColor', 'setFillColor',
+    'setDrawColor', 'setFont', 'setFontSize', 'path', 'fill', 'fillStroke', 'stroke',
+    'circle', 'text', 'triangle', 'rect',
+  ]) {
+    mockPdf[name] = () => undefined;
+  }
+  mockPdf.line = (...args: number[]) => { lines.push(args); };
+  mockPdf.addImage = (...args: any[]) => { addedImages.push(args); };
+  mockPdf.saveGraphicsState = () => { saveGraphicsStateCalled = true; };
+  mockPdf.restoreGraphicsState = () => { restoreGraphicsStateCalled = true; };
+  mockPdf.GState = class MockGState {
+    opacity: number;
+    constructor(opts: any) { this.opacity = opts?.opacity; }
+  };
+  mockPdf.setGState = () => undefined;
+
+  (PdfExporter as any).renderFloorPlan(mockPdf, fpPage, 420, 297, 'color');
+
+  // Verify background image was embedded
+  assert.equal(addedImages.length, 1, 'Background image must be rendered in PDF');
+  assert.equal(saveGraphicsStateCalled, true, 'Graphics state should be saved for transparent background image');
+  assert.equal(restoreGraphicsStateCalled, true, 'Graphics state should be restored after background image');
+
+  // Verify walls and openings lines were generated
+  assert(lines.length > 10, `Expected multiple vector lines for walls, doors, windows, openings, and arcWires, got ${lines.length}`);
+
+  // Test monochrome mode
+  lines.length = 0;
+  (PdfExporter as any).renderFloorPlan(mockPdf, fpPage, 420, 297, 'monochrome');
+  assert(lines.length > 10, `Monochrome floor plan rendering should also produce vector lines, got ${lines.length}`);
+}
+
 console.log('✓ Connection elements render as vector arrows/junctions in PDF without placeholder blocks');
+console.log('✓ Floor plan elements (walls, doors, windows, arc wires, background image) render cleanly in PDF export');

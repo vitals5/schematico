@@ -5,7 +5,7 @@ import { prepareProjectPresentation } from '../model/PresentationNaming';
 import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '../model/PlotFrame';
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
-import { getAutoSymbolScale } from '../model/FloorPlanRenderer';
+import { getAutoSymbolScale, calculateArcControlPoint } from '../model/FloorPlanRenderer';
 import { referenceTargets } from '../model/CrossReferenceNavigation';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
@@ -110,6 +110,11 @@ export class PdfExporter {
         this.renderPlotFrame(doc, page, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, project);
       }
       if(page.pageType==='cover')this.renderCoverPage(doc,page,project,pageWidthMm,pageHeightMm,options.colorMode);
+
+      // Render Floor Plan (Walls, Openings, Blueprint Background, Installation Wires)
+      if (page.floorPlan) {
+        this.renderFloorPlan(doc, page, pageWidthMm, pageHeightMm, options.colorMode);
+      }
 
       // Render Embedded Images
       this.renderImages(doc, page, pageWidthMm, pageHeightMm);
@@ -287,6 +292,241 @@ export class PdfExporter {
         doc.addImage(img.dataUrl, format, ix, iy, iw, ih);
       } catch (err) {
         console.warn('Failed to embed image into PDF:', err);
+      }
+    }
+  }
+
+  /**
+   * Renders floor plan elements (blueprint background, walls, openings, installation arc wires)
+   */
+  private static renderFloorPlan(
+    doc: jsPDF,
+    page: Page,
+    wMm: number,
+    hMm: number,
+    colorMode: 'color' | 'monochrome'
+  ): void {
+    const fp = page.floorPlan;
+    if (!fp) return;
+
+    const sx = wMm / page.plotFrame.width;
+    const sy = hMm / page.plotFrame.height;
+    const pxPerMeter = fp.scale?.pixelPerMeter || 50;
+    const isColor = colorMode === 'color';
+
+    // 1. Background image (blueprint/sketch)
+    if (fp.backgroundImage?.visible && fp.backgroundImage.dataUrl && fp.backgroundImage.bounds) {
+      const b = fp.backgroundImage.bounds;
+      const ix = b.x * sx;
+      const iy = b.y * sy;
+      const iw = b.width * sx;
+      const ih = b.height * sy;
+      try {
+        const format = fp.backgroundImage.dataUrl.includes('image/jpeg') ? 'JPEG' : 'PNG';
+        const hasGState = typeof (doc as any).GState === 'function';
+        if (hasGState && fp.backgroundImage.opacity !== undefined && fp.backgroundImage.opacity < 1) {
+          doc.saveGraphicsState();
+          doc.setGState(new (doc as any).GState({ opacity: fp.backgroundImage.opacity }));
+          doc.addImage(fp.backgroundImage.dataUrl, format, ix, iy, iw, ih);
+          doc.restoreGraphicsState();
+        } else {
+          doc.addImage(fp.backgroundImage.dataUrl, format, ix, iy, iw, ih);
+        }
+      } catch (err) {
+        console.warn('Failed to embed floor plan background image into PDF:', err);
+      }
+    }
+
+    // 2. Walls
+    const wallMap = new Map((fp.walls || []).map(w => [w.id, w]));
+    if (fp.walls && fp.walls.length > 0) {
+      for (const wall of fp.walls) {
+        const thickness = wall.thickness
+          ? Math.max(0.35, (wall.thickness < 1 ? wall.thickness * pxPerMeter : wall.thickness) * sx * 0.4)
+          : (wall.isExterior ? 0.75 : 0.45);
+        doc.setLineWidth(thickness);
+        if (isColor) {
+          if (wall.isExterior) {
+            doc.setDrawColor(45, 55, 72);
+          } else {
+            doc.setDrawColor(74, 85, 104);
+          }
+        } else {
+          doc.setDrawColor(0, 0, 0);
+        }
+        doc.line(wall.start.x * sx, wall.start.y * sy, wall.end.x * sx, wall.end.y * sy);
+      }
+    }
+
+    // 3. Openings (doors, windows, wall openings, garage doors)
+    if (fp.openings && fp.openings.length > 0) {
+      for (const op of fp.openings) {
+        const opW = op.width < 5 ? op.width * pxPerMeter : op.width;
+        const hw = opW / 2;
+        const wall = op.wallId ? wallMap.get(op.wallId) : undefined;
+        let ux = 1, uy = 0, nx = 0, ny = 1;
+
+        if (wall) {
+          const dx = wall.end.x - wall.start.x;
+          const dy = wall.end.y - wall.start.y;
+          const len = Math.hypot(dx, dy);
+          if (len > 1e-3) {
+            ux = dx / len;
+            uy = dy / len;
+            nx = -uy;
+            ny = ux;
+          }
+        } else if (op.orientation === 'vertical') {
+          ux = 0; uy = 1;
+          nx = 1; ny = 0;
+        }
+
+        const p1x = op.center.x - hw * ux;
+        const p1y = op.center.y - hw * uy;
+        const p2x = op.center.x + hw * ux;
+        const p2y = op.center.y + hw * uy;
+
+        // Cut wall opening with clean white gap
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(1.8);
+        doc.line(p1x * sx, p1y * sy, p2x * sx, p2y * sy);
+
+        if (op.kind === 'window') {
+          const glassColor = isColor ? { r: 49, g: 130, b: 206 } : { r: 0, g: 0, b: 0 };
+          const frameColor = isColor ? { r: 113, g: 128, b: 150 } : { r: 0, g: 0, b: 0 };
+
+          doc.setDrawColor(frameColor.r, frameColor.g, frameColor.b);
+          doc.setLineWidth(0.3);
+          doc.line((p1x - 3 * nx) * sx, (p1y - 3 * ny) * sy, (p1x + 3 * nx) * sx, (p1y + 3 * ny) * sy);
+          doc.line((p2x - 3 * nx) * sx, (p2y - 3 * ny) * sy, (p2x + 3 * nx) * sx, (p2y + 3 * ny) * sy);
+
+          doc.setDrawColor(glassColor.r, glassColor.g, glassColor.b);
+          doc.setLineWidth(0.3);
+          doc.line((p1x + 1.5 * nx) * sx, (p1y + 1.5 * ny) * sy, (p2x + 1.5 * nx) * sx, (p2y + 1.5 * ny) * sy);
+          doc.line((p1x - 1.5 * nx) * sx, (p1y - 1.5 * ny) * sy, (p2x - 1.5 * nx) * sx, (p2y - 1.5 * ny) * sy);
+        } else if (op.kind === 'opening') {
+          const frameColor = isColor ? { r: 74, g: 85, b: 104 } : { r: 0, g: 0, b: 0 };
+          doc.setDrawColor(frameColor.r, frameColor.g, frameColor.b);
+          doc.setLineWidth(0.35);
+          doc.line((p1x - 3.5 * nx) * sx, (p1y - 3.5 * ny) * sy, (p1x + 3.5 * nx) * sx, (p1y + 3.5 * ny) * sy);
+          doc.line((p2x - 3.5 * nx) * sx, (p2y - 3.5 * ny) * sy, (p2x + 3.5 * nx) * sx, (p2y + 3.5 * ny) * sy);
+        } else if (op.kind === 'garage_door') {
+          const frameColor = isColor ? { r: 74, g: 85, b: 104 } : { r: 0, g: 0, b: 0 };
+          const trackColor = isColor ? { r: 113, g: 128, b: 150 } : { r: 0, g: 0, b: 0 };
+          const trackLen = Math.max(30, opW * 0.75);
+          const t1x = p1x + trackLen * nx;
+          const t1y = p1y + trackLen * ny;
+          const t2x = p2x + trackLen * nx;
+          const t2y = p2y + trackLen * ny;
+
+          doc.setDrawColor(frameColor.r, frameColor.g, frameColor.b);
+          doc.setLineWidth(0.35);
+          doc.line((p1x - 3.5 * nx) * sx, (p1y - 3.5 * ny) * sy, (p1x + 3.5 * nx) * sx, (p1y + 3.5 * ny) * sy);
+          doc.line((p2x - 3.5 * nx) * sx, (p2y - 3.5 * ny) * sy, (p2x + 3.5 * nx) * sx, (p2y + 3.5 * ny) * sy);
+          doc.line(p1x * sx, p1y * sy, p2x * sx, p2y * sy);
+
+          doc.setDrawColor(trackColor.r, trackColor.g, trackColor.b);
+          doc.setLineWidth(0.25);
+          doc.line(p1x * sx, p1y * sy, t1x * sx, t1y * sy);
+          doc.line(p2x * sx, p2y * sy, t2x * sx, t2y * sy);
+          doc.line(t1x * sx, t1y * sy, t2x * sx, t2y * sy);
+        } else {
+          const isRight = op.swingDirection?.startsWith('right_');
+          const swingSign = op.swingDirection?.includes('out') ? -1 : 1;
+          const hasArc = op.swingDirection !== 'none';
+
+          const hingeX = isRight ? p2x : p1x;
+          const hingeY = isRight ? p2y : p1y;
+          const targetX = isRight ? p1x : p2x;
+          const targetY = isRight ? p1y : p2y;
+
+          const leafEndX = hingeX + opW * nx * swingSign;
+          const leafEndY = hingeY + opW * ny * swingSign;
+
+          const frameColor = isColor ? { r: 74, g: 85, b: 104 } : { r: 0, g: 0, b: 0 };
+          const leafColor = isColor ? { r: 45, g: 55, b: 72 } : { r: 0, g: 0, b: 0 };
+          const arcColor = isColor ? { r: 113, g: 128, b: 150 } : { r: 80, g: 80, b: 80 };
+
+          doc.setDrawColor(frameColor.r, frameColor.g, frameColor.b);
+          doc.setLineWidth(0.3);
+          doc.line((p1x - 2.5 * nx) * sx, (p1y - 2.5 * ny) * sy, (p1x + 2.5 * nx) * sx, (p1y + 2.5 * ny) * sy);
+          doc.line((p2x - 2.5 * nx) * sx, (p2y - 2.5 * ny) * sy, (p2x + 2.5 * nx) * sx, (p2y + 2.5 * ny) * sy);
+
+          if (hasArc) {
+            doc.setDrawColor(leafColor.r, leafColor.g, leafColor.b);
+            doc.setLineWidth(0.4);
+            doc.line(hingeX * sx, hingeY * sy, leafEndX * sx, leafEndY * sy);
+
+            doc.setDrawColor(arcColor.r, arcColor.g, arcColor.b);
+            doc.setLineWidth(0.25);
+            const startAngle = Math.atan2(leafEndY - hingeY, leafEndX - hingeX);
+            let endAngle = Math.atan2(targetY - hingeY, targetX - hingeX);
+            let diff = endAngle - startAngle;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+
+            const steps = 8;
+            let prevX = leafEndX * sx;
+            let prevY = leafEndY * sy;
+            for (let i = 1; i <= steps; i++) {
+              const a = startAngle + (diff * i) / steps;
+              const curX = (hingeX + opW * Math.cos(a)) * sx;
+              const curY = (hingeY + opW * Math.sin(a)) * sy;
+              doc.line(prevX, prevY, curX, curY);
+              prevX = curX;
+              prevY = curY;
+            }
+          } else {
+            doc.setDrawColor(leafColor.r, leafColor.g, leafColor.b);
+            doc.setLineWidth(0.35);
+            doc.line(p1x * sx, p1y * sy, p2x * sx, p2y * sy);
+          }
+        }
+      }
+    }
+
+    // 4. Arc Wires (curved installation wiring)
+    if (fp.arcWires && fp.arcWires.length > 0) {
+      const compMap = new Map((page.components || []).map(c => [c.id, c]));
+      const circuitMap = new Map((fp.circuits || []).map(c => [c.id, c]));
+
+      for (const wire of fp.arcWires) {
+        const c1 = compMap.get(wire.fromComponentId);
+        const c2 = compMap.get(wire.toComponentId);
+        if (!c1 || !c2) continue;
+
+        const p1 = { x: c1.x, y: c1.y };
+        const p2 = { x: c2.x, y: c2.y };
+        const curvature = wire.curvature ?? 0.25;
+        const ctrl = calculateArcControlPoint(p1, p2, curvature);
+
+        const circ = wire.circuitId ? circuitMap.get(wire.circuitId) : undefined;
+        let wireRgb = { r: 49, g: 130, b: 206 };
+        if (circ?.color && /^#[0-9a-fA-F]{6}$/.test(circ.color)) {
+          wireRgb = {
+            r: parseInt(circ.color.slice(1, 3), 16),
+            g: parseInt(circ.color.slice(3, 5), 16),
+            b: parseInt(circ.color.slice(5, 7), 16)
+          };
+        } else if (!isColor) {
+          wireRgb = { r: 0, g: 0, b: 0 };
+        }
+
+        doc.setDrawColor(wireRgb.r, wireRgb.g, wireRgb.b);
+        doc.setLineWidth(0.35);
+
+        const steps = 10;
+        let prevX = p1.x * sx;
+        let prevY = p1.y * sy;
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const u = 1 - t;
+          const curX = (u * u * p1.x + 2 * u * t * ctrl.x + t * t * p2.x) * sx;
+          const curY = (u * u * p1.y + 2 * u * t * ctrl.y + t * t * p2.y) * sy;
+          doc.line(prevX, prevY, curX, curY);
+          prevX = curX;
+          prevY = curY;
+        }
       }
     }
   }

@@ -186,10 +186,6 @@ export class FloorPlanImportDialog {
               </div>
               <div id="fpi-calib-info" style="font-size:10px;color:#a0aec0;margin-top:4px;"></div>
             </div>
-
-            <!-- Detected Rooms Summary -->
-            <div id="fpi-rooms-list" style="display:none;background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px 12px;font-size:11px;max-height:80px;overflow-y:auto;">
-            </div>
           </div>
         </div>
 
@@ -217,7 +213,6 @@ export class FloorPlanImportDialog {
     const opacityControl = modal.querySelector('#fpi-opacity-control') as HTMLElement;
     const opacitySlider = modal.querySelector('#fpi-opacity-slider') as HTMLInputElement;
     const opacityVal = modal.querySelector('#fpi-opacity-val') as HTMLElement;
-    const roomsList = modal.querySelector('#fpi-rooms-list') as HTMLElement;
     const btnCreateSheet = modal.querySelector('#fpi-create-sheet') as HTMLButtonElement;
 
     modal.querySelector('#fpi-close')?.addEventListener('click', () => modal.remove());
@@ -352,7 +347,6 @@ export class FloorPlanImportDialog {
         this.currentFloorPlan.scale.scaleRatio = ratio;
         this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
         this.updatePreview(previewContainer);
-        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
         updateCalibWalls(this.currentFloorPlan);
       }
     });
@@ -363,7 +357,6 @@ export class FloorPlanImportDialog {
         this.currentFloorPlan.scale.scaleRatio = ratio;
         this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
         this.updatePreview(previewContainer);
-        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
         updateCalibWalls(this.currentFloorPlan);
       }
     });
@@ -430,7 +423,6 @@ export class FloorPlanImportDialog {
 
       updateCalibWalls(this.currentFloorPlan);
       this.updatePreview(previewContainer);
-      this.renderRoomsSummary(this.currentFloorPlan, roomsList);
     });
 
     // AI Start
@@ -471,10 +463,9 @@ export class FloorPlanImportDialog {
         statusText.style.color = '#68d391';
         statusText.textContent = 'Grundriss erfolgreich vektorisiert!';
 
-        // Update preview & rooms
+        // Update preview
         opacityControl.style.display = 'flex';
         this.updatePreview(previewContainer);
-        this.renderRoomsSummary(plan, roomsList);
         updateCalibWalls(plan);
 
         btnCreateSheet.disabled = false;
@@ -619,37 +610,4 @@ export class FloorPlanImportDialog {
     `;
   }
 
-  private renderRoomsSummary(plan: FloorPlanData, container: HTMLElement): void {
-    if (!plan.rooms || plan.rooms.length === 0) {
-      container.style.display = 'none';
-      return;
-    }
-
-    container.style.display = 'block';
-    const roomTags = plan.rooms.map((r, idx) => {
-      return `
-        <div style="display:inline-flex;align-items:center;gap:4px;background:#2d3748;padding:2px 6px;border-radius:6px;margin:2px;border:1px solid #4a5568;">
-          <span style="font-size:11px;">🏠</span>
-          <input type="text" class="fpi-room-name-inp" data-room-index="${idx}" value="${escapeSvg(r.name)}" style="background:#1a202c;border:1px solid #4a5568;color:#e2e8f0;font-size:11px;padding:1px 5px;border-radius:3px;width:110px;" title="Raumnamen anpassen" />
-        </div>
-      `;
-    }).join(' ');
-
-    container.innerHTML = `
-      <div style="font-weight:600;margin-bottom:6px;color:#cbd5e0;display:flex;justify-content:space-between;align-items:center;">
-        <span>Erkannte Räume (${plan.rooms.length}):</span>
-        <span style="font-size:10px;font-weight:normal;color:#a0aec0;">(Namen können hier direkt editiert werden)</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;">${roomTags}</div>
-    `;
-
-    container.querySelectorAll('.fpi-room-name-inp').forEach(inp => {
-      inp.addEventListener('input', (e) => {
-        const idx = Number((e.target as HTMLElement).dataset.roomIndex);
-        if (plan.rooms[idx]) {
-          plan.rooms[idx].name = (e.target as HTMLInputElement).value;
-        }
-      });
-    });
-  }
 }

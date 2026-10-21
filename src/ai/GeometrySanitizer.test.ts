@@ -58,9 +58,9 @@ const sanitized = sanitizeFloorPlanGeometry(sampleAiOutput, {
 
 assert.equal(sanitized.walls.length, 5, 'Should have 5 walls');
 assert.equal(sanitized.openings.length, 2, 'Should have 2 openings');
-assert.equal(sanitized.rooms.length, 2, 'Should have 2 rooms');
-assert.equal(sanitized.rooms[0].name, 'Wohnzimmer');
-assert.equal(sanitized.rooms[1].name, 'Küche');
+assert.equal(sanitized.rooms?.length, 2, 'Should have 2 rooms');
+assert.equal(sanitized.rooms?.[0].name, 'Wohnzimmer');
+assert.equal(sanitized.rooms?.[1].name, 'Küche');
 assert.equal(sanitized.openings[0].kind, 'door');
 assert.equal(sanitized.openings[1].kind, 'window');
 assert.equal(sanitized.walls[0].thickness, 3.5, 'Exterior wall thickness should be 3.5');

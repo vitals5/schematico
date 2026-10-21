@@ -15,7 +15,7 @@ import { plotFrameSvg } from '../model/PlotFrame';
 import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, PageText, WallSegment, WallOpening, RoomDefinition } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, PageText, WallSegment, WallOpening } from '../model/types';
 import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -40,7 +40,7 @@ export interface CadCanvasCallbacks {
   onSelectWire: (wire: Wire | null) => void;
   onSelectWall?: (wall: WallSegment | null) => void;
   onSelectOpening?: (opening: WallOpening | null) => void;
-  onSelectRoom?: (room: RoomDefinition | null) => void;
+  onSelectRoom?: (room: any) => void;
   onOpenProperties?: (component: PlacedComponent) => void;
   onOpenSymbolSelection?: () => void;
   onOpenMacroSelection?: () => void;
@@ -961,23 +961,6 @@ export class CadCanvas {
   }
 
   private onDoubleClick(e: MouseEvent): void {
-    if (this.floorPlanEditMode && this.activePage.floorPlan?.rooms) {
-      const roomEl = (e.target as Element)?.closest?.('[data-room-id]');
-      if (roomEl) {
-        const roomId = roomEl.getAttribute('data-room-id');
-        const room = this.activePage.floorPlan.rooms.find(r => r.id === roomId);
-        if (room) {
-          const newName = prompt('Raumnamen bearbeiten:', room.name);
-          if (newName !== null && newName.trim().length > 0) {
-            room.name = newName.trim();
-            this.notifyModified();
-            this.callbacks.onSelectRoom?.(room);
-            this.render();
-          }
-          return;
-        }
-      }
-    }
     if(this.selectedImageId||this.selectedBoxId){this.callbacks.onOpenSelectionProperties?.();return;}
     if(this.multipleSelection){this.callbacks.onOpenSelectionProperties?.();return;}
     if ((e.target as Element)?.closest?.('[data-crossref-source],[data-cable-id]')) return;
@@ -1382,22 +1365,6 @@ export class CadCanvas {
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
-    if (this.mode === 'select' && this.floorPlanEditMode && this.activePage.floorPlan?.rooms) {
-      const roomEl = (e.target as Element)?.closest?.('[data-room-id]');
-      if (roomEl) {
-        const roomId = roomEl.getAttribute('data-room-id');
-        const room = this.activePage.floorPlan.rooms.find(r => r.id === roomId);
-        if (room) {
-          this.selectedRoomId = room.id;
-          this.selectedWallId = null;
-          this.selectedOpeningId = null;
-          this.selectedComponentId = null;
-          this.callbacks.onSelectRoom?.(room);
-          this.render();
-          return;
-        }
-      }
-    }
     const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e) : null;
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
@@ -2769,20 +2736,7 @@ export class CadCanvas {
         `<tspan x="${t.x}" dy="${idx === 0 ? 0 : size * 1.25}">${escapeSvg(line)}</tspan>`
       ).join('');
 
-      let selectionOutline = '';
-      if (isSelected) {
-        const lineCount = Math.max(1, lines.length);
-        const maxLen = Math.max(1, ...lines.map(l => l.length));
-        const estWidth = maxLen * size * 0.6;
-        const estHeight = lineCount * size * 1.25;
-        let boxX = t.x - 3;
-        if (anchor === 'middle') boxX = t.x - estWidth / 2 - 3;
-        else if (anchor === 'end') boxX = t.x - estWidth - 3;
-        const boxY = t.y - size - 2;
-        selectionOutline = `<rect x="${boxX}" y="${boxY}" width="${estWidth + 6}" height="${estHeight + 4}" fill="rgba(99, 179, 237, 0.12)" stroke="#63b3ed" stroke-width="1.2" stroke-dasharray="3,2" rx="2" pointer-events="none"/>`;
-      }
-
-      return `<g id="${escapeSvg(t.id)}" data-text-id="${escapeSvg(t.id)}" class="canvas-text ${isSelected ? 'selected' : ''}" style="cursor:move" ${transform}>${selectionOutline}<text x="${t.x}" y="${t.y}" font-size="${size}" font-family="sans-serif" font-weight="${weight}" font-style="${style}" fill="${color}" text-anchor="${anchor}" pointer-events="all">${tspans}</text></g>`;
+      return `<g id="${escapeSvg(t.id)}" data-text-id="${escapeSvg(t.id)}" class="canvas-text ${isSelected ? 'selected' : ''}" style="cursor:move" ${transform}><text x="${t.x}" y="${t.y}" font-size="${size}" font-family="sans-serif" font-weight="${weight}" font-style="${style}" fill="${color}" text-anchor="${anchor}" pointer-events="all">${tspans}</text></g>`;
     }).join('');
   }
 

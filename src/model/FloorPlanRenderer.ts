@@ -185,39 +185,6 @@ export function floorPlanToSvg(
     );
   }
 
-  // 2. Room polygons and room labels (clean, subtle architectural styling)
-  if (options.showRooms !== false && plan.rooms && plan.rooms.length > 0) {
-    for (const room of plan.rooms) {
-      if (room.polygon && room.polygon.length >= 3) {
-        const pts = room.polygon.map(p => `${p.x},${p.y}`).join(' ');
-        parts.push(
-          `<polygon points="${pts}" fill="rgba(66, 153, 225, 0.04)" stroke="rgba(66, 153, 225, 0.2)" stroke-width="0.8" stroke-dasharray="3,3" style="pointer-events:none;" />`
-        );
-      }
-
-      // Render subtle room labels only if enabled
-      const showLabels = options.showRoomLabels !== false && plan.showRoomLabels !== false;
-      if (showLabels) {
-        let cx = 0, cy = 0;
-        if (room.polygon && room.polygon.length > 0) {
-          for (const pt of room.polygon) {
-            cx += pt.x;
-            cy += pt.y;
-          }
-          cx = Math.round(cx / room.polygon.length);
-          cy = Math.round(cy / room.polygon.length);
-        }
-        const labelText = escapeSvg(room.name);
-        const isInteractive = options.interactive !== false;
-        parts.push(`
-          <g class="room-label floorplan-room-label" data-room-id="${room.id}" style="${isInteractive ? 'cursor:pointer;pointer-events:all;' : 'pointer-events:none;'}user-select:none;">
-            <text x="${cx}" y="${cy}" font-size="10" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="600" fill="#cbd5e0" text-anchor="middle" title="Raum: ${labelText} (Klick / Doppelklick zum Umbenennen)">${labelText}</text>
-          </g>
-        `);
-      }
-    }
-  }
-
   // Helper to render a wall segment
   const renderSingleWall = (wall: WallSegment, isSelected: boolean) => {
     const isInteractive = options.interactive !== false;
