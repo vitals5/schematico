@@ -67,7 +67,7 @@ const svg = floorPlanToSvg(testPlan);
 assert(svg.includes('class="floorplan-door"'), 'Must contain door');
 assert(svg.includes('class="floorplan-window"'), 'Must contain window');
 assert(svg.includes('Wohnzimmer'), 'Must render room label');
-assert(svg.includes('24.5 m²'), 'Must render room area');
+assert(!svg.includes('24.5 m²'), 'Must not render room area in m²');
 assert(svg.includes('<image href="data:image/png;base64,'), 'Must render background image');
 assert(svg.includes('width="655" height="530"'), 'Must use exact fitted image dimensions');
 

@@ -22,7 +22,7 @@ import { cableCrossings } from '../model/CableDefinition';
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
 
 import { Project, Page, PlacedComponent, Wire, CableDefinition, WallSegment, WallOpening } from '../model/types';
-import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm } from '../model/symbols';
+import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm, getComponentSymbolLibrary } from '../model/symbols';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
 import { ELEMENT_CATEGORIES, symbolMatchesQuery } from '../model/SymbolCatalogue';
@@ -387,8 +387,12 @@ export class App {
     container.addEventListener('drop', async (e) => {
       e.preventDefault();
       const file = e.dataTransfer?.files?.[0];
-      if (file && (/\.(ema|ems|edz|xml|json)$/i.test(file.name))) {
-        await this.handleMacroFileDrop(file, e.clientX, e.clientY);
+      if (file) {
+        if (file.name.endsWith('.floorplan.json')) {
+          await this.importFloorPlanPageFromFile(file);
+        } else if (/\.(ema|ems|edz|xml|json)$/i.test(file.name)) {
+          await this.handleMacroFileDrop(file, e.clientX, e.clientY);
+        }
       }
     });
 
@@ -825,6 +829,8 @@ export class App {
       api.onMenuAction('menu:exportZw1', () => this.exportZw1());
       api.onMenuAction('menu:exportXml', () => this.exportXml());
       api.onMenuAction('menu:exportPdf', () => new PdfExportDialog(this.project, this.project.activePageId).show());
+      api.onMenuAction('menu:exportFloorPlanPage', () => this.exportFloorPlanPage());
+      api.onMenuAction('menu:importFloorPlanPage', () => this.triggerImportFloorPlanPage());
       api.onMenuAction('menu:rotate', () => this.canvas.rotateSelected());
       api.onMenuAction('menu:fileOpened', (fileInfo: { path: string; name: string; data: number[] }) => {
         const uint8 = new Uint8Array(fileInfo.data);
@@ -876,6 +882,8 @@ export class App {
     bindMenuOpt('menuExportZw1', async () => await this.exportZw1());
     bindMenuOpt('menuExportXml', () => this.exportXml());
     bindMenuOpt('menuExportPageMacro', () => this.exportCurrentPageAsPageMacro());
+    bindMenuOpt('menuExportFloorPlanPage', () => this.exportFloorPlanPage());
+    bindMenuOpt('menuImportFloorPlanPage', () => this.triggerImportFloorPlanPage());
     bindMenuOpt('menuPrint', () => window.print());
 
     // Bearbeiten
@@ -1390,7 +1398,11 @@ export class App {
       </div>
       <div style="display: flex; gap: 6px; margin-bottom: 8px;">
         <button class="btn" id="btnAddCoverPage" style="flex: 1; padding: 4px 6px; font-size: 11px;">${t('btnNewCover')}</button>
-        <button class="btn" id="btnImportFloorPlan" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="${t('importFloorPlanTitle')}">📐 Grundriss KI</button>
+        <button class="btn" id="btnImportFloorPlan" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="${t('importFloorPlanTitle')}">📐 Grundriss</button>
+      </div>
+      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+        <button class="btn" id="btnImportFloorPlanPageDirect" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="Grundriss-Seite importieren (.floorplan.json, .ems)">📥 Grundriss import</button>
+        <button class="btn" id="btnExportFloorPlanPageDirect" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="Aktuelle Grundriss-Seite exportieren (.floorplan.json)">📤 Grundriss export</button>
       </div>
 
       <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
@@ -1489,6 +1501,8 @@ export class App {
     });
     document.getElementById('btnAddCoverPage')?.addEventListener('click',()=>this.addCoverPage());
     document.getElementById('btnImportFloorPlan')?.addEventListener('click', () => this.openFloorPlanImport());
+    document.getElementById('btnImportFloorPlanPageDirect')?.addEventListener('click', () => this.triggerImportFloorPlanPage());
+    document.getElementById('btnExportFloorPlanPageDirect')?.addEventListener('click', () => this.exportFloorPlanPage());
   }
 
   public updateTotalSheets(): void {
@@ -1568,6 +1582,17 @@ export class App {
         this.project.activePageId = newPage.id;
         this.updateTotalSheets();
         this.canvas.setPage(newPage.id);
+        if (newPage.floorPlan) {
+          this.canvas.setFloorPlanEditMode(true);
+          const status = document.getElementById('statusLeft');
+          if (status) {
+            if (!newPage.floorPlan.walls || newPage.floorPlan.walls.length === 0) {
+              status.textContent = '📐 Grundriss-Vorlage geladen. Klicke auf "Wand zeichnen", um Wände manuell nachzuzeichnen. Der Maßstab kann jederzeit kalibriert werden.';
+            } else {
+              status.textContent = '📐 Grundriss geladen. Wände und Öffnungen können im Grundriss-Modus editiert werden.';
+            }
+          }
+        }
         this.notifyChange();
         this.updateUI();
       },
@@ -2045,6 +2070,163 @@ export class App {
     this.downloadBlob(blob, filename);
   }
 
+  public exportFloorPlanPage(page?: Page): void {
+    const targetPage = page || this.project.pages.find(p => p.id === this.project.activePageId);
+    if (!targetPage) return;
+    if (!targetPage.floorPlan && targetPage.pageType !== 'installation') {
+      alert('Die ausgewählte Seite ist keine Grundriss-Seite.');
+      return;
+    }
+
+    const pageClone: Page = JSON.parse(JSON.stringify(targetPage));
+    const payload = {
+      format: 'schematico-floorplan-page',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      projectName: this.project.name,
+      symbolLibrary: getComponentSymbolLibrary(pageClone.components),
+      page: pageClone
+    };
+
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const safeTitle = (targetPage.title || 'Grundriss').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+    const filename = `${safeTitle}_Blatt_${targetPage.pageNumber}.floorplan.json`;
+    this.downloadBlob(blob, filename);
+
+    const status = document.getElementById('statusLeft');
+    if (status) {
+      status.textContent = `✓ Grundriss-Seite "${targetPage.title}" als ${filename} exportiert.`;
+    }
+  }
+
+  public triggerImportFloorPlanPage(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.floorplan.json,.json,.ems';
+    input.hidden = true;
+    document.body.appendChild(input);
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (file) await this.importFloorPlanPageFromFile(file);
+      input.remove();
+    };
+    input.click();
+  }
+
+  public async importFloorPlanPageFromFile(file: File): Promise<void> {
+    try {
+      let rawPage: Page | undefined;
+      let symbolLib: any[] | undefined;
+
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.ems')) {
+        const macro = await MacroManager.parseMacroFile(file, { allowMissingDependencies: true });
+        if (macro && 'page' in macro && macro.page) {
+          rawPage = macro.page;
+          symbolLib = macro.symbolLibrary;
+        }
+      } else {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (parsed.format === 'schematico-floorplan-page' && parsed.page) {
+          rawPage = parsed.page;
+          symbolLib = parsed.symbolLibrary;
+        } else if (parsed.floorPlan || parsed.pageType === 'installation') {
+          rawPage = parsed;
+          symbolLib = parsed.symbolLibrary;
+        } else if (parsed.page && (parsed.page.floorPlan || parsed.page.pageType === 'installation')) {
+          rawPage = parsed.page;
+          symbolLib = parsed.symbolLibrary;
+        } else {
+          throw new Error('Die Datei enthält keine Grundriss-Seiten-Daten.');
+        }
+      }
+
+      if (!rawPage) {
+        throw new Error('Grundriss-Seite konnte nicht aus der Datei gelesen werden.');
+      }
+
+      // Clone page and assign fresh unique ID
+      const pageClone: Page = JSON.parse(JSON.stringify(rawPage));
+      const newPageId = 'page_' + Math.random().toString(36).substring(2, 9);
+      pageClone.id = newPageId;
+      pageClone.pageType = 'installation';
+
+      // Determine next available page number
+      let maxPageNum = 0;
+      for (const p of this.project.pages) {
+        const num = parseInt(p.pageNumber, 10);
+        if (!isNaN(num) && num > maxPageNum) maxPageNum = num;
+      }
+      const nextNum = (maxPageNum + 1).toString();
+      pageClone.pageNumber = nextNum;
+
+      if (pageClone.plotFrame?.titleBlock) {
+        pageClone.plotFrame.titleBlock.sheetNumber = nextNum;
+        pageClone.plotFrame.titleBlock.totalSheets = (this.project.pages.length + 1).toString();
+        pageClone.plotFrame.titleBlock.projectTitle = this.project.name;
+        pageClone.plotFrame.titleBlock.company = this.project.company;
+        pageClone.plotFrame.titleBlock.author = this.project.author;
+        pageClone.plotFrame.titleBlock.date = new Date().toLocaleDateString('de-DE');
+      }
+
+      // Remap component IDs to avoid collisions
+      const idMap = new Map<string, string>();
+      for (const c of pageClone.components) {
+        const oldId = c.id;
+        const newId = 'comp_' + Math.random().toString(36).substring(2, 9);
+        idMap.set(oldId, newId);
+        c.id = newId;
+      }
+
+      // Remap wires
+      const wireIds = new Map<string, string>();
+      for (const w of pageClone.wires) {
+        const oldId = w.id;
+        w.id = 'w_' + Math.random().toString(36).substring(2, 9);
+        wireIds.set(oldId, w.id);
+        if (idMap.has(w.from.componentId)) w.from.componentId = idMap.get(w.from.componentId)!;
+        if (idMap.has(w.to.componentId)) w.to.componentId = idMap.get(w.to.componentId)!;
+      }
+
+      for (const c of pageClone.components) {
+        for (const pin of Object.values(c.pins)) {
+          if (pin.wireIds) pin.wireIds = pin.wireIds.flatMap(id => wireIds.has(id) ? [wireIds.get(id)!] : []);
+        }
+      }
+
+      // Remap arcWires if any
+      if (pageClone.floorPlan?.arcWires) {
+        for (const aw of pageClone.floorPlan.arcWires) {
+          aw.id = 'aw_' + Math.random().toString(36).substring(2, 9);
+          if (idMap.has(aw.fromComponentId)) aw.fromComponentId = idMap.get(aw.fromComponentId)!;
+          if (idMap.has(aw.toComponentId)) aw.toComponentId = idMap.get(aw.toComponentId)!;
+        }
+      }
+
+      // Merge symbol library
+      if (symbolLib) {
+        mergeProjectSymbolLibrary(this.project, symbolLib, pageClone.components);
+      }
+
+      this.project.pages.push(pageClone);
+      this.project.activePageId = pageClone.id;
+      this.updateTotalSheets();
+      this.canvas.setPage(pageClone.id);
+      this.canvas.setFloorPlanEditMode(true);
+      this.notifyChange();
+      this.updateUI();
+
+      const status = document.getElementById('statusLeft');
+      if (status) {
+        status.textContent = `✓ Grundriss-Seite "${pageClone.title}" erfolgreich importiert (Blatt ${pageClone.pageNumber}).`;
+      }
+    } catch (err: any) {
+      alert(`Fehler beim Importieren der Grundriss-Seite: ${err?.message || err}`);
+    }
+  }
+
   private async handleMacroFileDrop(file: File, clientX: number, clientY: number): Promise<void> {
     try {
       const imported = await MacroManager.parseMacroFile(file,{allowMissingDependencies:true});
@@ -2419,14 +2601,15 @@ export class App {
         </div>
       </div>
 
-      <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:4px;padding:8px;font-size:11px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="color:var(--text-muted);">Länge:</span>
-          <strong>${lenM} m (${Math.round(lenPx)} px)</strong>
+      <div class="form-group" style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-bottom:12px;">
+        <label class="form-label" style="font-weight:bold;color:#63b3ed;margin-bottom:4px;">Wandlänge (m)</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="form-input" id="propWallLengthM" type="number" step="0.05" min="0.05" max="200" value="${lenM}" style="flex:1;font-size:12px;font-weight:bold;">
+          <span style="font-size:11px;color:#cbd5e0;">m</span>
         </div>
-        <div style="display:flex;justify-content:space-between;">
-          <span style="color:var(--text-muted);">Winkel:</span>
-          <span>${angleDeg}°</span>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text-muted);">
+          <span>Winkel: <strong>${angleDeg}°</strong></span>
+          <span>Pixel: <strong>${Math.round(lenPx)} px</strong></span>
         </div>
       </div>
 
@@ -2500,6 +2683,23 @@ export class App {
       });
     });
 
+    container.querySelector('#propWallLengthM')?.addEventListener('input', (e) => {
+      const newM = parseFloat((e.target as HTMLInputElement).value);
+      if (!isNaN(newM) && newM > 0 && lenPx > 0.001) {
+        const dirX = (wall.end.x - wall.start.x) / lenPx;
+        const dirY = (wall.end.y - wall.start.y) / lenPx;
+        const newPx = newM * pxPerMeter;
+        wall.end.x = wall.start.x + dirX * newPx;
+        wall.end.y = wall.start.y + dirY * newPx;
+        const endXInput = container.querySelector('#propWallEndX') as HTMLInputElement;
+        const endYInput = container.querySelector('#propWallEndY') as HTMLInputElement;
+        if (endXInput) endXInput.value = (wall.end.x / pxPerMeter).toFixed(2);
+        if (endYInput) endYInput.value = (wall.end.y / pxPerMeter).toFixed(2);
+        this.notifyChange();
+        this.canvas.render();
+      }
+    });
+
     container.querySelector('#propWallStartX')?.addEventListener('input', (e) => {
       const valM = parseFloat((e.target as HTMLInputElement).value);
       if (!isNaN(valM)) {
@@ -2569,19 +2769,19 @@ export class App {
     });
 
     container.querySelector('#btnWallAddDoor')?.addEventListener('click', () => {
-      this.canvas.addOpening('door', undefined, wall.id);
+      this.canvas.startPlacingOpening('door');
     });
 
     container.querySelector('#btnWallAddWindow')?.addEventListener('click', () => {
-      this.canvas.addOpening('window', undefined, wall.id);
+      this.canvas.startPlacingOpening('window');
     });
 
     container.querySelector('#btnWallAddOpening')?.addEventListener('click', () => {
-      this.canvas.addOpening('opening', undefined, wall.id);
+      this.canvas.startPlacingOpening('opening');
     });
 
     container.querySelector('#btnWallAddGarage')?.addEventListener('click', () => {
-      this.canvas.addOpening('garage_door', undefined, wall.id);
+      this.canvas.startPlacingOpening('garage_door');
     });
 
     container.querySelector('#btnWallDelete')?.addEventListener('click', () => {
@@ -2787,11 +2987,32 @@ export class App {
       const bmkPreset = comp.bmkPosition?.preset || 'auto';
 
       const locSym = sym ? getLocalizedSymbol(sym) : undefined;
+      const refTargets = this.canvas.getComponentReferenceTargets(comp);
+      const jumpRefHtml = refTargets.length > 0 ? `
+        <div style="background:#232d3d;border:1px solid #3e4c63;border-radius:4px;padding:8px 10px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;color:#63b3ed;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            <span>🔗</span> <span>Verweis-Gegenstück (${refTargets.length}):</span>
+          </div>
+          ${refTargets.map((target, idx) => {
+            const tPage = this.project.pages.find(p => p.id === target.pageId);
+            const pageNum = tPage?.pageNumber || '?';
+            return `
+              <button type="button" class="btn btn-sm btn-jump-ref" data-target-index="${idx}" style="width:100%;text-align:left;font-size:11px;padding:5px 8px;margin-top:3px;background:#2b6cb0;color:#fff;border:none;border-radius:3px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>↗ Zu Blatt ${escapeSvg(pageNum)} springen</span>
+                <span style="font-size:9px;opacity:0.8;">[Strg+Klick]</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      ` : '';
+
       container.innerHTML = `
         <button class="btn btn-primary" id="btnOpenFullPropModal" style="width: 100%; margin-bottom: 12px; font-weight: 600; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #3182ce; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
           <span>${t('btnOpenFullPropModal')}</span>
           <span style="font-size: 10px; opacity: 0.8; font-family: monospace;">[Enter / F2]</span>
         </button>
+
+        ${jumpRefHtml}
 
         <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
           ${t('compPropsHeading', { name: locSym?.name || comp.symbolId })}
@@ -2909,6 +3130,13 @@ export class App {
       `;
 
       // Form bindings
+      container.querySelectorAll('.btn-jump-ref').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = Number((e.currentTarget as HTMLElement).dataset.targetIndex ?? 0);
+          this.canvas.followReference(comp, idx);
+        });
+      });
+
       document.getElementById('btnPropApply')?.addEventListener('click', () => {
         if(!collectDeviceBoxFields(container,comp,units))return;
         const isInterruption = sym && isInterruptionSymbol(sym);
@@ -3141,7 +3369,7 @@ export class App {
             <div style="margin-bottom:6px;">
               <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
                 <input type="checkbox" id="chkShowRoomLabels" ${activePage.floorPlan.showRoomLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
-                <span>Raumnamen & Flächen (m²) einblenden</span>
+                <span>Raumnamen einblenden</span>
               </label>
             </div>
 
@@ -3209,6 +3437,14 @@ export class App {
               </button>
               <button type="button" class="btn" id="btnReimportFloorPlan" style="font-size:11px;padding:4px 6px;">
                 🔄 Neu importieren
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+              <button type="button" class="btn" id="btnExportFloorPlanRight" style="font-size:11px;padding:4px 6px;" title="Diese Grundriss-Seite exportieren (.floorplan.json)">
+                📤 Seite exportieren
+              </button>
+              <button type="button" class="btn" id="btnImportFloorPlanRight" style="font-size:11px;padding:4px 6px;" title="Grundriss-Seite importieren (.floorplan.json, .ems)">
+                📥 Seite importieren
               </button>
             </div>
 
@@ -3350,16 +3586,24 @@ export class App {
         if (status) status.textContent = 'Wand zeichnen: Startpunkt auf dem Grundriss anklicken, dann Endpunkt anklicken. Esc bricht ab.';
       });
       document.getElementById('btnAddDoorQuick')?.addEventListener('click', () => {
-        this.canvas.addOpening('door');
+        this.canvas.startPlacingOpening('door');
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = '🚪 Tür platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
       });
       document.getElementById('btnAddWindowQuick')?.addEventListener('click', () => {
-        this.canvas.addOpening('window');
+        this.canvas.startPlacingOpening('window');
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = '🪟 Fenster platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
       });
       document.getElementById('btnAddOpeningQuick')?.addEventListener('click', () => {
-        this.canvas.addOpening('opening');
+        this.canvas.startPlacingOpening('opening');
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = '🚪 Wandöffnung platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
       });
       document.getElementById('btnAddGarageQuick')?.addEventListener('click', () => {
-        this.canvas.addOpening('garage_door');
+        this.canvas.startPlacingOpening('garage_door');
+        const status = document.getElementById('statusLeft');
+        if (status) status.textContent = '🚗 Garagentor platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
       });
       document.getElementById('btnApplyFloorPlanScale')?.addEventListener('click', () => {
         const inp = document.getElementById('inpFloorPlanScaleRatio') as HTMLInputElement;
@@ -3375,6 +3619,12 @@ export class App {
       });
       document.getElementById('btnReimportFloorPlan')?.addEventListener('click', () => {
         this.openFloorPlanImport();
+      });
+      document.getElementById('btnExportFloorPlanRight')?.addEventListener('click', () => {
+        this.exportFloorPlanPage(activePage);
+      });
+      document.getElementById('btnImportFloorPlanRight')?.addEventListener('click', () => {
+        this.triggerImportFloorPlanPage();
       });
       document.getElementById('pageNumberInput')?.addEventListener('input', (e) => {
         if (activePage) {

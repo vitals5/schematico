@@ -28,7 +28,7 @@ import { floorPlanToSvg, findNearestWall, getAutoSymbolScale } from '../model/Fl
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 export type { GridResolution } from '../model/DrawingGrid';
 
-export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall';
+export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall' | 'place_opening';
 
 export interface CadCanvasCallbacks {
   onSelectionChanged?: (selection: ElementSelection) => void;
@@ -82,9 +82,21 @@ export class CadCanvas {
   public selectedImageId: string | null = null;
   public selectedWallId: string | null = null;
   public selectedOpeningId: string | null = null;
+  public activeOpeningKindToPlace: 'door' | 'window' | 'opening' | 'garage_door' | null = null;
   public floorPlanEditMode: boolean = false;
   public isCalibratingWall: boolean = false;
   private onWallCalibratePicked?: (wall: WallSegment) => void;
+
+  public startPlacingOpening(kind: 'door' | 'window' | 'opening' | 'garage_door'): void {
+    this.floorPlanEditMode = true;
+    this.clearMultipleSelection();
+    this.selectedWallId = null;
+    this.selectedOpeningId = null;
+    this.activeOpeningKindToPlace = kind;
+    this.setMode('place_opening');
+    this.svg.style.cursor = 'crosshair';
+    this.render();
+  }
 
   public startWallCalibrationPick(callback: (wall: WallSegment) => void): void {
     this.isCalibratingWall = true;
@@ -201,10 +213,65 @@ export class CadCanvas {
   }
 
   public followReference(source: PlacedComponent, index = 0): boolean {
-    const target = referenceTargets(this.project, source)[index];
+    const targets = this.getComponentReferenceTargets(source);
+    const target = targets[index];
     if (!target) return false;
     this.focusReference(target);
     return true;
+  }
+
+  private lastJumpIndex = 0;
+  private lastJumpSourceId = '';
+
+  public getComponentReferenceTargets(comp: PlacedComponent): ReferenceTarget[] {
+    const targets = referenceTargets(this.project, comp);
+    if (targets.length > 0) return targets;
+
+    // Fallback: look for components on other pages that share the exact same non-empty BMK
+    const bmk = comp.bmk?.trim();
+    if (bmk && bmk !== '?' && bmk !== '/' && !bmk.startsWith('PF')) {
+      const results: ReferenceTarget[] = [];
+      for (const page of this.project.pages) {
+        if (page.id === this.activePage.id) continue;
+        for (const other of page.components) {
+          if (other.bmk?.trim() === bmk) {
+            const sym = getSymbolForComponent(other, this.project);
+            const pt = sym ? componentInsertionPoint(other, sym) : { x: other.x, y: other.y };
+            results.push({
+              label: `Blatt ${page.pageNumber}`,
+              start: 0,
+              end: 0,
+              pageId: page.id,
+              componentId: other.id,
+              x: pt.x,
+              y: pt.y
+            });
+          }
+        }
+      }
+      if (results.length > 0) return results;
+    }
+    return [];
+  }
+
+  public jumpToReferenceTarget(source: PlacedComponent, targets: ReferenceTarget[]): void {
+    if (!targets.length) return;
+    let index = 0;
+    if (this.lastJumpSourceId === source.id) {
+      index = (this.lastJumpIndex + 1) % targets.length;
+    }
+    this.lastJumpSourceId = source.id;
+    this.lastJumpIndex = index;
+
+    const target = targets[index];
+    this.focusReference(target);
+
+    const targetPage = this.project.pages.find(p => p.id === target.pageId);
+    const targetComp = targetPage?.components.find(c => c.id === target.componentId);
+    const status = document.getElementById('statusLeft');
+    if (status) {
+      status.textContent = `🔗 Sprung zu Gegenstück: ${targetComp?.bmk || source.bmk} auf Blatt ${targetPage?.pageNumber || '?'}${targets.length > 1 ? ` (${index + 1}/${targets.length})` : ''}`;
+    }
   }
 
   public focusReference(target: ReferenceTarget): void {
@@ -239,6 +306,7 @@ export class CadCanvas {
     this.selectionWindow=undefined;this.cancelBoxInteraction();
     if(mode!=='place_image')this.activeImageToPlace=undefined;
     if(mode!=='draw_wall')this.wallDraft=null;
+    if(mode!=='place_opening')this.activeOpeningKindToPlace=null;
     this.mode = mode;
     this.cableStart = undefined;
     this.wireStart = null;
@@ -759,7 +827,7 @@ export class CadCanvas {
       } else if (e.key === 'Escape') {
         if(this.selectionDrag)translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);
         this.selectionDrag=undefined;this.selectionWindow=undefined;this.setElementSelection(emptySelection());
-        this.cancelBoxInteraction();this.mode = 'select';this.activeImageToPlace=undefined;this.wallDraft=null;
+        this.cancelBoxInteraction();this.mode = 'select';this.activeImageToPlace=undefined;this.activeOpeningKindToPlace=null;this.wallDraft=null;
         this.cableStart = undefined;
         this.wireStart = null;
         this.activeSymbolToPlace = null;
@@ -1105,6 +1173,20 @@ export class CadCanvas {
 
     const world = this.screenToWorld(e.clientX, e.clientY);
 
+    // Ctrl + Click (or Cmd + Click) on any symbol jumps directly to its cross-reference counterpart!
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && this.mode === 'select') {
+      const clickedComp = this.componentFromEvent(e) ?? this.findComponentAt(world.x, world.y);
+      if (clickedComp) {
+        const targets = this.getComponentReferenceTargets(clickedComp);
+        if (targets.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.jumpToReferenceTarget(clickedComp, targets);
+          return;
+        }
+      }
+    }
+
     if (this.isCalibratingWall) {
       let wallHit = this.wallFromEvent(e);
       let wall = wallHit?.wall;
@@ -1129,6 +1211,11 @@ export class CadCanvas {
 
     if (this.mode === 'place_macro' && this.activeMacroToPlace) {
       this.placeMacroAt(world.x, world.y, this.activeMacroToPlace);
+      return;
+    }
+
+    if (this.mode === 'place_opening' && this.activeOpeningKindToPlace) {
+      this.placeOpeningAt(world);
       return;
     }
 
@@ -1308,11 +1395,11 @@ export class CadCanvas {
       drag.opening.center.y = newY;
 
       if (this.activePage.floorPlan?.walls) {
-        const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 25);
+        const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 35);
         if (nearest) {
           drag.opening.wallId = nearest.wall.id;
-          drag.opening.center.x = Math.round(nearest.snappedPoint.x);
-          drag.opening.center.y = Math.round(nearest.snappedPoint.y);
+          drag.opening.center.x = Math.round(nearest.wallCenterPoint.x);
+          drag.opening.center.y = Math.round(nearest.wallCenterPoint.y);
           const wdx = nearest.wall.end.x - nearest.wall.start.x;
           const wdy = nearest.wall.end.y - nearest.wall.start.y;
           drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
@@ -1365,7 +1452,17 @@ export class CadCanvas {
       this.hoveredPin = pin;
     }
 
-    if (this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || (this.mode === 'draw_wall' && this.wallDraft) || this.wireStart || pinChanged) {
+    // Cursor hint when Ctrl is pressed over a linked symbol
+    if ((e.ctrlKey || e.metaKey) && this.mode === 'select' && !this.selectionDrag) {
+      const comp = this.componentFromEvent(e) ?? this.findComponentAt(world.x, world.y);
+      if (comp && this.getComponentReferenceTargets(comp).length > 0) {
+        this.svg.style.cursor = 'pointer';
+      } else if (this.svg.style.cursor === 'pointer') {
+        this.svg.style.cursor = '';
+      }
+    }
+
+    if (this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || this.mode === 'place_opening' || (this.mode === 'draw_wall' && this.wallDraft) || this.wireStart || pinChanged) {
       if (this.mode === 'draw_wall' && this.wallDraft) {
         this.wallDraft.end = { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
       }
@@ -1668,11 +1765,11 @@ export class CadCanvas {
         drag.opening.center.y = newY;
 
         if (this.activePage.floorPlan?.walls) {
-          const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 25);
+          const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 35);
           if (nearest) {
             drag.opening.wallId = nearest.wall.id;
-            drag.opening.center.x = Math.round(nearest.snappedPoint.x);
-            drag.opening.center.y = Math.round(nearest.snappedPoint.y);
+            drag.opening.center.x = Math.round(nearest.wallCenterPoint.x);
+            drag.opening.center.y = Math.round(nearest.wallCenterPoint.y);
             const wdx = nearest.wall.end.x - nearest.wall.start.x;
             const wdy = nearest.wall.end.y - nearest.wall.start.y;
             drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
@@ -1945,6 +2042,7 @@ export class CadCanvas {
 
         <!-- Ghost Symbol under Cursor (Placement Preview) -->
         ${this.renderGhostSymbol()}
+        ${this.renderGhostOpening?.() ?? ''}
         <g id="selectionOverlayLayer" pointer-events="none">${this.renderSelectionOverlay()}</g>
       </g>
     `;
@@ -2193,6 +2291,108 @@ export class CadCanvas {
     this.notifyModified();
     this.render();
     return newOpening;
+  }
+
+  public placeOpeningAt(world: { x: number; y: number }): WallOpening | null {
+    if (!this.activeOpeningKindToPlace) return null;
+    const kind = this.activeOpeningKindToPlace;
+    if (!this.activePage.floorPlan) {
+      this.activePage.floorPlan = {
+        scale: { scaleRatio: 100, pixelPerMeter: 50 },
+        walls: [],
+        openings: [],
+        rooms: []
+      };
+    }
+    if (!this.activePage.floorPlan.openings) {
+      this.activePage.floorPlan.openings = [];
+    }
+
+    const walls = this.activePage.floorPlan.walls || [];
+    const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+    const snap = walls.length ? findNearestWall(world, walls, 40, ppm) : null;
+
+    const center = snap
+      ? { x: Math.round(snap.wallCenterPoint.x), y: Math.round(snap.wallCenterPoint.y) }
+      : { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
+
+    let orientation: 'horizontal' | 'vertical' = 'horizontal';
+    if (snap) {
+      const dx = snap.wall.end.x - snap.wall.start.x;
+      const dy = snap.wall.end.y - snap.wall.start.y;
+      orientation = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+    }
+
+    const defWidthM = kind === 'garage_door' ? 2.50
+      : kind === 'window' ? 1.01
+      : 0.885;
+
+    const newOpening: WallOpening = {
+      id: `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      kind,
+      wallId: snap?.wall.id,
+      center,
+      width: Math.round(defWidthM * ppm),
+      orientation,
+      swingDirection: kind === 'door' ? 'left_in' : undefined
+    };
+
+    this.activePage.floorPlan.openings.push(newOpening);
+    this.activeOpeningKindToPlace = null;
+    this.setMode('select');
+    this.svg.style.cursor = '';
+    this.selectOpening(newOpening);
+    this.notifyModified();
+    this.render();
+    return newOpening;
+  }
+
+  private renderGhostOpening(): string {
+    if (this.mode !== 'place_opening' || !this.activeOpeningKindToPlace || !this.currentMousePos) return '';
+    const kind = this.activeOpeningKindToPlace;
+    const walls = this.activePage.floorPlan?.walls || [];
+    const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+    const snap = walls.length ? findNearestWall(this.currentMousePos, walls, 45, ppm) : null;
+    const center = snap ? snap.wallCenterPoint : this.currentMousePos;
+    let ux = 1, uy = 0, nx = 0, ny = 1;
+    if (snap) {
+      const dx = snap.wall.end.x - snap.wall.start.x;
+      const dy = snap.wall.end.y - snap.wall.start.y;
+      const len = Math.hypot(dx, dy);
+      if (len > 1e-3) {
+        ux = dx / len;
+        uy = dy / len;
+        nx = -uy;
+        ny = ux;
+      }
+    }
+    const defWidthM = kind === 'garage_door' ? 2.50 : kind === 'window' ? 1.01 : 0.885;
+    const opW = defWidthM * ppm;
+    const hw = opW / 2;
+    const p1x = center.x - hw * ux;
+    const p1y = center.y - hw * uy;
+    const p2x = center.x + hw * ux;
+    const p2y = center.y + hw * uy;
+
+    const labelName = kind === 'door' ? 'Tür' : kind === 'window' ? 'Fenster' : kind === 'garage_door' ? 'Garagentor' : 'Wandöffnung';
+
+    return `
+      <g class="ghost-opening-layer" pointer-events="none" opacity="0.85">
+        <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#63b3ed" stroke-width="6" stroke-linecap="butt" stroke-dasharray="4,2" />
+        <circle cx="${center.x.toFixed(1)}" cy="${center.y.toFixed(1)}" r="5" fill="#3182ce" stroke="#ffffff" stroke-width="1.5" />
+        ${snap ? `
+          <line x1="${(p1x - 4 * nx).toFixed(1)}" y1="${(p1y - 4 * ny).toFixed(1)}" x2="${(p1x + 4 * nx).toFixed(1)}" y2="${(p1y + 4 * ny).toFixed(1)}" stroke="#63b3ed" stroke-width="2" />
+          <line x1="${(p2x - 4 * nx).toFixed(1)}" y1="${(p2y - 4 * ny).toFixed(1)}" x2="${(p2x + 4 * nx).toFixed(1)}" y2="${(p2y + 4 * ny).toFixed(1)}" stroke="#63b3ed" stroke-width="2" />
+          <text x="${center.x.toFixed(1)}" y="${(center.y - 12).toFixed(1)}" font-size="10" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="#63b3ed" text-anchor="middle">
+            🧲 ${labelName} (${defWidthM.toFixed(2)} m)
+          </text>
+        ` : `
+          <text x="${center.x.toFixed(1)}" y="${(center.y - 12).toFixed(1)}" font-size="10" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="#a0aec0" text-anchor="middle">
+            ${labelName} (${defWidthM.toFixed(2)} m)
+          </text>
+        `}
+      </g>
+    `;
   }
 
   public selectCable(cable: CableDefinition): void {

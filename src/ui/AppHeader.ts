@@ -43,7 +43,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+
           separator+opt('menuProjectSettings',t('menuProjectSettings'))+
           separator+opt('menuLoadDemo',t('menuLoadDemo'))+
-          separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuPrint',t('menuPrint'))+
+          separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuExportFloorPlanPage',t('menuExportFloorPlanPage'))+opt('menuPrint',t('menuPrint'))+
           separator+opt('menuSettings',t('menuSettings')),'menu-item')}
         ${menu('menuEditTrigger',t('menuEdit'),
           opt('menuUndo',t('menuUndo'),t('keyCtrlZ'))+opt('menuRedo',t('menuRedo'),t('keyCtrlY'))+separator+
@@ -53,7 +53,7 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuInsertTrigger',t('menuInsert'),
           opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
           heading(t('headingMacros'))+opt('menuInsertMacro',t('menuInsertMacro'))+opt('menuInsertPageMacro',t('menuInsertPageMacro'))+separator+
-          heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuImportFloorPlan',t('menuImportFloorPlan'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
+          heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuImportFloorPlan',t('menuImportFloorPlan'))+opt('menuImportFloorPlanPage',t('menuImportFloorPlanPage'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
         ${menu('menuViewTrigger',t('menuView'),
           opt('menuFit',t('menuFit'),t('keyF'))+opt('menuZoom100',t('menuZoom100'))+opt('menuZoomIn',t('menuZoomIn'))+opt('menuZoomOut',t('menuZoomOut'))+separator+
           heading(t('headingGrid'))+opt('menuGridFull',t('menuGridFull'),'Alt+1')+opt('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+opt('menuGridFine',t('menuGridFine'),'Alt+3')+opt('menuGridOff',t('menuGridOff'),'Alt+0')+separator+

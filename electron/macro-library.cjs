@@ -1,7 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const MAX_FILE_SIZE = 32 * 1024 * 1024;
-const MAX_FILES = 5000;
+const MAX_FILES = 100000;
 const supported = name => /\.(ema|ems|emp|fp1)$/i.test(name);
 
 /** User-selected library only; settings live beside the app's other user data. */
@@ -34,7 +34,7 @@ function createMacroLibrary(settingsFile) {
         const rel = relative ? `${relative}/${entry.name}` : entry.name;
         if (entry.isDirectory()) await visit(path.join(directory, entry.name), rel);
         else if (entry.isFile() && supported(entry.name)) {
-          if (files.length >= MAX_FILES) throw new Error('Der Makroordner enthält mehr als 5000 Makrodateien.');
+          if (files.length >= MAX_FILES) throw new Error(`Der Makroordner enthält mehr als ${MAX_FILES} Makrodateien.`);
           try {
             const stat = await fs.stat(path.join(directory, entry.name));
             if (stat.size > MAX_FILE_SIZE) { issues.push(`${rel}: Datei ist größer als 32 MB.`); continue; }

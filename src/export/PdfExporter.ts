@@ -6,6 +6,7 @@ import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '.
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
 import { getAutoSymbolScale } from '../model/FloorPlanRenderer';
+import { referenceTargets } from '../model/CrossReferenceNavigation';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
 // - Multi-page vector PDF (DIN A3 / DIN A4 Landscape)
@@ -71,10 +72,12 @@ export class PdfExporter {
       pagesToExport = [...project.pages];
     }
 
-    // Mapping from page.pageNumber to 1-based PDF page index
+    // Mapping from page.pageNumber and page.id to 1-based PDF page index
     const pageNumberToPdfPageIndex = new Map<string, number>();
+    const pageIdToPdfPageIndex = new Map<string, number>();
     pagesToExport.forEach((page, index) => {
       pageNumberToPdfPageIndex.set(page.pageNumber, index + 1);
+      pageIdToPdfPageIndex.set(page.id, index + 1);
     });
 
     // Total sheet count update
@@ -118,7 +121,7 @@ export class PdfExporter {
       this.renderWires(doc, page, project, pageWidthMm, pageHeightMm, options.colorMode);
 
       // Render Components & Interactive Cross-Reference Links
-      this.renderComponents(doc, page, project, pageWidthMm, pageHeightMm, options, pageNumberToPdfPageIndex);
+      this.renderComponents(doc, page, project, pageWidthMm, pageHeightMm, options, pageNumberToPdfPageIndex, pageIdToPdfPageIndex);
       for (const cable of page.cables ?? []) this.renderImportedGraphics(doc, cableDrawing(cable,page,project),pageWidthMm/page.plotFrame.width,pageHeightMm/page.plotFrame.height,options.colorMode);
 
       // Render Free Texts & Annotations
@@ -324,7 +327,8 @@ export class PdfExporter {
     wMm: number,
     hMm: number,
     options: PdfExportOptions,
-    pageMapping: Map<string, number>
+    pageMapping: Map<string, number>,
+    pageIdMapping?: Map<string, number>
   ): void {
     const superseded = supersededConnectionGraphics(page, project);
     const graphicWires = connectionGraphicWires(page, project);
@@ -459,7 +463,47 @@ export class PdfExporter {
 
       // SMART PDF: Interactive Cross-References (Kontaktspiegel & Querverweise)
       const refPos = computeCrossReferencePosition(comp, sym, project);
-      if (comp.crossRef && refPos.visible && (!isConnection || isInterruptionSymbol(sym))) {
+      let targetPdfPage: number | undefined;
+
+      if (options.interactiveCrossReferences) {
+        const targets = referenceTargets(project, comp);
+        if (targets.length > 0) {
+          for (const target of targets) {
+            const num = (pageIdMapping?.get(target.pageId)) ?? pageMapping.get(target.label.replace(/^\/|[\.\d]+$/g, ''));
+            if (num) {
+              targetPdfPage = num;
+              break;
+            }
+          }
+        }
+        if (!targetPdfPage && comp.crossRef) {
+          for (const m of comp.crossRef.matchAll(/\/([^\s,|/:]+)\.(\d+)/g)) {
+            const num = pageMapping.get(m[1]);
+            if (num) {
+              targetPdfPage = num;
+              break;
+            }
+          }
+        }
+        if (!targetPdfPage && comp.bmk?.trim()) {
+          const bmk = comp.bmk.trim();
+          if (bmk !== '?' && bmk !== '/') {
+            for (const otherPage of project.pages) {
+              if (otherPage.id !== page.id && otherPage.components.some(c => c.bmk?.trim() === bmk)) {
+                targetPdfPage = pageIdMapping?.get(otherPage.id) ?? pageMapping.get(otherPage.pageNumber);
+                if (targetPdfPage) break;
+              }
+            }
+          }
+        }
+
+        // Make the symbol itself clickable in PDF on floor plans (where labels are hidden)
+        if (targetPdfPage && (isFloorPlan || hideLabels)) {
+          doc.link(compX, compY, Math.max(3, compW), Math.max(3, compH), { pageNumber: targetPdfPage });
+        }
+      }
+
+      if (comp.crossRef && refPos.visible && !hideLabels && (!isConnection || isInterruptionSymbol(sym))) {
         const crPoint = rotatedLocalPoint(refPos, sym, comp.rotation);
         const crX = (comp.x + crPoint.x) * sx, crY = (comp.y + crPoint.y) * sy;
         doc.setFont('courier', 'bold');
@@ -467,27 +511,20 @@ export class PdfExporter {
         doc.setTextColor(options.colorMode === 'color' ? 200 : 50, 50, 0);
         doc.text(comp.crossRef, crX, crY, { align: refPos.anchor === 'end' ? 'right' : refPos.anchor === 'start' ? 'left' : 'center', angle: -refPos.rotation });
 
-        // Add PDF Hyperlink if interactive cross-references are enabled
-        if (options.interactiveCrossReferences) {
-          const match = comp.crossRef.match(/\/(\d+)\./);
-          if (match) {
-            const targetPageStr = match[1];
-            const targetPdfPage = pageMapping.get(targetPageStr);
-            if (targetPdfPage) {
-              const textW = doc.getTextWidth(comp.crossRef), textH = refPos.fontSize * sy;
-              const startX = refPos.anchor === 'end' ? -textW : refPos.anchor === 'start' ? 0 : -textW / 2;
-              const a = refPos.rotation * Math.PI / 180;
-              const corners = [[startX,-textH],[startX+textW,-textH],[startX,.25*textH],[startX+textW,.25*textH]]
-                .map(([x,y])=>({x:crX+x*Math.cos(a)-y*Math.sin(a),y:crY+x*Math.sin(a)+y*Math.cos(a)}));
-              const linkX = Math.min(...corners.map(p=>p.x)), linkY = Math.min(...corners.map(p=>p.y));
-              const linkW = Math.max(...corners.map(p=>p.x))-linkX, linkH = Math.max(...corners.map(p=>p.y))-linkY;
-              doc.link(linkX, linkY, linkW, linkH, { pageNumber: targetPdfPage });
-              if (options.colorMode === 'color') {
-                doc.setDrawColor(66, 153, 225);
-                doc.setLineWidth(0.15);
-                doc.rect(linkX, linkY, linkW, linkH);
-              }
-            }
+        // Add PDF Hyperlink on text if interactive cross-references are enabled
+        if (options.interactiveCrossReferences && targetPdfPage) {
+          const textW = doc.getTextWidth(comp.crossRef), textH = refPos.fontSize * sy;
+          const startX = refPos.anchor === 'end' ? -textW : refPos.anchor === 'start' ? 0 : -textW / 2;
+          const a = refPos.rotation * Math.PI / 180;
+          const corners = [[startX,-textH],[startX+textW,-textH],[startX,.25*textH],[startX+textW,.25*textH]]
+            .map(([x,y])=>({x:crX+x*Math.cos(a)-y*Math.sin(a),y:crY+x*Math.sin(a)+y*Math.cos(a)}));
+          const linkX = Math.min(...corners.map(p=>p.x)), linkY = Math.min(...corners.map(p=>p.y));
+          const linkW = Math.max(...corners.map(p=>p.x))-linkX, linkH = Math.max(...corners.map(p=>p.y))-linkY;
+          doc.link(linkX, linkY, linkW, linkH, { pageNumber: targetPdfPage });
+          if (options.colorMode === 'color') {
+            doc.setDrawColor(66, 153, 225);
+            doc.setLineWidth(0.15);
+            doc.rect(linkX, linkY, linkW, linkH);
           }
         }
       }

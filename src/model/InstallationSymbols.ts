@@ -24,6 +24,25 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Schutzkontakt-Steckdose 1-fach, Unterputz (DIN EN 60617-11)'
   },
   {
+    id: 'inst_socket_multi',
+    name: 'Mehrfachsteckdose (2-fach)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Mehrfachsteckdose',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="10" stroke="currentColor" stroke-width="2"/>
+      <text x="24" y="9" font-size="8.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" fill="currentColor">2</text>
+    `,
+    description: 'Mehrfachsteckdose nach DIN EN 60617-11'
+  },
+  {
     id: 'inst_socket_double',
     name: 'Schuko-Steckdose (2-fach)',
     category: 'installation',
@@ -298,10 +317,10 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
-      <path d="M 6 0 A 10 10 0 0 0 26 0" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="9" y1="3" x2="23" y2="17" stroke="currentColor" stroke-width="2"/>
-      <line x1="23" y1="3" x2="9" y2="17" stroke="currentColor" stroke-width="2"/>
+      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2.5"/>
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="11" y1="12" x2="21" y2="22" stroke="currentColor" stroke-width="2"/>
+      <line x1="21" y1="12" x2="11" y2="22" stroke="currentColor" stroke-width="2"/>
     `,
     description: 'Wandmontierte Leuchte / Wandauslass nach DIN EN 60617-11'
   },
@@ -394,6 +413,46 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <circle cx="16" cy="7" r="2.5" fill="currentColor"/>
     `,
     description: 'Infrarot-Bewegungs- oder Präsenzmelder (PIR) nach DIN EN 60617-11'
+  },
+  {
+    id: 'inst_telecom_outlet',
+    name: 'Telekommunikation (Anschluss)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Telekommunikation',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
+      <path d="M 9 18 L 9 8 L 23 8 L 23 18" fill="none" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Telekommunikations-Anschluss nach DIN EN 60617-11'
+  },
+  {
+    id: 'inst_antenna_outlet',
+    name: 'Antennenanschluss / Antenne',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Antenne',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
+      <path d="M 9 18 L 9 8 L 23 8 L 23 18" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="10" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="2"/>
+      <line x1="11" y1="3" x2="11" y2="6.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="16" y1="3" x2="16" y2="6.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="21" y1="3" x2="21" y2="6.5" stroke="currentColor" stroke-width="1.5"/>
+    `,
+    description: 'Antennenanschluss nach DIN EN 60617-11'
   },
   {
     id: 'inst_data_socket',
@@ -540,27 +599,27 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
   },
   {
     id: 'inst_appliance_cooktop',
-    name: 'Kochfeld autark (Induktion/Ceran)',
+    name: 'Elektroherd (Kochfeld)',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-E',
-    defaultFunctionText: 'Kochfeld',
+    defaultFunctionText: 'Elektroherd',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="4" y="0" width="24" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <circle cx="10" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <circle cx="22" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <circle cx="10" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <circle cx="22" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <circle cx="16" cy="6" r="1.8" fill="currentColor"/>
+      <circle cx="10" cy="11" r="1.8" fill="currentColor"/>
+      <circle cx="22" cy="11" r="1.8" fill="currentColor"/>
+      <circle cx="16" cy="16" r="1.8" fill="currentColor"/>
     `,
-    description: 'Autarkes Glaskeramik- oder Induktionskochfeld nach RAL-RG 678'
+    description: 'Elektroherd / autarkes Kochfeld (RAL-RG 678)'
   },
   {
     id: 'inst_appliance_oven',
-    name: 'Backofen autark (230V separat)',
+    name: 'Backofen',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-E',
@@ -570,35 +629,37 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <rect x="8" y="3" width="16" height="11" fill="none" stroke="currentColor" stroke-width="1.2"/>
-      <line x1="8" y1="8.5" x2="24" y2="8.5" stroke="currentColor" stroke-width="1"/>
-      <circle cx="9" cy="18" r="1.2" fill="currentColor"/>
-      <circle cx="13" cy="18" r="1.2" fill="currentColor"/>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <line x1="5" y1="7" x2="27" y2="7" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="16" cy="14" r="2.2" fill="currentColor"/>
     `,
-    description: 'Autarker Einbaubackofen (separater Stromkreis 230V 16A)'
+    description: 'Autarker Einbaubackofen nach RAL-RG 678'
   },
   {
     id: 'inst_appliance_dishwasher',
-    name: 'Geschirrspüler (GS)',
+    name: 'Spülmaschine (Geschirrspüler)',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'Geschirrspüler GS',
+    defaultFunctionText: 'Spülmaschine',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <text x="16" y="14" font-size="10" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">GS</text>
-      <line x1="9" y1="18" x2="23" y2="18" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2,2"/>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <circle cx="16" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="16" cy="11" r="2" fill="currentColor"/>
+      <line x1="5" y1="0" x2="9" y2="4" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="27" y1="0" x2="23" y2="4" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="5" y1="22" x2="9" y2="18" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="27" y1="22" x2="23" y2="18" stroke="currentColor" stroke-width="1.5"/>
     `,
-    description: 'Geschirrspüler mit eigenem Stromkreis nach RAL-RG 678'
+    description: 'Geschirrspüler / Spülmaschine nach RAL-RG 678'
   },
   {
     id: 'inst_appliance_fridge',
-    name: 'Kühlschrank / Kühl-Gefrierkombi (*** *)',
+    name: 'Kühlschrank (*)',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-X',
@@ -608,12 +669,46 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <line x1="5" y1="8" x2="27" y2="8" stroke="currentColor" stroke-width="1.5"/>
-      <text x="16" y="7" font-size="6.5" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">***</text>
-      <text x="16" y="18" font-size="8.5" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">KS</text>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <text x="16" y="15" font-size="13" font-family="sans-serif" text-anchor="middle" fill="currentColor">★</text>
     `,
-    description: 'Kühlschrank oder Gefrierkombination (Sternefach) nach RAL-RG 678'
+    description: 'Kühlschrank nach RAL-RG 678'
+  },
+  {
+    id: 'inst_appliance_fridge_freezer',
+    name: 'Kühl- Gefrierkombination (*** *)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11 / RAL-RG 678',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Kühl-Gefrierkombi',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <line x1="5" y1="10" x2="27" y2="10" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="8" font-size="7.5" font-family="sans-serif" text-anchor="middle" fill="currentColor">★★★</text>
+      <text x="16" y="18.5" font-size="9" font-family="sans-serif" text-anchor="middle" fill="currentColor">★</text>
+    `,
+    description: 'Kühl- und Gefrierkombination mit Mehr-Sterne-Fach'
+  },
+  {
+    id: 'inst_appliance_freezer',
+    name: 'Gefriergerät / Gefrierschrank (***)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11 / RAL-RG 678',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Gefrierschrank',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <text x="16" y="14" font-size="8.5" font-family="sans-serif" text-anchor="middle" fill="currentColor">★★★</text>
+    `,
+    description: 'Gefriergerät / Tiefkühltruhe mit 3-Sterne-Kennzeichnung'
   },
   {
     id: 'inst_appliance_hood',
@@ -634,18 +729,20 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
   },
   {
     id: 'inst_appliance_microwave',
-    name: 'Mikrowellengerät (MW)',
+    name: 'Mikrowelle',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'Mikrowelle MW',
+    defaultFunctionText: 'Mikrowelle',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <text x="16" y="14" font-size="9" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">MW</text>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <path d="M 8 7 Q 10 5, 12 7 T 16 7 T 20 7 T 24 7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M 8 11 Q 10 9, 12 11 T 16 11 T 20 11 T 24 11" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M 8 15 Q 10 13, 12 15 T 16 15 T 20 15 T 24 15" fill="none" stroke="currentColor" stroke-width="1.5"/>
     `,
     description: 'Mikrowellengerät nach RAL-RG 678'
   },
@@ -669,39 +766,94 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
   },
   {
     id: 'inst_appliance_washing_machine',
-    name: 'Waschmaschine (WM)',
+    name: 'Waschmaschine',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'Waschmaschine WM',
+    defaultFunctionText: 'Waschmaschine',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <circle cx="16" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <text x="16" y="14" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">WM</text>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <circle cx="16" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="16" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="16" cy="11" r="1.2" fill="currentColor"/>
     `,
     description: 'Waschmaschine mit separatem Stromkreis (DIN 18015 / RAL-RG 678)'
   },
   {
     id: 'inst_appliance_dryer',
-    name: 'Wäschetrockner (WT)',
+    name: 'Trockner (Wäschetrockner)',
     category: 'installation',
     standard: 'DIN EN 60617-11 / RAL-RG 678',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'Wäschetrockner WT',
+    defaultFunctionText: 'Trockner',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
     pins: [],
     svgContent: `
-      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
-      <circle cx="16" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
-      <text x="16" y="14" font-size="8" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">WT</text>
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <line x1="16" y1="0" x2="16" y2="22" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="10.5" cy="6" r="1.8" fill="currentColor"/>
+      <circle cx="10.5" cy="16" r="1.8" fill="currentColor"/>
+      <circle cx="21.5" cy="11" r="1.8" fill="currentColor"/>
     `,
-    description: 'Wäschetrockner mit separatem Stromkreis (RAL-RG 678)'
+    description: 'Wäschetrockner nach RAL-RG 678'
+  },
+  {
+    id: 'inst_appliance_general',
+    name: 'Elektrogerät allgemein (E)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Elektrogerät',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <text x="16" y="16" font-size="12" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">E</text>
+    `,
+    description: 'Elektrogerät allgemein nach DIN EN 60617-11'
+  },
+  {
+    id: 'inst_motion_detector_box',
+    name: 'Bewegungsmelder (BM Wandgerät)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-B',
+    defaultFunctionText: 'Bewegungsmelder BM',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <text x="16" y="15" font-size="9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">BM</text>
+    `,
+    description: 'Bewegungsmelder / Wächter (Kompaktgerät BM)'
+  },
+  {
+    id: 'inst_shutter_drive',
+    name: 'Jalousieantrieb / Rollladenmotor (M)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-M',
+    defaultFunctionText: 'Jalousiemotor',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+      <circle cx="16" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="14.5" font-size="9.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">M</text>
+    `,
+    description: 'Motorischer Antrieb für Jalousie / Rollladen'
   },
   // KNX Smart Home Komponenten
   {

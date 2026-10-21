@@ -55,7 +55,7 @@ export async function scanMacroDirectory(folder: MacroDirectory): Promise<{ file
         const path = relative ? `${relative}/${entry.name}` : entry.name;
         if (entry.kind === 'directory') await visit(entry, path);
         else if (supported(entry.name)) {
-          if (files.length >= 5000) throw new Error('Der Makroordner enthält mehr als 5000 Makrodateien.');
+          if (files.length >= 100000) throw new Error('Der Makroordner enthält mehr als 100000 Makrodateien.');
           files.push({ relativePath: path, getFile: () => entry.getFile() });
         }
       }

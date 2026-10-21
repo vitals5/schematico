@@ -7,6 +7,7 @@ import { vectorizeFloorPlanWithGemini } from '../ai/GeminiFloorPlanService';
 import { floorPlanToSvg } from '../model/FloorPlanRenderer';
 import { t, getUiLanguage } from '../i18n';
 import { escapeSvg } from '../model/ImportedDrawing';
+import { computeImageFitBounds } from '../ai/GeometrySanitizer';
 
 export interface FloorPlanImportDialogCallbacks {
   onCreatePage: (page: Page) => void;
@@ -60,10 +61,10 @@ export class FloorPlanImportDialog {
         <div class="fpi-body">
           <div class="fpi-controls">
             ${!hasKey ? `
-              <div style="background:#742a2a;border:1px solid #e53e3e;padding:10px 14px;border-radius:4px;font-size:12px;color:#fff;">
-                <strong>⚠️ Kein Gemini API-Schlüssel hinterlegt!</strong><br/>
-                Bitte trage deinen Google Gemini API-Schlüssel in den Allgemeinen Einstellungen ein.
-                <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;font-size:11px;padding:3px 8px;background:#2b6cb0;color:#fff;border:none;">Einstellungen öffnen</button>
+              <div style="background:#2d3748;border:1px solid #4a5568;padding:10px 14px;border-radius:4px;font-size:12px;color:#edf2f7;">
+                <div style="font-weight:600;color:#f6ad55;margin-bottom:4px;">💡 Kein Gemini API-Schlüssel hinterlegt</div>
+                Du kannst das Foto/den Plan dennoch direkt als Zeichenvorlage importieren und Wände manuell zeichnen. Für automatische KI-Erkennung trage einen Gemini-Schlüssel ein.
+                <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;display:inline-block;font-size:11px;padding:3px 8px;background:#3182ce;color:#fff;border:none;border-radius:3px;cursor:pointer;">Einstellungen öffnen</button>
               </div>
             ` : ''}
 
@@ -117,9 +118,14 @@ export class FloorPlanImportDialog {
               <input type="text" id="fpi-title" class="form-input" value="Elektroinstallation Erdgeschoss" />
             </div>
 
-            <button type="button" id="fpi-start-ai" class="btn btn-primary" style="padding:10px;font-size:13px;font-weight:bold;background:#3182ce;" ${!hasKey ? 'disabled' : ''}>
-              ${t('btnStartVectorization')}
-            </button>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <button type="button" id="fpi-start-ai" class="btn btn-primary" style="padding:10px;font-size:13px;font-weight:bold;background:#3182ce;" ${!hasKey ? 'disabled' : ''}>
+                ${t('btnStartVectorization')}
+              </button>
+              <button type="button" id="fpi-manual-import" class="btn" style="padding:9px;font-size:12px;font-weight:600;background:#2b6cb0;color:#fff;border:none;border-radius:4px;cursor:pointer;" disabled>
+                📐 Als Zeichenvorlage übernehmen (ohne KI)
+              </button>
+            </div>
 
             <div id="fpi-progress-bar" style="display:none;background:#2d3748;border-radius:4px;overflow:hidden;height:6px;margin-top:4px;">
               <div id="fpi-progress-fill" style="background:#3182ce;height:100%;width:30%;transition:width .3s;"></div>
@@ -141,7 +147,7 @@ export class FloorPlanImportDialog {
             <div class="preview-box" id="fpi-preview-container">
               <div id="fpi-preview-empty" style="color:#718096;font-size:13px;text-align:center;padding:20px;">
                 Noch kein Grundriss geladen.<br/>
-                <span style="font-size:11px;color:#4a5568;">Lade links ein Bild hoch und starte die KI-Vektorisierung.</span>
+                <span style="font-size:11px;color:#a0aec0;">Lade links ein Bild oder Foto hoch. Es wird direkt als Zeichenvorlage angezeigt.</span>
               </div>
             </div>
 
@@ -149,9 +155,9 @@ export class FloorPlanImportDialog {
             <div id="fpi-calibration-panel" style="display:none;background:#232731;border:1px solid #4a5568;border-radius:6px;padding:8px 12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="font-size:11px;font-weight:bold;color:#63b3ed;">📏 Maßstab über Referenzwand kalibrieren</span>
-                <span style="font-size:10px;color:#90cdf4;">💡 Klick auf Wand in Vorschau wählt sie aus</span>
+                <span id="fpi-calib-hint" style="font-size:10px;color:#90cdf4;">💡 Klick auf Wand in Vorschau wählt sie aus</span>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+              <div id="fpi-calib-inputs-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
                 <div class="fpi-field" style="margin:0;">
                   <label for="fpi-calib-wall" style="font-size:10px;">Referenzwand:</label>
                   <select id="fpi-calib-wall" class="form-input" style="font-size:11px;padding:3px 6px;"></select>
@@ -189,6 +195,7 @@ export class FloorPlanImportDialog {
     const fileInput = modal.querySelector('#fpi-file-input') as HTMLInputElement;
     const fileNameDisplay = modal.querySelector('#fpi-file-name') as HTMLElement;
     const btnStartAi = modal.querySelector('#fpi-start-ai') as HTMLButtonElement;
+    const btnManualImport = modal.querySelector('#fpi-manual-import') as HTMLButtonElement;
     const progressBar = modal.querySelector('#fpi-progress-bar') as HTMLElement;
     const progressFill = modal.querySelector('#fpi-progress-fill') as HTMLElement;
     const statusText = modal.querySelector('#fpi-status-text') as HTMLElement;
@@ -206,76 +213,32 @@ export class FloorPlanImportDialog {
       this.callbacks.onOpenSettings?.();
     });
 
-    // File selection
-    dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) {
-        this.handleFile(files[0], fileNameDisplay);
-      }
-    });
-
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files && fileInput.files.length > 0) {
-        this.handleFile(fileInput.files[0], fileNameDisplay);
-      }
-    });
-
-    // Opacity slider
-    opacitySlider.addEventListener('input', () => {
-      const val = Number(opacitySlider.value);
-      opacityVal.textContent = `${val}%`;
-      if (this.currentFloorPlan?.backgroundImage) {
-        this.currentFloorPlan.backgroundImage.opacity = val / 100;
-        this.updatePreview(previewContainer);
-      }
-    });
-
     const scaleSelect = modal.querySelector('#fpi-scale') as HTMLSelectElement;
     const customScaleWrap = modal.querySelector('#fpi-custom-scale-wrap') as HTMLElement;
     const customScaleInput = modal.querySelector('#fpi-custom-scale') as HTMLInputElement;
     const calibPanel = modal.querySelector('#fpi-calibration-panel') as HTMLElement;
+    const calibInputsRow = modal.querySelector('#fpi-calib-inputs-row') as HTMLElement;
+    const calibHint = modal.querySelector('#fpi-calib-hint') as HTMLElement;
     const calibWallSelect = modal.querySelector('#fpi-calib-wall') as HTMLSelectElement;
     const calibLenInput = modal.querySelector('#fpi-calib-len') as HTMLInputElement;
     const btnCalibrate = modal.querySelector('#fpi-btn-calibrate') as HTMLButtonElement;
     const calibInfo = modal.querySelector('#fpi-calib-info') as HTMLElement;
 
-    scaleSelect.addEventListener('change', () => {
-      customScaleWrap.style.display = scaleSelect.value === 'custom' ? 'flex' : 'none';
-      if (this.currentFloorPlan) {
-        const ratio = scaleSelect.value === 'custom' ? Number(customScaleInput.value) || 100 : Number(scaleSelect.value);
-        this.currentFloorPlan.scale.scaleRatio = ratio;
-        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
-        this.updatePreview(previewContainer);
-        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
-      }
-    });
-
-    customScaleInput.addEventListener('input', () => {
-      const ratio = Number(customScaleInput.value);
-      if (ratio > 0 && this.currentFloorPlan) {
-        this.currentFloorPlan.scale.scaleRatio = ratio;
-        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
-        this.updatePreview(previewContainer);
-        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
-      }
-    });
-
     // Populate walls for calibration
     const updateCalibWalls = (plan: FloorPlanData) => {
       calibWallSelect.innerHTML = '';
       if (!plan.walls || plan.walls.length === 0) {
-        calibPanel.style.display = 'none';
+        calibPanel.style.display = 'block';
+        if (calibInputsRow) calibInputsRow.style.display = 'none';
+        if (calibHint) calibHint.style.display = 'none';
+        calibInfo.style.display = 'block';
+        calibInfo.innerHTML = `💡 <em>Noch keine Wände vorhanden. Du kannst nach dem Anlegen im Editor mit <strong>Wand zeichnen</strong> Wände über die Vorlage zeichnen und jede Wand mit <strong>Kalibrieren</strong> auf die exakte Originallänge anpassen.</em>`;
         return;
       }
       calibPanel.style.display = 'block';
+      if (calibInputsRow) calibInputsRow.style.display = 'grid';
+      if (calibHint) calibHint.style.display = 'inline';
+      calibInfo.style.display = 'block';
       const ppm = plan.scale?.pixelPerMeter || 50;
       if (!this.selectedCalibWallId || !plan.walls.some(w => w.id === this.selectedCalibWallId)) {
         this.selectedCalibWallId = plan.walls[0].id;
@@ -291,6 +254,81 @@ export class FloorPlanImportDialog {
       });
       syncCalibInput();
     };
+
+    const onFileSelected = (file: File) => {
+      this.handleFile(
+        file,
+        fileNameDisplay,
+        scaleSelect,
+        customScaleInput,
+        opacitySlider,
+        opacityControl,
+        previewContainer,
+        btnCreateSheet,
+        btnManualImport,
+        statusText,
+        updateCalibWalls
+      );
+    };
+
+    // File selection
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        onFileSelected(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        onFileSelected(fileInput.files[0]);
+      }
+    });
+
+    btnManualImport.addEventListener('click', () => {
+      btnCreateSheet.click();
+    });
+
+    // Opacity slider
+    opacitySlider.addEventListener('input', () => {
+      const val = Number(opacitySlider.value);
+      opacityVal.textContent = `${val}%`;
+      if (this.currentFloorPlan?.backgroundImage) {
+        this.currentFloorPlan.backgroundImage.opacity = val / 100;
+        this.updatePreview(previewContainer);
+      }
+    });
+
+    scaleSelect.addEventListener('change', () => {
+      customScaleWrap.style.display = scaleSelect.value === 'custom' ? 'flex' : 'none';
+      if (this.currentFloorPlan) {
+        const ratio = scaleSelect.value === 'custom' ? Number(customScaleInput.value) || 100 : Number(scaleSelect.value);
+        this.currentFloorPlan.scale.scaleRatio = ratio;
+        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
+        this.updatePreview(previewContainer);
+        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
+        updateCalibWalls(this.currentFloorPlan);
+      }
+    });
+
+    customScaleInput.addEventListener('input', () => {
+      const ratio = Number(customScaleInput.value);
+      if (ratio > 0 && this.currentFloorPlan) {
+        this.currentFloorPlan.scale.scaleRatio = ratio;
+        this.currentFloorPlan.scale.pixelPerMeter = Math.round((1000 * 2) / ratio);
+        this.updatePreview(previewContainer);
+        this.renderRoomsSummary(this.currentFloorPlan, roomsList);
+        updateCalibWalls(this.currentFloorPlan);
+      }
+    });
 
     const syncCalibInput = () => {
       if (!this.currentFloorPlan) return;
@@ -454,7 +492,19 @@ export class FloorPlanImportDialog {
     });
   }
 
-  private handleFile(file: File, displayElem: HTMLElement): void {
+  private handleFile(
+    file: File,
+    displayElem: HTMLElement,
+    scaleSelect: HTMLSelectElement,
+    customScaleInput: HTMLInputElement,
+    opacitySlider: HTMLInputElement,
+    opacityControl: HTMLElement,
+    previewContainer: HTMLElement,
+    btnCreateSheet: HTMLButtonElement,
+    btnManualImport: HTMLButtonElement,
+    statusText: HTMLElement,
+    updateCalibWalls: (plan: FloorPlanData) => void
+  ): void {
     displayElem.style.display = 'block';
     displayElem.textContent = `Ausgewählt: ${file.name} (${Math.round(file.size / 1024)} KB)`;
 
@@ -468,6 +518,41 @@ export class FloorPlanImportDialog {
           this.imageNaturalWidth = img.naturalWidth;
           this.imageNaturalHeight = img.naturalHeight;
           displayElem.textContent = `Ausgewählt: ${file.name} (${img.naturalWidth} × ${img.naturalHeight} px, ${Math.round(file.size / 1024)} KB)`;
+
+          // Initialize floor plan with background image template immediately (Non-AI import ready)
+          const targetBox = { x: 30, y: 25, width: 780, height: 530 };
+          const bounds = computeImageFitBounds(img.naturalWidth, img.naturalHeight, targetBox);
+          const ratio = scaleSelect.value === 'custom'
+            ? (Number(customScaleInput.value) || 100)
+            : Number(scaleSelect.value);
+          const ppm = Math.round((1000 * 2) / ratio);
+          const opacity = (Number(opacitySlider.value) || 35) / 100;
+
+          this.currentFloorPlan = {
+            walls: [],
+            openings: [],
+            rooms: [],
+            scale: {
+              scaleRatio: ratio,
+              pixelPerMeter: ppm
+            },
+            backgroundImage: {
+              dataUrl: result,
+              bounds,
+              opacity,
+              visible: true
+            }
+          };
+
+          opacityControl.style.display = 'flex';
+          this.updatePreview(previewContainer);
+          if (this.currentFloorPlan) {
+            updateCalibWalls(this.currentFloorPlan);
+          }
+          btnCreateSheet.disabled = false;
+          btnManualImport.disabled = false;
+          statusText.style.color = '#68d391';
+          statusText.textContent = 'Vorlage geladen. Du kannst sie direkt übernehmen oder per KI vektorisieren.';
         };
         img.src = result;
       }
@@ -504,8 +589,7 @@ export class FloorPlanImportDialog {
 
     container.style.display = 'block';
     const roomTags = plan.rooms.map(r => {
-      const area = r.areaM2 ? ` (${r.areaM2.toFixed(1)} m²)` : '';
-      return `<span style="background:#2d3748;padding:2px 8px;border-radius:12px;margin:2px;display:inline-block;color:#e2e8f0;">🏠 ${escapeSvg(r.name)}${area}</span>`;
+      return `<span style="background:#2d3748;padding:2px 8px;border-radius:12px;margin:2px;display:inline-block;color:#e2e8f0;">🏠 ${escapeSvg(r.name)}</span>`;
     }).join(' ');
 
     container.innerHTML = `
