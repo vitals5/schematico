@@ -1044,14 +1044,14 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     `,
     description: 'Motorischer Antrieb für Jalousie / Rollladen'
   },
-  // KNX Smart Home Komponenten
+  // Smart Home / Bus Komponenten
   {
     id: 'knx_pushbutton_2f',
-    name: 'KNX Tastsensor 2-fach',
+    name: 'Tastsensor 2-fach',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-S',
-    defaultFunctionText: 'KNX Tastsensor 2f',
+    defaultFunctionText: 'Tastsensor 2f',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
@@ -1061,17 +1061,16 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <line x1="16" y1="0" x2="16" y2="22" stroke="currentColor" stroke-width="1.2"/>
       <circle cx="9" cy="4" r="1.5" fill="#48bb78"/>
       <circle cx="23" cy="4" r="1.5" fill="#48bb78"/>
-      <text x="16" y="18" font-size="6" font-family="monospace" font-weight="bold" text-anchor="middle" fill="#63b3ed">KNX</text>
     `,
-    description: 'KNX 2-fach Tastsensor mit 2 Wippen und RGB-Statusanzeige'
+    description: '2-fach Tastsensor mit 2 Wippen und RGB-Statusanzeige'
   },
   {
     id: 'knx_pushbutton_4f',
-    name: 'KNX Tastsensor 4-fach',
+    name: 'Tastsensor 4-fach',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-S',
-    defaultFunctionText: 'KNX Tastsensor 4f',
+    defaultFunctionText: 'Tastsensor 4f',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
@@ -1085,15 +1084,15 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <circle cx="9" cy="18.5" r="1.2" fill="#48bb78"/>
       <circle cx="23" cy="18.5" r="1.2" fill="#48bb78"/>
     `,
-    description: 'KNX 4-fach Tastsensor mit 4 Tastenfeldern und Status-LEDs'
+    description: '4-fach Tastsensor mit 4 Tastenfeldern und Status-LEDs'
   },
   {
     id: 'knx_presence_detector',
-    name: 'KNX Präsenzmelder (Deckenmontage)',
+    name: 'Präsenzmelder (Deckenmontage)',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-B',
-    defaultFunctionText: 'KNX Präsenzmelder',
+    defaultFunctionText: 'Präsenzmelder',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 16 },
@@ -1105,15 +1104,15 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <line x1="5" y1="16" x2="27" y2="16" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/>
       <circle cx="16" cy="16" r="2.5" fill="#48bb78"/>
     `,
-    description: 'KNX Decken-Präsenzmelder mit 360° Erfassungsbereich und Lichtsensor'
+    description: 'Decken-Präsenzmelder mit 360° Erfassungsbereich und Lichtsensor'
   },
   {
     id: 'knx_rtr',
-    name: 'KNX Raumtemperaturregler (RTR mit Display)',
+    name: 'Raumtemperaturregler (Display)',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-B',
-    defaultFunctionText: 'KNX RTR',
+    defaultFunctionText: 'Raumtemperaturregler',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
@@ -1127,15 +1126,15 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <text x="10" y="18.5" font-size="5" text-anchor="middle" fill="currentColor">-</text>
       <text x="22" y="18.5" font-size="5" text-anchor="middle" fill="currentColor">+</text>
     `,
-    description: 'KNX Raumtemperaturregler mit LCD-Anzeige und integriertem Busankoppler'
+    description: 'Raumtemperaturregler mit LCD-Anzeige'
   },
   {
     id: 'knx_touch_panel',
-    name: 'KNX Smart Touch Panel (Wanddisplay)',
+    name: 'Smart Touch Panel (Wanddisplay)',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-U',
-    defaultFunctionText: 'KNX Touchpanel',
+    defaultFunctionText: 'Touchpanel',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
@@ -1145,15 +1144,15 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <rect x="7" y="3" width="18" height="14" fill="rgba(66, 153, 225, 0.2)" stroke="currentColor" stroke-width="1"/>
       <circle cx="16" cy="10" r="3" fill="none" stroke="#63b3ed" stroke-width="1.2"/>
     `,
-    description: 'KNX Touchpanel (5" / 7" Raumcontroller zur zentralen Gebäudesteuerung)'
+    description: 'Touchpanel (5" / 7" Raumcontroller zur zentralen Gebäudesteuerung)'
   },
   {
     id: 'knx_bus_outlet',
-    name: 'KNX Busauslass (Wandauslass grün)',
+    name: 'Busauslass (Wandauslass)',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'KNX Busauslass',
+    defaultFunctionText: 'Busauslass',
     width: 32,
     height: 32,
     insertionPoint: { x: 16, y: 0 },
@@ -1161,15 +1160,14 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     svgContent: `
       <circle cx="16" cy="10" r="9" fill="none" stroke="#48bb78" stroke-width="2"/>
       <polygon points="16,3 11,10 16,17 21,10" fill="none" stroke="#48bb78" stroke-width="1.5"/>
-      <text x="16" y="12" font-size="5.5" font-family="monospace" font-weight="bold" text-anchor="middle" fill="#48bb78">KNX</text>
     `,
-    description: 'KNX Busauslass / Unterputzdose für grüne Busleitung (J-Y(St)Y 2x2x0.8)'
+    description: 'Busauslass / Unterputzdose für Busleitung'
   },
   {
     id: 'knx_reed_contact',
-    name: 'KNX Fensterkontakt (Magnet/Binäreingang)',
+    name: 'Fensterkontakt (Magnet/Binäreingang)',
     category: 'installation',
-    standard: 'KNX / DIN EN 60617-11',
+    standard: 'DIN EN 60617-11',
     defaultBmkPrefix: '-B',
     defaultFunctionText: 'Fensterkontakt',
     width: 32,
@@ -1184,7 +1182,7 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
       <circle cx="14" cy="7" r="1.2" fill="currentColor"/>
       <circle cx="20" cy="7" r="1.2" fill="currentColor"/>
     `,
-    description: 'Magnetischer Reed-Fensterkontakt für KNX Heizungsabsenkung & Alarmierung'
+    description: 'Magnetischer Reed-Fensterkontakt für Heizungsabsenkung & Alarmierung'
   },
   // Vertikale Mehrfachkombinationen
   {

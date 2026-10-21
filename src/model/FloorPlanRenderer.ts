@@ -331,7 +331,8 @@ export function floorPlanToSvg(
 
       const leafEndX = hingeX + opW * nx * swingSign;
       const leafEndY = hingeY + opW * ny * swingSign;
-      const sweepFlag = isRight ? (swingSign > 0 ? 0 : 1) : (swingSign > 0 ? 1 : 0);
+      const cross = (leafEndX - hingeX) * (targetY - hingeY) - (leafEndY - hingeY) * (targetX - hingeX);
+      const sweepFlag = cross > 0 ? 1 : 0;
 
       parts.push(`
         <g ${isSelected ? 'class="floorplan-door selected"' : 'class="floorplan-door"'} data-opening-id="${op.id}" style="${cursorStyle}">

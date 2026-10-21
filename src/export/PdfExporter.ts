@@ -249,7 +249,8 @@ export class PdfExporter {
 
       const style = isBold && isItalic ? 'bolditalic' : isBold ? 'bold' : isItalic ? 'italic' : 'normal';
       doc.setFont('helvetica', style);
-      doc.setFontSize(Math.max(6, (t.fontSize || 9) * 0.75));
+      const ptSize = (t.fontSize || 9) * scaleY * 72 / 25.4;
+      doc.setFontSize(Math.max(4, ptSize));
 
       if (isMonochrome) {
         doc.setTextColor(0, 0, 0);

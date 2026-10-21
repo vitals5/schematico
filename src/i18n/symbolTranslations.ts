@@ -243,13 +243,13 @@ export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; descripti
   inst_intercom: { name: 'Intercom / Video Door Station', description: 'Indoor intercom station or video door station (DIN EN 60617-11)' },
   inst_chime: { name: 'Doorbell / Chime', description: 'Acoustic door chime / doorbell signaling unit' },
   inst_equipotential: { name: 'Equipotential Bonding Bar (PAS)', description: 'Main equipotential bonding busbar (PAS / HES, DIN 18014)' },
-  knx_pushbutton_2f: { name: 'KNX Pushbutton Sensor (2-Gang)', description: 'KNX 2-gang push button sensor with status LEDs' },
-  knx_pushbutton_4f: { name: 'KNX Pushbutton Sensor (4-Gang)', description: 'KNX 4-gang push button sensor with 4 zones and status LEDs' },
-  knx_presence_detector: { name: 'KNX Presence Detector (Ceiling)', description: 'KNX ceiling presence detector with 360° coverage and light sensor' },
-  knx_rtr: { name: 'KNX Room Temperature Controller (Display)', description: 'KNX room temperature controller with LCD display and integrated BCU' },
-  knx_touch_panel: { name: 'KNX Smart Touch Panel', description: 'KNX smart touch panel wall controller (5" / 7" room screen)' },
-  knx_bus_outlet: { name: 'KNX Bus Outlet (Wall Box)', description: 'KNX bus outlet flush-mounted box for green TP bus cable' },
-  knx_reed_contact: { name: 'KNX Window Reed Contact (Binary)', description: 'Magnetic window reed contact for heating setback and intrusion' }
+  knx_pushbutton_2f: { name: 'Pushbutton Sensor (2-Gang)', description: '2-gang push button sensor with status LEDs' },
+  knx_pushbutton_4f: { name: 'Pushbutton Sensor (4-Gang)', description: '4-gang push button sensor with 4 zones and status LEDs' },
+  knx_presence_detector: { name: 'Presence Detector (Ceiling)', description: 'Ceiling presence detector with 360° coverage and light sensor' },
+  knx_rtr: { name: 'Room Temperature Controller (Display)', description: 'Room temperature controller with LCD display' },
+  knx_touch_panel: { name: 'Smart Touch Panel', description: 'Smart touch panel wall controller (5" / 7" room screen)' },
+  knx_bus_outlet: { name: 'Bus Outlet (Wall Box)', description: 'Bus outlet flush-mounted box for bus cable' },
+  knx_reed_contact: { name: 'Window Reed Contact (Binary)', description: 'Magnetic window reed contact for heating setback and intrusion' }
 };
 
 const PHRASE_REPLACEMENTS: [RegExp, string][] = [

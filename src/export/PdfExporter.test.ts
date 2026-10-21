@@ -325,5 +325,50 @@ for (const symbolId of connectionSymbolIds) {
   assert(lines.length > 10, `Monochrome floor plan rendering should also produce vector lines, got ${lines.length}`);
 }
 
+// Test free text rendering and font size proportionality in PDF export
+{
+  const textPage: Page = {
+    id: 'text_page',
+    pageNumber: '3',
+    title: 'Text Test',
+    pageType: 'installation',
+    higherLevel: '',
+    location: '',
+    components: [],
+    wires: [],
+    plotFrame: {
+      type: 'DIN_A3_LANDSCAPE',
+      width: 1000,
+      height: 700,
+      columns: 10,
+      rows: ['A'],
+      titleBlock: { projectTitle: '', commission: '', company: '', author: '', date: '', revision: '', sheetNumber: '3', totalSheets: '3' },
+    },
+    texts: [
+      { id: 't1', text: 'Arbeitszimmer', x: 200, y: 150, fontSize: 14, fontWeight: 'bold' },
+      { id: 't2', text: 'Küche', x: 400, y: 150, fontSize: 9 },
+    ],
+  };
+
+  const fontSizes: number[] = [];
+  const textCalls: any[] = [];
+  const mockPdf: any = {};
+  for (const name of ['setFont', 'setTextColor']) {
+    mockPdf[name] = () => undefined;
+  }
+  mockPdf.setFontSize = (size: number) => { fontSizes.push(size); };
+  mockPdf.text = (...args: any[]) => { textCalls.push(args); };
+
+  (PdfExporter as any).renderTexts(mockPdf, textPage, 420, 297, 'color');
+
+  assert.equal(textCalls.length, 2, 'Should render 2 text elements');
+  // For A3 (h=297, height=700), scaleY = 297/700, pt factor = scaleY * 72 / 25.4 = ~1.2027
+  // fontSize 14 -> ~16.84 pt
+  // fontSize 9 -> ~10.82 pt
+  assert(fontSizes[0] > 15 && fontSizes[0] < 18, `Expected font size ~16.8 pt for fontSize 14, got ${fontSizes[0]}`);
+  assert(fontSizes[1] > 10 && fontSizes[1] < 12, `Expected font size ~10.8 pt for fontSize 9, got ${fontSizes[1]}`);
+}
+
 console.log('✓ Connection elements render as vector arrows/junctions in PDF without placeholder blocks');
 console.log('✓ Floor plan elements (walls, doors, windows, arc wires, background image) render cleanly in PDF export');
+console.log('✓ Page texts render with proportional font sizing in PDF export');

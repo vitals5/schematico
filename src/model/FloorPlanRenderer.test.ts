@@ -102,6 +102,23 @@ assert(advSvg.includes('class="floorplan-opening"'), 'Must render passage openin
 assert(advSvg.includes('class="floorplan-garage"'), 'Must render garage door');
 assert(advSvg.includes('stroke-dasharray="3,3"'), 'Must render overhead tracks for garage door');
 assert(!advSvg.includes('floorplan-wall-hit'), 'Non-interactive mode must not include wall hit lines');
+assert(advSvg.includes('A 80.0 80.0 0 0 1 160.0 100.0'), 'Door right_in swing arc must bulge outward into room with sweepFlag 1');
+
+// Test all 4 door swing directions for correct outward curvature
+for (const [swing, expectedSweep] of [
+  ['right_in', 1],
+  ['left_in', 0],
+  ['right_out', 0],
+  ['left_out', 1],
+] as const) {
+  const plan: FloorPlanData = {
+    scale: { scaleRatio: 100, pixelPerMeter: 50 },
+    walls,
+    openings: [{ id: 'door_test', kind: 'door', center: { x: 200, y: 100 }, width: 80, orientation: 'horizontal', swingDirection: swing }],
+  };
+  const svg = floorPlanToSvg(plan, { interactive: false });
+  assert(svg.includes(`A 80.0 80.0 0 0 ${expectedSweep}`), `Door ${swing} must have sweepFlag ${expectedSweep} for outward arc`);
+}
 
 // 5. Test multi-tier snapping
 const tier0Snap = findNearestWall({ x: 250, y: 110 }, walls, 40, 50, 16);
