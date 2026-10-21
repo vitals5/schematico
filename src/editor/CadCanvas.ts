@@ -144,15 +144,11 @@ export class CadCanvas {
   private initialPan: { x: number; y: number } = { x: 0, y: 0 };
   private lastTapTime: number = 0;
   private lastTapComponentId: string | null = null;
-  private longPressTimer: any = null;
-  private touchStartPos: { x: number; y: number } | null = null;
-  private longPressTriggered: boolean = false;
+  public multiSelectMode: boolean = false;
 
-  private clearLongPressTimer(): void {
-    if (this.longPressTimer) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
+  public toggleMultiSelectMode(enable?: boolean): boolean {
+    this.multiSelectMode = enable !== undefined ? enable : !this.multiSelectMode;
+    return this.multiSelectMode;
   }
 
   constructor(container: HTMLElement, project: Project, callbacks: CadCanvasCallbacks) {
@@ -375,20 +371,44 @@ export class CadCanvas {
     return res.components;
   }
 
-  public zoomIn(): void {
-    this.scale = Math.min(3.0, this.scale * 1.15);
+  public zoomIn(factor: number = 1.25, centerX?: number, centerY?: number): void {
+    const rect = this.container.getBoundingClientRect();
+    const cx = centerX ?? (rect.width > 0 ? rect.width / 2 : 600);
+    const cy = centerY ?? (rect.height > 0 ? rect.height / 2 : 425);
+    const newScale = Math.min(3.5, this.scale * factor);
+    this.panX = cx - (cx - this.panX) * (newScale / this.scale);
+    this.panY = cy - (cy - this.panY) * (newScale / this.scale);
+    this.scale = newScale;
     this.render();
   }
 
-  public zoomOut(): void {
-    this.scale = Math.max(0.3, this.scale / 1.15);
+  public zoomOut(factor: number = 0.8, centerX?: number, centerY?: number): void {
+    const rect = this.container.getBoundingClientRect();
+    const cx = centerX ?? (rect.width > 0 ? rect.width / 2 : 600);
+    const cy = centerY ?? (rect.height > 0 ? rect.height / 2 : 425);
+    const newScale = Math.max(0.2, this.scale * factor);
+    this.panX = cx - (cx - this.panX) * (newScale / this.scale);
+    this.panY = cy - (cy - this.panY) * (newScale / this.scale);
+    this.scale = newScale;
+    this.render();
+  }
+
+  public panBy(dx: number, dy: number): void {
+    this.panX += dx;
+    this.panY += dy;
     this.render();
   }
 
   public resetZoom(): void {
     this.scale = 1.0;
-    this.panX = 30;
-    this.panY = 30;
+    const rect = this.container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      this.panX = Math.round((rect.width - 1200) / 2);
+      this.panY = Math.round((rect.height - 850) / 2);
+    } else {
+      this.panX = 30;
+      this.panY = 30;
+    }
     this.render();
   }
 
@@ -1307,6 +1327,13 @@ export class CadCanvas {
   }
 
   private onMouseDown(e: MouseEvent): void {
+    if (this.mode === 'pan' && e.button === 0) {
+      this.isPanning = true;
+      this.startPan = { x: e.clientX - this.panX, y: e.clientY - this.panY };
+      this.svg.style.cursor = 'grabbing';
+      return;
+    }
+
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       // Middle click or Alt+Click -> Pan
       this.isPanning = true;
@@ -1513,6 +1540,9 @@ export class CadCanvas {
       this.render();
       return;
     }
+    if (this.mode === 'pan') {
+      this.svg.style.cursor = 'grab';
+    }
 
     const world = this.screenToWorld(e.clientX, e.clientY);
     this.currentMousePos = world;
@@ -1632,6 +1662,10 @@ export class CadCanvas {
   }
 
   private onMouseUp(): void {
+    if (this.mode === 'pan') {
+      this.isPanning = false;
+      this.svg.style.cursor = 'grab';
+    }
     if(this.elementBoxResize){const edit=this.elementBoxResize;this.elementBoxResize=undefined;if(JSON.stringify(edit.component)!==JSON.stringify(edit.original))this.notifyModified();this.render();}
     if(this.boxDraft?.pressing){this.boxDraft.pressing=false;this.finishDeviceBox();}
     if(this.boxResize){const resize=this.boxResize;this.boxResize=undefined;if(resize.width!==resize.box.width||resize.height!==resize.box.height)this.notifyModified();this.render();}
@@ -1695,7 +1729,6 @@ export class CadCanvas {
 
   private onTouchStart(e: TouchEvent): void {
     if (e.touches.length === 2) {
-      this.clearLongPressTimer();
       e.preventDefault();
       if(this.selectionDrag){translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);this.selectionDrag=undefined;this.render();}
       this.cancelBoxInteraction();this.touchMode = 'pinch';
@@ -1715,31 +1748,24 @@ export class CadCanvas {
     }
 
     if (e.touches.length === 1) {
-      this.clearLongPressTimer();
       const touch = e.touches[0];
-      this.touchStartPos = { x: touch.clientX, y: touch.clientY };
-      this.longPressTriggered = false;
       const targetEl = e.target as Element;
-
-      this.longPressTimer = setTimeout(() => {
-        this.longPressTriggered = true;
-        this.clearLongPressTimer();
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(40); } catch (_) {}
-        }
-        this.touchMode = 'none';
-        this.isPanning = false;
-        this.isDraggingComponent = false;
-        this.selectionDrag = undefined;
-        this.wallDrag = null;
-        this.openingDrag = null;
-        this.cableDrag = undefined;
-        this.triggerContextMenu(touch.clientX, touch.clientY, targetEl);
-      }, 480);
-
       if (this.referenceFromEvent(e)) return;
       this.referenceMarker = undefined;
       const world = this.screenToWorld(touch.clientX, touch.clientY);
+
+      if (this.mode === 'pan') {
+        e.preventDefault();
+        this.touchMode = 'pan';
+        this.isPanning = true;
+        this.startPan = { x: touch.clientX - this.panX, y: touch.clientY - this.panY };
+        return;
+      }
+
+      if (this.multiSelectMode && this.mode === 'select') {
+        e.preventDefault();
+        if (this.handleSelectionMouseDown(e as unknown as MouseEvent, world)) return;
+      }
 
       if(this.mode==='select'&&!(e.target as Element)?.closest?.('[data-box-resize]')&&this.handleSelectionMouseDown(e as unknown as MouseEvent,world)){e.preventDefault();return;}
       if(this.mode==='device_box'){e.preventDefault();if(this.boxDraft){this.boxDraft.end=this.boxPoint(world);this.finishDeviceBox();}else this.boxDraft={start:this.boxPoint(world),end:this.boxPoint(world),pressing:true};return;}
@@ -1757,41 +1783,6 @@ export class CadCanvas {
       const image=this.imageFromEvent(e);
       if(image && this.mode==='select'){e.preventDefault();const selection=this.getElementSelection();if(!selection.imageIds?.includes(image.id))this.setElementSelection({componentIds:[],cableIds:[],imageIds:[image.id]});this.selectionDrag={origin:world,snapshot:captureSelectionMove(this.activePage,this.getElementSelection()),dx:0,dy:0};return;}
       this.selectedImageId=null;this.selectedBoxId=null;
-
-      const wallHit = this.wallFromEvent(e);
-      if (wallHit && this.mode === 'select') {
-        e.preventDefault();
-        this.selectWall(wallHit.wall);
-        const isHandle = !!wallHit.handle;
-        this.wallDrag = {
-          wall: wallHit.wall,
-          handle: wallHit.handle ?? 'both',
-          startPos: { ...wallHit.wall.start },
-          startEnd: { ...wallHit.wall.end },
-          isMovingWholeWall: !isHandle,
-          mouseStart: { ...world }
-        };
-        return;
-      }
-
-      const clickedOpening = this.openingFromEvent(e);
-      if (clickedOpening && this.mode === 'select') {
-        e.preventDefault();
-        this.selectOpening(clickedOpening);
-        this.openingDrag = {
-          opening: clickedOpening,
-          startCenter: { ...clickedOpening.center },
-          mouseStart: { ...world }
-        };
-        return;
-      }
-
-      if (this.mode === 'cable') { e.preventDefault();this.placeCablePoint(world);return; }
-      const cable=this.cableFromEvent(e);
-      if(cable){e.preventDefault();this.selectCable(cable);this.cableDrag={cable,start:{...cable.start},end:{...cable.end},origin:world,moved:false};return;}
-      this.selectedCableId=null;this.callbacks.onSelectCable?.(null);
-
-      this.clearMultipleSelection();
 
       // Symbol placing
       if (this.mode === 'place_symbol' && this.activeSymbolToPlace) {
@@ -1821,12 +1812,16 @@ export class CadCanvas {
 
       // Check component (with finger touch hitbox padding)
       const clickedComp = this.componentFromEvent(e)??this.findComponentAt(world.x, world.y, true);
-      if (clickedComp) {
+      if (clickedComp && this.mode === 'select') {
         e.preventDefault();
         this.selectedComponentId = clickedComp.id;
         this.selectedWireId = null;
+        this.selectedWallId = null;
+        this.selectedOpeningId = null;
         this.callbacks.onSelectComponent(clickedComp);
         this.callbacks.onSelectWire(null);
+        this.callbacks.onSelectWall?.(null);
+        this.callbacks.onSelectOpening?.(null);
 
         // Touch double-tap detection to open properties on mobile
         const now = Date.now();
@@ -1845,19 +1840,70 @@ export class CadCanvas {
           x: world.x - clickedComp.x,
           y: world.y - clickedComp.y
         };
-        // DO NOT call this.render() here: keeping DOM intact avoids cancelling touch stream in Mobile Chrome
         this.updateSelectionClasses();
         return;
       }
 
+      const wallHit = this.wallFromEvent(e, world, true);
+      if (wallHit && this.mode === 'select') {
+        e.preventDefault();
+        this.selectWall(wallHit.wall);
+        const isHandle = !!wallHit.handle;
+        this.wallDrag = {
+          wall: wallHit.wall,
+          handle: wallHit.handle ?? 'both',
+          startPos: { ...wallHit.wall.start },
+          startEnd: { ...wallHit.wall.end },
+          isMovingWholeWall: !isHandle,
+          mouseStart: { ...world }
+        };
+        this.render();
+        return;
+      }
+
+      const clickedOpening = this.openingFromEvent(e, world, true);
+      if (clickedOpening && this.mode === 'select') {
+        e.preventDefault();
+        this.selectOpening(clickedOpening);
+        this.openingDrag = {
+          opening: clickedOpening,
+          startCenter: { ...clickedOpening.center },
+          mouseStart: { ...world }
+        };
+        this.render();
+        return;
+      }
+
+      if (this.mode === 'cable') { e.preventDefault();this.placeCablePoint(world);return; }
+      const cable=this.cableFromEvent(e);
+      if(cable){e.preventDefault();this.selectCable(cable);this.cableDrag={cable,start:{...cable.start},end:{...cable.end},origin:world,moved:false};return;}
+      this.selectedCableId=null;this.callbacks.onSelectCable?.(null);
+
+      // Check text
+      const textId = (e.target as Element)?.closest?.('[data-text-id]')?.getAttribute('data-text-id');
+      if (textId && this.mode === 'select') {
+        const text = this.activePage.texts?.find(t => t.id === textId);
+        if (text) {
+          e.preventDefault();
+          this.selectText(text);
+          return;
+        }
+      }
+
+      this.clearMultipleSelection();
+
       // Check wire (with touch padding)
       const clickedWire = this.findWireAt(world.x, world.y, true);
-      if (clickedWire) {
+      if (clickedWire && this.mode === 'select') {
         e.preventDefault();
         this.selectedWireId = clickedWire.id;
         this.selectedComponentId = null;
+        this.selectedWallId = null;
+        this.selectedOpeningId = null;
         this.callbacks.onSelectWire(clickedWire);
         this.callbacks.onSelectComponent(null);
+        this.callbacks.onSelectWall?.(null);
+        this.callbacks.onSelectOpening?.(null);
         this.updateSelectionClasses();
         return;
       }
@@ -1868,22 +1914,28 @@ export class CadCanvas {
       this.startPan = { x: touch.clientX - this.panX, y: touch.clientY - this.panY };
       this.selectedComponentId = null;
       this.selectedWireId = null;
+      this.selectedWallId = null;
+      this.selectedOpeningId = null;
+      this.selectedTextId = null;
       this.callbacks.onSelectComponent(null);
       this.callbacks.onSelectWire(null);
+      this.callbacks.onSelectWall?.(null);
+      this.callbacks.onSelectOpening?.(null);
+      this.callbacks.onSelectText?.(null);
       this.updateSelectionClasses();
     }
   }
 
   private onTouchMove(e: TouchEvent): void {
-    if (this.longPressTriggered) {
+    if (this.selectionWindow && e.touches.length === 1) {
       e.preventDefault();
+      const touch = e.touches[0];
+      const world = this.screenToWorld(touch.clientX, touch.clientY);
+      const box = this.selectionWindow;
+      box.end = world;
+      box.moved ||= Math.hypot(touch.clientX - box.client.x, touch.clientY - box.client.y) >= 3;
+      this.updateSelectionOverlay();
       return;
-    }
-    if (this.longPressTimer && this.touchStartPos && e.touches.length === 1) {
-      const dist = Math.hypot(e.touches[0].clientX - this.touchStartPos.x, e.touches[0].clientY - this.touchStartPos.y);
-      if (dist > 8) {
-        this.clearLongPressTimer();
-      }
     }
     if(this.elementBoxResize&&e.touches.length===1){e.preventDefault();const t=e.touches[0];this.resizeElementBox(this.screenToWorld(t.clientX,t.clientY));return;}
     if((this.boxDraft||this.boxResize)&&e.touches.length===1){e.preventDefault();const touch=e.touches[0],world=this.screenToWorld(touch.clientX,touch.clientY);if(this.boxResize)this.resizeBox(world);else{this.boxDraft!.end=this.boxPoint(world);this.updateSelectionOverlay();}return;}
@@ -1948,8 +2000,8 @@ export class CadCanvas {
           drag.wall.end.x = drag.startEnd!.x + snappedDx;
           drag.wall.end.y = drag.startEnd!.y + snappedDy;
         }
+        this.updateWallSvgFast(drag.wall);
         this.callbacks.onSelectWall?.(drag.wall);
-        this.render();
         return;
       }
 
@@ -2004,14 +2056,38 @@ export class CadCanvas {
   }
 
   private onTouchEnd(e: TouchEvent): void {
-    this.clearLongPressTimer();
-    if (this.longPressTriggered) {
-      this.longPressTriggered = false;
-      e.preventDefault();
+    if (this.selectionWindow) {
+      const box = this.selectionWindow;
+      this.selectionWindow = undefined;
+      if (box.moved) {
+        const found = elementsInWindow(this.activePage, this.project, box.start, box.end);
+        this.setElementSelection({
+          textIds: [...(box.additive ? box.base.textIds ?? [] : []), ...(found.textIds ?? [])],
+          wireIds: box.additive ? box.base.wireIds ?? [] : [],
+          componentIds: [...(box.additive ? box.base.componentIds : []), ...found.componentIds],
+          cableIds: [...(box.additive ? box.base.cableIds : []), ...found.cableIds],
+          imageIds: [...(box.additive ? box.base.imageIds ?? [] : []), ...(found.imageIds ?? [])],
+          boxIds: [...(box.additive ? box.base.boxIds ?? [] : []), ...(found.boxIds ?? [])]
+        });
+      }
+      this.updateSelectionOverlay();
+      this.render();
+      return;
+    }
+    if (this.wallDrag) {
+      this.wallDrag = null;
+      this.notifyModified();
+      this.render();
+      return;
+    }
+    if (this.openingDrag) {
+      this.openingDrag = null;
+      this.notifyModified();
+      this.render();
       return;
     }
     if(e.type==='touchcancel' && (this.boxDraft||this.boxResize||this.elementBoxResize)){this.cancelBoxInteraction();this.render();return;}
-    if((this.cableDrag || this.wallDrag || this.openingDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
+    if((this.cableDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
     if (this.touchMode === 'pinch' && e.touches.length < 2) {
       this.touchMode = 'none';
     }
@@ -2202,7 +2278,7 @@ export class CadCanvas {
         ${coverPageSvg(this.activePage, this.project)}
 
         <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
-        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: this.floorPlanEditMode || this.mode === 'draw_wall' || this.isCalibratingWall })}</g>` : ''}
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: true })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">
@@ -2300,11 +2376,11 @@ export class CadCanvas {
     const textId=(e.target as Element)?.closest?.('[data-text-id]')?.getAttribute('data-text-id');
     const component=box||cable||image||textId?null:this.componentFromEvent(e)??this.findComponentAt(world.x,world.y);
     const wire=box||cable||image||textId||component?null:this.findWireAt(world.x,world.y);
-    if(!box&&!cable&&!component&&!image&&!wire&&!textId){if(e.ctrlKey||e.metaKey||e.shiftKey){this.beginSelectionWindow(e,world);return true;}return false;}
+    if(!box&&!cable&&!component&&!image&&!wire&&!textId){if(e.ctrlKey||e.metaKey||e.shiftKey||this.multiSelectMode){this.beginSelectionWindow(e,world);return true;}return false;}
     const key=box?'boxIds':cable?'cableIds':image?'imageIds':textId?'textIds':wire?'wireIds':'componentIds',id=textId??(box??cable??image??wire??component)!.id;
     let current=this.getElementSelection();
     const hit=expandGroupedSelection(this.activePage,{...emptySelection(),[key]:[id]});
-    if(e.ctrlKey||e.metaKey||e.shiftKey){
+    if(e.ctrlKey||e.metaKey||e.shiftKey||this.multiSelectMode){
       const hitMembers=selectionMembers(hit),remove=!!current[key]?.includes(id),keys=new Set(hitMembers.map(m=>`${m.kind}:${m.id}`));
       const members=remove?selectionMembers(current).filter(m=>!keys.has(`${m.kind}:${m.id}`)):[...selectionMembers(current),...hitMembers];
       this.lastMousePress=null;this.setElementSelection(membersSelection(members));return true;
@@ -2334,8 +2410,11 @@ export class CadCanvas {
     return false;
   }
 
-  private beginSelectionWindow(e:MouseEvent,world:{x:number;y:number}):void {
-    this.selectionWindow={start:world,end:world,client:{x:e.clientX,y:e.clientY},moved:false,base:this.getElementSelection(),additive:e.ctrlKey||e.metaKey||e.shiftKey};
+  private beginSelectionWindow(e: MouseEvent | TouchEvent, world: { x: number; y: number }): void {
+    const clientX = 'clientX' in e ? e.clientX : (e.touches[0]?.clientX ?? 0);
+    const clientY = 'clientY' in e ? e.clientY : (e.touches[0]?.clientY ?? 0);
+    const isAdditive = ('ctrlKey' in e && (e.ctrlKey || e.metaKey || e.shiftKey)) || this.multiSelectMode;
+    this.selectionWindow = { start: world, end: world, client: { x: clientX, y: clientY }, moved: false, base: this.getElementSelection(), additive: isAdditive };
   }
 
   private moveElementSelection(dx:number,dy:number):void {
@@ -2387,7 +2466,7 @@ export class CadCanvas {
     return this.activePage.cables?.find(c=>c.id===id);
   }
 
-  private wallFromEvent(e: Event): { wall: WallSegment; handle?: 'start' | 'end' } | undefined {
+  private wallFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): { wall: WallSegment; handle?: 'start' | 'end' } | undefined {
     const handleEl = (e.target as Element)?.closest?.('[data-wall-handle]');
     if (handleEl) {
       const wallId = handleEl.getAttribute('data-wall-id');
@@ -2395,18 +2474,92 @@ export class CadCanvas {
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
       if (wall) return { wall, handle };
     }
+    // Proximity check for selected wall handles
+    if (this.selectedWallId && world && this.activePage.floorPlan?.walls) {
+      const selectedWall = this.activePage.floorPlan.walls.find(w => w.id === this.selectedWallId);
+      if (selectedWall) {
+        const tol = isTouch ? 28 : 12;
+        if (Math.hypot(world.x - selectedWall.start.x, world.y - selectedWall.start.y) <= tol) {
+          return { wall: selectedWall, handle: 'start' };
+        }
+        if (Math.hypot(world.x - selectedWall.end.x, world.y - selectedWall.end.y) <= tol) {
+          return { wall: selectedWall, handle: 'end' };
+        }
+      }
+    }
     const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
     if (wallEl) {
       const wallId = wallEl.getAttribute('data-wall-id');
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
       if (wall) return { wall };
     }
+    if (isTouch && world && this.activePage.floorPlan?.walls) {
+      const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
+      const nearest = findNearestWall({ x: world.x, y: world.y }, this.activePage.floorPlan.walls, 24, ppm);
+      if (nearest) return { wall: nearest.wall };
+    }
     return undefined;
   }
 
-  private openingFromEvent(e: Event): WallOpening | undefined {
+  private openingFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): WallOpening | undefined {
     const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
-    return this.activePage.floorPlan?.openings?.find(op => op.id === id);
+    if (id) return this.activePage.floorPlan?.openings?.find(op => op.id === id);
+    if (isTouch && world && this.activePage.floorPlan?.openings) {
+      for (const op of this.activePage.floorPlan.openings) {
+        if (Math.hypot(world.x - op.center.x, world.y - op.center.y) <= 28) {
+          return op;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private updateWallSvgFast(wall: WallSegment): void {
+    const wallLines = this.svg.querySelectorAll(`line[data-wall-id="${wall.id}"]`);
+    wallLines.forEach(l => {
+      l.setAttribute('x1', String(wall.start.x));
+      l.setAttribute('y1', String(wall.start.y));
+      l.setAttribute('x2', String(wall.end.x));
+      l.setAttribute('y2', String(wall.end.y));
+    });
+    const startCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="start"]`);
+    startCircles.forEach(c => {
+      c.setAttribute('cx', String(wall.start.x));
+      c.setAttribute('cy', String(wall.start.y));
+      const next = c.nextElementSibling;
+      if (next && next.tagName.toLowerCase() === 'circle') {
+        next.setAttribute('cx', String(wall.start.x));
+        next.setAttribute('cy', String(wall.start.y));
+      }
+    });
+    const endCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="end"]`);
+    endCircles.forEach(c => {
+      c.setAttribute('cx', String(wall.end.x));
+      c.setAttribute('cy', String(wall.end.y));
+      const next = c.nextElementSibling;
+      if (next && next.tagName.toLowerCase() === 'circle') {
+        next.setAttribute('cx', String(wall.end.x));
+        next.setAttribute('cy', String(wall.end.y));
+      }
+    });
+    const badge = this.svg.querySelector(`.floorplan-wall-badge[data-wall-id="${wall.id}"]`) ?? this.svg.querySelector('.floorplan-wall-badge');
+    if (badge) {
+      const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+      const dx = wall.end.x - wall.start.x;
+      const dy = wall.end.y - wall.start.y;
+      const lenPx = Math.hypot(dx, dy);
+      const lenM = (lenPx / ppm).toFixed(2);
+      const mx = (wall.start.x + wall.end.x) / 2;
+      const my = (wall.start.y + wall.end.y) / 2;
+      let nx = 0, ny = -1;
+      if (lenPx > 1e-3) { nx = -dy / lenPx; ny = dx / lenPx; }
+      const bx = mx + nx * 15;
+      const by = my + ny * 15;
+      const rect = badge.querySelector('rect');
+      if (rect) { rect.setAttribute('x', String(bx - 22)); rect.setAttribute('y', String(by - 8)); }
+      const text = badge.querySelector('text');
+      if (text) { text.setAttribute('x', String(bx)); text.setAttribute('y', String(by + 3.5)); text.textContent = `${lenM} m`; }
+    }
   }
 
   public selectText(text: PageText | null): void {

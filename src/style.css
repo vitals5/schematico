@@ -571,6 +571,159 @@ body.resizing {
   color: white;
 }
 
+/* Touch Navigation & Zoom Floating HUD */
+.touch-nav-hud {
+  position: absolute;
+  bottom: 24px;
+  right: 16px;
+  background: rgba(22, 27, 34, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  z-index: 55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  user-select: none;
+  touch-action: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.touch-nav-hud.collapsed {
+  background: rgba(22, 27, 34, 0.6);
+  border-radius: 50%;
+  padding: 3px;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.touch-nav-hud.collapsed .touch-hud-content {
+  display: none !important;
+}
+
+.touch-hud-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #cbd5e0;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.touch-nav-hud.collapsed .touch-hud-toggle {
+  align-self: center;
+  background: transparent;
+  border-color: transparent;
+  color: #a0aec0;
+}
+
+.touch-hud-toggle:active {
+  transform: scale(0.92);
+  background: rgba(66, 153, 225, 0.3);
+}
+
+.touch-hud-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.touch-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.dpad-row {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+}
+
+.dpad-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.1s, transform 0.08s;
+}
+
+.dpad-btn:active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-bright);
+  transform: scale(0.92);
+}
+
+.dpad-btn.dpad-center {
+  background: rgba(66, 153, 225, 0.15);
+  border-color: rgba(66, 153, 225, 0.35);
+  color: #63b3ed;
+  font-size: 14px;
+}
+
+.dpad-btn.dpad-center:active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.touch-hud-tools {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  justify-content: center;
+}
+
+.hud-btn {
+  width: 34px;
+  height: 32px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  transition: all 0.12s ease;
+}
+
+.hud-btn:active {
+  transform: scale(0.92);
+}
+
+.hud-btn.active {
+  background: #3182ce;
+  border-color: #63b3ed;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(66, 153, 225, 0.5);
+}
+
 /* Component selection highlight */
 .component .selection-rect {
   display: none;
@@ -614,6 +767,10 @@ body.resizing {
     height: 22px;
   }
 
+  .touch-nav-hud {
+    bottom: 68px;
+    right: 8px;
+  }
 }
 
 /* ==========================================================================

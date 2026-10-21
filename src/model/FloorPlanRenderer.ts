@@ -222,10 +222,10 @@ export function floorPlanToSvg(
       const badgeY = my + ny * (strokeWidth / 2 + 13);
 
       parts.push(
-        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="#63b3ed" stroke-width="${strokeWidth + 4}" stroke-linecap="round" opacity="0.35" pointer-events="none" />`
+        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="#63b3ed" stroke-width="${strokeWidth + 4}" stroke-linecap="round" opacity="0.35" pointer-events="none" data-wall-id="${wall.id}" class="floorplan-wall-halo" />`
       );
       parts.push(`
-        <g class="floorplan-wall-badge" pointer-events="none" user-select="none">
+        <g class="floorplan-wall-badge" data-wall-id="${wall.id}" pointer-events="none" user-select="none">
           <rect x="${badgeX - 22}" y="${badgeY - 8}" width="44" height="16" rx="4" fill="#1a202c" stroke="#3182ce" stroke-width="1.2" />
           <text x="${badgeX}" y="${badgeY + 3.5}" font-size="9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="bold" fill="#63b3ed" text-anchor="middle">${lenM} m</text>
         </g>

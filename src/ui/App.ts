@@ -260,6 +260,29 @@ export class App {
             <button class="btn" id="btnFloatingExportMacro" style="padding: 6px 10px; font-size: 12px; background: rgba(66, 153, 225, 0.2); border-color: #3182ce;" title="${t('btnFloatingSaveMacroTitle')}">${t('btnFloatingSaveMacro')}</button>
             <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="${t('toolRotate')}">🔄</button>
             <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="${t('toolDelete')}">🗑️</button>
+            <button class="btn" id="btnFloatingContextMenu" style="padding: 6px 10px; font-size: 13px;" title="Kontextmenü">⋮</button>
+          </div>
+
+          <!-- Touch Navigation & Zoom Floating HUD -->
+          <div class="touch-nav-hud" id="touchNavHud">
+            <button type="button" class="touch-hud-toggle" id="btnToggleNavHud" title="Navigation ein-/ausblenden" aria-label="Toggle Navigation">🧭</button>
+            <div class="touch-hud-content" id="touchHudContent">
+              <div class="touch-dpad">
+                <button type="button" class="dpad-btn dpad-up" id="btnNavUp" title="Nach oben scrollen" aria-label="Up">▲</button>
+                <div class="dpad-row">
+                  <button type="button" class="dpad-btn dpad-left" id="btnNavLeft" title="Nach links scrollen" aria-label="Left">◀</button>
+                  <button type="button" class="dpad-btn dpad-center" id="btnNavFit" title="Ganzes Blatt zentrieren" aria-label="Fit">⛶</button>
+                  <button type="button" class="dpad-btn dpad-right" id="btnNavRight" title="Nach rechts scrollen" aria-label="Right">▶</button>
+                </div>
+                <button type="button" class="dpad-btn dpad-down" id="btnNavDown" title="Nach unten scrollen" aria-label="Down">▼</button>
+              </div>
+              <div class="touch-hud-tools">
+                <button type="button" class="hud-btn" id="btnNavZoomIn" title="Vergrößern (Zoom In)" aria-label="Zoom In">➕</button>
+                <button type="button" class="hud-btn" id="btnNavZoomOut" title="Verkleinern (Zoom Out)" aria-label="Zoom Out">➖</button>
+                <button type="button" class="hud-btn" id="btnNavPanMode" title="Hand-Werkzeug (Verschieben)" aria-label="Pan">✋</button>
+                <button type="button" class="hud-btn" id="btnNavMultiSelect" title="Mehrfachauswahl umschalten" aria-label="Multi-Select">☑️</button>
+              </div>
+            </div>
           </div>
 
           <!-- Mobile Floating Action Bar -->
@@ -527,6 +550,8 @@ export class App {
         bar.style.display = 'none';
       }
     }
+    document.getElementById('btnNavMultiSelect')?.classList.toggle('active', !!this.canvas?.multiSelectMode);
+    document.getElementById('btnNavPanMode')?.classList.toggle('active', this.canvas?.mode === 'pan');
   }
 
   public setLeftPanelCollapsed(collapsed: boolean): void {
@@ -739,6 +764,74 @@ export class App {
     document.getElementById('btnFloatingDelete')?.addEventListener('click', () => {
       this.canvas.deleteSelected();
       this.updateFloatingSelectionBar();
+    });
+
+    document.getElementById('btnFloatingContextMenu')?.addEventListener('click', () => {
+      this.canvas.triggerContextMenu(window.innerWidth / 2, Math.max(100, window.innerHeight - 150));
+    });
+
+    const bindContinuousAction = (btnId: string, action: () => void, intervalMs: number = 35) => {
+      const el = document.getElementById(btnId);
+      if (!el) return;
+      let timer: any = null;
+      let delayTimer: any = null;
+
+      const stop = () => {
+        if (delayTimer) { clearTimeout(delayTimer); delayTimer = null; }
+        if (timer) { clearInterval(timer); timer = null; }
+      };
+
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        action();
+        stop();
+        delayTimer = setTimeout(() => {
+          timer = setInterval(action, intervalMs);
+        }, 220);
+      });
+
+      el.addEventListener('pointerup', stop);
+      el.addEventListener('pointercancel', stop);
+      el.addEventListener('pointerleave', stop);
+    };
+
+    // Nav arrows: pan smoothly in 4 directions
+    bindContinuousAction('btnNavUp', () => this.canvas.panBy(0, 50));
+    bindContinuousAction('btnNavDown', () => this.canvas.panBy(0, -50));
+    bindContinuousAction('btnNavLeft', () => this.canvas.panBy(50, 0));
+    bindContinuousAction('btnNavRight', () => this.canvas.panBy(-50, 0));
+
+    // Nav center: fit sheet to screen
+    document.getElementById('btnNavFit')?.addEventListener('click', () => {
+      this.canvas.fitToScreen();
+    });
+
+    // Zoom buttons: smooth centered zoom
+    bindContinuousAction('btnNavZoomIn', () => this.canvas.zoomIn(1.12), 60);
+    bindContinuousAction('btnNavZoomOut', () => this.canvas.zoomOut(0.88), 60);
+
+    // Pan / Hand mode toggle
+    const btnPanMode = document.getElementById('btnNavPanMode');
+    btnPanMode?.addEventListener('click', () => {
+      const newMode = this.canvas.mode === 'pan' ? 'select' : 'pan';
+      this.canvas.setMode(newMode);
+      btnPanMode.classList.toggle('active', newMode === 'pan');
+      if (newMode === 'pan') this.updateToolButtons('');
+      else this.updateToolButtons('btnToolSelect');
+    });
+
+    // Multi-Select toggle
+    const btnMulti = document.getElementById('btnNavMultiSelect');
+    btnMulti?.addEventListener('click', () => {
+      const active = this.canvas.toggleMultiSelectMode();
+      btnMulti.classList.toggle('active', active);
+      this.updateFloatingSelectionBar();
+    });
+
+    // Toggle Nav HUD collapse/expand
+    document.getElementById('btnToggleNavHud')?.addEventListener('click', () => {
+      const hud = document.getElementById('touchNavHud');
+      hud?.classList.toggle('collapsed');
     });
 
     document.getElementById('fabFit')?.addEventListener('click', () => {

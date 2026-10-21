@@ -390,3 +390,67 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
 
   console.log('✓ Touch hit targets: verified separate generous touch padding (components, pins) without altering mouse precision');
 }
+
+// Touch navigation, zoom, and wall/opening proximity tests
+{
+  const testWall = { id: 'w1', start: { x: 100, y: 100 }, end: { x: 300, y: 100 }, thickness: 240 };
+  const testOpening = { id: 'op1', wallId: 'w1', kind: 'door' as const, center: { x: 200, y: 100 }, width: 900 };
+  const fpPage = {
+    id: 'fpp', pageNumber: '4', title: 'FP', higherLevel: '', location: '',
+    components: [], wires: [], plotFrame: { width: 1000, height: 700 },
+    pageType: 'floor_plan',
+    floorPlan: {
+      walls: [testWall],
+      openings: [testOpening],
+      scale: { pixelPerMeter: 50, measuredDistanceM: 5, pixelDistance: 250 }
+    }
+  } as unknown as Page;
+
+  const canvas = Object.assign(Object.create(CadCanvas.prototype), {
+    activePage: fpPage,
+    project: { pages: [fpPage], symbolLibrary: [] },
+    selectedWallId: 'w1',
+    multiSelectMode: false,
+    scale: 1.0,
+    panX: 100,
+    panY: 50,
+    container: { getBoundingClientRect: () => ({ width: 800, height: 600, left: 0, top: 0 }) },
+    render: () => {}
+  });
+
+  // 1. Multi-select mode toggle
+  assert.equal(canvas.multiSelectMode, false);
+  assert.equal(canvas.toggleMultiSelectMode(), true);
+  assert.equal(canvas.multiSelectMode, true);
+  assert.equal(canvas.toggleMultiSelectMode(false), false);
+  assert.equal(canvas.multiSelectMode, false);
+
+  // 2. Pan and centered zoom
+  canvas.panBy(40, -20);
+  assert.equal(canvas.panX, 140);
+  assert.equal(canvas.panY, 30);
+
+  canvas.zoomIn(1.2, 400, 300);
+  assert.equal(Math.round(canvas.scale * 100) / 100, 1.2);
+
+  canvas.zoomOut(1 / 1.2, 400, 300);
+  assert.equal(Math.round(canvas.scale * 100) / 100, 1.0);
+  assert.equal(Math.round(canvas.panX), 140);
+  assert.equal(Math.round(canvas.panY), 30);
+
+  // 3. Wall handle proximity check (handle at 100, 100)
+  // Touch query at 120, 100 (dist 20px <= 28px touch tolerance, but > 12px desktop tolerance)
+  const fakeEvent = { target: null } as unknown as Event;
+  const desktopHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, false);
+  const touchHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, true);
+  assert.equal(desktopHit?.handle, undefined, 'Desktop mouse must not trigger handle at 20px distance');
+  assert.equal(touchHit?.handle, 'start', 'Touch with 28px proximity must reliably hit start handle at 20px distance');
+
+  // 4. Opening proximity check (center at 200, 100)
+  const desktopOp = (canvas as any).openingFromEvent(fakeEvent, { x: 220, y: 100 }, false);
+  const touchOp = (canvas as any).openingFromEvent(fakeEvent, { x: 220, y: 100 }, true);
+  assert.equal(desktopOp, undefined, 'Desktop mouse must not hit opening 20px away without element click');
+  assert.equal(touchOp?.id, 'op1', 'Touch must hit opening within 28px center proximity');
+
+  console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
+}
