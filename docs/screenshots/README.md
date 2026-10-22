@@ -14,5 +14,7 @@ Empfohlenes Format: PNG oder WebP, Auflösung: 1920×1080 oder 1440×900 (16:9 b
    - Vollständige Kennzeichnung nach DIN EN 81346-2 (=Elektroverteilung+ET1-F0), Pin-Belegungen, Gravurtext und Kenndaten.
 5. `05-macro-library.png` – **High-Performance Makro-Browser**: ✅ Aktiv
    - Bibliotheks-Panel mit Anbindung lokaler Herstellerordner (Schneider Electric), Suche und Vorschau von Fenstermakros (.EMA) und Seitenmakros (.EMS).
-6. `06-pdf-export-bom.png` – **Vektor-PDF-Export & Stückliste**: ⏳ Optional / Folgt
-   - Generierter DIN A3 / A4 Schaltplan-Export mit klickbaren PDF-Links und tabellarischer Betriebsmittelliste.
+6. `06-pdf-export-sheet.png` – **Druckreifer Vektor-PDF-Export (DIN A3)**: ✅ Aktiv
+   - Generierter DIN A3 Schaltplan mit genormtem Schriftfeld nach DIN EN ISO 7200, Pfadtexten, Abbruchstellen, Motoren und Leitungsdefinitionen.
+7. `07-pdf-export-dialog.png` – **Smart PDF-Export-Dialog**: ✅ Aktiv
+   - Konfiguration für Gesamtprojekte (46 Seiten), DIN A3 Querformat, Farbmodi, klickbare Querverweise, Dokumenten-Bookmarks und Stücklisten-Anhang.

@@ -189,6 +189,40 @@ Schematico bietet einen vollwertigen **Installationsplan-Seitentyp** für Wohn-,
 - Vollständig verlinkte Querverweise für interaktives Blättern.
 - Automatische Stücklisten-Generierung (Bill of Materials) mit Artikelnummern, Herstellerangaben, technischen Daten und Mengensummierung.
 
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 6: Druckreifer Vektor-PDF-Export                             -->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — export_unterverteiler_heizung.pdf (DIN A3)</b>
+    </p>
+    <a href="docs/screenshots/06-pdf-export-sheet.png">
+      <img src="docs/screenshots/06-pdf-export-sheet.png" alt="Schematico Druckreifer DIN A3 Vektor-PDF-Export" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Druckreifer Vektor-PDF-Export: DIN A3 Querformat mit genormtem Schriftfeld (DIN EN ISO 7200), Potenzialschienen, RCDs, Motoren und klickbaren Querverweisen.</i>
+    </p>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 7: Smart PDF-Export Dialog                                   -->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 640px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — export_dialog.sch</b>
+    </p>
+    <a href="docs/screenshots/07-pdf-export-dialog.png">
+      <img src="docs/screenshots/07-pdf-export-dialog.png" alt="Schematico PDF-Export Konfigurationsdialog" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Smart PDF-Export-Dialog: Stapelverarbeitung ganzer Projekte (46 Seiten), DIN A3 / A4, Farbmodi, Lesezeichen und automatische Stücklisten (BOM).</i>
+    </p>
+  </div>
+</div>
+
 ### 8. PWA, Tablet- &amp; Touch-Optimierung
 - **Offline-fähig &amp; installierbar:** Als Progressive Web App (PWA) direkt auf Tablets (iPad, Android, Surface) installierbar.
 - **Gestensteuerung:** Flüssiges Verschieben mit Touch-Gesten, zentriertes Zoomen mit zwei Fingern.
