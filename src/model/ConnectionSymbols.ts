@@ -31,9 +31,9 @@ export function interruptionLabelPosition(project: Project, comp: PlacedComponen
   if (!isInterruptionSymbol(s)) return;
   let side = project.settings?.interruptionLabelSide;
   if (!side || side === 'source') {
-    if (s.source) return;
     const connected = interruptionReferencePosition(project, comp, s);
     if (connected) return connected;
+    if (s.source) return;
     side = 'after';
   }
   let direction = arrowDirection(s);

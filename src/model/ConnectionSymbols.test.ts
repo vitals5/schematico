@@ -68,6 +68,14 @@ for (const sym of [...['potential_arrow_up','potential_arrow_down','potential_ar
     const explicit=computeCrossReferencePosition({...arrow,crossRefPosition:{preset:'right',offsetX:2}},sym,project);
     assert.equal(explicit.x,sym.width+10,'Explicit reference positioning remains available');
     assert.equal(JSON.stringify(project),before,'Reading wire direction never edits the project or its routes');
+
+    // Default settings without explicit side must also resolve connected labels for native/source symbols
+    const defaultProject = { pages: [page], symbolLibrary: [sym, targetSymbol] } as unknown as Project;
+    const defaultLabelPos = interruptionLabelPosition(defaultProject, arrow, sym);
+    assert(defaultLabelPos, 'Connected interruption symbol resolves label position under default settings');
+    const defaultRefPos = computeCrossReferencePosition(arrow, sym, defaultProject);
+    const dist = Math.hypot(defaultLabelPos.x - defaultRefPos.x, defaultLabelPos.y - defaultRefPos.y);
+    assert(dist >= 5, `Label and cross-reference must not collide (dist=${dist})`);
   }
 }
 console.log('✓ References opposite actual wire segments, every port/rotation/endpoint order, routed wires, native symbols and manual overrides');

@@ -3201,7 +3201,8 @@ export class CadCanvas {
       const scaledW = sym.width * s;
       const scaledH = sym.height * s;
 
-      const isConn = !sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
+      const isInterruption = isInterruptionSymbol(sym);
+      const isConn = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
       const isTerminal = sym.id === 'terminal_single';
       const isSelected = this.getElementSelection().componentIds.includes(comp.id);
       const connectedWire = graphicWires.get(comp.id);
@@ -3284,7 +3285,11 @@ export class CadCanvas {
             ` : ''}
           ` : (isInterruptionSymbol(sym) || sym.id === 'potential_rail_source' ? (() => {
             const pos = arrowPos ?? { x: -4, y: sym.height / 2 + 3, anchor: 'end' };
-            return `<text x="${pos.x}" y="${pos.y}" ${labelTransform(pos.x, pos.y, comp.rotation)} font-size="${comp.functionTextPosition?.fontSize ?? 8.5}" font-weight="bold" font-family="monospace" fill="#f56565" text-anchor="${pos.anchor}">${escapeSvg(comp.functionText || comp.bmk)}</text>`;
+            const color = escapeSvg(fnPos.fontColor || (sym.source ? '#e2e8f0' : '#f56565'));
+            const fontSize = sym.source ? fnPos.fontSize : (comp.functionTextPosition?.fontSize ?? 8.5);
+            const text = comp.functionText || comp.bmk;
+            if (!text || comp.functionTextPosition?.visible === false) return '';
+            return `<text data-label="functionTextPosition" x="${pos.x}" y="${pos.y}" ${labelTransform(pos.x, pos.y, comp.rotation)} font-size="${fontSize}" font-weight="bold" font-family="${sym.source ? 'sans-serif' : 'monospace'}" fill="${color}" text-anchor="${pos.anchor}">${escapeSvg(text)}</text>`;
           })() : '')}
 
           ${!hideLabels && additionalPos.visible && comp.additionalText ? `<text data-label="additionalTextPosition" class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${labelText(comp.additionalText, additionalPos.x, additionalPos.fontSize)}</text>` : ''}

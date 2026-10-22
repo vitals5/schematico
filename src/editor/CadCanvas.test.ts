@@ -182,6 +182,40 @@ coloredLabels.length=0;
 assert(!coloredLabels.some(t=>t.text===component.additionalText));
 console.log('✓ Editable engraving text and imported label colors agree in SVG and PDF; monochrome and explicit hiding remain supported');
 
+// Interruption points: label (BMK/function text) and cross-reference stack cleanly without collision
+const nativeArrowSym: SymbolDefinition = {
+  ...getSymbolById('potential_arrow_right')!,
+  id: 'native:SPECIAL:8:0',
+  source: { library: 'SPECIAL', number: 8, variant: 0 },
+  importedGraphics: [],
+  pins: [{ id: '0', name: '1', x: 0, y: 10, direction: 'left' }, { id: '1', name: '2', x: 20, y: 10, direction: 'right' }]
+};
+const intArrow: PlacedComponent = {
+  id: 'int1', symbolId: nativeArrowSym.id, x: 100, y: 100, rotation: 0,
+  bmk: '', functionText: 'L1PV', crossRef: '/1.2', pins: { '0': { wireIds: ['w1'] } }
+};
+const wireTarget: PlacedComponent = {
+  id: 'int_target', symbolId: builtIn.id, x: 50, y: 100, rotation: 0, bmk: '-X1', functionText: '', pins: { '0': { wireIds: ['w1'] } }
+};
+const intPage: Page = {
+  ...page,
+  components: [intArrow, wireTarget],
+  wires: [{ id: 'w1', from: { componentId: 'int1', pinId: '0' }, to: { componentId: 'int_target', pinId: '0' }, potential: 'L1' }]
+};
+const intProject: Project = { ...project, pages: [intPage], symbolLibrary: [nativeArrowSym, builtIn] };
+const intCanvas = Object.assign(Object.create(CadCanvas.prototype), {
+  activePage: intPage, project: intProject, getElementSelection: () => ({ componentIds: [] }), getComponentScale: () => 1
+});
+const intSvg = intCanvas.renderComponents();
+assert.match(intSvg, /L1PV/);
+assert.match(intSvg, /\/1\.2/);
+const fnMatch = intSvg.match(/data-label="functionTextPosition"[^>]*\by="(-?\d+(?:\.\d+)?)"[^>]*>L1PV<\/text>/);
+const crMatch = intSvg.match(/class="cross-reference"[^>]*\by="(-?\d+(?:\.\d+)?)"[^>]*>.*\/1\.2/);
+assert(fnMatch && crMatch, 'Both function text and cross-reference must be rendered');
+const fnY = parseFloat(fnMatch[1]), crY = parseFloat(crMatch[1]);
+assert(Math.abs(fnY - crY) >= 8, `Interruption label and reference must not collide (fnY=${fnY}, crY=${crY})`);
+console.log('✓ Interruption point labels and cross-references render stacked without overlapping');
+
 // Embedded page images are selectable in the normal editor, and deleting an
 // image leaves all electrical components and connections untouched.
 page.images=[{id:'graphic',dataUrl:'data:image/png;base64,AA==',x:400,y:80,width:120,height:60,caption:'Grafik'}];

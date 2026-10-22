@@ -599,7 +599,8 @@ export class PdfExporter {
       const compW = sym.width * sx * s, compH = sym.height * sy * s;
 
       const routingGlyph = isConnectionGraphic(comp, sym);
-      const isConnection = !sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source');
+      const isInterruption = isInterruptionSymbol(sym);
+      const isConnection = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
       const isTerminal = sym.id === 'terminal_single' || sym.id === 'terminal_pe';
 
       const connectedWire = graphicWires.get(comp.id)
