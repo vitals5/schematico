@@ -803,16 +803,11 @@
 
         <!-- ======================================================== -->
         <!-- SCREENSHOT 1: Haupt-Editor (Stromlaufplan & Übersicht)    -->
-        <!-- Bild einfügen: <img src="docs/screenshots/01-schematic-editor.png" width="100%" alt="Schematico Haupt-Editor" /> -->
         <!-- ======================================================== -->
-        <div class="screenshot-stage" id="main-editor-placeholder">
-          <span class="cad-ruler-overlay">+X: 120.00 mm | +Y: 85.00 mm</span>
-          <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: HAUPT-EDITOR</div>
-          <div class="placeholder-title">Industrielle Stromlaufpläne mit Autoconnect &amp; Querverweisen</div>
-          <p class="placeholder-desc">
-            Vollwertiger Schaltplan-Editor mit automatischer Leitungsverbindung, Kontaktspiegeln unter Leistungsschützen, Abbruchstellen mit sheet-übergreifenden Zielverweisen und normgerechter Betriebsmittelkennzeichnung.
-          </p>
-          <a href="./" class="btn btn-primary btn-sm">Live in Web-App ausprobieren</a>
+        <div class="screenshot-stage" id="main-editor-placeholder" style="padding: 0; overflow: hidden; background: #0b0f19;">
+          <a href="docs/screenshots/01-schematic-editor.png" target="_blank" title="Klicken für Vollbildansicht">
+            <img src="docs/screenshots/01-schematic-editor.png" alt="Schematico Haupt-Editor: Industrieller Stromlaufplan mit Autoconnect" style="width: 100%; height: auto; display: block;" />
+          </a>
         </div>
       </div>
     </div>
@@ -908,18 +903,15 @@
           <div class="cad-window-frame">
             <div class="cad-window-header">
               <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
-              <div class="window-title">schaltplan_drehstrom_motor.sch</div>
+              <div class="window-title">pv_anlage_abbruchstellen.sch</div>
             </div>
             <!-- ======================================================== -->
-            <!-- SCREENSHOT 2: Stromlaufplan Detailansicht               -->
-            <!-- Bild einfügen: <img src="docs/screenshots/02-schematic-detail.png" width="100%" alt="Stromlaufplan Detailansicht" /> -->
+            <!-- SCREENSHOT 3: Abbruchstellen & Querverweise             -->
             <!-- ======================================================== -->
-            <div class="screenshot-stage" style="min-height: 340px;">
-              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: SCHALTPLAN-DETAIL</div>
-              <div class="placeholder-title" style="font-size: 1.25rem;">Autoconnect, Schütze &amp; Motorschutzschalter</div>
-              <p class="placeholder-desc" style="font-size: 0.85rem;">
-                Detaillierte Darstellung von Leistungspfaden, Querverweis-Kontaktspiegeln (-K1: /2.1, /2.4) und Klemmenanschlüssen.
-              </p>
+            <div class="screenshot-stage" style="padding: 0; overflow: hidden; background: #0b0f19;">
+              <a href="docs/screenshots/03-cross-references.png" target="_blank" title="Klicken für Vollbildansicht">
+                <img src="docs/screenshots/03-cross-references.png" alt="Schematico Abbruchstellen und Querverweise mit Kabeldefinitionen" style="width: 100%; height: auto; display: block;" />
+              </a>
             </div>
           </div>
         </div>
@@ -931,7 +923,7 @@
           <div class="section-tag">Gebäudetechnik</div>
           <h3>Architektonische Elektroinstallation nach DIN EN 60617-11</h3>
           <p>
-            Lade Grundrisspläne als Bild oder PDF, kalibriere den Maßstab mit zwei Klicks und plane Steckdosen, Schalter, Smart-Home-Komponenten und Leitungszüge.
+            Lade Grundrisspläne als Bild oder PDF, kalibriere den Maßstab mit zwei Klicks und platziere Steckdosen, Schalter, Smart-Home-Komponenten und Leitungszüge.
           </p>
           <ul class="showcase-list">
             <li><span class="check-icon">✓</span> <strong>Normgerechte Symbole:</strong> Über 66 Installationssymbole (1-fach bis 5-fach Steckdosen, Serien-/Wechselschalter, CEE, RJ45).</li>
@@ -944,54 +936,81 @@
           <div class="cad-window-frame">
             <div class="cad-window-header">
               <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
-              <div class="window-title">grundriss_og_beleuchtung.sch</div>
+              <div class="window-title">grundriss_installation_erdgeschoss.sch</div>
             </div>
             <!-- ======================================================== -->
-            <!-- SCREENSHOT 3: Elektroinstallationsplan                   -->
-            <!-- Bild einfügen: <img src="docs/screenshots/03-installation-plan.png" width="100%" alt="Elektroinstallationsplan" /> -->
+            <!-- SCREENSHOT 2: Elektroinstallationsplan                   -->
             <!-- ======================================================== -->
-            <div class="screenshot-stage" style="min-height: 340px;">
-              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: INSTALLATIONSPLAN</div>
-              <div class="placeholder-title" style="font-size: 1.25rem;">Grundriss mit DIN EN 60617-11 Symbolen</div>
-              <p class="placeholder-desc" style="font-size: 0.85rem;">
-                Wände mit Türen und Fenstern, 3-fach Steckdosenkombinationen, Tastsensoren, Rauchmelder und Bogenleitungen mit Stromkreis-Kennzeichnung.
-              </p>
+            <div class="screenshot-stage" style="padding: 0; overflow: hidden; background: #0b0f19;">
+              <a href="docs/screenshots/02-installation-plan.png" target="_blank" title="Klicken für Vollbildansicht">
+                <img src="docs/screenshots/02-installation-plan.png" alt="Schematico Elektroinstallationsplan nach DIN EN 60617-11" style="width: 100%; height: auto; display: block;" />
+              </a>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Showcase 3: Querverweise & Makros -->
+      <!-- Showcase 3: Makro-Bibliothek -->
       <div class="showcase-block" id="macros">
         <div class="showcase-text">
           <div class="section-tag">Projekt-Workflows</div>
-          <h3>Intelligente Kontaktspiegel &amp; High-Speed Makro-Bibliothek</h3>
+          <h3>High-Capacity Makro-Bibliothek (100.000+ Dateien)</h3>
           <p>
-            Nie wieder veraltete Querverweise suchen. Schematico pflegt alle Schütz-Kontaktspiegel und Abbruchstellen automatisch in Echtzeit.
+            Binde lokale Ordner mit Fenstermakros (.ema), Seitenmakros (.ems) und Bauteilpaketen (.edz) direkt an.
           </p>
           <ul class="showcase-list">
-            <li><span class="check-icon">✓</span> <strong>Live-Querverweise:</strong> Spulen und zugehörige Schließer-/Öffnerkontakte verlinken sich automatisch sheet-übergreifend.</li>
-            <li><span class="check-icon">✓</span> <strong>100.000+ Makros:</strong> Lokale Ordner mit Makro-Dateien (.ema, .ems, .edz) blitzschnell indizieren, durchsuchen und platzieren.</li>
-            <li><span class="check-icon">✓</span> <strong>Interaktives PDF:</strong> Exportierte PDF-Dokumente enthalten echte Vektor-Links zum sekundenschnellen Springen im Schaltplan.</li>
-            <li><span class="check-icon">✓</span> <strong>Touch &amp; Tablet:</strong> Fließende Gestenbedienung, Pinch-to-Zoom und integrierte Lupen-Vorschau auf Mobilgeräten.</li>
+            <li><span class="check-icon">✓</span> <strong>Herstellerordner:</strong> Schnelles Umschalten zwischen Katalogen (z.B. Schneider Electric, ABB, Siemens).</li>
+            <li><span class="check-icon">✓</span> <strong>Live-Suche &amp; Filter:</strong> Findet Teilschaltungen nach BMK, Funktionstext oder Typenbezeichnung in Millisekunden.</li>
+            <li><span class="check-icon">✓</span> <strong>Direkte Platzierung:</strong> Vorschau mit Anschlussprüfung und automatischer BMK-Anpassung beim Einfügen.</li>
+            <li><span class="check-icon">✓</span> <strong>Verlustfreier Im-/Export:</strong> Volle Unterstützung nativer XML- und JSON-Makroformate.</li>
           </ul>
         </div>
         <div class="showcase-visual">
           <div class="cad-window-frame">
             <div class="cad-window-header">
               <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
-              <div class="window-title">makro_browser_navigation.sch</div>
+              <div class="window-title">makro_bibliothek_browser.sch</div>
             </div>
             <!-- ======================================================== -->
-            <!-- SCREENSHOT 4: Makro-Browser & Querverweise               -->
-            <!-- Bild einfügen: <img src="docs/screenshots/04-macro-crossref.png" width="100%" alt="Makro-Browser & Querverweise" /> -->
+            <!-- SCREENSHOT 5: Makro-Browser                              -->
             <!-- ======================================================== -->
-            <div class="screenshot-stage" style="min-height: 340px;">
-              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: MAKRO-BIBLIOTHEK</div>
-              <div class="placeholder-title" style="font-size: 1.25rem;">Makro-Vorschau &amp; Eigenschaften-Inspektor</div>
-              <p class="placeholder-desc" style="font-size: 0.85rem;">
-                Kompakte Leiste mit Suchfilter für Fenstermakros, Miniatur-Vorschau und direkter BMK-Zuweisung vor der Platzierung.
-              </p>
+            <div class="screenshot-stage" style="padding: 0; overflow: hidden; background: #0b0f19;">
+              <a href="docs/screenshots/05-macro-library.png" target="_blank" title="Klicken für Vollbildansicht">
+                <img src="docs/screenshots/05-macro-library.png" alt="Schematico Makro-Bibliothek Browser" style="width: 100%; height: auto; display: block;" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showcase 4: Eigenschaften-Inspektor & BMK -->
+      <div class="showcase-block reversed" id="inspector">
+        <div class="showcase-text">
+          <div class="section-tag">Normgerechte Betriebsmittel</div>
+          <h3>Präziser Eigenschaften-Inspektor nach DIN EN 81346-2</h3>
+          <p>
+            Vollständige Kontrolle über alle Kennzeichnungsblöcke, Anschlüsse und Kenndaten auf Knopfdruck.
+          </p>
+          <ul class="showcase-list">
+            <li><span class="check-icon">✓</span> <strong>Hierarchische BMK:</strong> Strukturkennzeichen für Anlage (=), Ort (+) und BMK (-) mit Live-Vollkennzeichen-Vorschau.</li>
+            <li><span class="check-icon">✓</span> <strong>Pin-Belegungen &amp; Klemmen:</strong> Pin-Designators (1-6) und individuelle Anschlussbezeichner definieren.</li>
+            <li><span class="check-icon">✓</span> <strong>Technische Kennwerte:</strong> Nennströme, Typen (z.B. NH 35 A), Schaltleistung und Gravurtexte zentral pflegen.</li>
+            <li><span class="check-icon">✓</span> <strong>Kontaktspiegel &amp; Querverweise:</strong> Automatische Verlinkung und Blattreferenzen konfigurieren.</li>
+          </ul>
+        </div>
+        <div class="showcase-visual">
+          <div class="cad-window-frame">
+            <div class="cad-window-header">
+              <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
+              <div class="window-title">properties_symbol_dialog.sch</div>
+            </div>
+            <!-- ======================================================== -->
+            <!-- SCREENSHOT 4: Eigenschaften-Inspektor                    -->
+            <!-- ======================================================== -->
+            <div class="screenshot-stage" style="padding: 0; overflow: hidden; background: #0b0f19;">
+              <a href="docs/screenshots/04-properties-inspector.png" target="_blank" title="Klicken für Vollbildansicht">
+                <img src="docs/screenshots/04-properties-inspector.png" alt="Schematico Eigenschaften-Inspektor Dialog" style="width: 100%; height: auto; display: block;" />
+              </a>
             </div>
           </div>
         </div>

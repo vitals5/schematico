@@ -45,24 +45,18 @@ Die Software vereint zwei Arbeitsbereiche in einer gemeinsamen, modernen Benutze
 
 <!-- ======================================================================= -->
 <!-- SCREENSHOT 1: Haupt-Editor (Industrieller Stromlaufplan)                 -->
-<!-- Ersetzen durch: <img src="docs/screenshots/01-schematic-editor.png" ... />-->
 <!-- ======================================================================= -->
 <div align="center">
-  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
-    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
-      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
-      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — stromlaufplan_drehstrom_motor.sch</span>
-    </div>
-    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
-      <p style="font-size: 32px; margin: 0 0 10px 0;">⚡</p>
-      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Haupt-Editor: Industrieller Stromlaufplan mit Autoconnect &amp; Kontaktspiegeln</h3>
-      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
-        Übersichtliche Multi-Page CAD-Arbeitsfläche mit automatischer Leitungsführung, Kontaktspiegeln unter Leistungsschützen (-K1: /2.1, /2.4), Abbruchstellen mit Zielblattverweisen und Klemmenleisten.
-      </p>
-      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 01-schematic-editor.png ]</p>
-    </div>
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — 24V_dc_control_circuit.sch</b>
+    </p>
+    <a href="docs/screenshots/01-schematic-editor.png">
+      <img src="docs/screenshots/01-schematic-editor.png" alt="Schematico Haupt-Editor: Industrieller Stromlaufplan mit Autoconnect" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Haupt-Editor: Mehrseitige Projektverwaltung (DIN EN 81346), Stromlaufplan mit Autoconnect, Schützen, Leuchtmeldern und Live-Eigenschaftsinspektor.</i>
+    </p>
   </div>
 </div>
 
@@ -79,24 +73,18 @@ Die Software vereint zwei Arbeitsbereiche in einer gemeinsamen, modernen Benutze
 
 <!-- ======================================================================= -->
 <!-- SCREENSHOT 2: Gebäude- und Elektroinstallationsplan                     -->
-<!-- Ersetzen durch: <img src="docs/screenshots/02-installation-plan.png" .../>-->
 <!-- ======================================================================= -->
 <div align="center">
-  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
-    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
-      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
-      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — grundriss_erdgeschoss_installation.sch</span>
-    </div>
-    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
-      <p style="font-size: 32px; margin: 0 0 10px 0;">🏡</p>
-      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Gebäude- &amp; Elektroinstallation nach DIN EN 60617-11</h3>
-      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
-        Architektonischer Grundriss mit Wandstärken, Türen mit DIN-Links/Rechts-Anschlag, Fenstern, 3-fach-Steckdosen, Smart-Home-Tastsensoren und geschwungenen Bogenleitungen (arcWires).
-      </p>
-      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 02-installation-plan.png ]</p>
-    </div>
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — grundriss_installation_erdgeschoss.sch</b>
+    </p>
+    <a href="docs/screenshots/02-installation-plan.png">
+      <img src="docs/screenshots/02-installation-plan.png" alt="Schematico Elektroinstallationsplan nach DIN EN 60617-11" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Gebäude- &amp; Elektroinstallation (DIN EN 60617-11): Maßstäblicher Grundriss mit Wandstärken, Türen, Fenstern, Steckdosenkombinationen und Schaltern.</i>
+    </p>
   </div>
 </div>
 
@@ -119,25 +107,20 @@ Schematico bietet einen vollwertigen **Installationsplan-Seitentyp** für Wohn-,
 - **Geschwungene Bogenleitungen (`arcWires`):** Verbinde Schalter, Dosen und Leuchten mit eleganten Bézier-Bögen. Weise Stromkreis (`F1 / W1`), Phase (`L1`, `L2`, `L3`), Kabeltyp und Leitungsfarbe zu.
 
 <!-- ======================================================================= -->
-<!-- SCREENSHOT 3: Intelligente Querverweise & Kontaktspiegel                 -->
-<!-- Ersetzen durch: <img src="docs/screenshots/03-cross-references.png" .../>-->
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 3: Intelligente Querverweise & Abbruchstellen                 -->
 <!-- ======================================================================= -->
 <div align="center">
-  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
-    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
-      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
-      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — querverweise_kontaktspiegel.sch</span>
-    </div>
-    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
-      <p style="font-size: 32px; margin: 0 0 10px 0;">🔗</p>
-      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Intelligente Querverweise &amp; Kontaktspiegel</h3>
-      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
-        Spulen und Kontakte referenzieren sich automatisch sheet-übergreifend. Mit Strg+Klick springt man direkt zum Partner – im PDF-Export als klickbare Vektor-Links integriert.
-      </p>
-      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 03-cross-references.png ]</p>
-    </div>
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — pv_anlage_abbruchstellen.sch</b>
+    </p>
+    <a href="docs/screenshots/03-cross-references.png">
+      <img src="docs/screenshots/03-cross-references.png" alt="Schematico Abbruchstellen mit Zielblatt-Querverweisen und Kabeldefinitionen" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Intelligente Querverweise &amp; Abbruchstellen: Automatische Blatt- und Spaltenreferenzen (/1-1.2, /1.2) mit Mantelleitungsdefinitionen (-Backup 5x6 mm²).</i>
+    </p>
   </div>
 </div>
 
@@ -147,29 +130,45 @@ Schematico bietet einen vollwertigen **Installationsplan-Seitentyp** für Wohn-,
 - **Interaktive PDF-Hyperlinks:** Im Vektor-PDF-Export sind alle Querverweise als echte PDF-Hyperlinks hinterlegt. Ein Klick im PDF-Viewer (Adobe Acrobat, Chrome, Mac Vorschau) springt direkt auf das Zielblatt.
 
 <!-- ======================================================================= -->
-<!-- SCREENSHOT 4: Makro-Browser & Projektverwaltung                         -->
-<!-- Ersetzen durch: <img src="docs/screenshots/04-macro-library.png" .../>   -->
+<!-- SCREENSHOT 4: Eigenschafts-Inspektor & BMK-Verwaltung                     -->
 <!-- ======================================================================= -->
 <div align="center">
-  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
-    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
-      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
-      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
-      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — makro_bibliothek_browser.sch</span>
-    </div>
-    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
-      <p style="font-size: 32px; margin: 0 0 10px 0;">📦</p>
-      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">High-Capacity Makro-Bibliothek &amp; Bauteilkatalog</h3>
-      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
-        Schnelle Vorschau und Platzierung von Fenstermakros (.ema), Seitenmakros (.ems) und 2D-Schaltschrankkonturen (.fp1) aus lokalen Archiven mit über 100.000 Dateien.
-      </p>
-      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 04-macro-library.png ]</p>
-    </div>
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — eigenschaften_dialog.sch</b>
+    </p>
+    <a href="docs/screenshots/04-properties-inspector.png">
+      <img src="docs/screenshots/04-properties-inspector.png" alt="Schematico Eigenschafts-Modal & BMK-Verwaltung" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Eigenschaften-Modal: Normgerechtes BMK (-F0), vollständiges Kennzeichen (=Elektroverteilung+ET1-F0), Anschlussbezeichnungen und technische Daten.</i>
+    </p>
   </div>
 </div>
 
-### 4. High-Capacity Makro-Bibliothek (100.000+ Dateien)
+### 4. Normgerechte BMK-Verwaltung &amp; Eigenschaften-Inspektor
+- **Vollständige Kennzeichnung nach DIN EN 81346-2:** Strukturierung nach Anlage (`=`), Ort (`+`) und Betriebsmittelkennzeichen (`-`).
+- **Umfassende Bauteildaten:** Bearbeitung von Funktionstext, Gravurtext, technischen Kennwerten (z.&nbsp;B. `NH 35 A`) und individuellen Pin-Bezeichnungen (1 bis 6).
+- **Formatierungs- &amp; Gravurkontrolle:** Granulare Steuerung von Schriftgrößen, Ausrichtungen und Sichtbarkeiten für jedes Datenfeld.
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 5: High-Capacity Makro-Bibliothek                             -->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 12px; margin: 20px 0; max-width: 960px;">
+    <p align="left" style="margin: 0 0 10px 4px; font-family: monospace; font-size: 12px; color: #8b949e;">
+      🔴 &nbsp; 🟡 &nbsp; 🟢 &nbsp; <b>schematico — makro_bibliothek_browser.sch</b>
+    </p>
+    <a href="docs/screenshots/05-macro-library.png">
+      <img src="docs/screenshots/05-macro-library.png" alt="Schematico High-Performance Makro-Bibliothek" width="100%" style="border-radius: 6px; display: block;" />
+    </a>
+    <p align="center" style="margin: 10px 0 2px 0; font-size: 13px; color: #8b949e;">
+      <i>Makro-Browser: Direkte Anbindung lokaler Herstellerordner (z.&nbsp;B. Schneider Electric), Suchfilter und Platzierung von Fenstermakros (.EMA) und Seitenmakros (.EMS).</i>
+    </p>
+  </div>
+</div>
+
+### 5. High-Capacity Makro-Bibliothek (100.000+ Dateien)
 - Binde lokale Ordner mit Makro-Beständen ohne Performance-Einbußen an.
 - Vorschau, Suchfilter und Platzierung von:
   - Fenstermakros (`.ema`)
@@ -178,19 +177,19 @@ Schematico bietet einen vollwertigen **Installationsplan-Seitentyp** für Wohn-,
   - 2D-Schaltschrank- und Montagekonturen (`.fp1`)
 - Parametrisierbare Makro-Variablen vor der Platzierung anpassen.
 
-### 5. Mehrseitige Projektverwaltung &amp; Titelblock-Synchronisation
+### 6. Mehrseitige Projektverwaltung &amp; Titelblock-Synchronisation
 - Strukturiere Projekte aus Deckblättern, Stromlaufplänen, Installationsplänen und Stücklisten.
 - **Automatische Metadaten-Synchronisation:** Projektdaten (Projektname, Kommission, Anlage, Ort, Zeichner, Datum, Revision) synchronisieren sich live über alle genormten Schriftfelder (DIN EN ISO 7200) und Deckblätter (z.&nbsp;B. Standard-Form F01).
 - Blatt-Reihenfolge per Pfeiltasten verschieben mit automatischer Neunummerierung.
 - Export und Import einzelner Installations- oder Schaltplanseiten als JSON-Datei zur Wiederverwendung.
 
-### 6. Druckreife Vektor-PDF-Exporte &amp; Stücklisten (BOM)
+### 7. Druckreife Vektor-PDF-Exporte &amp; Stücklisten (BOM)
 - Erstelle druckreife Vektor-PDFs in DIN A3 und DIN A4 (Quer- oder Hochformat).
 - Wahlweise vollfarbig oder kontrastoptimiert monochrom.
 - Vollständig verlinkte Querverweise für interaktives Blättern.
 - Automatische Stücklisten-Generierung (Bill of Materials) mit Artikelnummern, Herstellerangaben, technischen Daten und Mengensummierung.
 
-### 7. PWA, Tablet- &amp; Touch-Optimierung
+### 8. PWA, Tablet- &amp; Touch-Optimierung
 - **Offline-fähig &amp; installierbar:** Als Progressive Web App (PWA) direkt auf Tablets (iPad, Android, Surface) installierbar.
 - **Gestensteuerung:** Flüssiges Verschieben mit Touch-Gesten, zentriertes Zoomen mit zwei Fingern.
 - **Lupen-Vorschau (HUD):** Beim Bewegen von Bauteilen oder Türen/Fenstern blendet sich in der gegenüberliegenden Bildschirmecke automatisch eine vergrößerte Lupe ein.
