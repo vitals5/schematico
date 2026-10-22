@@ -1,6 +1,10 @@
 <p align="center">
   <a href="https://vitals5.github.io/schematico/">
-    <img src="public/branding/schematico-banner.png" alt="Schematico Logo" width="620">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="public/branding/schematico-banner-dark.png">
+      <source media="(prefers-color-scheme: light)" srcset="public/branding/schematico-banner-light.png">
+      <img src="public/branding/schematico-banner.png" alt="Schematico Logo" width="620">
+    </picture>
   </a>
 </p>
 
