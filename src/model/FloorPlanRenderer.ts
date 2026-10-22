@@ -278,15 +278,15 @@ export function floorPlanToSvg(
       // Window: wall gap + double glass lines + jamb ticks
       parts.push(`
         <g ${isSelected ? 'class="floorplan-window selected"' : 'class="floorplan-window"'} data-opening-id="${op.id}" style="${cursorStyle}">
-          ${isInteractive ? `<rect x="${Math.min(p1x, p2x) - 6}" y="${Math.min(p1y, p2y) - 6}" width="${Math.abs(p2x - p1x) + 12}" height="${Math.abs(p2y - p1y) + 12}" fill="transparent" pointer-events="all" />` : ''}
+          ${isInteractive ? `<rect x="${Math.min(p1x, p2x) - 8}" y="${Math.min(p1y, p2y) - 8}" width="${Math.abs(p2x - p1x) + 16}" height="${Math.abs(p2y - p1y) + 16}" fill="rgba(0,0,0,0.001)" pointer-events="all" style="cursor:pointer; pointer-events:all;" />` : ''}
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
           <line x1="${(p1x + 1.5 * nx).toFixed(1)}" y1="${(p1y + 1.5 * ny).toFixed(1)}" x2="${(p2x + 1.5 * nx).toFixed(1)}" y2="${(p2y + 1.5 * ny).toFixed(1)}" stroke="${glassColor}" stroke-width="${isSelected ? 2.5 : 1.5}" />
           <line x1="${(p1x - 1.5 * nx).toFixed(1)}" y1="${(p1y - 1.5 * ny).toFixed(1)}" x2="${(p2x - 1.5 * nx).toFixed(1)}" y2="${(p2y - 1.5 * ny).toFixed(1)}" stroke="${glassColor}" stroke-width="${isSelected ? 2.5 : 1.5}" />
           <line x1="${(p1x - 3 * nx).toFixed(1)}" y1="${(p1y - 3 * ny).toFixed(1)}" x2="${(p1x + 3 * nx).toFixed(1)}" y2="${(p1y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
           <line x1="${(p2x - 3 * nx).toFixed(1)}" y1="${(p2y - 3 * ny).toFixed(1)}" x2="${(p2x + 3 * nx).toFixed(1)}" y2="${(p2y + 3 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
           ${isSelected && isInteractive ? `
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="22" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move; pointer-events:all;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-opening-handle-visual="${op.id}" />
           ` : ''}
         </g>
       `);
@@ -294,13 +294,13 @@ export function floorPlanToSvg(
       // Simple Wall Opening / Durchgang: clean wall gap with jamb ticks
       parts.push(`
         <g ${isSelected ? 'class="floorplan-opening selected"' : 'class="floorplan-opening"'} data-opening-id="${op.id}" style="${cursorStyle}">
-          ${isInteractive ? `<rect x="${Math.min(p1x, p2x) - 6}" y="${Math.min(p1y, p2y) - 6}" width="${Math.abs(p2x - p1x) + 12}" height="${Math.abs(p2y - p1y) + 12}" fill="transparent" pointer-events="all" />` : ''}
+          ${isInteractive ? `<rect x="${Math.min(p1x, p2x) - 8}" y="${Math.min(p1y, p2y) - 8}" width="${Math.abs(p2x - p1x) + 16}" height="${Math.abs(p2y - p1y) + 16}" fill="rgba(0,0,0,0.001)" pointer-events="all" style="cursor:pointer; pointer-events:all;" />` : ''}
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
           <line x1="${(p1x - 3.5 * nx).toFixed(1)}" y1="${(p1y - 3.5 * ny).toFixed(1)}" x2="${(p1x + 3.5 * nx).toFixed(1)}" y2="${(p1y + 3.5 * ny).toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#cbd5e0'}" stroke-width="2" />
           <line x1="${(p2x - 3.5 * nx).toFixed(1)}" y1="${(p2y - 3.5 * ny).toFixed(1)}" x2="${(p2x + 3.5 * nx).toFixed(1)}" y2="${(p2y + 3.5 * ny).toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#cbd5e0'}" stroke-width="2" />
           ${isSelected && isInteractive ? `
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="22" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move; pointer-events:all;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-opening-handle-visual="${op.id}" />
           ` : ''}
         </g>
       `);
@@ -314,7 +314,7 @@ export function floorPlanToSvg(
 
       parts.push(`
         <g ${isSelected ? 'class="floorplan-garage selected"' : 'class="floorplan-garage"'} data-opening-id="${op.id}" style="${cursorStyle}">
-          ${isInteractive ? `<rect x="${Math.min(p1x, p2x, t1x, t2x) - 6}" y="${Math.min(p1y, p2y, t1y, t2y) - 6}" width="${Math.max(p1x, p2x, t1x, t2x) - Math.min(p1x, p2x, t1x, t2x) + 12}" height="${Math.max(p1y, p2y, t1y, t2y) - Math.min(p1y, p2y, t1y, t2y) + 12}" fill="transparent" pointer-events="all" />` : ''}
+          ${isInteractive ? `<rect x="${Math.min(p1x, p2x, t1x, t2x) - 8}" y="${Math.min(p1y, p2y, t1y, t2y) - 8}" width="${Math.max(p1x, p2x, t1x, t2x) - Math.min(p1x, p2x, t1x, t2x) + 16}" height="${Math.max(p1y, p2y, t1y, t2y) - Math.min(p1y, p2y, t1y, t2y) + 16}" fill="rgba(0,0,0,0.001)" pointer-events="all" style="cursor:pointer; pointer-events:all;" />` : ''}
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
           <line x1="${(p1x - 3.5 * nx).toFixed(1)}" y1="${(p1y - 3.5 * ny).toFixed(1)}" x2="${(p1x + 3.5 * nx).toFixed(1)}" y2="${(p1y + 3.5 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="2" />
           <line x1="${(p2x - 3.5 * nx).toFixed(1)}" y1="${(p2y - 3.5 * ny).toFixed(1)}" x2="${(p2x + 3.5 * nx).toFixed(1)}" y2="${(p2y + 3.5 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="2" />
@@ -324,8 +324,8 @@ export function floorPlanToSvg(
           <line x1="${p2x.toFixed(1)}" y1="${p2y.toFixed(1)}" x2="${t2x.toFixed(1)}" y2="${t2y.toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#718096'}" stroke-width="1.4" stroke-dasharray="3,3" />
           <line x1="${t1x.toFixed(1)}" y1="${t1y.toFixed(1)}" x2="${t2x.toFixed(1)}" y2="${t2y.toFixed(1)}" stroke="${isSelected ? '#3182ce' : '#718096'}" stroke-width="1.4" stroke-dasharray="3,3" />
           ${isSelected && isInteractive ? `
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="22" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move; pointer-events:all;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-opening-handle-visual="${op.id}" />
           ` : ''}
         </g>
       `);
@@ -347,7 +347,7 @@ export function floorPlanToSvg(
 
       parts.push(`
         <g ${isSelected ? 'class="floorplan-door selected"' : 'class="floorplan-door"'} data-opening-id="${op.id}" style="${cursorStyle}">
-          ${isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="${Math.max(16, hw + 4)}" fill="transparent" pointer-events="all" />` : ''}
+          ${isInteractive ? `<circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="${Math.max(18, hw + 6)}" fill="rgba(0,0,0,0.001)" pointer-events="all" style="cursor:pointer; pointer-events:all;" />` : ''}
           <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="#1a202c" stroke-width="6" stroke-linecap="butt" />
           <line x1="${(p1x - 2.5 * nx).toFixed(1)}" y1="${(p1y - 2.5 * ny).toFixed(1)}" x2="${(p1x + 2.5 * nx).toFixed(1)}" y2="${(p1y + 2.5 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
           <line x1="${(p2x - 2.5 * nx).toFixed(1)}" y1="${(p2y - 2.5 * ny).toFixed(1)}" x2="${(p2x + 2.5 * nx).toFixed(1)}" y2="${(p2y + 2.5 * ny).toFixed(1)}" stroke="#cbd5e0" stroke-width="1.5" />
@@ -358,8 +358,8 @@ export function floorPlanToSvg(
             <line x1="${p1x.toFixed(1)}" y1="${p1y.toFixed(1)}" x2="${p2x.toFixed(1)}" y2="${p2y.toFixed(1)}" stroke="${leafColor}" stroke-width="1.5" stroke-dasharray="4,4" />
           `}
           ${isSelected && isInteractive ? `
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="18" fill="transparent" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move;" />
-            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="22" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-opening-handle" data-opening-id="${op.id}" style="cursor:move; pointer-events:all;" />
+            <circle cx="${op.center.x.toFixed(1)}" cy="${op.center.y.toFixed(1)}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-opening-handle-visual="${op.id}" />
           ` : ''}
         </g>
       `);

@@ -145,6 +145,7 @@ export class CadCanvas {
   private lastTapTime: number = 0;
   private lastTapComponentId: string | null = null;
   private lastTouchTime: number = 0;
+  private magnifierCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' = 'top-left';
   public multiSelectMode: boolean = false;
 
   public toggleMultiSelectMode(enable?: boolean): boolean {
@@ -1442,6 +1443,35 @@ export class CadCanvas {
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
+
+    // 1. Check wall handle resize (if a wall is already selected)
+    const wallHandle = this.wallHandleFromEvent(e, world, false);
+    if (wallHandle && this.mode === 'select') {
+      this.selectWall(wallHandle.wall);
+      this.wallDrag = {
+        wall: wallHandle.wall,
+        handle: wallHandle.handle,
+        startPos: { ...wallHandle.wall.start },
+        startEnd: { ...wallHandle.wall.end },
+        isMovingWholeWall: false,
+        mouseStart: { ...world }
+      };
+      return;
+    }
+
+    // 2. Check opening (door / window) - MUST take precedence over wall body!
+    const clickedOpening = this.openingFromEvent(e, world, false);
+    if (clickedOpening && this.mode === 'select') {
+      this.selectOpening(clickedOpening);
+      this.openingDrag = {
+        opening: clickedOpening,
+        startCenter: { ...clickedOpening.center },
+        mouseStart: { ...world }
+      };
+      return;
+    }
+
+    // 3. Check whole wall
     const wallHit = this.wallFromEvent(e, world, false);
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
@@ -1462,17 +1492,6 @@ export class CadCanvas {
         isMovingWholeWall: !isHandle,
         mouseStart: { ...world },
         openingsStart
-      };
-      return;
-    }
-
-    const clickedOpening = this.openingFromEvent(e, world, false);
-    if (clickedOpening && this.mode === 'select') {
-      this.selectOpening(clickedOpening);
-      this.openingDrag = {
-        opening: clickedOpening,
-        startCenter: { ...clickedOpening.center },
-        mouseStart: { ...world }
       };
       return;
     }
@@ -1753,6 +1772,7 @@ export class CadCanvas {
     this.lastTouchTime = Date.now();
     if (e.touches.length === 2) {
       e.preventDefault();
+      this.hideMagnifier();
       if(this.selectionDrag){translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);this.selectionDrag=undefined;this.render();}
       this.cancelBoxInteraction();this.touchMode = 'pinch';
       this.isDraggingComponent = false;
@@ -1867,6 +1887,46 @@ export class CadCanvas {
         return;
       }
 
+      // 1. Check wall handle resize (if a wall is already selected)
+      const wallHandle = this.wallHandleFromEvent(e, world, true);
+      if (wallHandle && this.mode === 'select') {
+        e.preventDefault();
+        const wasAlreadySelected = (this.selectedWallId === wallHandle.wall.id);
+        if (!wasAlreadySelected) {
+          this.selectWall(wallHandle.wall);
+        }
+        this.wallDrag = {
+          wall: wallHandle.wall,
+          handle: wallHandle.handle,
+          startPos: { ...wallHandle.wall.start },
+          startEnd: { ...wallHandle.wall.end },
+          isMovingWholeWall: false,
+          mouseStart: { ...world }
+        };
+        this.touchMode = 'drag';
+        this.isPanning = false;
+        return;
+      }
+
+      // 2. Check opening (door / window) - MUST take precedence over wall body!
+      const clickedOpening = this.openingFromEvent(e, world, true);
+      if (clickedOpening && this.mode === 'select') {
+        e.preventDefault();
+        const wasOpeningSelected = (this.selectedOpeningId === clickedOpening.id);
+        if (!wasOpeningSelected) {
+          this.selectOpening(clickedOpening);
+        }
+        this.openingDrag = {
+          opening: clickedOpening,
+          startCenter: { ...clickedOpening.center },
+          mouseStart: { ...world }
+        };
+        this.touchMode = 'drag';
+        this.isPanning = false;
+        return;
+      }
+
+      // 3. Check whole wall
       const wallHit = this.wallFromEvent(e, world, true);
       if (wallHit && this.mode === 'select') {
         e.preventDefault();
@@ -1891,23 +1951,6 @@ export class CadCanvas {
           isMovingWholeWall: !isHandle,
           mouseStart: { ...world },
           openingsStart
-        };
-        this.touchMode = 'drag';
-        this.isPanning = false;
-        return;
-      }
-
-      const clickedOpening = this.openingFromEvent(e, world, true);
-      if (clickedOpening && this.mode === 'select') {
-        e.preventDefault();
-        const wasOpeningSelected = (this.selectedOpeningId === clickedOpening.id);
-        if (!wasOpeningSelected) {
-          this.selectOpening(clickedOpening);
-        }
-        this.openingDrag = {
-          opening: clickedOpening,
-          startCenter: { ...clickedOpening.center },
-          mouseStart: { ...world }
         };
         this.touchMode = 'drag';
         this.isPanning = false;
@@ -2052,6 +2095,11 @@ export class CadCanvas {
         }
         this.updateWallSvgFast(drag.wall);
         this.callbacks.onSelectWall?.(drag.wall);
+
+        const targetPt = drag.handle === 'start' ? drag.wall.start : drag.handle === 'end' ? drag.wall.end : { x: (drag.wall.start.x + drag.wall.end.x) / 2, y: (drag.wall.start.y + drag.wall.end.y) / 2 };
+        const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+        const lenM = (Math.hypot(drag.wall.end.x - drag.wall.start.x, drag.wall.end.y - drag.wall.start.y) / ppm).toFixed(2);
+        this.updateMagnifier(t.clientX, t.clientY, targetPt.x, targetPt.y, `📏 ${lenM} m`);
         return;
       }
 
@@ -2080,6 +2128,9 @@ export class CadCanvas {
         }
         this.callbacks.onSelectOpening?.(drag.opening);
         this.render();
+
+        const opLabel = drag.opening.kind === 'window' ? '🪟 Fenster' : drag.opening.kind === 'door' ? '🚪 Tür' : 'Öffnung';
+        this.updateMagnifier(t.clientX, t.clientY, drag.opening.center.x, drag.opening.center.y, opLabel);
         return;
       }
 
@@ -2100,6 +2151,7 @@ export class CadCanvas {
           }
           this.updateConnectedWiresFast(comp.id);
           this.updateAutoconnectPreviewLayer();
+          this.updateMagnifier(touch.clientX, touch.clientY, comp.x, comp.y, comp.bmk || 'Symbol');
         }
       }
     }
@@ -2126,17 +2178,20 @@ export class CadCanvas {
       return;
     }
     if (this.wallDrag) {
+      this.hideMagnifier();
       this.wallDrag = null;
       this.notifyModified();
       this.render();
       return;
     }
     if (this.openingDrag) {
+      this.hideMagnifier();
       this.openingDrag = null;
       this.notifyModified();
       this.render();
       return;
     }
+    this.hideMagnifier();
     if(e.type==='touchcancel' && (this.boxDraft||this.boxResize||this.elementBoxResize)){this.cancelBoxInteraction();this.render();return;}
     if((this.cableDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
     if (this.touchMode === 'pinch' && e.touches.length < 2) {
@@ -2379,7 +2434,125 @@ export class CadCanvas {
         ${this.renderGhostOpening?.() ?? ''}
         <g id="selectionOverlayLayer" pointer-events="none">${this.renderSelectionOverlay()}</g>
       </g>
+
+      <!-- Zoomed Touch Drag Loupe / Magnifier (Screen-Space Overlay) -->
+      ${this.renderMagnifierSvg ? this.renderMagnifierSvg(pageWidth, pageHeight) : ''}
     `;
+  }
+
+  private renderMagnifierSvg(pageWidth: number, pageHeight: number): string {
+    return `
+      <g id="touchMagnifier" style="display: none; pointer-events: none;">
+        <defs>
+          <clipPath id="magnifierClip">
+            <circle cx="70" cy="70" r="66" />
+          </clipPath>
+        </defs>
+        <g id="magnifierFrame" transform="translate(16, 60)" style="transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1);">
+          <!-- Bezel shadow & outer ring -->
+          <circle cx="70" cy="70" r="69" fill="#141923" stroke="#3182ce" stroke-width="3" />
+          
+          <!-- Clipped zoomed viewport -->
+          <g clip-path="url(#magnifierClip)">
+            <rect x="0" y="0" width="140" height="140" fill="#141923" />
+            <g id="magnifierContent" transform="translate(70, 70) scale(2.2)">
+              <rect x="0" y="0" width="${pageWidth}" height="${pageHeight}" fill="#1a202c" stroke="#2d3748" stroke-width="2"/>
+              <rect x="0" y="0" width="${pageWidth}" height="${pageHeight}" fill="url(#cadGrid)" style="display: ${this.gridSnap && this.gridResolution !== 'off' ? 'block' : 'none'};"/>
+              <use href="#floorPlanLayer" />
+              <use href="#boxesLayer" />
+              <use href="#wiresLayer" />
+              <use href="#componentsLayer" />
+              <use href="#textsLayer" />
+            </g>
+
+            <!-- Center Reticle / Crosshair -->
+            <circle cx="70" cy="70" r="7" fill="none" stroke="#63b3ed" stroke-width="1.5" />
+            <circle cx="70" cy="70" r="1.5" fill="#63b3ed" />
+            <line x1="70" y1="46" x2="70" y2="59" stroke="#63b3ed" stroke-width="1.2" />
+            <line x1="70" y1="81" x2="70" y2="94" stroke="#63b3ed" stroke-width="1.2" />
+            <line x1="46" y1="70" x2="59" y2="70" stroke="#63b3ed" stroke-width="1.2" />
+            <line x1="81" y1="70" x2="94" y2="70" stroke="#63b3ed" stroke-width="1.2" />
+          </g>
+
+          <!-- Inner reflection ring -->
+          <circle cx="70" cy="70" r="66" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.2" />
+
+          <!-- Bottom badge pill -->
+          <g id="magnifierBadge" transform="translate(10, 142)">
+            <rect x="0" y="0" width="120" height="20" rx="10" fill="#1a202c" stroke="#3182ce" stroke-width="1.2" />
+            <text id="magnifierText" x="60" y="14" font-size="9" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="bold" fill="#63b3ed" text-anchor="middle">🔍 Lupe</text>
+          </g>
+        </g>
+      </g>
+    `;
+  }
+
+  private updateMagnifier(screenX: number, screenY: number, worldX: number, worldY: number, label?: string): void {
+    const el = this.svg.getElementById('touchMagnifier') as SVGElement | null;
+    if (!el) return;
+    el.style.display = 'block';
+
+    const rect = this.svg.getBoundingClientRect();
+    const W = rect.width || window.innerWidth || 400;
+    const H = rect.height || window.innerHeight || 600;
+
+    const sx = screenX - rect.left;
+    const sy = screenY - rect.top;
+
+    const loupeW = 140;
+    const loupeH = 166;
+    const margin = 14;
+    const topMargin = 55;
+    const bottomMargin = 70;
+
+    const corners: Record<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right', { x: number; y: number }> = {
+      'top-left': { x: margin, y: topMargin },
+      'top-right': { x: Math.max(margin, W - loupeW - margin), y: topMargin },
+      'bottom-left': { x: margin, y: Math.max(topMargin, H - loupeH - bottomMargin) },
+      'bottom-right': { x: Math.max(margin, W - loupeW - margin), y: Math.max(topMargin, H - loupeH - bottomMargin) },
+    };
+
+    let bestCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' = this.magnifierCorner;
+    let maxDist = -1;
+
+    for (const name of ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const) {
+      const pos = corners[name];
+      const cx = pos.x + loupeW / 2;
+      const cy = pos.y + loupeH / 2;
+      let dist = Math.hypot(sx - cx, sy - cy);
+      if (name === this.magnifierCorner) {
+        dist += 45;
+      }
+      if (dist > maxDist) {
+        maxDist = dist;
+        bestCorner = name;
+      }
+    }
+    this.magnifierCorner = bestCorner;
+    const pos = corners[bestCorner];
+
+    const frame = this.svg.getElementById('magnifierFrame');
+    if (frame) {
+      frame.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+    }
+
+    const M = Math.max(2.2, this.scale * 2.5);
+    const content = this.svg.getElementById('magnifierContent');
+    if (content) {
+      content.setAttribute('transform', `translate(${(70 - worldX * M).toFixed(1)}, ${(70 - worldY * M).toFixed(1)}) scale(${M.toFixed(3)})`);
+    }
+
+    if (label) {
+      const textEl = this.svg.getElementById('magnifierText');
+      if (textEl) {
+        textEl.textContent = label;
+      }
+    }
+  }
+
+  private hideMagnifier(): void {
+    const el = this.svg.getElementById('touchMagnifier') as SVGElement | null;
+    if (el) el.style.display = 'none';
   }
 
   private renderPlotFrame(w: number, h: number): string {
@@ -2517,21 +2690,66 @@ export class CadCanvas {
     return this.activePage.cables?.find(c=>c.id===id);
   }
 
-  private wallFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): { wall: WallSegment; handle?: 'start' | 'end' } | undefined {
+  private wallHandleFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): { wall: WallSegment; handle: 'start' | 'end' } | undefined {
     const handleEl = (e.target as Element)?.closest?.('[data-wall-handle]');
     if (handleEl) {
       const wallId = handleEl.getAttribute('data-wall-id');
       const handle = handleEl.getAttribute('data-wall-handle') as 'start' | 'end';
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
-      if (wall) return { wall, handle };
+      if (wall && handle) return { wall, handle };
+    }
+
+    const walls = this.activePage.floorPlan?.walls;
+    if (!walls || walls.length === 0 || !world) return undefined;
+
+    const scale = this.scale > 0.05 ? this.scale : 1;
+    const handleWorldTol = (isTouch ? 36 : 14) / scale;
+
+    if (this.selectedWallId) {
+      const selectedWall = walls.find(w => w.id === this.selectedWallId);
+      if (selectedWall) {
+        if (Math.hypot(world.x - selectedWall.start.x, world.y - selectedWall.start.y) <= handleWorldTol) {
+          return { wall: selectedWall, handle: 'start' };
+        }
+        if (Math.hypot(world.x - selectedWall.end.x, world.y - selectedWall.end.y) <= handleWorldTol) {
+          return { wall: selectedWall, handle: 'end' };
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private openingFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): WallOpening | undefined {
+    const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
+    if (id) return this.activePage.floorPlan?.openings?.find(op => op.id === id);
+    if (isTouch && world && this.activePage.floorPlan?.openings) {
+      const scale = this.scale > 0.05 ? this.scale : 1;
+      const tol = 30 / scale;
+      const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+      for (const op of this.activePage.floorPlan.openings) {
+        const opW = op.width < 5 ? op.width * ppm : op.width;
+        const hw = opW / 2;
+        if (Math.hypot(world.x - op.center.x, world.y - op.center.y) <= Math.max(tol, hw + 4)) {
+          return op;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private wallFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): { wall: WallSegment; handle?: 'start' | 'end' } | undefined {
+    const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
+    if (wallEl) {
+      const wallId = wallEl.getAttribute('data-wall-id');
+      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
+      if (wall) return { wall };
     }
 
     const walls = this.activePage.floorPlan?.walls;
     if (!walls || walls.length === 0) return undefined;
 
     const scale = this.scale > 0.05 ? this.scale : 1;
-    const handleWorldTol = (isTouch ? 44 : 14) / scale;
-    const wallWorldTol = (isTouch ? 36 : 14) / scale;
+    const wallWorldTol = (isTouch ? 22 : 10) / scale;
 
     const distToSeg = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }): number => {
       const dx = b.x - a.x;
@@ -2543,58 +2761,19 @@ export class CadCanvas {
       return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
     };
 
-    // 1. Proximity check for currently selected wall (handles and body)
     if (this.selectedWallId && world) {
       const selectedWall = walls.find(w => w.id === this.selectedWallId);
       if (selectedWall) {
-        if (Math.hypot(world.x - selectedWall.start.x, world.y - selectedWall.start.y) <= handleWorldTol) {
-          return { wall: selectedWall, handle: 'start' };
-        }
-        if (Math.hypot(world.x - selectedWall.end.x, world.y - selectedWall.end.y) <= handleWorldTol) {
-          return { wall: selectedWall, handle: 'end' };
-        }
         if (distToSeg(world, selectedWall.start, selectedWall.end) <= wallWorldTol) {
           return { wall: selectedWall };
         }
       }
     }
 
-    // 2. Direct DOM wall element
-    const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
-    if (wallEl) {
-      const wallId = wallEl.getAttribute('data-wall-id');
-      const wall = walls.find(w => w.id === wallId);
-      if (wall) return { wall };
-    }
-
-    // 3. Proximity hit on ANY wall handle or body
     if (world) {
-      for (const w of walls) {
-        if (Math.hypot(world.x - w.start.x, world.y - w.start.y) <= handleWorldTol) {
-          return { wall: w, handle: 'start' };
-        }
-        if (Math.hypot(world.x - w.end.x, world.y - w.end.y) <= handleWorldTol) {
-          return { wall: w, handle: 'end' };
-        }
-      }
       const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
       const nearest = findNearestWall({ x: world.x, y: world.y }, walls, wallWorldTol, ppm);
       if (nearest) return { wall: nearest.wall };
-    }
-    return undefined;
-  }
-
-  private openingFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): WallOpening | undefined {
-    const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
-    if (id) return this.activePage.floorPlan?.openings?.find(op => op.id === id);
-    if (world && this.activePage.floorPlan?.openings) {
-      const scale = this.scale > 0.05 ? this.scale : 1;
-      const tol = (isTouch ? 40 : 16) / scale;
-      for (const op of this.activePage.floorPlan.openings) {
-        if (Math.hypot(world.x - op.center.x, world.y - op.center.y) <= tol) {
-          return op;
-        }
-      }
     }
     return undefined;
   }

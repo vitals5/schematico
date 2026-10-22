@@ -44,7 +44,7 @@ component.functionText = 'Geändert';
 const scene: any = { activePage: page, svg: { innerHTML: '' }, scale: 1, panX: 0, panY: 0,
   getEffectiveGridSize: () => 8, renderPlotFrame: () => '<g id="normal-frame"/>',
 };
-for (const name of ['renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderInteractiveWall', 'renderHoveredPin', 'renderGhostSymbol', 'renderGhostOpening']) scene[name] = () => '';
+for (const name of ['renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderInteractiveWall', 'renderHoveredPin', 'renderGhostSymbol', 'renderGhostOpening', 'renderMagnifierSvg']) scene[name] = () => '';
 CadCanvas.prototype.render.call(scene);
 assert.match(scene.svg.innerHTML, /fill="#1a202c"/);
 assert.match(scene.svg.innerHTML, /fill="url\(#cadGrid\)"/);
@@ -439,23 +439,23 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   assert.equal(Math.round(canvas.panY), 30);
 
   // 3. Wall handle & body proximity check (handle at 100, 100)
-  // Touch query at 120, 100 (dist 20px <= 44px touch tolerance, but > 14px desktop tolerance)
+  // Touch query at 120, 100 (dist 20px <= 36px touch tolerance, but > 14px desktop tolerance)
   const fakeEvent = { target: null } as unknown as Event;
-  const desktopHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, false);
-  const touchHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, true);
+  const desktopHit = (canvas as any).wallHandleFromEvent(fakeEvent, { x: 120, y: 100 }, false);
+  const touchHit = (canvas as any).wallHandleFromEvent(fakeEvent, { x: 120, y: 100 }, true);
   assert.equal(desktopHit?.handle, undefined, 'Desktop mouse must not trigger handle at 20px distance');
-  assert.equal(touchHit?.handle, 'start', 'Touch with 44px screen proximity must reliably hit start handle at 20px distance');
+  assert.equal(touchHit?.handle, 'start', 'Touch with 36px screen proximity must reliably hit start handle at 20px distance');
 
-  // Test wall body proximity for whole wall move: query at (200, 125) -> dist 25px from wall line
-  const desktopBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 125 }, false);
-  const touchBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 125 }, true);
-  assert.equal(desktopBody, undefined, 'Desktop mouse must not hit wall body 25px away');
-  assert.equal(touchBody?.wall.id, 'w1', 'Touch must hit wall body within 36px tolerance for moving whole wall');
+  // Test wall body proximity for whole wall move: query at (200, 115) -> dist 15px from wall line
+  const desktopBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 115 }, false);
+  const touchBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 115 }, true);
+  assert.equal(desktopBody, undefined, 'Desktop mouse must not hit wall body 15px away');
+  assert.equal(touchBody?.wall.id, 'w1', 'Touch must hit wall body within tolerance for moving whole wall');
 
   // Test mobile phone zoomed-out scale (e.g. scale = 0.35)
   canvas.scale = 0.35;
   // Point at 80 world units away = 80 * 0.35 = 28 screen pixels away
-  const phoneTouchHit = (canvas as any).wallFromEvent(fakeEvent, { x: 100, y: 180 }, true);
+  const phoneTouchHit = (canvas as any).wallHandleFromEvent(fakeEvent, { x: 100, y: 180 }, true);
   assert.equal(phoneTouchHit?.handle, 'start', 'On zoomed out phone (scale 0.35), 28 screen px must reliably hit handle');
   canvas.scale = 1.0;
 
@@ -486,6 +486,32 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   canvas.lastTouchTime = Date.now() - 2000;
   canvas.onContextMenu({ preventDefault: () => {}, clientX: 10, clientY: 10, target: null } as unknown as MouseEvent);
   assert.equal(ctxMenuTriggered, true, 'Context menu must open for desktop mouse clicks');
+
+  // 7. Touch Drag Magnifier (Loupe): furthest corner positioning
+  const mockSvg: any = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 700 }),
+    getElementById: (id: string) => ({
+      style: {},
+      setAttribute: () => {},
+      textContent: ''
+    })
+  };
+  canvas.svg = mockSvg;
+  canvas.magnifierCorner = 'top-left';
+
+  // Finger at bottom-right (350, 600) -> furthest corner must be top-left
+  (canvas as any).updateMagnifier(350, 600, 100, 100, 'Test Label');
+  assert.equal((canvas as any).magnifierCorner, 'top-left', 'When dragging at bottom-right, loupe must dock at top-left');
+
+  // Finger at top-left (30, 40) -> furthest corner must switch to bottom-right
+  (canvas as any).updateMagnifier(30, 40, 100, 100, 'Test Label');
+  assert.equal((canvas as any).magnifierCorner, 'bottom-right', 'When dragging at top-left, loupe must dock at bottom-right');
+
+  // Finger at top-right (370, 50) -> furthest corner must switch to bottom-left
+  (canvas as any).updateMagnifier(370, 50, 100, 100, 'Test Label');
+  assert.equal((canvas as any).magnifierCorner, 'bottom-left', 'When dragging at top-right, loupe must dock at bottom-left');
+
+  (canvas as any).hideMagnifier();
 
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }
