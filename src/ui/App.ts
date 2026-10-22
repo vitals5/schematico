@@ -576,7 +576,7 @@ export class App {
         resizer?.classList.remove('collapsed');
       }
     }
-    setTimeout(() => this.canvas?.fitToScreen(), 120);
+    setTimeout(() => this.canvas?.render(), 120);
   }
 
   public setRightPanelCollapsed(collapsed: boolean): void {
@@ -601,7 +601,7 @@ export class App {
         resizer?.classList.remove('collapsed');
       }
     }
-    setTimeout(() => this.canvas?.fitToScreen(), 120);
+    setTimeout(() => this.canvas?.render(), 120);
   }
 
   private initPanelResizers(): void {
@@ -638,7 +638,7 @@ export class App {
           window.removeEventListener('mouseup', upHandler);
           window.removeEventListener('touchmove', moveHandler);
           window.removeEventListener('touchend', upHandler);
-          this.canvas?.fitToScreen();
+          this.canvas?.render();
         };
         window.addEventListener('mousemove', moveHandler);
         window.addEventListener('mouseup', upHandler);
@@ -677,7 +677,7 @@ export class App {
           window.removeEventListener('mouseup', upHandler);
           window.removeEventListener('touchmove', moveHandler);
           window.removeEventListener('touchend', upHandler);
-          this.canvas?.fitToScreen();
+          this.canvas?.render();
         };
         window.addEventListener('mousemove', moveHandler);
         window.addEventListener('mouseup', upHandler);
@@ -828,11 +828,67 @@ export class App {
       this.updateFloatingSelectionBar();
     });
 
-    // Toggle Nav HUD collapse/expand
-    document.getElementById('btnToggleNavHud')?.addEventListener('click', () => {
-      const hud = document.getElementById('touchNavHud');
-      hud?.classList.toggle('collapsed');
-    });
+    // Drag & Toggle Nav HUD
+    const hud = document.getElementById('touchNavHud');
+    const hudToggle = document.getElementById('btnToggleNavHud');
+    if (hud) {
+      let isDraggingHud = false;
+      let hudDragStart = { x: 0, y: 0 };
+      let hudInitialPos = { left: 0, top: 0 };
+      let hasMovedHud = false;
+
+      hud.addEventListener('pointerdown', (e: PointerEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.dpad-btn, .hud-btn')) return;
+        isDraggingHud = true;
+        hasMovedHud = false;
+        hudDragStart = { x: e.clientX, y: e.clientY };
+        const rect = hud.getBoundingClientRect();
+        const containerRect = hud.parentElement?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        hudInitialPos = {
+          left: rect.left - containerRect.left,
+          top: rect.top - containerRect.top
+        };
+      });
+
+      window.addEventListener('pointermove', (e: PointerEvent) => {
+        if (!isDraggingHud) return;
+        const dx = e.clientX - hudDragStart.x;
+        const dy = e.clientY - hudDragStart.y;
+        if (!hasMovedHud && Math.hypot(dx, dy) > 4) {
+          hasMovedHud = true;
+        }
+        if (hasMovedHud) {
+          const container = hud.parentElement;
+          const cw = container?.clientWidth || window.innerWidth;
+          const ch = container?.clientHeight || window.innerHeight;
+          const hw = hud.offsetWidth;
+          const hh = hud.offsetHeight;
+          const newLeft = Math.max(6, Math.min(cw - hw - 6, hudInitialPos.left + dx));
+          const newTop = Math.max(6, Math.min(ch - hh - 6, hudInitialPos.top + dy));
+          hud.style.left = `${newLeft}px`;
+          hud.style.top = `${newTop}px`;
+          hud.style.right = 'auto';
+          hud.style.bottom = 'auto';
+        }
+      });
+
+      const onHudUp = () => {
+        if (!isDraggingHud) return;
+        isDraggingHud = false;
+      };
+      window.addEventListener('pointerup', onHudUp);
+      window.addEventListener('pointercancel', onHudUp);
+
+      hudToggle?.addEventListener('click', (e) => {
+        if (hasMovedHud) {
+          e.stopPropagation();
+          hasMovedHud = false;
+          return;
+        }
+        hud.classList.toggle('collapsed');
+      });
+    }
 
     document.getElementById('fabFit')?.addEventListener('click', () => {
       this.canvas.fitToScreen();

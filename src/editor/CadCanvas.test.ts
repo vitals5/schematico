@@ -438,19 +438,32 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   assert.equal(Math.round(canvas.panX), 140);
   assert.equal(Math.round(canvas.panY), 30);
 
-  // 3. Wall handle proximity check (handle at 100, 100)
-  // Touch query at 120, 100 (dist 20px <= 28px touch tolerance, but > 12px desktop tolerance)
+  // 3. Wall handle & body proximity check (handle at 100, 100)
+  // Touch query at 120, 100 (dist 20px <= 44px touch tolerance, but > 14px desktop tolerance)
   const fakeEvent = { target: null } as unknown as Event;
   const desktopHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, false);
   const touchHit = (canvas as any).wallFromEvent(fakeEvent, { x: 120, y: 100 }, true);
   assert.equal(desktopHit?.handle, undefined, 'Desktop mouse must not trigger handle at 20px distance');
-  assert.equal(touchHit?.handle, 'start', 'Touch with 28px proximity must reliably hit start handle at 20px distance');
+  assert.equal(touchHit?.handle, 'start', 'Touch with 44px screen proximity must reliably hit start handle at 20px distance');
+
+  // Test wall body proximity for whole wall move: query at (200, 125) -> dist 25px from wall line
+  const desktopBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 125 }, false);
+  const touchBody = (canvas as any).wallFromEvent(fakeEvent, { x: 200, y: 125 }, true);
+  assert.equal(desktopBody, undefined, 'Desktop mouse must not hit wall body 25px away');
+  assert.equal(touchBody?.wall.id, 'w1', 'Touch must hit wall body within 36px tolerance for moving whole wall');
+
+  // Test mobile phone zoomed-out scale (e.g. scale = 0.35)
+  canvas.scale = 0.35;
+  // Point at 80 world units away = 80 * 0.35 = 28 screen pixels away
+  const phoneTouchHit = (canvas as any).wallFromEvent(fakeEvent, { x: 100, y: 180 }, true);
+  assert.equal(phoneTouchHit?.handle, 'start', 'On zoomed out phone (scale 0.35), 28 screen px must reliably hit handle');
+  canvas.scale = 1.0;
 
   // 4. Opening proximity check (center at 200, 100)
   const desktopOp = (canvas as any).openingFromEvent(fakeEvent, { x: 220, y: 100 }, false);
   const touchOp = (canvas as any).openingFromEvent(fakeEvent, { x: 220, y: 100 }, true);
   assert.equal(desktopOp, undefined, 'Desktop mouse must not hit opening 20px away without element click');
-  assert.equal(touchOp?.id, 'op1', 'Touch must hit opening within 28px center proximity');
+  assert.equal(touchOp?.id, 'op1', 'Touch must hit opening within generous center proximity');
 
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }

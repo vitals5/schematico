@@ -115,7 +115,7 @@ export class CadCanvas {
     this.render();
   }
   public selectedTextId: string | null = null;
-  private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number } } | null = null;
+  private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number }; openingsStart?: Record<string, { x: number; y: number }> } | null = null;
   private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
   private multipleSelection?: ElementSelection;
@@ -1438,22 +1438,31 @@ export class CadCanvas {
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
-    const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e) : null;
+    const wallHit = this.wallFromEvent(e, world, false);
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
       const isHandle = !!wallHit.handle;
+      const openingsStart: Record<string, { x: number; y: number }> = {};
+      if (this.activePage.floorPlan?.openings) {
+        for (const op of this.activePage.floorPlan.openings) {
+          if (op.wallId === wallHit.wall.id) {
+            openingsStart[op.id] = { ...op.center };
+          }
+        }
+      }
       this.wallDrag = {
         wall: wallHit.wall,
         handle: wallHit.handle ?? 'both',
         startPos: { ...wallHit.wall.start },
         startEnd: { ...wallHit.wall.end },
         isMovingWholeWall: !isHandle,
-        mouseStart: { ...world }
+        mouseStart: { ...world },
+        openingsStart
       };
       return;
     }
 
-    const clickedOpening = this.floorPlanEditMode ? this.openingFromEvent(e) : null;
+    const clickedOpening = this.openingFromEvent(e, world, false);
     if (clickedOpening && this.mode === 'select') {
       this.selectOpening(clickedOpening);
       this.openingDrag = {
@@ -1578,6 +1587,15 @@ export class CadCanvas {
         drag.wall.start.y = drag.startPos.y + snappedDy;
         drag.wall.end.x = drag.startEnd!.x + snappedDx;
         drag.wall.end.y = drag.startEnd!.y + snappedDy;
+        if (drag.isMovingWholeWall && (drag as any).openingsStart && this.activePage.floorPlan?.openings) {
+          for (const op of this.activePage.floorPlan.openings) {
+            const startCenter = (drag as any).openingsStart[op.id];
+            if (startCenter) {
+              op.center.x = startCenter.x + snappedDx;
+              op.center.y = startCenter.y + snappedDy;
+            }
+          }
+        }
       }
       this.callbacks.onSelectWall?.(drag.wall);
       this.render();
@@ -1847,30 +1865,49 @@ export class CadCanvas {
       const wallHit = this.wallFromEvent(e, world, true);
       if (wallHit && this.mode === 'select') {
         e.preventDefault();
+        const wasAlreadySelected = (this.selectedWallId === wallHit.wall.id);
         this.selectWall(wallHit.wall);
         const isHandle = !!wallHit.handle;
+        const openingsStart: Record<string, { x: number; y: number }> = {};
+        if (this.activePage.floorPlan?.openings) {
+          for (const op of this.activePage.floorPlan.openings) {
+            if (op.wallId === wallHit.wall.id) {
+              openingsStart[op.id] = { ...op.center };
+            }
+          }
+        }
         this.wallDrag = {
           wall: wallHit.wall,
           handle: wallHit.handle ?? 'both',
           startPos: { ...wallHit.wall.start },
           startEnd: { ...wallHit.wall.end },
           isMovingWholeWall: !isHandle,
-          mouseStart: { ...world }
+          mouseStart: { ...world },
+          openingsStart
         };
-        this.render();
+        this.touchMode = 'drag';
+        this.isPanning = false;
+        if (!wasAlreadySelected) {
+          this.render();
+        }
         return;
       }
 
       const clickedOpening = this.openingFromEvent(e, world, true);
       if (clickedOpening && this.mode === 'select') {
         e.preventDefault();
+        const wasOpeningSelected = (this.selectedOpeningId === clickedOpening.id);
         this.selectOpening(clickedOpening);
         this.openingDrag = {
           opening: clickedOpening,
           startCenter: { ...clickedOpening.center },
           mouseStart: { ...world }
         };
-        this.render();
+        this.touchMode = 'drag';
+        this.isPanning = false;
+        if (!wasOpeningSelected) {
+          this.render();
+        }
         return;
       }
 
@@ -1999,6 +2036,15 @@ export class CadCanvas {
           drag.wall.start.y = drag.startPos.y + snappedDy;
           drag.wall.end.x = drag.startEnd!.x + snappedDx;
           drag.wall.end.y = drag.startEnd!.y + snappedDy;
+          if (drag.isMovingWholeWall && (drag as any).openingsStart && this.activePage.floorPlan?.openings) {
+            for (const op of this.activePage.floorPlan.openings) {
+              const startCenter = (drag as any).openingsStart[op.id];
+              if (startCenter) {
+                op.center.x = startCenter.x + snappedDx;
+                op.center.y = startCenter.y + snappedDy;
+              }
+            }
+          }
         }
         this.updateWallSvgFast(drag.wall);
         this.callbacks.onSelectWall?.(drag.wall);
@@ -2474,28 +2520,60 @@ export class CadCanvas {
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
       if (wall) return { wall, handle };
     }
-    // Proximity check for selected wall handles
-    if (this.selectedWallId && world && this.activePage.floorPlan?.walls) {
-      const selectedWall = this.activePage.floorPlan.walls.find(w => w.id === this.selectedWallId);
+
+    const walls = this.activePage.floorPlan?.walls;
+    if (!walls || walls.length === 0) return undefined;
+
+    const scale = this.scale > 0.05 ? this.scale : 1;
+    const handleWorldTol = (isTouch ? 44 : 14) / scale;
+    const wallWorldTol = (isTouch ? 36 : 14) / scale;
+
+    const distToSeg = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }): number => {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+      let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    };
+
+    // 1. Proximity check for currently selected wall (handles and body)
+    if (this.selectedWallId && world) {
+      const selectedWall = walls.find(w => w.id === this.selectedWallId);
       if (selectedWall) {
-        const tol = isTouch ? 28 : 12;
-        if (Math.hypot(world.x - selectedWall.start.x, world.y - selectedWall.start.y) <= tol) {
+        if (Math.hypot(world.x - selectedWall.start.x, world.y - selectedWall.start.y) <= handleWorldTol) {
           return { wall: selectedWall, handle: 'start' };
         }
-        if (Math.hypot(world.x - selectedWall.end.x, world.y - selectedWall.end.y) <= tol) {
+        if (Math.hypot(world.x - selectedWall.end.x, world.y - selectedWall.end.y) <= handleWorldTol) {
           return { wall: selectedWall, handle: 'end' };
+        }
+        if (distToSeg(world, selectedWall.start, selectedWall.end) <= wallWorldTol) {
+          return { wall: selectedWall };
         }
       }
     }
+
+    // 2. Direct DOM wall element
     const wallEl = (e.target as Element)?.closest?.('[data-wall-id]');
     if (wallEl) {
       const wallId = wallEl.getAttribute('data-wall-id');
-      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === wallId);
+      const wall = walls.find(w => w.id === wallId);
       if (wall) return { wall };
     }
-    if (isTouch && world && this.activePage.floorPlan?.walls) {
-      const ppm = this.activePage.floorPlan.scale?.pixelPerMeter || 50;
-      const nearest = findNearestWall({ x: world.x, y: world.y }, this.activePage.floorPlan.walls, 24, ppm);
+
+    // 3. Proximity hit on ANY wall handle or body
+    if (world) {
+      for (const w of walls) {
+        if (Math.hypot(world.x - w.start.x, world.y - w.start.y) <= handleWorldTol) {
+          return { wall: w, handle: 'start' };
+        }
+        if (Math.hypot(world.x - w.end.x, world.y - w.end.y) <= handleWorldTol) {
+          return { wall: w, handle: 'end' };
+        }
+      }
+      const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+      const nearest = findNearestWall({ x: world.x, y: world.y }, walls, wallWorldTol, ppm);
       if (nearest) return { wall: nearest.wall };
     }
     return undefined;
@@ -2504,9 +2582,11 @@ export class CadCanvas {
   private openingFromEvent(e: Event, world?: { x: number; y: number }, isTouch: boolean = false): WallOpening | undefined {
     const id = (e.target as Element)?.closest?.('[data-opening-id]')?.getAttribute('data-opening-id');
     if (id) return this.activePage.floorPlan?.openings?.find(op => op.id === id);
-    if (isTouch && world && this.activePage.floorPlan?.openings) {
+    if (world && this.activePage.floorPlan?.openings) {
+      const scale = this.scale > 0.05 ? this.scale : 1;
+      const tol = (isTouch ? 40 : 16) / scale;
       for (const op of this.activePage.floorPlan.openings) {
-        if (Math.hypot(world.x - op.center.x, world.y - op.center.y) <= 28) {
+        if (Math.hypot(world.x - op.center.x, world.y - op.center.y) <= tol) {
           return op;
         }
       }

@@ -585,7 +585,7 @@ body.resizing {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  z-index: 55;
+  z-index: 1200;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
   user-select: none;
   touch-action: none;
@@ -768,8 +768,10 @@ body.resizing {
   }
 
   .touch-nav-hud {
-    bottom: 68px;
-    right: 8px;
+    top: 14px;
+    bottom: auto;
+    right: 10px;
+    z-index: 1200;
   }
 }
 

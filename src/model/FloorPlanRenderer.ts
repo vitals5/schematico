@@ -201,7 +201,7 @@ export function floorPlanToSvg(
     // Hit area for clicking/dragging (only in active floor plan edit mode)
     if (isInteractive) {
       parts.push(
-        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="transparent" stroke-width="${Math.max(16, strokeWidth + 10)}" stroke-linecap="round" data-wall-id="${wall.id}" class="floorplan-wall-hit" style="cursor:pointer;" />`
+        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="transparent" stroke-width="${Math.max(28, strokeWidth + 20)}" stroke-linecap="round" data-wall-id="${wall.id}" class="floorplan-wall-hit" style="cursor:pointer;" />`
       );
     }
 
@@ -231,11 +231,11 @@ export function floorPlanToSvg(
         </g>
       `);
       parts.push(
-        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="18" fill="transparent" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />
+        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="32" fill="transparent" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />
         <circle cx="${wall.start.x}" cy="${wall.start.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
       );
       parts.push(
-        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="18" fill="transparent" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />
+        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="32" fill="transparent" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />
         <circle cx="${wall.end.x}" cy="${wall.end.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
       );
     }
