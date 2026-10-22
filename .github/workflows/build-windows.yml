@@ -1,7 +1,11 @@
-name: Build Windows Application (Deactivated)
+name: Build Windows Application
 
-# Vorerst deaktiviert auf Benutzeranfrage (kein Windows-Build)
 on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -9,7 +13,6 @@ permissions:
 
 jobs:
   build-windows:
-    if: false # Vorerst deaktiviert auf Benutzeranfrage
     runs-on: windows-latest
 
     steps:
