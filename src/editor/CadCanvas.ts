@@ -1629,22 +1629,41 @@ export class CadCanvas {
       const drag = this.openingDrag;
       const dx = world.x - drag.mouseStart.x;
       const dy = world.y - drag.mouseStart.y;
-      const newX = this.snap(drag.startCenter.x + dx);
-      const newY = this.snap(drag.startCenter.y + dy, false, 'y');
-      drag.opening.center.x = newX;
-      drag.opening.center.y = newY;
+      const walls = this.activePage.floorPlan?.walls || [];
+      const currentWall = drag.opening.wallId ? walls.find(w => w.id === drag.opening.wallId) : undefined;
+      let newX = this.snap(drag.startCenter.x + dx);
+      let newY = this.snap(drag.startCenter.y + dy, false, 'y');
 
-      if (this.activePage.floorPlan?.walls) {
-        const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 35);
+      if (currentWall) {
+        const wdx = currentWall.end.x - currentWall.start.x;
+        const wdy = currentWall.end.y - currentWall.start.y;
+        const lenSq = wdx * wdx + wdy * wdy;
+        if (lenSq > 0) {
+          const rawTargetX = drag.startCenter.x + dx;
+          const rawTargetY = drag.startCenter.y + dy;
+          let tNorm = ((rawTargetX - currentWall.start.x) * wdx + (rawTargetY - currentWall.start.y) * wdy) / lenSq;
+          const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+          const opW = drag.opening.width < 5 ? drag.opening.width * ppm : drag.opening.width;
+          const halfW = opW / 2;
+          const wallLen = Math.sqrt(lenSq);
+          const marginNorm = Math.min(0.48, (halfW + 4) / wallLen);
+          tNorm = Math.max(marginNorm, Math.min(1 - marginNorm, tNorm));
+          newX = Math.round(currentWall.start.x + tNorm * wdx);
+          newY = Math.round(currentWall.start.y + tNorm * wdy);
+        }
+      } else if (walls.length > 0) {
+        const nearest = findNearestWall({ x: newX, y: newY }, walls, 35);
         if (nearest) {
           drag.opening.wallId = nearest.wall.id;
-          drag.opening.center.x = Math.round(nearest.wallCenterPoint.x);
-          drag.opening.center.y = Math.round(nearest.wallCenterPoint.y);
+          newX = Math.round(nearest.wallCenterPoint.x);
+          newY = Math.round(nearest.wallCenterPoint.y);
           const wdx = nearest.wall.end.x - nearest.wall.start.x;
           const wdy = nearest.wall.end.y - nearest.wall.start.y;
           drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
         }
       }
+      drag.opening.center.x = newX;
+      drag.opening.center.y = newY;
       this.callbacks.onSelectOpening?.(drag.opening);
       this.render();
       return;
@@ -1891,10 +1910,17 @@ export class CadCanvas {
       const wallHandle = this.wallHandleFromEvent(e, world, true);
       if (wallHandle && this.mode === 'select') {
         e.preventDefault();
-        const wasAlreadySelected = (this.selectedWallId === wallHandle.wall.id);
-        if (!wasAlreadySelected) {
-          this.selectWall(wallHandle.wall);
-        }
+        this.clearMultipleSelection();
+        this.selectedWallId = wallHandle.wall.id;
+        this.selectedOpeningId = null;
+        this.selectedComponentId = null;
+        this.selectedWireId = null;
+        this.callbacks.onSelectComponent?.(null);
+        this.callbacks.onSelectWire?.(null);
+        this.callbacks.onSelectCable?.(null);
+        this.callbacks.onSelectOpening?.(null);
+        this.callbacks.onSelectWall?.(wallHandle.wall);
+        this.updateSelectionClasses();
         this.wallDrag = {
           wall: wallHandle.wall,
           handle: wallHandle.handle,
@@ -1912,10 +1938,20 @@ export class CadCanvas {
       const clickedOpening = this.openingFromEvent(e, world, true);
       if (clickedOpening && this.mode === 'select') {
         e.preventDefault();
-        const wasOpeningSelected = (this.selectedOpeningId === clickedOpening.id);
-        if (!wasOpeningSelected) {
-          this.selectOpening(clickedOpening);
-        }
+        this.clearMultipleSelection();
+        this.selectedOpeningId = clickedOpening.id;
+        this.selectedWallId = null;
+        this.selectedComponentId = null;
+        this.selectedWireId = null;
+        this.selectedImageId = null;
+        this.selectedBoxId = null;
+        this.selectedCableId = null;
+        this.callbacks.onSelectComponent?.(null);
+        this.callbacks.onSelectWire?.(null);
+        this.callbacks.onSelectCable?.(null);
+        this.callbacks.onSelectWall?.(null);
+        this.callbacks.onSelectOpening?.(clickedOpening);
+        this.updateSelectionClasses();
         this.openingDrag = {
           opening: clickedOpening,
           startCenter: { ...clickedOpening.center },
@@ -1930,10 +1966,17 @@ export class CadCanvas {
       const wallHit = this.wallFromEvent(e, world, true);
       if (wallHit && this.mode === 'select') {
         e.preventDefault();
-        const wasAlreadySelected = (this.selectedWallId === wallHit.wall.id);
-        if (!wasAlreadySelected) {
-          this.selectWall(wallHit.wall);
-        }
+        this.clearMultipleSelection();
+        this.selectedWallId = wallHit.wall.id;
+        this.selectedOpeningId = null;
+        this.selectedComponentId = null;
+        this.selectedWireId = null;
+        this.callbacks.onSelectComponent?.(null);
+        this.callbacks.onSelectWire?.(null);
+        this.callbacks.onSelectCable?.(null);
+        this.callbacks.onSelectOpening?.(null);
+        this.callbacks.onSelectWall?.(wallHit.wall);
+        this.updateSelectionClasses();
         const isHandle = !!wallHit.handle;
         const openingsStart: Record<string, { x: number; y: number }> = {};
         if (this.activePage.floorPlan?.openings) {
@@ -2015,6 +2058,8 @@ export class CadCanvas {
       e.preventDefault();
       const touch = e.touches[0];
       const world = this.screenToWorld(touch.clientX, touch.clientY);
+      // DEBUG:
+      // console.log('DEBUG onTouchStart world:', world, 'mode:', this.mode);
       const box = this.selectionWindow;
       box.end = world;
       box.moved ||= Math.hypot(touch.clientX - box.client.x, touch.clientY - box.client.y) >= 3;
@@ -2110,24 +2155,53 @@ export class CadCanvas {
         const drag = this.openingDrag;
         const dx = world.x - drag.mouseStart.x;
         const dy = world.y - drag.mouseStart.y;
-        const newX = this.snap(drag.startCenter.x + dx);
-        const newY = this.snap(drag.startCenter.y + dy, false, 'y');
-        drag.opening.center.x = newX;
-        drag.opening.center.y = newY;
 
-        if (this.activePage.floorPlan?.walls) {
-          const nearest = findNearestWall({ x: newX, y: newY }, this.activePage.floorPlan.walls, 35);
+        const walls = this.activePage.floorPlan?.walls || [];
+        const currentWall = drag.opening.wallId ? walls.find(w => w.id === drag.opening.wallId) : undefined;
+        let newX = this.snap(drag.startCenter.x + dx);
+        let newY = this.snap(drag.startCenter.y + dy, false, 'y');
+
+        if (currentWall) {
+          const wdx = currentWall.end.x - currentWall.start.x;
+          const wdy = currentWall.end.y - currentWall.start.y;
+          const lenSq = wdx * wdx + wdy * wdy;
+          if (lenSq > 0) {
+            const rawTargetX = drag.startCenter.x + dx;
+            const rawTargetY = drag.startCenter.y + dy;
+            let tNorm = ((rawTargetX - currentWall.start.x) * wdx + (rawTargetY - currentWall.start.y) * wdy) / lenSq;
+            const ppm = this.activePage.floorPlan?.scale?.pixelPerMeter || 50;
+            const opW = drag.opening.width < 5 ? drag.opening.width * ppm : drag.opening.width;
+            const halfW = opW / 2;
+            const wallLen = Math.sqrt(lenSq);
+            const marginNorm = Math.min(0.48, (halfW + 4) / wallLen);
+            tNorm = Math.max(marginNorm, Math.min(1 - marginNorm, tNorm));
+            newX = Math.round(currentWall.start.x + tNorm * wdx);
+            newY = Math.round(currentWall.start.y + tNorm * wdy);
+          }
+        } else if (walls.length > 0) {
+          const nearest = findNearestWall({ x: newX, y: newY }, walls, 45);
           if (nearest) {
             drag.opening.wallId = nearest.wall.id;
-            drag.opening.center.x = Math.round(nearest.wallCenterPoint.x);
-            drag.opening.center.y = Math.round(nearest.wallCenterPoint.y);
+            newX = Math.round(nearest.wallCenterPoint.x);
+            newY = Math.round(nearest.wallCenterPoint.y);
             const wdx = nearest.wall.end.x - nearest.wall.start.x;
             const wdy = nearest.wall.end.y - nearest.wall.start.y;
             drag.opening.orientation = Math.abs(wdx) >= Math.abs(wdy) ? 'horizontal' : 'vertical';
           }
         }
+
+        drag.opening.center.x = newX;
+        drag.opening.center.y = newY;
+
+        // Fast DOM update: translate opening without destroying SVG DOM during touch
+        const shiftX = newX - drag.startCenter.x;
+        const shiftY = newY - drag.startCenter.y;
+        const opEl = this.svg.querySelector(`[data-opening-id="${drag.opening.id}"]`) as SVGGraphicsElement | null;
+        if (opEl) {
+          opEl.setAttribute('transform', `translate(${shiftX}, ${shiftY})`);
+        }
+
         this.callbacks.onSelectOpening?.(drag.opening);
-        this.render();
 
         const opLabel = drag.opening.kind === 'window' ? '🪟 Fenster' : drag.opening.kind === 'door' ? '🚪 Tür' : 'Öffnung';
         this.updateMagnifier(t.clientX, t.clientY, drag.opening.center.x, drag.opening.center.y, opLabel);
@@ -2178,6 +2252,7 @@ export class CadCanvas {
       return;
     }
     if (this.wallDrag) {
+      this.touchMode = 'none';
       this.hideMagnifier();
       this.wallDrag = null;
       this.notifyModified();
@@ -2185,6 +2260,11 @@ export class CadCanvas {
       return;
     }
     if (this.openingDrag) {
+      this.touchMode = 'none';
+      const opEl = this.svg.querySelector(`[data-opening-id="${this.openingDrag.opening.id}"]`) as SVGGraphicsElement | null;
+      if (opEl) {
+        opEl.removeAttribute('transform');
+      }
       this.hideMagnifier();
       this.openingDrag = null;
       this.notifyModified();
@@ -2236,6 +2316,14 @@ export class CadCanvas {
     this.svg.querySelectorAll('.wire').forEach(el => {
       el.classList.toggle('selected', el.id === this.selectedWireId||!!this.getElementSelection().wireIds?.includes(el.id));
     });
+    this.svg.querySelectorAll('[data-opening-id]').forEach(el => {
+      const isSel = el.getAttribute('data-opening-id') === this.selectedOpeningId;
+      el.classList.toggle('selected', isSel);
+    });
+    this.svg.querySelectorAll('.floorplan-wall').forEach(el => {
+      const isSel = el.getAttribute('data-wall-id') === this.selectedWallId;
+      el.classList.toggle('selected', isSel);
+    });
     this.updateSelectionOverlay();
   }
 
@@ -2268,7 +2356,7 @@ export class CadCanvas {
   private notifyModified(): void {
     pruneElementGroups(this.activePage);
     CrossReferenceEngine.updateProjectCrossReferences(this.project);
-    this.callbacks.onProjectModified();
+    this.callbacks.onProjectModified?.();
   }
 
   private findComponentAt(x: number, y: number, isTouch: boolean = false): PlacedComponent | null {

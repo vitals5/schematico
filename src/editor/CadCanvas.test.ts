@@ -394,7 +394,7 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
 // Touch navigation, zoom, and wall/opening proximity tests
 {
   const testWall = { id: 'w1', start: { x: 100, y: 100 }, end: { x: 300, y: 100 }, thickness: 240 };
-  const testOpening = { id: 'op1', wallId: 'w1', kind: 'door' as const, center: { x: 200, y: 100 }, width: 900 };
+  const testOpening = { id: 'op1', wallId: 'w1', kind: 'door' as const, center: { x: 200, y: 100 }, width: 80 };
   const fpPage = {
     id: 'fpp', pageNumber: '4', title: 'FP', higherLevel: '', location: '',
     components: [], wires: [], plotFrame: { width: 1000, height: 700 },
@@ -411,6 +411,9 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
     project: { pages: [fpPage], symbolLibrary: [] },
     selectedWallId: 'w1',
     multiSelectMode: false,
+    mode: 'select',
+    snap: (v: number) => v,
+    callbacks: { onSelectComponent: () => {}, onSelectWire: () => {}, onSelectOpening: () => {}, onSelectWall: () => {} },
     scale: 1.0,
     panX: 100,
     panY: 50,
@@ -512,6 +515,51 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   assert.equal((canvas as any).magnifierCorner, 'bottom-left', 'When dragging at top-right, loupe must dock at bottom-left');
 
   (canvas as any).hideMagnifier();
+
+  // 8. Opening touch drag test: must not re-render during touchstart or touchmove
+  let opRenderCalls = 0;
+  canvas.render = () => { opRenderCalls++; };
+  canvas.selectedOpeningId = null;
+  const mockOpeningEl: any = {
+    setAttribute: (attr: string, val: string) => { mockOpeningEl[attr] = val; },
+    removeAttribute: (attr: string) => { delete mockOpeningEl[attr]; },
+    classList: { toggle: () => {} }
+  };
+  mockSvg.querySelector = (selector: string) => {
+    if (selector.includes('data-opening-id="op1"')) return mockOpeningEl;
+    return null;
+  };
+  mockSvg.querySelectorAll = () => [];
+
+  // Touch start on door (at 200, 100)
+  canvas.screenToWorld = (x: number, y: number) => ({ x, y });
+  const fakeTouchStart = {
+    touches: [{ clientX: 200, clientY: 100 }],
+    target: { closest: () => null },
+    preventDefault: () => {}
+  } as unknown as TouchEvent;
+
+  canvas.onTouchStart(fakeTouchStart);
+  assert.equal(canvas.selectedOpeningId, 'op1', 'Door must be selected on touchstart');
+  assert.equal(canvas.openingDrag?.opening.id, 'op1', 'openingDrag must be active');
+  assert.equal(opRenderCalls, 0, 'Must NOT re-render on touchstart (preserves DOM and touch tracking)');
+
+  // Touch move 50px right (to 250, 100)
+  const fakeTouchMove = {
+    touches: [{ clientX: 250, clientY: 100 }],
+    preventDefault: () => {}
+  } as unknown as TouchEvent;
+  canvas.onTouchMove(fakeTouchMove);
+  assert.equal(testOpening.center.x, 250, 'Door center.x must move along wall to 250');
+  assert.equal(testOpening.center.y, 100, 'Door center.y must stay constrained to wall line at 100');
+  assert.equal(mockOpeningEl.transform, 'translate(50, 0)', 'Opening DOM element must receive fast translate transform');
+  assert.equal(opRenderCalls, 0, 'Must NOT re-render on touchmove (smooth 60fps drag without DOM churn)');
+
+  // Touch end
+  canvas.onTouchEnd({ type: 'touchend', touches: [] } as unknown as TouchEvent);
+  assert.equal(canvas.openingDrag, null, 'openingDrag must be cleared on touchend');
+  assert.equal(mockOpeningEl.transform, undefined, 'Temporary transform must be removed on touchend');
+  assert.equal(opRenderCalls, 1, 'Must re-render once on touchend to finalize floor plan');
 
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }
