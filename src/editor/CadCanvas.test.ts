@@ -465,5 +465,27 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   assert.equal(desktopOp, undefined, 'Desktop mouse must not hit opening 20px away without element click');
   assert.equal(touchOp?.id, 'op1', 'Touch must hit opening within generous center proximity');
 
+  // 5. Selecting an already selected wall must NOT re-render (avoids destroying DOM during touch)
+  let renderCalls = 0;
+  canvas.render = () => { renderCalls++; };
+  canvas.selectedWallId = 'w1';
+  canvas.callbacks = { onSelectComponent: () => {}, onSelectWire: () => {} };
+  canvas.selectWall(testWall);
+  assert.equal(renderCalls, 0, 'selectWall must return early without re-rendering if wall is already selected');
+
+  canvas.selectWall(null);
+  assert.equal(renderCalls, 1, 'selectWall must re-render when selection actually changes');
+
+  // 6. Context menu suppression after touch
+  canvas.lastTouchTime = Date.now();
+  let ctxMenuTriggered = false;
+  canvas.triggerContextMenu = () => { ctxMenuTriggered = true; };
+  canvas.onContextMenu({ preventDefault: () => {} } as unknown as MouseEvent);
+  assert.equal(ctxMenuTriggered, false, 'Context menu must be suppressed right after touch interaction on mobile');
+
+  canvas.lastTouchTime = Date.now() - 2000;
+  canvas.onContextMenu({ preventDefault: () => {}, clientX: 10, clientY: 10, target: null } as unknown as MouseEvent);
+  assert.equal(ctxMenuTriggered, true, 'Context menu must open for desktop mouse clicks');
+
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }

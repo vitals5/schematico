@@ -144,6 +144,7 @@ export class CadCanvas {
   private initialPan: { x: number; y: number } = { x: 0, y: 0 };
   private lastTapTime: number = 0;
   private lastTapComponentId: string | null = null;
+  private lastTouchTime: number = 0;
   public multiSelectMode: boolean = false;
 
   public toggleMultiSelectMode(enable?: boolean): boolean {
@@ -1054,6 +1055,9 @@ export class CadCanvas {
 
   private onContextMenu(e: MouseEvent): void {
     e.preventDefault();
+    if (Date.now() - this.lastTouchTime < 1000) {
+      return;
+    }
     this.triggerContextMenu(e.clientX, e.clientY, e.target as Element);
   }
 
@@ -1746,6 +1750,7 @@ export class CadCanvas {
   }
 
   private onTouchStart(e: TouchEvent): void {
+    this.lastTouchTime = Date.now();
     if (e.touches.length === 2) {
       e.preventDefault();
       if(this.selectionDrag){translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);this.selectionDrag=undefined;this.render();}
@@ -1866,7 +1871,9 @@ export class CadCanvas {
       if (wallHit && this.mode === 'select') {
         e.preventDefault();
         const wasAlreadySelected = (this.selectedWallId === wallHit.wall.id);
-        this.selectWall(wallHit.wall);
+        if (!wasAlreadySelected) {
+          this.selectWall(wallHit.wall);
+        }
         const isHandle = !!wallHit.handle;
         const openingsStart: Record<string, { x: number; y: number }> = {};
         if (this.activePage.floorPlan?.openings) {
@@ -1887,9 +1894,6 @@ export class CadCanvas {
         };
         this.touchMode = 'drag';
         this.isPanning = false;
-        if (!wasAlreadySelected) {
-          this.render();
-        }
         return;
       }
 
@@ -1897,7 +1901,9 @@ export class CadCanvas {
       if (clickedOpening && this.mode === 'select') {
         e.preventDefault();
         const wasOpeningSelected = (this.selectedOpeningId === clickedOpening.id);
-        this.selectOpening(clickedOpening);
+        if (!wasOpeningSelected) {
+          this.selectOpening(clickedOpening);
+        }
         this.openingDrag = {
           opening: clickedOpening,
           startCenter: { ...clickedOpening.center },
@@ -1905,9 +1911,6 @@ export class CadCanvas {
         };
         this.touchMode = 'drag';
         this.isPanning = false;
-        if (!wasOpeningSelected) {
-          this.render();
-        }
         return;
       }
 
@@ -1964,6 +1967,7 @@ export class CadCanvas {
   }
 
   private onTouchMove(e: TouchEvent): void {
+    this.lastTouchTime = Date.now();
     if (this.selectionWindow && e.touches.length === 1) {
       e.preventDefault();
       const touch = e.touches[0];
@@ -2102,6 +2106,7 @@ export class CadCanvas {
   }
 
   private onTouchEnd(e: TouchEvent): void {
+    this.lastTouchTime = Date.now();
     if (this.selectionWindow) {
       const box = this.selectionWindow;
       this.selectionWindow = undefined;
@@ -2602,25 +2607,15 @@ export class CadCanvas {
       l.setAttribute('x2', String(wall.end.x));
       l.setAttribute('y2', String(wall.end.y));
     });
-    const startCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="start"]`);
+    const startCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="start"], circle[data-wall-id="${wall.id}"][data-wall-handle-visual="start"]`);
     startCircles.forEach(c => {
       c.setAttribute('cx', String(wall.start.x));
       c.setAttribute('cy', String(wall.start.y));
-      const next = c.nextElementSibling;
-      if (next && next.tagName.toLowerCase() === 'circle') {
-        next.setAttribute('cx', String(wall.start.x));
-        next.setAttribute('cy', String(wall.start.y));
-      }
     });
-    const endCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="end"]`);
+    const endCircles = this.svg.querySelectorAll(`circle[data-wall-id="${wall.id}"][data-wall-handle="end"], circle[data-wall-id="${wall.id}"][data-wall-handle-visual="end"]`);
     endCircles.forEach(c => {
       c.setAttribute('cx', String(wall.end.x));
       c.setAttribute('cy', String(wall.end.y));
-      const next = c.nextElementSibling;
-      if (next && next.tagName.toLowerCase() === 'circle') {
-        next.setAttribute('cx', String(wall.end.x));
-        next.setAttribute('cy', String(wall.end.y));
-      }
     });
     const badge = this.svg.querySelector(`.floorplan-wall-badge[data-wall-id="${wall.id}"]`) ?? this.svg.querySelector('.floorplan-wall-badge');
     if (badge) {
@@ -2652,8 +2647,8 @@ export class CadCanvas {
     this.selectedOpeningId = null;
     this.selectedWallId = null;
     this.selectedRoomId = null;
-    this.callbacks.onSelectComponent(null);
-    this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectComponent?.(null);
+    this.callbacks.onSelectWire?.(null);
     this.callbacks.onSelectCable?.(null);
     this.callbacks.onSelectOpening?.(null);
     this.callbacks.onSelectWall?.(null);
@@ -2667,6 +2662,10 @@ export class CadCanvas {
   }
 
   public selectWall(wall: WallSegment | null): void {
+    const targetId = wall ? wall.id : null;
+    if (this.selectedWallId === targetId) {
+      return;
+    }
     this.clearMultipleSelection();
     this.selectedComponentId = null;
     this.selectedWireId = null;
@@ -2674,16 +2673,20 @@ export class CadCanvas {
     this.selectedBoxId = null;
     this.selectedCableId = null;
     this.selectedOpeningId = null;
-    this.callbacks.onSelectComponent(null);
-    this.callbacks.onSelectWire(null);
+    this.callbacks.onSelectComponent?.(null);
+    this.callbacks.onSelectWire?.(null);
     this.callbacks.onSelectCable?.(null);
     this.callbacks.onSelectOpening?.(null);
-    this.selectedWallId = wall ? wall.id : null;
+    this.selectedWallId = targetId;
     this.callbacks.onSelectWall?.(wall);
     this.render();
   }
 
   public selectOpening(opening: WallOpening | null): void {
+    const targetId = opening ? opening.id : null;
+    if (this.selectedOpeningId === targetId) {
+      return;
+    }
     this.clearMultipleSelection();
     this.selectedComponentId = null;
     this.selectedWireId = null;
@@ -2695,7 +2698,7 @@ export class CadCanvas {
     this.callbacks.onSelectWire(null);
     this.callbacks.onSelectCable?.(null);
     this.callbacks.onSelectWall?.(null);
-    this.selectedOpeningId = opening ? opening.id : null;
+    this.selectedOpeningId = targetId;
     this.callbacks.onSelectOpening?.(opening);
     this.render();
   }

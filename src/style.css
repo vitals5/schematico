@@ -381,6 +381,10 @@ body.resizing {
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-overscroll-behavior: none;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Properties Form */
@@ -472,6 +476,9 @@ body.resizing {
   touch-action: none;
   overscroll-behavior: none;
   -webkit-overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Off-canvas Drawer Backdrop */

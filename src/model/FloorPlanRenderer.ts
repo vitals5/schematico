@@ -201,7 +201,7 @@ export function floorPlanToSvg(
     // Hit area for clicking/dragging (only in active floor plan edit mode)
     if (isInteractive) {
       parts.push(
-        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="transparent" stroke-width="${Math.max(28, strokeWidth + 20)}" stroke-linecap="round" data-wall-id="${wall.id}" class="floorplan-wall-hit" style="cursor:pointer;" />`
+        `<line x1="${wall.start.x}" y1="${wall.start.y}" x2="${wall.end.x}" y2="${wall.end.y}" stroke="rgba(0,0,0,0.001)" stroke-width="${Math.max(36, strokeWidth + 24)}" stroke-linecap="round" pointer-events="all" data-wall-id="${wall.id}" class="floorplan-wall-hit" style="cursor:move; pointer-events:all;" />`
       );
     }
 
@@ -231,12 +231,12 @@ export function floorPlanToSvg(
         </g>
       `);
       parts.push(
-        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="32" fill="transparent" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair;" />
-        <circle cx="${wall.start.x}" cy="${wall.start.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
+        `<circle cx="${wall.start.x}" cy="${wall.start.y}" r="36" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-wall-handle" data-wall-handle="start" data-wall-id="${wall.id}" style="cursor:crosshair; pointer-events:all;" />
+        <circle cx="${wall.start.x}" cy="${wall.start.y}" r="8" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-wall-handle-visual="start" data-wall-id="${wall.id}" />`
       );
       parts.push(
-        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="32" fill="transparent" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair;" />
-        <circle cx="${wall.end.x}" cy="${wall.end.y}" r="7" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" />`
+        `<circle cx="${wall.end.x}" cy="${wall.end.y}" r="36" fill="rgba(0,0,0,0.001)" pointer-events="all" class="floorplan-wall-handle" data-wall-handle="end" data-wall-id="${wall.id}" style="cursor:crosshair; pointer-events:all;" />
+        <circle cx="${wall.end.x}" cy="${wall.end.y}" r="8" fill="#3182ce" stroke="#ffffff" stroke-width="2.5" pointer-events="none" data-wall-handle-visual="end" data-wall-id="${wall.id}" />`
       );
     }
   };
