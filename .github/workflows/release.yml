@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Create Web Distribution Archive
+        run: |
+          mkdir -p release
+          cd dist && zip -r ../release/schematico-web.zip . && cd ..
+
+      - name: Upload Web Distribution Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: Schematico-Web
+          path: release/schematico-web.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/schematico-web.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
