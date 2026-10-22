@@ -1,199 +1,307 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/branding/logo-dark.png">
-    <img src="public/branding/logo.png" alt="Schematico" width="640">
-  </picture>
+  <a href="https://vitals5.github.io/schematico/">
+    <img src="public/branding/schematico-banner.png" alt="Schematico Logo" width="620">
+  </a>
 </p>
 
-# Schematico
+<p align="center">
+  <strong>Professionelle Stromlaufpläne &amp; Gebäude-Elektroinstallation für Windows und moderne Webbrowser</strong>
+</p>
 
-Schematico is a professional, open-source electrical schematic and building installation CAD application for **Windows desktop and modern Web browsers**. Designed from the ground up for electrical engineers, panel builders, and electrical planners, Schematico combines multi-page industrial circuit diagramming with architectural electrical installation planning.
+<p align="center">
+  <a href="https://github.com/vitals5/schematico/releases/latest"><img src="https://img.shields.io/github/v/release/vitals5/schematico?color=3182ce&label=Release&logo=github" alt="Release Version"></a>
+  <a href="https://vitals5.github.io/schematico/"><img src="https://img.shields.io/badge/Web%20App-Live%20Demo-68d391?logo=googlechrome&logoColor=white" alt="Live Web App"></a>
+  <a href="https://github.com/vitals5/schematico/actions/workflows/build-windows.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitals5/schematico/build-windows.yml?branch=main&label=Windows%20Build&logo=windows" alt="Windows Build Status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
+  <a href="#unterst%C3%BCtzte-normen--standards"><img src="https://img.shields.io/badge/Standards-DIN%20EN%2081346%20%7C%20IEC%2060617%20%7C%20DIN%20EN%2060617--11-f6ad55" alt="Engineering Standards"></a>
+</p>
 
-Designation structures, symbol definitions, and title blocks adhere strictly to international engineering standards:
-- **DIN EN 81346-1 / DIN EN 81346-2:** Structuring principles and reference designations (BMK).
-- **IEC 60617 / DIN EN 60617:** Graphical symbols for electrical diagrams.
-- **DIN EN 60617-11:** Architectural installation diagrams and building services symbols.
-- **DIN EN ISO 7200:** Title blocks and document header fields.
-
-[Launch Web App](https://vitals5.github.io/schematico/) · [Windows Downloads](https://github.com/vitals5/schematico/releases/latest) · [Windows Build Workflow](https://github.com/vitals5/schematico/actions/workflows/build-windows.yml)
-
----
-
-## Highlights & Features
-
-### 1. Electrical Schematic & Wiring Diagrams
-- **Component Placement & Snapping:** Place, rotate, and move components across standard 8 mm engineering grid increments with optional half-grid (4 mm) resolution.
-- **Directional Ports & Autoconnect:** Electrical pins feature directional ray projection (`top`, `bottom`, `left`, `right`). Aligned pins automatically bridge upon placement or movement; orthogonal wire runs calculate detours with proper clearances.
-- **Junctions & Routing:** Automatic T-junction nodes, crossing bridges without false connections, and manual orthogonal wire drafting.
-- **Cable Definitions & Cores:** Map crossed wire runs to multi-conductor cables (e.g., `NYM-J 5x1.5`, `ÖLFLEX 4G2.5`) with independent core designations, shielding indicators, and voltage drop tracking.
-- **Device Boxes & Location Frames:** Group components into physical enclosures, cabinets (`+S1`), or location frames with custom borders, dash patterns, and wrapped titles.
-
-### 2. Architectural Floor Plans & Electrical Installation (DIN EN 60617-11)
-Schematico features a dedicated **Installation Plan** page type tailored for residential, commercial, and industrial building planning:
-- **Blueprint Image Import & Calibration:** Import floor plan sketches, scans, or architectural drawings (`PNG`, `JPEG`, `PDF`) onto the canvas. Calibrate the exact drawing scale interactively: click any two known reference points (such as an exterior wall), enter the real-world distance in meters, or select common architectural ratios (e.g., 1:50, 1:75, 1:100 for DIN A3).
-- **Target Scale Rescaling:** Switch target scales at any time (e.g. from 1:75 to 1:50). Walls, doors, windows, openings, background blueprints, and text callouts automatically scale and center proportionally without distortion.
-- **Wall & Opening CAD Tools:**
-  - **Walls:** Draft interior and exterior walls with customizable physical thicknesses (e.g. 11.5 cm, 17.5 cm, 24 cm, 36.5 cm). Walls snap to orthogonal axes and existing corner vertices.
-  - **Doors:** Configurable doors with clean wall-gap cutouts, jamb tick marks, door leaves, and dashed swing arcs following DIN Links and DIN Rechts swing geometry (`left_in`, `right_in`, `left_out`, `right_out`, or none/sliding).
-  - **Windows:** Double-pane glass lines with jamb ticks.
-  - **Wall Openings:** Clear passage gaps with boundary ticks.
-  - **Sectional Garage Doors:** Overhead sectional slats with dashed ceiling guide tracks.
-- **Standard Architectural Installation Symbols (DIN EN 60617-11):**
-  Over 66 specialized, pinless architectural installation symbols with realistic insertion points:
-  - **Sockets:** Single, double, triple, quad, and 5-fold horizontal and vertical socket outlets conforming to the standard DIN EN 60617-11 stem, horizontal tangent bar, downward arc, and diagonal tick notation. Includes IP44 wet-room, switched, and USB-integrated outlets.
-  - **Switches:** Off/single-pole, two-way/changeover, intermediate/cross, series double-rocker, pushbuttons, and dimmers with 45° arms and 90° hooks.
-  - **Smart Home & Building Automation:** Neutral bus symbols for 2-gang and 4-gang pushbutton sensors, room temperature controllers (RTR with LCD display), smart touch panels, 360° ceiling presence detectors, bus flush-mounted outlets, and magnetic reed window contacts. Fully compatible with KNX, BACnet, Modbus, DALI, Loxone, or wireless actuator systems.
-  - **Lighting & Power:** Ceiling lamps, wall luminaires, downlights, fluorescent/LED strips, emergency lights, CEE 16A/32A power receptacles, sub-distribution boards, and meter cabinets.
-  - **Telecommunications & Safety:** Network outlets (RJ45 Cat.6a/Cat.7), antenna sockets (Radio/TV/SAT), telephone (TAE), door intercom stations, bells/chimes, smoke detectors, and main equipotential bonding busbars (PAS).
-- **Wall Snapping & Multi-Tier Stacking:** Installation devices snap automatically to the nearest wall surface, automatically aligning parallel or perpendicular. Stack multiple devices vertically (e.g., switch at 105 cm over a socket at 30 cm) or arrange them side-by-side along the wall.
-- **Curved Installation Wiring (`arcWires`):** Connect switches, sockets, and distributors with smooth, curved installation runs (quadratic Bézier curves). Assign circuits (`F1 / W1`), phases (`L1`, `L2`, `L3`), cable types, and colors.
-- **AI Floor Plan Vectorization (Optional):** Integrate with Google Gemini API to vectorize raster floor plans into CAD walls, doors, and windows automatically with sub-pixel alignment.
-
-### 3. Bidirectional Cross-References & Interactive Navigation
-- **In-App Jump Navigation (Ctrl + Click):** Hold **Ctrl** and click any symbol (relay coils, auxiliary contacts, interruption points, or linked installation points) to jump instantly to the referenced counterpart across pages.
-- **Inspector Panel Links:** The properties inspector displays all referenced targets on other pages with dedicated jump buttons.
-- **Interactive Vector PDF Hyperlinks:** Exported PDFs include native clickable PDF annotations (`doc.link(...)`). Clicking an interruption arrow or contact cross-reference in Adobe Acrobat, Chrome, or Apple Preview immediately jumps to the destination sheet.
-
-### 4. Rich Standalone Text Elements & Callouts
-- Place freeform text boxes on both schematic sheets and architectural floor plans.
-- **Text Properties Inspector:**
-  - Multi-line text input with live rendering.
-  - Font size control with physical paper-unit scaling (guaranteeing exact 1:1 visual fidelity between screen and PDF export).
-  - Bold and italic typography.
-  - Text alignment: Left, Center, Right.
-  - Rotation: 0°, 90°, 180°, and 270°.
-  - Preset color swatches and hexadecimal color picker.
-  - Accurate mm coordinate placement.
-  - Clean CAD presentation without distracting dashed selection outlines.
-  - Automatic migration and conversion of legacy text formats.
-
-### 5. Multi-Page Project Management & Title Block Sync
-- Organize multi-sheet projects with schematics, installation plans, terminal diagrams, parts lists, and cover pages.
-- **Live Metadata Synchronization:** Project properties (Project Title, Commission, Company, Author, Date, Revision) automatically synchronize across all title blocks (DIN EN ISO 7200) and cover forms (such as Standard Form F01).
-- Reorder pages via Move Up / Move Down with continuous sheet numbering.
-- Centralized page deletion protection prevents accidental removal of active sheets.
-- Export and import individual floor plan pages as standalone JSON files to reuse layouts across different projects.
-
-### 6. High-Capacity Macro Library (100k+ Files)
-- Connect local directories containing external macros with zero performance degradation. Tested to seamlessly scan and search libraries with over 5,000 to 100,000+ files.
-- Search, preview, and place window macros (`.ema`), page macros (`.ems`), and enclosure contours (`.fp1`).
-- Configure macro variables before placement or insert multi-page macros directly into your project.
-
-### 7. Multilingual Architecture (German & English)
-- **UI Language:** Switch between English and German in General Settings. Menus, dialogs, tooltips, and status bars update immediately and persist across sessions.
-- **Project Language:** Project metadata, title blocks, cover sheets, terminal reports, and Bills of Materials dynamically translate to English or German according to project standards.
-
-### 8. Production Vector PDF & BOM Reports
-- Generate multi-page vector PDFs in DIN A3 and DIN A4 landscape/portrait.
-- Choose between crisp full-color or high-contrast monochrome printing.
-- Includes embedded raster backgrounds (with opacity), vector wall lines, openings, arc wires, and clickable cross-reference links.
-- Automated Bill of Materials (BOM) report generation with manufacturer article numbers, component quantities, and device tags.
+<p align="center">
+  <a href="https://vitals5.github.io/schematico/"><strong>🚀 Web-App im Browser starten</strong></a> •
+  <a href="https://github.com/vitals5/schematico/releases/latest"><strong>💾 Windows Download (.exe)</strong></a> •
+  <a href="https://vitals5.github.io/schematico/landing.html"><strong>🌐 Interaktive Landingpage</strong></a> •
+  <a href="#highlights--features"><strong>✨ Feature-Übersicht</strong></a>
+</p>
 
 ---
 
-## Keyboard Shortcuts
+## Über Schematico
 
-| Shortcut | Context | Action |
-| --- | --- | --- |
-| **Ctrl + Click** | Canvas | Jump directly to cross-reference / linked counterpart |
-| **Ctrl + A** | Canvas | Select all elements on active sheet |
-| **Ctrl + G** / **Ctrl + Shift + G** | Canvas | Create permanent group / Dissolve group |
-| **Ctrl + C** / **Ctrl + X** / **Ctrl + V** | Canvas | Copy / Cut / Paste selected elements |
-| **Ctrl + D** | Canvas | Duplicate selection with automated BMK incrementation |
-| **Ctrl + Z** / **Ctrl + Y** | Canvas | Undo / Redo history state |
-| **Delete** / **Backspace** | Canvas | Delete selected components, wires, texts, or walls |
-| **F2** / **Enter** | Canvas | Open full Properties modal or focus property panel |
-| **R** | Canvas | Rotate selected element by 90° clockwise |
-| **D** / **W** | Canvas | Switch to Wire Drafting mode |
-| **Ins** | Canvas | Open Symbol Insertion Catalog |
-| **F** | Canvas | Fit entire drawing sheet to screen |
-| **H** | Canvas | Toggle between full grid (8 mm) and half grid (4 mm) |
-| **Alt + 1..3, Alt + 0** | Canvas | Select grid snap presets (Fine, Normal, Coarse, None) |
-| **Middle Click + Drag** | Canvas | Pan canvas |
-| **Mouse Wheel** | Canvas | Zoom in / Zoom out relative to cursor |
-| **Esc** | Canvas | Cancel active tool or clear current selection |
+**Schematico** ist eine freie, quelloffene CAE- und CAD-Suite für Elektroingenieure, Schaltschrankbauer, Elektromeister und Gebäudeautomatisierer. 
+
+Die Software vereint zwei Arbeitsbereiche in einer gemeinsamen, modernen Benutzeroberfläche:
+1. **Industrielle Stromlaufpläne:** Mehrseitige Stromlauf- und Steuerungspläne nach internationalen Normen mit Leitungs-Autoconnect, dynamischen Kontaktspiegeln und Querverweisen.
+2. **Architektonische Elektroinstallation:** Maßstabsgetreue Grundrissplanung mit Wänden, Fenstern, Türen, über 66 standardisierten Installationssymbolen und geschwungenen Bogenleitungen (*arcWires*).
+
+### Unterstützte Normen &amp; Standards
+- **DIN EN 81346-1 / DIN EN 81346-2:** Strukturierungsprinzipien und Betriebsmittelkennzeichnung (BMK: `=Anlage +Ort -Betriebsmittel:Anschluss`).
+- **IEC 60617 / DIN EN 60617:** Grafische Symbole für Schaltpläne (Schaltgeräte, Motoren, Schütze, Transformatoren, Schutzorgane, SPS).
+- **DIN EN 60617-11:** Installationsschaltpläne für Gebäude und Haustechnik (Schalter, Steckdosen, Taster, Smart-Home-Sensoren, Verteiler).
+- **DIN EN ISO 7200:** Genormte Schriftfelder und zentrale Projektdaten-Synchronisation.
 
 ---
 
-## Supported File Formats & Compatibility
+## Screenshot-Galerie
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 1: Haupt-Editor (Industrieller Stromlaufplan)                 -->
+<!-- Ersetzen durch: <img src="docs/screenshots/01-schematic-editor.png" ... />-->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
+    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
+      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
+      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — stromlaufplan_drehstrom_motor.sch</span>
+    </div>
+    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
+      <p style="font-size: 32px; margin: 0 0 10px 0;">⚡</p>
+      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Haupt-Editor: Industrieller Stromlaufplan mit Autoconnect &amp; Kontaktspiegeln</h3>
+      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
+        Übersichtliche Multi-Page CAD-Arbeitsfläche mit automatischer Leitungsführung, Kontaktspiegeln unter Leistungsschützen (-K1: /2.1, /2.4), Abbruchstellen mit Zielblattverweisen und Klemmenleisten.
+      </p>
+      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 01-schematic-editor.png ]</p>
+    </div>
+  </div>
+</div>
+
+---
+
+## Highlights &amp; Features
+
+### 1. Industrielle Stromlaufpläne &amp; Leitungsführung
+- **Komponenten-Platzierung &amp; Raster:** Bauteile bewegen, rotieren und platzieren im Standard-8-mm-Raster mit optionaler 4-mm-Halbraster-Auflösung.
+- **Direktionale Anschlüsse &amp; Autoconnect:** Bauteil-Pins verfügen über direktionale Anschlussvektoren (`top`, `bottom`, `left`, `right`). Fluchtende Anschlüsse verbinden sich beim Platzieren automatisch. Orthogonale Leitungsführungen errechnen saubere Umfahrungen mit normgerechten Mindestabständen.
+- **Knotenpunkte &amp; Brücken:** Automatische T-Knotenpunkte bei Leitungsabzweigen und optische Kreuzungsbrücken zur Vermeidung von Fehlverbindungen.
+- **Kabeldefinitionen &amp; Adernfarben:** Zuweisung von Mantelleitungen (z.&nbsp;B. `NYM-J 5x1.5`, `ÖLFLEX 4G2.5`) über Kreuzungslinien hinweg mit individuellen Aderfarben und Schirmdarstellung.
+- **Ortskästen (+S1 / +ET1):** Räumliche und funktionale Gruppierung von Betriebsmitteln in Schaltschränke, Vor-Ort-Gehäuse oder Steuerpulte mit anpassbaren Rahmenlinien.
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 2: Gebäude- und Elektroinstallationsplan                     -->
+<!-- Ersetzen durch: <img src="docs/screenshots/02-installation-plan.png" .../>-->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
+    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
+      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
+      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — grundriss_erdgeschoss_installation.sch</span>
+    </div>
+    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
+      <p style="font-size: 32px; margin: 0 0 10px 0;">🏡</p>
+      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Gebäude- &amp; Elektroinstallation nach DIN EN 60617-11</h3>
+      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
+        Architektonischer Grundriss mit Wandstärken, Türen mit DIN-Links/Rechts-Anschlag, Fenstern, 3-fach-Steckdosen, Smart-Home-Tastsensoren und geschwungenen Bogenleitungen (arcWires).
+      </p>
+      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 02-installation-plan.png ]</p>
+    </div>
+  </div>
+</div>
+
+### 2. Gebäude- &amp; Elektroinstallationspläne (DIN EN 60617-11)
+Schematico bietet einen vollwertigen **Installationsplan-Seitentyp** für Wohn-, Gewerbe- und Zweckbauten:
+- **Grundriss-Import &amp; 2-Klick-Kalibrierung:** Lade Grundrissskizzen, Baupläne oder Architektenzeichnungen (`PNG`, `JPEG`, `PDF`) auf das Zeichenblatt. Kalibriere den Maßstab sekundenschnell: Klicke zwei Referenzpunkte (z.&nbsp;B. eine Außenwand), gib die reale Distanz in Metern ein oder wähle gängige Architekturmaßstäbe (1:50, 1:75, 1:100 für DIN A3).
+- **Verzerrungsfreie Maßstabs-Umskalierung:** Wechsle den Maßstab jederzeit (z.&nbsp;B. von 1:75 auf 1:50). Wände, Öffnungen, Symbole und Bemaßungen passen sich automatisch proportional an.
+- **Wände, Türen &amp; Fenster:**
+  - **Wände:** Zeichnen mit praxisgerechten Wandstärken (11.5&nbsp;cm, 17.5&nbsp;cm, 24&nbsp;cm, 36.5&nbsp;cm) inklusive orthogonalem Fang und Eck-Verschmelzung.
+  - **Türen:** Konfigurierbare Türen mit Wandaussparung, Zargenticks, Türblatt und Öffnungsbogen nach DIN Links / DIN Rechts (`left_in`, `right_in`, `left_out`, `right_out`, Schiebetür).
+  - **Fenster:** Zweischeiben-Fensterdarstellung mit Zargenbegrenzung.
+  - **Sektionaltore:** Garagentore mit Lamellen und Deckenführungsschienen.
+- **Über 66 Installationssymbole nach DIN EN 60617-11:**
+  - **Steckdosen:** 1-fach, 2-fach, 3-fach, 4-fach und 5-fach horizontal und vertikal kombiniert. Inklusive IP44 Feuchtraum, schaltbar und USB.
+  - **Schalter:** Ausschalter, Wechselschalter, Kreuzschalter, Serienschalter, Taster und Dimmer.
+  - **Smart Home &amp; Gebäudeautomation:** Neutrale Bussymbole für 2-fach und 4-fach Tastsensoren, Raumtemperaturregler (RTR mit LCD-Symbol), Touchpanels, 360°-Deckenpräsenzmelder, Bus-UP-Aktoren und Magnet-Fensterkontakte. Kompatibel mit KNX, Loxone, DALI, Modbus u.v.m.
+  - **Beleuchtung &amp; Kraft:** Deckenleuchten, Wandleuchten, Downlights, LED-Bänder, Notleuchten, CEE 16A/32A Kraftsteckdosen, Unterverteiler und Zählerschränke.
+  - **Telekommunikation &amp; Sicherheit:** Netzwerkdosen (RJ45 Cat.6a/Cat.7), Antennendosen (TV/Radio/SAT), Sprechanlagen, Rauchwarnmelder und Hauptpotentialausgleichsschienen (PAS).
+- **Wand-Fang &amp; Mehrfach-Kombinationen:** Installationsgeräte rasten magnetisch an der nächsten Wandoberfläche ein und richten sich automatisch parallel oder rechtwinklig aus.
+- **Geschwungene Bogenleitungen (`arcWires`):** Verbinde Schalter, Dosen und Leuchten mit eleganten Bézier-Bögen. Weise Stromkreis (`F1 / W1`), Phase (`L1`, `L2`, `L3`), Kabeltyp und Leitungsfarbe zu.
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 3: Intelligente Querverweise & Kontaktspiegel                 -->
+<!-- Ersetzen durch: <img src="docs/screenshots/03-cross-references.png" .../>-->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
+    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
+      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
+      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — querverweise_kontaktspiegel.sch</span>
+    </div>
+    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
+      <p style="font-size: 32px; margin: 0 0 10px 0;">🔗</p>
+      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">Intelligente Querverweise &amp; Kontaktspiegel</h3>
+      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
+        Spulen und Kontakte referenzieren sich automatisch sheet-übergreifend. Mit Strg+Klick springt man direkt zum Partner – im PDF-Export als klickbare Vektor-Links integriert.
+      </p>
+      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 03-cross-references.png ]</p>
+    </div>
+  </div>
+</div>
+
+### 3. Bidirektionale Querverweise &amp; Navigation
+- **Direktsprung per Strg + Klick:** Halte `Strg` gedrückt und klicke auf ein Schaltsymbol (Schützspule, Hilfskontakt, Abbruchstelle oder Installationskomponente), um sofort zum zugehörigen Partner auf einer beliebigen Projektseite zu springen.
+- **Inspektor-Schnellnavigation:** Der Eigenschaften-Inspektor listet alle Verweisziele mit bequemen Sprungtasten auf.
+- **Interaktive PDF-Hyperlinks:** Im Vektor-PDF-Export sind alle Querverweise als echte PDF-Hyperlinks hinterlegt. Ein Klick im PDF-Viewer (Adobe Acrobat, Chrome, Mac Vorschau) springt direkt auf das Zielblatt.
+
+<!-- ======================================================================= -->
+<!-- SCREENSHOT 4: Makro-Browser & Projektverwaltung                         -->
+<!-- Ersetzen durch: <img src="docs/screenshots/04-macro-library.png" .../>   -->
+<!-- ======================================================================= -->
+<div align="center">
+  <div style="border: 1px solid #30363d; border-radius: 10px; background: #0d1117; padding: 16px; margin: 20px 0; max-width: 960px;">
+    <div style="display: flex; align-items: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #21262d;">
+      <span style="color: #ff5f56; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #ffbd2e; font-size: 13px; margin-right: 6px;">●</span>
+      <span style="color: #27c93f; font-size: 13px; margin-right: 12px;">●</span>
+      <span style="color: #8b949e; font-size: 12px; font-family: monospace;">schematico — makro_bibliothek_browser.sch</span>
+    </div>
+    <div style="border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; background: rgba(22, 27, 34, 0.6); text-align: center;">
+      <p style="font-size: 32px; margin: 0 0 10px 0;">📦</p>
+      <h3 style="color: #58a6ff; margin: 0 0 8px 0;">High-Capacity Makro-Bibliothek &amp; Bauteilkatalog</h3>
+      <p style="color: #8b949e; font-size: 14px; max-width: 640px; margin: 0 auto;">
+        Schnelle Vorschau und Platzierung von Fenstermakros (.ema), Seitenmakros (.ems) und 2D-Schaltschrankkonturen (.fp1) aus lokalen Archiven mit über 100.000 Dateien.
+      </p>
+      <p style="color: #6e7681; font-size: 11px; margin-top: 14px; font-family: monospace;">[ Platzhalter für Screenshot: 04-macro-library.png ]</p>
+    </div>
+  </div>
+</div>
+
+### 4. High-Capacity Makro-Bibliothek (100.000+ Dateien)
+- Binde lokale Ordner mit Makro-Beständen ohne Performance-Einbußen an.
+- Vorschau, Suchfilter und Platzierung von:
+  - Fenstermakros (`.ema`)
+  - Seitenmakros (`.ems`)
+  - Bauteilpaketen (`.edz`)
+  - 2D-Schaltschrank- und Montagekonturen (`.fp1`)
+- Parametrisierbare Makro-Variablen vor der Platzierung anpassen.
+
+### 5. Mehrseitige Projektverwaltung &amp; Titelblock-Synchronisation
+- Strukturiere Projekte aus Deckblättern, Stromlaufplänen, Installationsplänen und Stücklisten.
+- **Automatische Metadaten-Synchronisation:** Projektdaten (Projektname, Kommission, Anlage, Ort, Zeichner, Datum, Revision) synchronisieren sich live über alle genormten Schriftfelder (DIN EN ISO 7200) und Deckblätter (z.&nbsp;B. Standard-Form F01).
+- Blatt-Reihenfolge per Pfeiltasten verschieben mit automatischer Neunummerierung.
+- Export und Import einzelner Installations- oder Schaltplanseiten als JSON-Datei zur Wiederverwendung.
+
+### 6. Druckreife Vektor-PDF-Exporte &amp; Stücklisten (BOM)
+- Erstelle druckreife Vektor-PDFs in DIN A3 und DIN A4 (Quer- oder Hochformat).
+- Wahlweise vollfarbig oder kontrastoptimiert monochrom.
+- Vollständig verlinkte Querverweise für interaktives Blättern.
+- Automatische Stücklisten-Generierung (Bill of Materials) mit Artikelnummern, Herstellerangaben, technischen Daten und Mengensummierung.
+
+### 7. PWA, Tablet- &amp; Touch-Optimierung
+- **Offline-fähig &amp; installierbar:** Als Progressive Web App (PWA) direkt auf Tablets (iPad, Android, Surface) installierbar.
+- **Gestensteuerung:** Flüssiges Verschieben mit Touch-Gesten, zentriertes Zoomen mit zwei Fingern.
+- **Lupen-Vorschau (HUD):** Beim Bewegen von Bauteilen oder Türen/Fenstern blendet sich in der gegenüberliegenden Bildschirmecke automatisch eine vergrößerte Lupe ein.
+
+---
+
+## Vergleich: Schematico vs. Alternativen
+
+| Funktion / Eigenschaft | Schematico | Reine Zeichen-Tools (Visio, Draw.io) | Schwerfällige Enterprise-CAE |
+| :--- | :---: | :---: | :---: |
+| **Elektro-Logik &amp; Autoconnect** | **✓ Ja** (Direktionale Vektoren) | ✗ Nein (Rein grafische Linien) | ✓ Ja |
+| **Kontaktspiegel &amp; Querverweise** | **✓ Ja** (Automatisch &amp; interaktiv) | ✗ Manuell einzutippen | ✓ Ja |
+| **Gebäude-Installation (DIN EN 60617-11)** | **✓ Voll integriert** | ▲ Nur unvollständige Stempel | ▲ Teures Zusatzmodul |
+| **Bogenleitungen (arcWires)** | **✓ Ja** (Intuitiv &amp; beschriftbar) | ✗ Umständlich | ▲ Eingeschränkt |
+| **Makro-Kompatibilität (.ema, .ems)** | **✓ Ja** (100.000+ Dateien) | ✗ Nein | ✓ Ja |
+| **Plattformen** | **Windows Desktop &amp; Web (PWA)** | Meist nur Web | Meist nur Windows Desktop |
+| **Offline &amp; Datenschutz** | **100% lokal** (Keine Cloud-Pflicht) | ▲ Cloud-Speicherung | 100% lokal |
+| **Lizenz &amp; Kosten** | **Kostenlos &amp; Open-Source (MIT)** | Freemium / Monats-Abo | Sehr teure 5-stellige Lizenzen |
+
+---
+
+## Tastatur-Kurzbefehle
+
+| Tastenkombination | Bereich | Funktion |
+| :--- | :--- | :--- |
+| **Strg + Klick** | Canvas | Direkt zum Querverweis-Partner auf anderer Seite springen |
+| **Strg + A** | Canvas | Alle Elemente der aktiven Seite markieren |
+| **Strg + G** / **Strg + Umschalt + G** | Canvas | Permanente Gruppe erstellen / Gruppe auflösen |
+| **Strg + C** / **Strg + X** / **Strg + V** | Canvas | Kopieren / Ausschneiden / Einfügen |
+| **Strg + D** | Canvas | Auswahl duplizieren mit automatischer BMK-Hochzählung |
+| **Strg + Z** / **Strg + Y** | Canvas | Schritt zurück (Undo) / Schritt vor (Redo) |
+| **Entf** / **Rücktaste** | Canvas | Ausgewählte Bauteile, Leitungen, Wände oder Texte löschen |
+| **F2** / **Enter** | Canvas | Eigenschaften-Modal öffnen bzw. Inspektor fokussieren |
+| **R** | Canvas | Markiertes Element um 90° im Uhrzeigersinn drehen |
+| **D** / **W** | Canvas | In den Leitungszeichnungs-Modus wechseln |
+| **Einfg** | Canvas | Symbol-Katalog öffnen |
+| **F** | Canvas | Zeichenblatt bildschirmfüllend einpassen (Fit to Screen) |
+| **H** | Canvas | Umschalten zwischen Vollraster (8 mm) und Halbraster (4 mm) |
+| **Mitteltaste + Ziehen** | Canvas | Zeichenfläche verschieben (Pan) |
+| **Mausrad** | Canvas | Stufenlos zoomen relativ zum Mauszeiger |
+| **Esc** | Canvas | Aktives Werkzeug abbrechen / Auswahl aufheben |
+
+---
+
+## Unterstützte Dateiformate
 
 ### Import
-- **Schematico Projects:** Native JSON format (`.json`).
-- **Project Exchange XML:** Open exchange format (`.xml`).
-- **Standard Backup Archives:** Unpack `.zw1`, `.zip`, and split multi-part archives (`.001`, `.002`) on-the-fly directly in the browser or desktop app via integrated WebAssembly 7-Zip engine.
-- **Macros & Part Packages:** Window macros (`.ema`), page macros (`.ems`), parts packages (`.edz`), macro collections (`.emp`), and 2D panel contours (`.fp1`).
-- **Floor Plan Templates:** High-resolution architectural drawings (`PNG`, `JPEG`, `WebP`).
-- **Single Page Imports:** Import exported floor plan pages (`.json`) into any active project.
+- **Schematico Projekte:** Natives JSON-Format (`.json`).
+- **Standard-Archivpakete:** Entpacken von `.zw1`, `.zip` und Split-Archiven (`.001`, `.002`) direkt im Browser über integriertes WebAssembly-7-Zip.
+- **Makros &amp; Bauteile:** Fenstermakros (`.ema`), Seitenmakros (`.ems`), Bauteildaten (`.edz`) und 2D-Schaltschrankkonturen (`.fp1`).
+- **Grundrisse &amp; Pläne:** Architektonische Vorlagen (`PNG`, `JPEG`, `WebP`, `PDF`).
 
 ### Export
-- **Printable Vector PDF:** Industry-standard DIN A3/A4 vector PDFs with clickable navigation links and bookmarks.
-- **Native JSON Project:** Lossless native project file containing master symbol definitions, pages, floor plans, and netlists.
-- **Compressed Archive:** Bundled `.zw1` backup archive.
-- **Exchange XML:** Structured XML representation conforming to industrial documentation guidelines.
-- **Macros:** Export selection as portable window macro (`.ema`) or active sheet as page macro (`.ems`).
-- **Floor Plan Sheet:** Export standalone floor plan page as reusable JSON.
+- **Druckreifes Vektor-PDF:** Hochauflösende DIN A3/A4 PDFs mit klickbaren Querverweis-Hyperlinks.
+- **Natives JSON-Projekt:** Vollständige, verlustfreie Projektdateien inklusive Symbolbibliotheken und Netzen.
+- **Stückliste / BOM:** Detaillierte Bauteillisten als Tabellen und PDF-Auswertungen.
+- **Makro-Export:** Exportiere markierte Schaltungsteile als `.ema` oder ganze Seiten als `.ems`.
 
 ---
 
-## Development & Testing
+## Entwicklung &amp; Build
 
-### Prerequisites
-- **Node.js 22 or newer**
-- **npm** (bundled with Node.js)
+### Voraussetzungen
+- **Node.js 22 oder neuer**
+- **npm**
 
-### Setup & Run
+### Schnellstart
 
 ```bash
-# Install dependencies
+# Repository klonen
+git clone https://github.com/vitals5/schematico.git
+cd schematico
+
+# Abhängigkeiten installieren
 npm ci
 
-# Start local development server with HMR
+# Lokalen Entwicklungsserver mit Hot Reload starten
 npm run dev
 ```
 
-The web application runs locally at `http://localhost:5173`. To test touch interactions on smartphones or tablets, open the local network IP displayed under **Help → Open on Smartphone…**.
+Die Anwendung startet lokal unter `http://localhost:5173`.
 
-### Verification & Test Suite
-
-Schematico includes a comprehensive automated test suite covering electrical netlists, autoconnect algorithms, floor plan vectorization, symbol libraries, and PDF export:
+### Testen &amp; Kompilieren
 
 ```bash
-# Run all unit, integration, and geometry test suites
+# Umfassende automatisierte Testsuite ausführen
 npm test
 
-# Verify type safety and create optimized production web bundle
+# Produktions-Webbundle erstellen (Vite + TypeScript)
 npm run build
 
-# Preview production build locally
+# Lokalen Produktions-Build testen
 npm run preview
 
-# Verify neutral documentation and check branding integrity
-npm run check:branding
-```
-
----
-
-## Desktop Application (Windows)
-
-Schematico runs as a native desktop application powered by Electron:
-
-```bash
-# Launch Electron desktop client in live development mode
-npm run electron:dev
-
-# Compile production bundle and package Windows installer & portable binary
+# Windows-Installer & portable Exe kompilieren
 npm run dist:win
 ```
 
-Installers and standalone binaries are generated in the `release/` directory:
-- **`Schematico-Setup-<version>.exe`**: Windows NSIS setup wizard with start menu and desktop shortcuts.
-- **`Schematico-<version>.exe`**: Standalone portable executable requiring no administrative installation.
+---
 
-Automated continuous integration compiles and publishes Windows releases via GitHub Actions on every version tag push (`v*`).
+## Desktop-Anwendung (Windows)
+
+Schematico kann als native Windows-Anwendung ausgeführt und kompiliert werden:
+- **`Schematico-Setup-<version>.exe`**: Geführter Windows-Installer mit Startmenü- und Desktop-Verknüpfung.
+- **`Schematico-<version>.exe`**: Standalone portable Version ohne Administratorrechte ausführbar.
+
+Automatische Releases werden über GitHub Actions bei jedem Tag-Push (`v*`) kompiliert und bereitgestellt.
 
 ---
 
-## License
+## Lizenz
 
-Schematico is open-source software licensed under the [MIT License](LICENSE).  
-The bundled WebAssembly 7-Zip decompression library is licensed under the LGPL (see [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt)).
+Schematico ist Open-Source-Software unter der [MIT-Lizenz](LICENSE).  
+Die integrierte WebAssembly-7-Zip-Dekomprimierungsbibliothek unterliegt der LGPL (siehe [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt)).

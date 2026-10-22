@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schematico – Professionelles Elektro-CAE & Elektroinstallation</title>
+  <meta name="description" content="Schematico – Open-Source Elektro-CAD für industrielle Stromlaufpläne nach DIN EN 81346 & IEC 60617 sowie Gebäude-Elektroinstallation nach DIN EN 60617-11. Für Windows & Web." />
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./branding/icon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./branding/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-canvas: #0f1523;
+      --bg-card: rgba(19, 27, 44, 0.75);
+      --bg-card-hover: rgba(26, 36, 58, 0.9);
+      --border-color: rgba(99, 179, 237, 0.18);
+      --border-hover: rgba(99, 179, 237, 0.45);
+      --text-main: #f0f6fc;
+      --text-muted: #8b9bb4;
+      --accent-blue: #3182ce;
+      --accent-cyan: #00d2ff;
+      --accent-glow: rgba(0, 210, 255, 0.35);
+      --accent-gold: #f6e05e;
+      --accent-green: #48bb78;
+      --accent-red: #f56565;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(49, 130, 206, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 65%, rgba(0, 210, 255, 0.10) 0%, transparent 45%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+      background-attachment: fixed;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navigation */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      background: rgba(10, 14, 23, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-logo img {
+      height: 38px;
+      width: auto;
+      filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.3));
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-cyan);
+      transition: color 0.2s;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-blue) 0%, #2b6cb0 100%);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 14px rgba(49, 130, 206, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3182ce 0%, #319795 100%);
+      box-shadow: 0 6px 20px rgba(0, 210, 255, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 0.85rem;
+    }
+
+    .btn-lg {
+      padding: 14px 28px;
+      font-size: 1.05rem;
+      border-radius: 10px;
+    }
+
+    /* Hero Section */
+    section.hero {
+      padding: 90px 0 60px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(49, 130, 206, 0.15);
+      border: 1px solid rgba(0, 210, 255, 0.35);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.15);
+    }
+
+    .hero-badge .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: pulseAnimation 2s infinite;
+    }
+
+    @keyframes pulseAnimation {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 210, 255, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 210, 255, 0); }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, #ffffff 30%, #a0aec0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero h1 span.gradient {
+      background: linear-gradient(90deg, #00d2ff 0%, #3182ce 50%, #f6ad55 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p.lead {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--text-muted);
+      max-width: 820px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 50px;
+    }
+
+    .hero-standards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      color: #a0aec0;
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      margin-bottom: 60px;
+    }
+
+    .hero-standards span {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Window Mockup Frame */
+    .cad-window-frame {
+      background: #0d131f;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 210, 255, 0.1);
+      overflow: hidden;
+      margin: 0 auto;
+      max-width: 1100px;
+      transition: border-color 0.3s;
+    }
+
+    .cad-window-frame:hover {
+      border-color: var(--border-hover);
+    }
+
+    .cad-window-header {
+      background: #151c2c;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .window-title {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .window-status {
+      display: flex;
+      gap: 12px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: #64748b;
+    }
+
+    /* Screenshot Placeholder Card */
+    .screenshot-stage {
+      position: relative;
+      background: 
+        linear-gradient(rgba(0, 210, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 210, 255, 0.03) 1px, transparent 1px),
+        #0b101a;
+      background-size: 24px 24px;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+    }
+
+    .placeholder-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(99, 179, 237, 0.12);
+      border: 1px dashed rgba(99, 179, 237, 0.4);
+      border-radius: 8px;
+      color: #63b3ed;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+
+    .placeholder-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 10px;
+    }
+
+    .placeholder-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 620px;
+      margin-bottom: 24px;
+    }
+
+    .cad-ruler-overlay {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: #4a5568;
+    }
+
+    /* Section Styling */
+    section {
+      padding: 90px 0;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 56px;
+    }
+
+    .section-tag {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 3.5vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    /* Feature Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-3px);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 18px;
+      display: inline-block;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(49, 130, 206, 0.15);
+      border: 1px solid rgba(0, 210, 255, 0.2);
+    }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Showcase Split Sections */
+    .showcase-block {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+      margin-bottom: 80px;
+    }
+
+    .showcase-block.reversed {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .showcase-block.reversed .showcase-text {
+      order: 2;
+    }
+
+    .showcase-block.reversed .showcase-visual {
+      order: 1;
+    }
+
+    .showcase-text h3 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .showcase-text p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin-bottom: 24px;
+      line-height: 1.65;
+    }
+
+    .showcase-list {
+      list-style: none;
+      margin-bottom: 28px;
+    }
+
+    .showcase-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: #cbd5e0;
+      font-size: 0.95rem;
+    }
+
+    .showcase-list li .check-icon {
+      color: var(--accent-cyan);
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .showcase-visual {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Standards Badge Wall */
+    .standards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .standard-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: left;
+    }
+
+    .standard-code {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-gold);
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+    }
+
+    .standard-name {
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+    }
+
+    .standard-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Comparison Table */
+    .comparison-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--bg-card);
+    }
+
+    table.comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    table.comparison-table th,
+    table.comparison-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    table.comparison-table th {
+      background: rgba(15, 21, 35, 0.9);
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    table.comparison-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    table.comparison-table td.highlight {
+      color: var(--accent-cyan);
+      font-weight: 600;
+      background: rgba(0, 210, 255, 0.04);
+    }
+
+    /* FAQ Accordion */
+    .faq-list {
+      max-width: 840px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-card);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .faq-item summary {
+      padding: 20px 24px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+      color: #e2e8f0;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary::after {
+      content: '+';
+      font-size: 1.4rem;
+      color: var(--accent-cyan);
+      transition: transform 0.2s;
+    }
+
+    .faq-item[open] summary::after {
+      content: '−';
+    }
+
+    .faq-content {
+      padding: 0 24px 20px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: -6px;
+      padding-top: 14px;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border-color);
+      background: #080c14;
+      padding: 60px 0 30px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+
+    .footer-brand p {
+      margin-top: 14px;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+
+    .footer-col h4 {
+      color: #fff;
+      font-weight: 700;
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col ul li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col ul li a:hover {
+      color: var(--accent-cyan);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .showcase-block, .showcase-block.reversed {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .showcase-block.reversed .showcase-text {
+        order: 1;
+      }
+      .showcase-block.reversed .showcase-visual {
+        order: 2;
+      }
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-cta {
+        flex-direction: column;
+      }
+      .btn-lg {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="./" class="brand-logo">
+        <img src="./branding/schematico-banner.png" alt="Schematico" />
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#installation">Gebäudeplan</a>
+        <a href="#macros">Makros</a>
+        <a href="#standards">Normen</a>
+        <a href="#comparison">Vergleich</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="https://github.com/vitals5/schematico" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="./" class="btn btn-primary btn-sm">Web-App öffnen</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="pulse"></span>
+        Schematico v1.2.35 • Open-Source CAE & Installations-CAD
+      </div>
+      <h1>
+        Professionelle Schaltpläne &amp;<br />
+        <span class="gradient">Elektroinstallation</span> im Browser und Desktop
+      </h1>
+      <p class="lead">
+        Schematico kombiniert mehrseitige industrielle Stromlaufpläne nach DIN EN 81346 &amp; IEC 60617 mit moderner architektonischer Elektroinstallationsplanung nach DIN EN 60617-11. Schnell, präzise und plattformunabhängig.
+      </p>
+      <div class="hero-cta">
+        <a href="./" class="btn btn-primary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Kostenlos im Browser starten
+        </a>
+        <a href="https://github.com/vitals5/schematico/releases/latest" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Windows Download (.exe)
+        </a>
+      </div>
+      <div class="hero-standards">
+        <span>DIN EN 81346-1/2 (BMK)</span>
+        <span>IEC 60617 (Schaltzeichen)</span>
+        <span>DIN EN 60617-11 (Installation)</span>
+        <span>DIN EN ISO 7200 (Schriftfeld)</span>
+      </div>
+
+      <!-- Main App Window Mockup Frame -->
+      <div class="cad-window-frame">
+        <div class="cad-window-header">
+          <div class="window-controls">
+            <span class="window-dot dot-red"></span>
+            <span class="window-dot dot-yellow"></span>
+            <span class="window-dot dot-green"></span>
+          </div>
+          <div class="window-title">Schematico CAE — [Projekt: Hauptverteilung_ET1.json | Seite 1: Einspeisung &amp; Absicherung]</div>
+          <div class="window-status">
+            <span>GRID: 8mm</span>
+            <span>AUTOCONNECT: AN</span>
+            <span>ZOOM: 100%</span>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- SCREENSHOT 1: Haupt-Editor (Stromlaufplan & Übersicht)    -->
+        <!-- Bild einfügen: <img src="docs/screenshots/01-schematic-editor.png" width="100%" alt="Schematico Haupt-Editor" /> -->
+        <!-- ======================================================== -->
+        <div class="screenshot-stage" id="main-editor-placeholder">
+          <span class="cad-ruler-overlay">+X: 120.00 mm | +Y: 85.00 mm</span>
+          <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: HAUPT-EDITOR</div>
+          <div class="placeholder-title">Industrielle Stromlaufpläne mit Autoconnect &amp; Querverweisen</div>
+          <p class="placeholder-desc">
+            Vollwertiger Schaltplan-Editor mit automatischer Leitungsverbindung, Kontaktspiegeln unter Leistungsschützen, Abbruchstellen mit sheet-übergreifenden Zielverweisen und normgerechter Betriebsmittelkennzeichnung.
+          </p>
+          <a href="./" class="btn btn-primary btn-sm">Live in Web-App ausprobieren</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Section -->
+  <section id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Leistungsmerkmale</div>
+        <h2 class="section-title">Alles, was Elektroplaner und Schaltanlagenbauer brauchen</h2>
+        <p class="section-subtitle">
+          Entwickelt für maximale Produktivität ohne überladene Menüs – direkt im Browser oder als native Desktop-App für Windows.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Stromlaufpläne &amp; Autoconnect</h3>
+          <p>
+            Standard-Raster (8 mm &amp; 4 mm) mit direktionaler Strahlenprojektion. Bauteilanschlüsse verbinden sich beim Platzieren automatisch. Orthogonale Leitungsführung mit automatischer T-Knoten-Generierung und kreuzungsfreien Brücken.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon">🏡</div>
+          <h3>Elektroinstallation (DIN EN 60617-11)</h3>
+          <p>
+            Eigener Seitentyp für Installationspläne: Grundriss-Skizzen maßstabsgetreu kalibrieren, Wände mit Wandstärken zeichnen, Türen und Fenster einfügen und über 66 standardisierte Installationssymbole an Wänden platzieren.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon">🔗</div>
+          <h3>Intelligente Querverweise</h3>
+          <p>
+            Bidirektionale Querverweise zwischen Relaisspulen und Hilfskontakten sowie zwischen Abbruchstellen. Per Strg+Klick direkt zur Zielseite springen – und im Vektor-PDF mit nativen Hyperlinks navigieren.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Makro-Bibliothek (100k+ Dateien)</h3>
+          <p>
+            Nahtloses Durchsuchen und Platzieren von Fenstermakros (.ema), Seitenmakros (.ems), Bauteilpaketen (.edz) und Schaltschrank-Konturen (.fp1). Getestet mit riesigen Archiven mit über 100.000 Dateien.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-icon">📑</div>
+          <h3>Normblatt &amp; Titelblock-Sync</h3>
+          <p>
+            Zentrale Projektmetadaten (Projektname, Anlage, Ort, Zeichner, Datum, Revision) synchronisieren sich live über alle genormten Schriftfelder (DIN EN ISO 7200) und Deckblatt-Vorlagen (z.B. Standard-Form F01).
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-icon">🖨️</div>
+          <h3>Druckreife Vektor-PDFs &amp; BOM</h3>
+          <p>
+            Gestochen scharfe Vektor-PDF-Exporte in DIN A3 und DIN A4 (Farbe oder kontrastreiches Monochrom). Automatische Generierung strukturierter Betriebsmittellisten (Stücklisten / BOM) mit Artikel- und Herstellerdaten.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase 1: Schaltplan & Autoconnect -->
+  <section class="showcase-section">
+    <div class="container">
+      <div class="showcase-block">
+        <div class="showcase-text">
+          <div class="section-tag">Elektro-Engineering</div>
+          <h3>Industrielle Stromlaufpläne &amp; Kabeldefinitionen</h3>
+          <p>
+            Erstelle anspruchsvolle Hauptstromkreise, Steuerungsstromkreise und SPS-Beschaltungen mit höchster Präzision.
+          </p>
+          <ul class="showcase-list">
+            <li><span class="check-icon">✓</span> <strong>Autoconnect:</strong> Fluchtende Anschlüsse schließen sich sofort kurzschlussfrei zusammen.</li>
+            <li><span class="check-icon">✓</span> <strong>Kabelbündel:</strong> Adernzuweisung für Mantelleitungen (z.B. NYM-J 5x1.5, ÖLFLEX) mit Schirmung.</li>
+            <li><span class="check-icon">✓</span> <strong>Klemmenleisten:</strong> Klemmenpläne mit durchgängiger Klemmennummerierung und PE/N-Trennung.</li>
+            <li><span class="check-icon">✓</span> <strong>Ortskästen (+S1):</strong> Gruppierung von Komponenten in Schaltschränke und Vor-Ort-Bedienstellen.</li>
+          </ul>
+        </div>
+        <div class="showcase-visual">
+          <div class="cad-window-frame">
+            <div class="cad-window-header">
+              <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
+              <div class="window-title">schaltplan_drehstrom_motor.sch</div>
+            </div>
+            <!-- ======================================================== -->
+            <!-- SCREENSHOT 2: Stromlaufplan Detailansicht               -->
+            <!-- Bild einfügen: <img src="docs/screenshots/02-schematic-detail.png" width="100%" alt="Stromlaufplan Detailansicht" /> -->
+            <!-- ======================================================== -->
+            <div class="screenshot-stage" style="min-height: 340px;">
+              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: SCHALTPLAN-DETAIL</div>
+              <div class="placeholder-title" style="font-size: 1.25rem;">Autoconnect, Schütze &amp; Motorschutzschalter</div>
+              <p class="placeholder-desc" style="font-size: 0.85rem;">
+                Detaillierte Darstellung von Leistungspfaden, Querverweis-Kontaktspiegeln (-K1: /2.1, /2.4) und Klemmenanschlüssen.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showcase 2: Gebäude- & Elektroinstallation -->
+      <div class="showcase-block reversed" id="installation">
+        <div class="showcase-text">
+          <div class="section-tag">Gebäudetechnik</div>
+          <h3>Architektonische Elektroinstallation nach DIN EN 60617-11</h3>
+          <p>
+            Lade Grundrisspläne als Bild oder PDF, kalibriere den Maßstab mit zwei Klicks und plane Steckdosen, Schalter, Smart-Home-Komponenten und Leitungszüge.
+          </p>
+          <ul class="showcase-list">
+            <li><span class="check-icon">✓</span> <strong>Normgerechte Symbole:</strong> Über 66 Installationssymbole (1-fach bis 5-fach Steckdosen, Serien-/Wechselschalter, CEE, RJ45).</li>
+            <li><span class="check-icon">✓</span> <strong>Smart Home &amp; Gebäudeautomation:</strong> Neutrale Bussymbole für 2-fach/4-fach Tastsensoren, Raumtemperaturregler (RTR), Präsenzmelder und Fensterkontakte (KNX, Loxone, DALI, Modbus).</li>
+            <li><span class="check-icon">✓</span> <strong>Wand-Ausrichtung:</strong> Symbole rasten magnetisch an Wänden ein und richten sich automatisch winkelgetreu aus.</li>
+            <li><span class="check-icon">✓</span> <strong>Bogenleitungen (arcWires):</strong> Elegante geschwungene Leitungsführung zwischen Schaltern, Brennstellen und Verteilern.</li>
+          </ul>
+        </div>
+        <div class="showcase-visual">
+          <div class="cad-window-frame">
+            <div class="cad-window-header">
+              <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
+              <div class="window-title">grundriss_og_beleuchtung.sch</div>
+            </div>
+            <!-- ======================================================== -->
+            <!-- SCREENSHOT 3: Elektroinstallationsplan                   -->
+            <!-- Bild einfügen: <img src="docs/screenshots/03-installation-plan.png" width="100%" alt="Elektroinstallationsplan" /> -->
+            <!-- ======================================================== -->
+            <div class="screenshot-stage" style="min-height: 340px;">
+              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: INSTALLATIONSPLAN</div>
+              <div class="placeholder-title" style="font-size: 1.25rem;">Grundriss mit DIN EN 60617-11 Symbolen</div>
+              <p class="placeholder-desc" style="font-size: 0.85rem;">
+                Wände mit Türen und Fenstern, 3-fach Steckdosenkombinationen, Tastsensoren, Rauchmelder und Bogenleitungen mit Stromkreis-Kennzeichnung.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showcase 3: Querverweise & Makros -->
+      <div class="showcase-block" id="macros">
+        <div class="showcase-text">
+          <div class="section-tag">Projekt-Workflows</div>
+          <h3>Intelligente Kontaktspiegel &amp; High-Speed Makro-Bibliothek</h3>
+          <p>
+            Nie wieder veraltete Querverweise suchen. Schematico pflegt alle Schütz-Kontaktspiegel und Abbruchstellen automatisch in Echtzeit.
+          </p>
+          <ul class="showcase-list">
+            <li><span class="check-icon">✓</span> <strong>Live-Querverweise:</strong> Spulen und zugehörige Schließer-/Öffnerkontakte verlinken sich automatisch sheet-übergreifend.</li>
+            <li><span class="check-icon">✓</span> <strong>100.000+ Makros:</strong> Lokale Ordner mit Makro-Dateien (.ema, .ems, .edz) blitzschnell indizieren, durchsuchen und platzieren.</li>
+            <li><span class="check-icon">✓</span> <strong>Interaktives PDF:</strong> Exportierte PDF-Dokumente enthalten echte Vektor-Links zum sekundenschnellen Springen im Schaltplan.</li>
+            <li><span class="check-icon">✓</span> <strong>Touch &amp; Tablet:</strong> Fließende Gestenbedienung, Pinch-to-Zoom und integrierte Lupen-Vorschau auf Mobilgeräten.</li>
+          </ul>
+        </div>
+        <div class="showcase-visual">
+          <div class="cad-window-frame">
+            <div class="cad-window-header">
+              <div class="window-controls"><span class="window-dot dot-red"></span><span class="window-dot dot-yellow"></span><span class="window-dot dot-green"></span></div>
+              <div class="window-title">makro_browser_navigation.sch</div>
+            </div>
+            <!-- ======================================================== -->
+            <!-- SCREENSHOT 4: Makro-Browser & Querverweise               -->
+            <!-- Bild einfügen: <img src="docs/screenshots/04-macro-crossref.png" width="100%" alt="Makro-Browser & Querverweise" /> -->
+            <!-- ======================================================== -->
+            <div class="screenshot-stage" style="min-height: 340px;">
+              <div class="placeholder-badge">🖼️ SCREENSHOT-PLATZHALTER: MAKRO-BIBLIOTHEK</div>
+              <div class="placeholder-title" style="font-size: 1.25rem;">Makro-Vorschau &amp; Eigenschaften-Inspektor</div>
+              <p class="placeholder-desc" style="font-size: 0.85rem;">
+                Kompakte Leiste mit Suchfilter für Fenstermakros, Miniatur-Vorschau und direkter BMK-Zuweisung vor der Platzierung.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Standards Section -->
+  <section id="standards" style="background: rgba(15, 21, 35, 0.4); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Industriestandards</div>
+        <h2 class="section-title">Normkonformität auf höchstem Niveau</h2>
+        <p class="section-subtitle">
+          Schematico ist von Grund auf nach etablierten europäischen und internationalen elektrotechnischen Normen aufgebaut.
+        </p>
+      </div>
+
+      <div class="standards-grid">
+        <div class="standard-box">
+          <div class="standard-code">DIN EN 81346-1 / -2</div>
+          <div class="standard-name">Strukturierungsprinzipien &amp; BMK</div>
+          <div class="standard-desc">Kennzeichnung von Betriebsmitteln nach Kennbuchstaben (=Anlage +Ort -Betriebsmittel:Anschluss).</div>
+        </div>
+        <div class="standard-box">
+          <div class="standard-code">IEC 60617 / DIN EN 60617</div>
+          <div class="standard-name">Grafische Symbole für Schaltpläne</div>
+          <div class="standard-desc">Genormte Schaltsymbole für Schaltgeräte, Motoren, Schütze, Transformatoren, Schutzgeräte und SPS-Module.</div>
+        </div>
+        <div class="standard-box">
+          <div class="standard-code">DIN EN 60617-11</div>
+          <div class="standard-name">Installationsschaltpläne &amp; Gebäude</div>
+          <div class="standard-desc">Spezifische Kennzeichnung für Schalter, Steckdosen, Leuchten, Verteiler und Smart-Home-Sensoren im Grundriss.</div>
+        </div>
+        <div class="standard-box">
+          <div class="standard-code">DIN EN ISO 7200</div>
+          <div class="standard-name">Datenfelder in Schriftfeldern</div>
+          <div class="standard-desc">Einheitliche Dokumenten- und Zeichnungsköpfe mit automatischer Synchronisation aller Projektdaten.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Table -->
+  <section id="comparison">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Direkter Vergleich</div>
+        <h2 class="section-title">Warum Schematico die moderne Wahl ist</h2>
+        <p class="section-subtitle">
+          Keine teuren Jahreslizenzen, keine zwingende Cloud-Abhängigkeit und keine monatelange Einarbeitungszeit.
+        </p>
+      </div>
+
+      <div class="comparison-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Funktionsbereich</th>
+              <th class="highlight">Schematico</th>
+              <th>Reine Zeichenprogramme (Visio, Draw.io)</th>
+              <th>Klassische Groß-CAE-Systeme</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Elektro-Logik &amp; Autoconnect</strong></td>
+              <td class="highlight">✓ Ja (Direktionale Anschlüsse)</td>
+              <td>✗ Nein (Nur statische Vektoren)</td>
+              <td>✓ Ja</td>
+            </tr>
+            <tr>
+              <td><strong>Kontaktspiegel &amp; Querverweise</strong></td>
+              <td class="highlight">✓ Ja (Automatisch &amp; klickbar)</td>
+              <td>✗ Manuell einzutippen</td>
+              <td>✓ Ja</td>
+            </tr>
+            <tr>
+              <td><strong>Gebäudeinstallation (DIN EN 60617-11)</strong></td>
+              <td class="highlight">✓ Voll integriert mit Bogenleitungen</td>
+              <td>✗ Nur unvollständige Stempel</td>
+              <td>▲ Nur mit teurem Zusatzmodul</td>
+            </tr>
+            <tr>
+              <td><strong>Plattform &amp; Verfügbarkeit</strong></td>
+              <td class="highlight">✓ Web &amp; Windows (PWA + Offline)</td>
+              <td>✓ Meist Web</td>
+              <td>✗ Schwerfälliger Windows-Client</td>
+            </tr>
+            <tr>
+              <td><strong>Makro-Kompatibilität</strong></td>
+              <td class="highlight">✓ .ema, .ems, .edz, .fp1 (100k+)</td>
+              <td>✗ Nein</td>
+              <td>✓ Ja</td>
+            </tr>
+            <tr>
+              <td><strong>Kosten &amp; Lizenz</strong></td>
+              <td class="highlight">✓ 100% Open-Source (MIT)</td>
+              <td>▲ Freemium / Abo</td>
+              <td>✗ Teure 5-stellige Lizenzen</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section id="faq">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Häufig gestellte Fragen</div>
+        <h2 class="section-title">Fragen &amp; Antworten</h2>
+        <p class="section-subtitle">
+          Alles Wissenswerte über Schematico, die Kompatibilität und den Einstieg.
+        </p>
+      </div>
+
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary>Kann Schematico komplett offline ohne Internetverbindung genutzt werden?</summary>
+          <div class="faq-content">
+            Ja. Sowohl die installierbare Windows-Desktop-Anwendung (.exe) als auch die Web-App arbeiten vollständig lokal in deinem Browser. Deine Projekte, Schaltpläne und Makros werden auf deinem Gerät verarbeitet und niemals auf externe Server übertragen.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Welche Makro-Formate werden unterstützt?</summary>
+          <div class="faq-content">
+            Schematico unterstützt Standard-Fenstermakros (<code>.ema</code>), Seitenmakros (<code>.ems</code>), Bauteilpakete (<code>.edz</code>) sowie 2D-Schaltschrankkonturen (<code>.fp1</code>). Über den Makro-Manager können lokale Verzeichnisse mit über 100.000 Dateien performant angebunden werden.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Funktionieren die Querverweise auch im exportierten PDF?</summary>
+          <div class="faq-content">
+            Ja! Der Vektor-PDF-Export bettet native PDF-Hyperlinks ein. Wenn du im PDF-Viewer (wie Acrobat Reader, Chrome oder Apple Preview) auf eine Schützspule, einen Kontakt oder eine Abbruchstelle klickst, springt das Dokument sofort zur entsprechenden Zielseite.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Ist Schematico auch auf Tablets oder Smartphones nutzbar?</summary>
+          <div class="faq-content">
+            Ja. Schematico ist als Progressive Web App (PWA) konzipiert und bietet optimierte Touch-Gesten: Stufenloser Zoom, Verschieben per Finger, großzügige Touch-Trefferbereiche und eine automatische Lupen-Vorschau beim Platzieren von Bauteilen.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Unter welcher Lizenz steht Schematico?</summary>
+          <div class="faq-content">
+            Schematico ist freie Open-Source-Software unter der permissiven MIT-Lizenz. Du kannst das Programm sowohl privat als auch kommerziell uneingeschränkt nutzen.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call to Action Banner -->
+  <section style="background: linear-gradient(180deg, rgba(15, 21, 35, 0.4) 0%, rgba(49, 130, 206, 0.12) 100%); border-top: 1px solid var(--border-color); text-align: center; padding: 100px 0;">
+    <div class="container">
+      <h2 style="font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 800; margin-bottom: 20px;">
+        Bereit für moderne Schaltplan-Erstellung?
+      </h2>
+      <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 680px; margin: 0 auto 36px;">
+        Starte direkt ohne Installation im Browser oder lade den eigenständigen Windows-Installer herunter.
+      </p>
+      <div class="hero-cta">
+        <a href="./" class="btn btn-primary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Web-App im Browser öffnen
+        </a>
+        <a href="https://github.com/vitals5/schematico/releases/latest" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Windows Desktop (.exe)
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-logo">
+            <img src="./branding/schematico-banner.png" alt="Schematico" />
+          </div>
+          <p>
+            Moderne, intuitive und standardkonforme CAE- &amp; CAD-Suite für Elektro-Engineering und Gebäude-Installationsplanung.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Software</h4>
+          <ul>
+            <li><a href="./">Web-App starten</a></li>
+            <li><a href="https://github.com/vitals5/schematico/releases/latest" target="_blank" rel="noopener">Windows Download</a></li>
+            <li><a href="https://github.com/vitals5/schematico/releases" target="_blank" rel="noopener">Release Notes</a></li>
+            <li><a href="https://github.com/vitals5/schematico" target="_blank" rel="noopener">GitHub Repository</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Normen</h4>
+          <ul>
+            <li><a href="#standards">DIN EN 81346 (BMK)</a></li>
+            <li><a href="#standards">IEC 60617 (Symbole)</a></li>
+            <li><a href="#standards">DIN EN 60617-11 (Installation)</a></li>
+            <li><a href="#standards">DIN EN ISO 7200 (Schriftfeld)</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Projekt</h4>
+          <ul>
+            <li><a href="https://github.com/vitals5/schematico/blob/main/LICENSE" target="_blank" rel="noopener">MIT Lizenz</a></li>
+            <li><a href="https://github.com/vitals5/schematico/issues" target="_blank" rel="noopener">Problem melden</a></li>
+            <li><a href="https://github.com/vitals5/schematico/discussions" target="_blank" rel="noopener">Community &amp; Feedback</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 Schematico • Open-Source CAE Suite unter MIT-Lizenz</div>
+        <div>Entwickelt für Elektroingenieure, Schaltschrankbauer und Elektroplaner</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
