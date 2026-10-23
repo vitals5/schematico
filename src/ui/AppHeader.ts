@@ -59,7 +59,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuFit',t('menuFit'),t('keyF'))+opt('menuZoom100',t('menuZoom100'))+opt('menuZoomIn',t('menuZoomIn'))+opt('menuZoomOut',t('menuZoomOut'))+separator+
           heading(t('headingGrid'))+opt('menuGridFull',t('menuGridFull'),'Alt+1')+opt('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+opt('menuGridFine',t('menuGridFine'),'Alt+3')+opt('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
           opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+separator+
-          opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel')),'menu-item')}
+          opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel'))+opt('menuToggleFloatingBar',t('menuToggleFloatingBar')),'menu-item')}
         ${menu('menuDataTrigger',t('menuData'),
           opt('menuPlausibility',t('menuPlausibility'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
           opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}

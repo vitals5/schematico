@@ -161,6 +161,108 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Schutzkontakt-Steckdose mit integriertem USB-A/C Ladeport'
   },
   {
+    id: 'inst_socket_cee_11kw',
+    name: 'CEE-Steckdose 11 kW (16 A / 400 V)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'CEE-Steckdose 11 kW',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <!-- Drehstrom-Steckdose (3P+N+PE) mit 3 Phasenstrichen am Schaft und Leistungsangabe 11kW -->
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="13" y1="4.5" x2="19" y2="2.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="13" y1="7.5" x2="19" y2="5.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="13" y1="10.5" x2="19" y2="8.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="27.5" font-size="6.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">11kW</text>
+    `,
+    description: 'CEE-Drehstromsteckdose 11 kW (16 A, 400 V, 5-polig 3P+N+PE nach DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_socket_cee_22kw',
+    name: 'CEE-Steckdose 22 kW (32 A / 400 V)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'CEE-Steckdose 22 kW',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <!-- Drehstrom-Steckdose (3P+N+PE) mit 3 Phasenstrichen am Schaft und Leistungsangabe 22kW -->
+      <line x1="16" y1="0" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+      <line x1="13" y1="4.5" x2="19" y2="2.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="13" y1="7.5" x2="19" y2="5.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="13" y1="10.5" x2="19" y2="8.5" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6 22 A 10 10 0 0 1 26 22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="16" y="27.5" font-size="6.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">22kW</text>
+    `,
+    description: 'CEE-Drehstromsteckdose 22 kW (32 A, 400 V, 5-polig 3P+N+PE nach DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_wallbox',
+    name: 'Wallbox / EV-Ladestation (allgemein)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Wallbox',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <circle cx="16" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="13.8" font-size="7.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">WB</text>
+    `,
+    description: 'Wallbox / Ladestation für Elektrofahrzeuge (Wandmontage)'
+  },
+  {
+    id: 'inst_wallbox_11kw',
+    name: 'Wallbox 11 kW (EV-Ladestation)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Wallbox 11 kW',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <circle cx="16" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="13.8" font-size="7.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">WB</text>
+      <text x="16" y="28.5" font-size="6" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">11kW</text>
+    `,
+    description: 'Wallbox / EV-Ladestation 11 kW (3~ 400 V / 16 A, Wandmontage)'
+  },
+  {
+    id: 'inst_wallbox_22kw',
+    name: 'Wallbox 22 kW (EV-Ladestation)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Wallbox 22 kW',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <circle cx="16" cy="11" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="16" y="13.8" font-size="7.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">WB</text>
+      <text x="16" y="28.5" font-size="6" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">22kW</text>
+    `,
+    description: 'Wallbox / EV-Ladestation 22 kW (3~ 400 V / 32 A, Wandmontage)'
+  },
+  {
     id: 'inst_socket_single_alt',
     name: 'Einfachsteckdose (Wandanschluss)',
     category: 'installation',

@@ -63,6 +63,7 @@ export const translations = {
     menuToggleAutoconnect: 'Automatisch verbinden',
     menuToggleLeftPanel: 'Seiten & Bibliothek',
     menuToggleRightPanel: 'Eigenschaften',
+    menuToggleFloatingBar: 'Schwebende Aktionsleiste',
     menuData: 'Auswerten',
     menuPlausibility: 'Projekt prüfen…',
     menuRecalcCrossRef: 'Querverweise aktualisieren',
@@ -452,6 +453,8 @@ export const translations = {
     btnFloatingEdit: '⚡ BMK & Beschriftung bearbeiten...',
     btnFloatingSaveMacro: '📦 Makro',
     btnFloatingSaveMacroTitle: 'Als .ema Makro speichern',
+    btnMinimizeFloatingBar: 'Aktionsleiste minimieren / ausblenden',
+    btnExpandFloatingBar: 'Aktionsleiste wieder einblenden',
     statusDeviceBox: 'Gerätekasten: Rechteck mit der Maus aufziehen oder zwei Ecken anklicken. Esc bricht ab.',
     statusCable: 'Kabeldefinition: Startpunkt und Endpunkt quer über die Adern anklicken. Esc bricht ab.',
 
@@ -916,6 +919,7 @@ export const translations = {
     menuToggleAutoconnect: 'Autoconnect',
     menuToggleLeftPanel: 'Pages & Library',
     menuToggleRightPanel: 'Properties',
+    menuToggleFloatingBar: 'Floating Action Bar',
     menuData: 'Reports',
     menuPlausibility: 'Check Project…',
     menuRecalcCrossRef: 'Recalculate Cross-References',
@@ -1305,6 +1309,8 @@ export const translations = {
     btnFloatingEdit: '⚡ Edit Tag & Labels...',
     btnFloatingSaveMacro: '📦 Macro',
     btnFloatingSaveMacroTitle: 'Save as .ema window macro',
+    btnMinimizeFloatingBar: 'Minimize / hide action bar',
+    btnExpandFloatingBar: 'Show action bar',
     statusDeviceBox: 'Device Box: Drag rectangle with mouse or click two corners. Esc to cancel.',
     statusCable: 'Cable Definition: Click start and end across conductors. Esc to cancel.',
 

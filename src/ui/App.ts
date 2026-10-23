@@ -1,4 +1,4 @@
-import { readAppSetting } from '../model/LegacyCompatibility';
+import { readAppSetting, writeAppSetting } from '../model/LegacyCompatibility';
 import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey } from '../ai/GeminiConfig';
 import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
@@ -72,6 +72,7 @@ export class App {
   private rightSidebarWidth: number = 300;
   private isLeftCollapsed: boolean = false;
   private isRightCollapsed: boolean = false;
+  private isFloatingBarMinimized: boolean = false;
   private autoSaveTimer: any = null;
   private currentFilePath: string | null = null;
   private currentFileHandle: any = null;
@@ -82,6 +83,7 @@ export class App {
     if (savedLeftW) this.leftSidebarWidth = parseInt(savedLeftW, 10) || 280;
     const savedRightW = readAppSetting('right_w');
     if (savedRightW) this.rightSidebarWidth = parseInt(savedRightW, 10) || 300;
+    this.isFloatingBarMinimized = readAppSetting('floating_bar_minimized') === 'true';
 
     // Default panels to collapsed on mobile / small screens
     if (window.innerWidth <= 960) {
@@ -271,7 +273,32 @@ export class App {
             <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="${t('toolRotate')}">🔄</button>
             <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="${t('toolDelete')}">🗑️</button>
             <button class="btn" id="btnFloatingContextMenu" style="padding: 6px 10px; font-size: 13px;" title="Kontextmenü">⋮</button>
+            <button class="btn" id="btnMinimizeFloatingBar" style="padding: 6px 9px; font-size: 11px; color: #a0aec0;" title="${t('btnMinimizeFloatingBar')}">▼</button>
           </div>
+
+          <!-- Minimized Floating Selection Pill -->
+          <button type="button" class="btn" id="selectionFloatingRestoreBtn" title="${t('btnExpandFloatingBar')}" style="
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            background: rgba(30, 36, 46, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid #4a5568;
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 11px;
+            color: #cbd5e0;
+            z-index: 1000;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            cursor: pointer;
+          ">
+            <span>▲</span>
+            <span id="selectionFloatingRestoreTag" style="font-family: monospace; color: #f6e05e; font-weight: 600;"></span>
+          </button>
 
           <!-- Touch Navigation & Zoom Floating HUD -->
           <div class="touch-nav-hud" id="touchNavHud">
@@ -486,6 +513,8 @@ export class App {
   public updateFloatingSelectionBar(): void {
     const bar = document.getElementById('selectionFloatingBar');
     const tag = document.getElementById('selectionFloatingTag');
+    const restoreBtn = document.getElementById('selectionFloatingRestoreBtn');
+    const restoreTag = document.getElementById('selectionFloatingRestoreTag');
     const btnEdit = document.getElementById('btnFloatingEdit');
     const btnRot = document.getElementById('btnFloatingRotate');
     const btnDel = document.getElementById('btnFloatingDelete');
@@ -503,35 +532,33 @@ export class App {
     for(const id of ['btnToolRotate','menuRotate']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button)button.disabled=!hasSelection||!!multiple||imageSelected||boxSelected||wallSelected||openingSelected;}
     const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||textSelected||wallSelected||openingSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
     if (bar && tag) {
+      let shouldShow = true;
       if (multiple) {
         tag.textContent = `${this.canvas.canUngroupSelection() ? t('menuGroup') + ': ' : ''}${t('foundElements', { count: selectionCount(this.canvas.getElementSelection()) })}`;
         if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';
-        if(btnDel){btnDel.title=t('floatingSelectionDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
+        if(btnDel){btnDel.title=t('floatingSelectionDeleteTitle');btnDel.textContent='🗑️';}
       } else if(boxSelected) {
-        tag.textContent=t('boxHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingBoxDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
+        tag.textContent=t('boxHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingBoxDeleteTitle');btnDel.textContent='🗑️';}
       } else if(imageSelected) {
-        tag.textContent=t('imageHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingImageDeleteTitle');btnDel.textContent='🗑️';}bar.style.display='flex';
+        tag.textContent=t('imageHeading');if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';if(btnDel){btnDel.title=t('floatingImageDeleteTitle');btnDel.textContent='🗑️';}
       } else if (this.selectedText) {
         const preview = this.selectedText.text.length > 16 ? this.selectedText.text.substring(0, 16) + '...' : this.selectedText.text;
         tag.textContent = `📝 "${preview || 'Text'}"`;
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'inline-block';
         if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
-        bar.style.display = 'flex';
       } else if (this.selectedWall) {
         const len = Math.round(Math.hypot(this.selectedWall.end.x - this.selectedWall.start.x, this.selectedWall.end.y - this.selectedWall.start.y));
         tag.textContent = t('floatingWallTag', { len });
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'none';
         if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
-        bar.style.display = 'flex';
       } else if (this.selectedOpening) {
         const typeName = this.selectedOpening.kind === 'door' ? t('openingDoorName') : this.selectedOpening.kind === 'window' ? t('openingWindowName') : this.selectedOpening.kind === 'garage_door' ? t('openingGarageName') : t('openingGenericName');
         tag.textContent = `🚪 ${typeName} (${this.selectedOpening.width} mm)`;
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'none';
         if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
-        bar.style.display = 'flex';
       } else if (this.selectedComponent) {
         const sym = getSymbolForComponent(this.selectedComponent);
         const locSym = sym ? getLocalizedSymbol(sym) : undefined;
@@ -542,11 +569,10 @@ export class App {
           btnDel.title = t('floatingCompDeleteTitle');
           btnDel.textContent = '🗑️';
         }
-        bar.style.display = 'flex';
       } else if (this.selectedCable) {
         tag.textContent = t('floatingCable', { name: this.selectedCable.bmk || this.selectedCable.cableType || t('cableHeading') });
         if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='inline-block';
-        if(btnDel)btnDel.title=t('floatingCableDeleteTitle');bar.style.display='flex';
+        if(btnDel)btnDel.title=t('floatingCableDeleteTitle');
       } else if (this.selectedWire) {
         tag.textContent = t('floatingWire', { potential: this.selectedWire.potential, color: this.selectedWire.color || 'BK', section: this.selectedWire.crossSection || '1.5mm²' });
         if (btnEdit) btnEdit.style.display = 'none';
@@ -555,13 +581,36 @@ export class App {
           btnDel.title = t('floatingWireDisconnectTitle');
           btnDel.textContent = t('floatingWireDisconnect');
         }
-        bar.style.display = 'flex';
       } else {
-        bar.style.display = 'none';
+        shouldShow = false;
       }
+
+      if (restoreTag) {
+        restoreTag.textContent = tag.textContent || '';
+      }
+      if (!shouldShow) {
+        bar.style.display = 'none';
+        if (restoreBtn) restoreBtn.style.display = 'none';
+      } else if (this.isFloatingBarMinimized) {
+        bar.style.display = 'none';
+        if (restoreBtn) restoreBtn.style.display = 'inline-flex';
+      } else {
+        bar.style.display = 'flex';
+        if (restoreBtn) restoreBtn.style.display = 'none';
+      }
+    }
+    const menuFloatingBar = document.getElementById('menuToggleFloatingBar');
+    if (menuFloatingBar) {
+      menuFloatingBar.setAttribute('aria-pressed', String(!this.isFloatingBarMinimized));
     }
     document.getElementById('btnNavMultiSelect')?.classList.toggle('active', !!this.canvas?.multiSelectMode);
     document.getElementById('btnNavPanMode')?.classList.toggle('active', this.canvas?.mode === 'pan');
+  }
+
+  public setFloatingBarMinimized(minimized: boolean): void {
+    this.isFloatingBarMinimized = minimized;
+    writeAppSetting('floating_bar_minimized', minimized ? 'true' : 'false');
+    this.updateFloatingSelectionBar();
   }
 
   public setLeftPanelCollapsed(collapsed: boolean): void {
@@ -779,6 +828,15 @@ export class App {
     document.getElementById('btnFloatingContextMenu')?.addEventListener('click', () => {
       this.canvas.triggerContextMenu(window.innerWidth / 2, Math.max(100, window.innerHeight - 150));
     });
+
+    const minBtn = document.getElementById('btnMinimizeFloatingBar');
+    if (minBtn) {
+      minBtn.onclick = () => this.setFloatingBarMinimized(true);
+    }
+    const restoreBtn = document.getElementById('selectionFloatingRestoreBtn');
+    if (restoreBtn) {
+      restoreBtn.onclick = () => this.setFloatingBarMinimized(false);
+    }
 
     const bindContinuousAction = (btnId: string, action: () => void, intervalMs: number = 35) => {
       const el = document.getElementById(btnId);
@@ -1070,6 +1128,7 @@ export class App {
     bindMenuOpt('menuOpen', () => void this.openProjectWithPicker());
     bindMenuOpt('menuToggleLeftPanel',()=>this.setLeftPanelCollapsed(!this.isLeftCollapsed));
     bindMenuOpt('menuToggleRightPanel',()=>this.setRightPanelCollapsed(!this.isRightCollapsed));
+    bindMenuOpt('menuToggleFloatingBar',()=>this.setFloatingBarMinimized(!this.isFloatingBarMinimized));
     bindMenuOpt('menuNew', () => {
       if (confirm(t('confirmNewProject'))) {
         this.createNewProject();
@@ -1516,6 +1575,11 @@ export class App {
 
     const statusLeft = document.getElementById('statusLeft');
     if (statusLeft) statusLeft.textContent = t('statusReady');
+    const minBtn = document.getElementById('btnMinimizeFloatingBar');
+    if (minBtn) minBtn.title = t('btnMinimizeFloatingBar');
+    const restoreBtn = document.getElementById('selectionFloatingRestoreBtn');
+    if (restoreBtn) restoreBtn.title = t('btnExpandFloatingBar');
+    this.updateFloatingSelectionBar();
     this.updateStatusBar();
 
     this.renderLeftTab();
