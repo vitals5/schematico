@@ -7,7 +7,7 @@ import { PlacedComponent, Project, TextFormatConfig } from '../model/types';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { MANUFACTURER_PARTS } from '../model/PartCatalogue';
-import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, setComponentLabelText } from '../model/LabelLayout';
+import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, arePinLabelsVisible, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
 import { t, getLocalizedSymbol } from '../i18n';
@@ -55,7 +55,7 @@ export class PropertiesDialog {
         border: 1px solid #4a5568;
         border-radius: 6px;
         width: 100%;
-        max-width: 680px;
+        max-width: 760px;
         box-shadow: 0 20px 40px rgba(0,0,0,0.8);
         color: #edf2f7;
         font-family: inherit;
@@ -186,9 +186,14 @@ export class PropertiesDialog {
     }
 
     if (this.activeTab === 'display') {
+      const units = getDrawingUnitsPerMm(this.project);
       const bmkPos = { preset: 'auto', visible: true, alignment: sym ? computeBmkPosition(this.component, sym).anchor : 'end', rotation: 0, fontSize: 10, offsetX: 0, offsetY: 0, ...this.component.bmkPosition };
       const fnPos = { preset: 'auto', visible: true, alignment: sym ? computeFunctionTextPosition(this.component, sym).anchor : 'end', rotation: 0, fontSize: 8, offsetX: 0, offsetY: 0, ...this.component.functionTextPosition };
       const techPos = { preset: 'auto', visible: !!(this.component.deviceTag || this.component.technicalCharacteristics), alignment: sym ? computeTechnicalDataPosition(this.component, sym).anchor : 'end', rotation: 0, fontSize: 8, offsetX: 0, offsetY: 0, ...this.component.technicalDataPosition };
+      const bmkFontVal = Number(((sym ? computeBmkPosition(this.component, sym).fontSize : bmkPos.fontSize) / units).toFixed(4));
+      const fnFontVal = Number(((sym ? computeFunctionTextPosition(this.component, sym).fontSize : fnPos.fontSize) / units).toFixed(4));
+      const techFontVal = Number(((sym ? computeTechnicalDataPosition(this.component, sym).fontSize : techPos.fontSize) / units).toFixed(4));
+      const rowGridStyle = 'display: grid; grid-template-columns: 1.7fr 0.85fr 0.85fr 1.15fr 0.8fr 0.9fr; gap: 8px; align-items: end;';
 
       return `
         <div style="display: flex; flex-direction: column; gap: 14px;">
@@ -208,7 +213,7 @@ export class PropertiesDialog {
               </label>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+            <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propBmkPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
@@ -253,6 +258,11 @@ export class PropertiesDialog {
                   <option value="270" ${bmkPos.rotation === 270 ? 'selected' : ''}>270°</option>
                 </select>
               </div>
+
+              <div>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+                <input type="number" min="0.1" max="20" step="0.1" id="propBmkFontSize" class="form-input" value="${bmkFontVal}" style="font-size: 11px; padding: 4px 6px;">
+              </div>
             </div>
           </div>
 
@@ -266,7 +276,7 @@ export class PropertiesDialog {
               </label>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+            <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propFnPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
@@ -311,6 +321,11 @@ export class PropertiesDialog {
                   <option value="270" ${fnPos.rotation === 270 ? 'selected' : ''}>270°</option>
                 </select>
               </div>
+
+              <div>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+                <input type="number" min="0.1" max="20" step="0.1" id="propFnFontSize" class="form-input" value="${fnFontVal}" style="font-size: 11px; padding: 4px 6px;">
+              </div>
             </div>
           </div>
 
@@ -324,7 +339,7 @@ export class PropertiesDialog {
               </label>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+            <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
                 <select id="propTechPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
@@ -365,18 +380,17 @@ export class PropertiesDialog {
                   <option value="270" ${techPos.rotation === 270 ? 'selected' : ''}>270°</option>
                 </select>
               </div>
+
+              <div>
+                <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+                <input type="number" min="0.1" max="20" step="0.1" id="propTechFontSize" class="form-input" value="${techFontVal}" style="font-size: 11px; padding: 4px 6px;">
+              </div>
             </div>
           </div>
 
           ${this.additionalTextPositionFields()}
           ${this.crossReferencePositionFields()}
-
-          <div style="background:#1f242e;border:1px solid #3e4656;border-radius:6px;padding:12px">
-            <strong>${escapeSvg(t('propFontSizesHeading'))}</strong>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
-              ${this.fontSizeFields()}
-            </div>
-          </div>
+          ${this.pinLabelPositionFields()}
 
           <!-- Section 4: Live Interactive Preview -->
           <div style="background: #181d26; border: 1px solid #3e4656; border-radius: 6px; padding: 12px;">
@@ -489,52 +503,146 @@ export class PropertiesDialog {
   private crossReferencePositionFields(): string {
     const cfg = this.component.crossRefPosition;
     const units = getDrawingUnitsPerMm(this.project);
-    return `<fieldset style="background:#1f242e;border:1px solid #3e4656;border-radius:6px;padding:12px">
-      <legend style="color:#f6ad55">${escapeSvg(t('propCrossRefLegend'))}</legend>
-      <label><input type="checkbox" id="propCrossRefVisible" ${cfg?.visible !== false ? 'checked' : ''}> ${escapeSvg(t('propVisible'))}</label>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px">
-        <label class="form-label">${escapeSvg(t('propPositionPreset'))}<select class="form-input" id="propCrossRefPreset">${[
-          ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
-          ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
-        ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">${escapeSvg(t('propAlignment'))}<select class="form-input" id="propCrossRefAlignment">${[
-          ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
-        ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">${escapeSvg(t('propOffsetX'))} (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetX" value="${(cfg?.offsetX ?? 0)/units}"></label>
-        <label class="form-label">${escapeSvg(t('propOffsetY'))} (mm)<input type="number" step="any" class="form-input" id="propCrossRefOffsetY" value="${(cfg?.offsetY ?? 0)/units}"></label>
-        <label class="form-label">${escapeSvg(t('propRotation'))}<select class="form-input" id="propCrossRefRotation">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select></label>
+    const fontVal = Number(((this.component.crossRefFontSize ?? cfg?.fontSize ?? 8) / units).toFixed(4));
+    const rowGridStyle = 'display: grid; grid-template-columns: 1.7fr 0.85fr 0.85fr 1.15fr 0.8fr 0.9fr; gap: 8px; align-items: end;';
+    return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-weight: 600; font-size: 12px; color: #f6ad55;">${escapeSvg(t('propCrossRefHeading'))}</span>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="propCrossRefVisible" ${cfg?.visible !== false ? 'checked' : ''}>
+          ${escapeSvg(t('propVisible'))}
+        </label>
       </div>
-    </fieldset>`;
+      <div style="${rowGridStyle}">
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
+          <select class="form-input" id="propCrossRefPreset" style="font-size: 11px; padding: 4px 6px;">${[
+            ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
+            ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
+          ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
+          <input type="number" step="any" class="form-input" id="propCrossRefOffsetX" value="${(cfg?.offsetX ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
+          <input type="number" step="any" class="form-input" id="propCrossRefOffsetY" value="${(cfg?.offsetY ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
+          <select class="form-input" id="propCrossRefAlignment" style="font-size: 11px; padding: 4px 6px;">${[
+            ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
+          ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
+          <select class="form-input" id="propCrossRefRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+          <input type="number" min="0.1" max="20" step="0.1" id="propCrossRefFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+      </div>
+    </div>`;
   }
 
   private additionalTextPositionFields(): string {
     const symbol = getSymbolForComponent(this.component, this.project);
     const cfg = { alignment: symbol ? computeAdditionalTextPosition(this.component, symbol).anchor : 'end', ...this.component.additionalTextPosition };
     const units = getDrawingUnitsPerMm(this.project);
+    const fontVal = Number(((symbol ? computeAdditionalTextPosition(this.component, symbol).fontSize : (cfg.fontSize ?? 8)) / units).toFixed(4));
     const presets = [['auto',t('propPresetAuto')],['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')],['custom',t('propPresetCustom')]];
-    return `<fieldset style="border:1px solid #3e4656;border-radius:6px;padding:12px"><legend>${escapeSvg(t('propAdditionalText'))}</legend>
-      <label><input id="propAdditionalVisible" type="checkbox" ${cfg.visible !== false ? 'checked' : ''}> ${escapeSvg(t('propVisible'))}</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
-        <label class="form-label">${escapeSvg(t('propPositionPreset'))}<select class="form-input" id="propAdditionalPreset">${presets.map(([key,label])=>`<option value="${key}" ${(cfg.preset || 'auto')===key?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">${escapeSvg(t('propOffsetX'))} (mm)<input class="form-input" id="propAdditionalOffsetX" type="number" step="any" value="${(cfg.offsetX || 0)/units}"></label>
-        <label class="form-label">${escapeSvg(t('propOffsetY'))} (mm)<input class="form-input" id="propAdditionalOffsetY" type="number" step="any" value="${(cfg.offsetY || 0)/units}"></label>
-        <label class="form-label">${escapeSvg(t('propAlignment'))}<select class="form-input" id="propAdditionalAlignment">${[['middle',t('propAlignMiddle')],['start',t('propAlignStart')],['end',t('propAlignEnd')]].map(([key,label])=>`<option value="${key}" ${(cfg.alignment || 'middle')===key?'selected':''}>${label}</option>`).join('')}</select></label>
-        <label class="form-label">${escapeSvg(t('propRotation'))}<select class="form-input" id="propAdditionalRotation">${[0,90,180,270].map(angle=>`<option value="${angle}" ${(cfg.rotation || 0)===angle?'selected':''}>${angle}°</option>`).join('')}</select></label>
-      </div></fieldset>`;
+    const rowGridStyle = 'display: grid; grid-template-columns: 1.7fr 0.85fr 0.85fr 1.15fr 0.8fr 0.9fr; gap: 8px; align-items: end;';
+    return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-weight: 600; font-size: 12px; color: #cbd5e0;">${escapeSvg(t('propAdditionalHeading'))}</span>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input id="propAdditionalVisible" type="checkbox" ${cfg.visible !== false ? 'checked' : ''}>
+          ${escapeSvg(t('propVisible'))}
+        </label>
+      </div>
+      <div style="${rowGridStyle}">
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
+          <select class="form-input" id="propAdditionalPreset" style="font-size: 11px; padding: 4px 6px;">${presets.map(([key,label])=>`<option value="${key}" ${(cfg.preset || 'auto')===key?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
+          <input class="form-input" id="propAdditionalOffsetX" type="number" step="any" value="${(cfg.offsetX || 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
+          <input class="form-input" id="propAdditionalOffsetY" type="number" step="any" value="${(cfg.offsetY || 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
+          <select class="form-input" id="propAdditionalAlignment" style="font-size: 11px; padding: 4px 6px;">${[['middle',t('propAlignMiddle')],['start',t('propAlignStart')],['end',t('propAlignEnd')]].map(([key,label])=>`<option value="${key}" ${(cfg.alignment || 'middle')===key?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
+          <select class="form-input" id="propAdditionalRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(angle=>`<option value="${angle}" ${(cfg.rotation || 0)===angle?'selected':''}>${angle}°</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+          <input type="number" min="0.1" max="20" step="0.1" id="propAdditionalFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+      </div>
+    </div>`;
   }
 
-  private fontSizeFields(): string {
+  private pinLabelPositionFields(): string {
     const sym = getSymbolForComponent(this.component, this.project);
-    if (!sym) return '';
+    const cfg = this.component.pinLabelPosition;
     const units = getDrawingUnitsPerMm(this.project);
-    return [
-      ['Bmk', t('labelBmk'), computeBmkPosition(this.component, sym).fontSize],
-      ['Fn', t('labelFunctionText'), computeFunctionTextPosition(this.component, sym).fontSize],
-      ['Additional', t('labelAdditionalText'), computeAdditionalTextPosition(this.component, sym).fontSize],
-      ['Tech', t('labelTechnicalData'), computeTechnicalDataPosition(this.component, sym).fontSize],
-      ['CrossRef', t('propCrossRefTab'), this.component.crossRefFontSize ?? 8],
-      ['Pin', t('propPinLabel'), this.component.pinLabelFontSize ?? Object.values(this.component.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? 6.5]
-    ].map(([key,label,size]) => `<label class="form-label">${label}<input class="form-input" type="number" min="0.1" max="20" step="0.1" id="prop${key}FontSize" value="${Number((Number(size)/units).toFixed(4))}"></label>`).join('');
+    const visible = arePinLabelsVisible(this.component, sym);
+    const baseSize = this.component.pinLabelFontSize
+      ?? cfg?.fontSize
+      ?? Object.values(this.component.pins).find(p => p.labelPosition)?.labelPosition?.fontSize
+      ?? sym?.pins.find(p => p.labelPosition)?.labelPosition?.fontSize
+      ?? 6.5;
+    const fontVal = Number((Number(baseSize) / units).toFixed(4));
+    const rowGridStyle = 'display: grid; grid-template-columns: 1.7fr 0.85fr 0.85fr 1.15fr 0.8fr 0.9fr; gap: 8px; align-items: end;';
+    return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-weight: 600; font-size: 12px; color: #63b3ed;">${escapeSvg(t('propPinHeading'))}</span>
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <input type="checkbox" id="propPinVisible" ${visible ? 'checked' : ''}>
+          ${escapeSvg(t('propVisible'))}
+        </label>
+      </div>
+      <div style="${rowGridStyle}">
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
+          <select class="form-input" id="propPinPreset" style="font-size: 11px; padding: 4px 6px;">${[
+            ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
+            ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
+          ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
+          <input type="number" step="any" class="form-input" id="propPinOffsetX" value="${(cfg?.offsetX ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
+          <input type="number" step="any" class="form-input" id="propPinOffsetY" value="${(cfg?.offsetY ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
+          <select class="form-input" id="propPinAlignment" style="font-size: 11px; padding: 4px 6px;">${[
+            ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
+          ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
+          <select class="form-input" id="propPinRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
+          <input type="number" min="0.1" max="20" step="0.1" id="propPinFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+        </div>
+      </div>
+    </div>`;
   }
 
   private generatePreviewSvg(): string {
@@ -573,9 +681,14 @@ export class PropertiesDialog {
       <text x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${escapeSvg(techText || t('labelDeviceTag'))}</text>
     ` : '';
 
-    const pinsSvg = sym.pins.map(pin => `
-      <circle cx="${pin.x}" cy="${pin.y}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>
-    `).join('');
+    const pinsSvg = sym.pins.map(pin => {
+      const pinPos = computePinLabelPosition(this.component, sym, pin);
+      const pinText = this.component.pins[pin.id]?.customLabel ?? pin.name;
+      return `
+        <circle cx="${pin.x}" cy="${pin.y}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>
+        ${pinPos.visible && pinText ? `<text class="source-pin-label" x="${pinPos.x}" y="${pinPos.y}" font-size="${pinPos.fontSize}" font-family="sans-serif" fill="#cbd5e0" text-anchor="${pinPos.anchor}" ${pinPos.transform}>${escapeSvg(pinText)}</text>` : ''}
+      `;
+    }).join('');
 
     return `
       <svg width="100%" height="160" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" style="max-height: 160px; overflow: visible;">
@@ -735,7 +848,7 @@ export class PropertiesDialog {
         const refresh = () => {
           if (input.id.endsWith('Preset') && (input as HTMLSelectElement).value === 'auto') {
             const alignment = modal.querySelector(`#${input.id.replace('Preset', 'Alignment')}`) as HTMLSelectElement | null;
-            if (alignment) alignment.value = input.id === 'propCrossRefPreset' ? '' : 'end';
+            if (alignment) alignment.value = (input.id === 'propCrossRefPreset' || input.id === 'propPinPreset') ? '' : 'end';
           }
           if(this.collectFormData(modal)===false)return;
           this.updatePreviewSvg();
@@ -751,6 +864,7 @@ export class PropertiesDialog {
         delete this.component.additionalTextPosition;
         delete this.component.technicalDataPosition;
         delete this.component.crossRefPosition;
+        delete this.component.pinLabelPosition;
         const content = modal.querySelector('#propTabContent');
         if (content) {
           content.innerHTML = this.renderActiveTabContent();
@@ -924,6 +1038,33 @@ export class PropertiesDialog {
         rotation: parseInt(techRot?.value || '0', 10) as any || 0,
         visible: techVis ? techVis.checked : false,
       };
+    }
+
+    const pinPreset = modal.querySelector('#propPinPreset') as HTMLSelectElement | null;
+    const pinVis = modal.querySelector('#propPinVisible') as HTMLInputElement | null;
+    if (pinPreset || pinVis) {
+      const value = (id: string) => (modal.querySelector(`#propPin${id}`) as HTMLInputElement | HTMLSelectElement | null)?.value;
+      const number = (id: string, fallback = 0) => { const n = Number(value(id)); return Number.isFinite(n) ? n : fallback; };
+      const currentVisible = arePinLabelsVisible(this.component, sym);
+      const nextVisible = pinVis ? pinVis.checked : currentVisible;
+      const visExplicit = (pinVis && pinVis.checked !== currentVisible) || !!this.component.pinLabelPosition?.visibilityExplicit;
+      const preset = (pinPreset?.value ?? this.component.pinLabelPosition?.preset ?? 'auto') as TextFormatConfig['preset'];
+      const offsetX = pinPreset ? number('OffsetX', (this.component.pinLabelPosition?.offsetX ?? 0) / units) * units : (this.component.pinLabelPosition?.offsetX ?? 0);
+      const offsetY = pinPreset ? number('OffsetY', (this.component.pinLabelPosition?.offsetY ?? 0) / units) * units : (this.component.pinLabelPosition?.offsetY ?? 0);
+      const alignment = (pinPreset ? (value('Alignment') || undefined) : this.component.pinLabelPosition?.alignment) as TextFormatConfig['alignment'];
+      const rotation = (pinPreset ? number('Rotation') : (this.component.pinLabelPosition?.rotation ?? 0)) as TextFormatConfig['rotation'];
+      if (visExplicit || preset !== 'auto' || offsetX !== 0 || offsetY !== 0 || alignment || rotation || this.component.pinLabelPosition) {
+        this.component.pinLabelPosition = {
+          ...this.component.pinLabelPosition,
+          preset,
+          offsetX,
+          offsetY,
+          alignment,
+          rotation,
+          visible: nextVisible,
+          ...(visExplicit ? { visibilityExplicit: true } : {})
+        };
+      }
     }
   }
 }

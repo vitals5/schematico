@@ -19,7 +19,7 @@ import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { gridForPage } from '../model/DrawingGrid';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { arcPoints, rotateDrawing } from '../model/ImportedDrawing';
-import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition } from '../model/LabelLayout';
+import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition } from '../model/LabelLayout';
 import { jsPDF } from 'jspdf';
 import { Project, Page, PlacedComponent, Wire, DrawingPrimitive, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
@@ -633,15 +633,20 @@ export class PdfExporter {
       // Label anchors are library data for imported and built-in symbols alike.
       for (const pin of sym.pins) {
         const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
-        if (sym.source || label) {
-          // Electrical contact circles are already part of the library vectors.
-          if (!label || label.visible === false) continue;
-          const point = rotatedLocalPoint(label, sym, comp.rotation);
+        if (sym.source || label || comp.pinLabelPosition) {
+          if (!sym.source && !label && !isConnection && !isTerminal) {
+            const coords = this.getPinCoords(page, comp.id, pin.id, project)!;
+            doc.setFillColor(255, 255, 255);
+            doc.circle(coords.x * sx, coords.y * sy, 0.4, 'FD');
+          }
+          const pinPos = computePinLabelPosition(comp, sym, pin);
+          if (!pinPos.visible) continue;
+          const point = rotatedLocalPoint(pinPos, sym, comp.rotation);
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize((comp.pinLabelFontSize ?? label.fontSize) * sy * 72 / 25.4);
+          doc.setFontSize(pinPos.fontSize * sy * 72 / 25.4);
           doc.setTextColor(0, 0, 0);
           doc.text(comp.pins[pin.id]?.customLabel ?? pin.name, (comp.x + point.x) * sx, (comp.y + point.y) * sy,
-            { align: label.alignment === 'middle' ? 'center' : label.alignment === 'end' ? 'right' : 'left', angle: -(label.rotation ?? 0) });
+            { align: pinPos.anchor === 'middle' ? 'center' : pinPos.anchor === 'end' ? 'right' : 'left', angle: -(pinPos.rotation ?? 0) });
         } else if (!isConnection && !isTerminal) {
           const coords = this.getPinCoords(page, comp.id, pin.id, project)!;
           const px = coords.x * sx, py = coords.y * sy;

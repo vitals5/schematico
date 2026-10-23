@@ -106,3 +106,35 @@ dialog.component.technicalDataPosition=undefined;dialog.component.deviceTag='';d
 fields['#propTechVisible']={checked:false};
 dialog.collectFormData(modal);
 assert.equal(dialog.component.technicalDataPosition,undefined,'An untouched initially empty label is not recorded as explicitly hidden');
+
+// Pin label row in Display tab: can reveal hidden/absent source pin labels and configure position/font size
+symbol.source = { library: 'SPECIAL', number: 30, variant: 0 };
+symbol.pins = [{ id: '0', name: '1', x: 10, y: 0, direction: 'top' }, { id: '1', name: '2', x: 10, y: 30, direction: 'bottom' }];
+dialog.component.pins = { '0': { customLabel: '13' }, '1': { customLabel: '14' } };
+dialog.activeTab = 'display';
+const displayHtml = dialog.renderActiveTabContent() as string;
+for (const prefix of ['Bmk', 'Fn', 'Tech', 'Additional', 'CrossRef', 'Pin']) {
+  for (const suffix of ['Visible', 'Preset', 'OffsetX', 'OffsetY', 'Alignment', 'Rotation', 'FontSize']) {
+    assert.match(displayHtml, new RegExp(`id="prop${prefix}${suffix}"`), `Display tab contains prop${prefix}${suffix}`);
+  }
+}
+assert.doesNotMatch(dialog.generatePreviewSvg(), />13<\/text>/, 'Imported symbol without source pin labelPosition hides pin labels by default');
+for(const key of Object.keys(fields))delete fields[key];
+Object.assign(fields, {
+  '#propPinVisible': { checked: true },
+  '#propPinPreset': { value: 'right' },
+  '#propPinOffsetX': { value: '1.5' },
+  '#propPinOffsetY': { value: '-0.5' },
+  '#propPinAlignment': { value: 'start' },
+  '#propPinRotation': { value: '90' },
+  '#propPinFontSize': { value: '2.5', validity: { valid: true } }
+});
+dialog.collectFormData(modal);
+assert.equal(dialog.component.pinLabelPosition?.visible, true);
+assert.equal(dialog.component.pinLabelPosition?.preset, 'right');
+assert.equal(dialog.component.pinLabelPosition?.offsetX, 3);
+assert.equal(dialog.component.pinLabelPosition?.offsetY, -1);
+assert.equal(dialog.component.pinLabelFontSize, 5);
+assert.match(dialog.generatePreviewSvg(), />13<\/text>/, 'Enabling Pin visibility renders pin labels in preview');
+assert.match(dialog.generatePreviewSvg(), />14<\/text>/);
+console.log('✓ Pin designations row in Display tab toggles visibility, position, alignment, rotation, and font size');

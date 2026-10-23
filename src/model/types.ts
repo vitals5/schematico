@@ -193,6 +193,7 @@ export interface PlacedComponent {
   additionalTextPosition?: TextFormatConfig;
   technicalDataPosition?: TextFormatConfig;
   crossRefPosition?: TextFormatConfig;
+  pinLabelPosition?: TextFormatConfig;
   installationMetadata?: {
     mountingHeightCm?: number;
     associatedRoomId?: string;

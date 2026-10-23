@@ -20,7 +20,7 @@ import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../m
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { AutoconnectEngine, AutoconnectPreviewSegment } from '../model/AutoconnectEngine';
-import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition } from '../model/LabelLayout';
+import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition } from '../model/LabelLayout';
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
@@ -3303,12 +3303,12 @@ export class CadCanvas {
 
       // Pins render
       const pinsSvg = sym.pins.map(pin => {
-        if (sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition) {
-          const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
+        if (sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition || comp.pinLabelPosition) {
+          const pinPos = computePinLabelPosition(comp, sym, pin);
           const handle = !sym.source || this.mode === 'wire' || this.wireStart
             ? `<circle class="pin-handle" cx="${pin.x}" cy="${pin.y}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>` : '';
-          const text = label && label.visible !== false
-            ? `<text class="source-pin-label" x="${label.x}" y="${label.y}" font-size="${comp.pinLabelFontSize ?? label.fontSize}" font-family="Tahoma, Arial, sans-serif" fill="#e2e8f0" text-anchor="${label.alignment}" ${labelTransform(label.x, label.y, comp.rotation, label.rotation)}>${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>` : '';
+          const text = pinPos.visible
+            ? `<text class="source-pin-label" x="${pinPos.x}" y="${pinPos.y}" font-size="${pinPos.fontSize}" font-family="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? 'Tahoma, Arial, sans-serif' : 'monospace'}" fill="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? '#e2e8f0' : '#a0aec0'}" text-anchor="${pinPos.anchor}" ${pinPos.transform}>${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>` : '';
           return `<g class="pin">${handle}${text}</g>`;
         }
         if (isConn || isTerminal) {

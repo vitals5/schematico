@@ -1,7 +1,7 @@
 // src/model/LabelLayout.ts
 // Calculates exact screen coordinates, anchors, rotations, and styles for component labels
 
-import { PlacedComponent, TextFormatConfig, SymbolDefinition, Project } from './types';
+import { PlacedComponent, TextFormatConfig, SymbolDefinition, PinDefinition, Project } from './types';
 import { getSymbolById } from './symbols';
 import { interruptionLabelPosition, interruptionReferencePosition, isInterruptionSymbol } from './ConnectionSymbols';
 import { rotatedLocalPoint } from './SymbolGeometry';
@@ -330,6 +330,89 @@ export function computeAdditionalTextPosition(comp: PlacedComponent, sym: Symbol
   }
   pos.visible = cfg?.visible !== false;
   return pos;
+}
+
+export function arePinLabelsVisible(comp: PlacedComponent, sym?: SymbolDefinition): boolean {
+  if (comp.pinLabelPosition?.visible !== undefined) return comp.pinLabelPosition.visible;
+  if (!sym || sym.pins.length === 0) return false;
+  const isConn = !sym.importedGraphics && sym.category === 'connections';
+  const isTerminal = sym.id === 'terminal_single';
+  return sym.pins.some(pin => {
+    const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
+    if (sym.source || label) return !!label && label.visible !== false;
+    return !isConn && !isTerminal;
+  });
+}
+
+export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefinition, pin: PinDefinition): CalculatedLabelPosition {
+  const cfg = comp.pinLabelPosition;
+  const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
+  const isConn = !sym.importedGraphics && sym.category === 'connections';
+  const isTerminal = sym.id === 'terminal_single';
+  const defaultVisible = (sym.source || label) ? (!!label && label.visible !== false) : (!isConn && !isTerminal);
+  const visible = cfg?.visible !== undefined ? cfg.visible : defaultVisible;
+
+  let x: number;
+  let y: number;
+  let anchor: CalculatedLabelPosition['anchor'];
+  let baseRotation: number;
+  let baseFontSize: number;
+
+  if (label) {
+    x = label.x;
+    y = label.y;
+    anchor = label.alignment;
+    baseRotation = label.rotation ?? 0;
+    baseFontSize = label.fontSize;
+  } else if (sym.source) {
+    if (pin.direction === 'top') {
+      x = pin.x + 2;
+      y = pin.y - 2;
+      anchor = 'start';
+    } else if (pin.direction === 'bottom') {
+      x = pin.x + 2;
+      y = pin.y + 6;
+      anchor = 'start';
+    } else if (pin.direction === 'left') {
+      x = pin.x - 3;
+      y = pin.y - 2;
+      anchor = 'end';
+    } else {
+      x = pin.x + 3;
+      y = pin.y - 2;
+      anchor = 'start';
+    }
+    baseRotation = 0;
+    baseFontSize = 4.5;
+  } else {
+    x = pin.x + (pin.direction === 'top' ? 0 : 5);
+    y = pin.y + (pin.direction === 'top' ? -4 : 3.5);
+    anchor = pin.direction === 'top' ? 'middle' : 'start';
+    baseRotation = 0;
+    baseFontSize = 6.5;
+  }
+
+  if (cfg?.preset && cfg.preset !== 'auto' && cfg.preset !== 'custom') {
+    switch (cfg.preset) {
+      case 'top': x = pin.x; y = pin.y - 4; anchor = 'middle'; break;
+      case 'top_left': x = pin.x - 3; y = pin.y - 3; anchor = 'end'; break;
+      case 'top_right': x = pin.x + 3; y = pin.y - 3; anchor = 'start'; break;
+      case 'bottom': x = pin.x; y = pin.y + 7; anchor = 'middle'; break;
+      case 'bottom_left': x = pin.x - 3; y = pin.y + 7; anchor = 'end'; break;
+      case 'bottom_right': x = pin.x + 3; y = pin.y + 7; anchor = 'start'; break;
+      case 'left': x = pin.x - 4; y = pin.y + 2; anchor = 'end'; break;
+      case 'right': x = pin.x + 4; y = pin.y + 2; anchor = 'start'; break;
+    }
+  }
+
+  x += cfg?.offsetX ?? 0;
+  y += cfg?.offsetY ?? 0;
+  if (cfg?.alignment) anchor = cfg.alignment;
+  const rotation = cfg?.rotation ?? baseRotation;
+  const fontSize = comp.pinLabelFontSize ?? cfg?.fontSize ?? baseFontSize;
+  const transform = labelTransform(x, y, comp.rotation, rotation);
+
+  return { x, y, anchor, rotation, fontSize, visible, transform };
 }
 
 /** Upgrade inherited hidden defaults and legacy left-side alignments in already saved imported projects once.
