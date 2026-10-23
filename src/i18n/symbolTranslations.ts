@@ -242,6 +242,8 @@ export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; descripti
   inst_phone: { name: 'Telephone Outlet (TAE)', description: 'Telecommunications telephone socket outlet (TAE / IAE)' },
   inst_intercom: { name: 'Intercom / Video Door Station', description: 'Indoor intercom station or video door station (DIN EN 60617-11)' },
   inst_chime: { name: 'Doorbell / Chime', description: 'Acoustic door chime / doorbell signaling unit' },
+  inst_speaker_outlet: { name: 'Speaker Outlet / Audio Terminal', description: 'Loudspeaker wall outlet / audio connection terminal (DIN EN 60617-11 / RAL-RG 678)' },
+  inst_speaker_ceiling: { name: 'Ceiling Speaker (Recessed)', description: 'Recessed ceiling loudspeaker (Multiroom / PA / Smart Home Audio)' },
   inst_equipotential: { name: 'Equipotential Bonding Bar (PAS)', description: 'Main equipotential bonding busbar (PAS / HES, DIN 18014)' },
   knx_pushbutton_2f: { name: 'Pushbutton Sensor (2-Gang)', description: '2-gang push button sensor with status LEDs' },
   knx_pushbutton_4f: { name: 'Pushbutton Sensor (4-Gang)', description: '4-gang push button sensor with 4 zones and status LEDs' },

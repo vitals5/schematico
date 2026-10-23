@@ -73,6 +73,9 @@ export class App {
   private isLeftCollapsed: boolean = false;
   private isRightCollapsed: boolean = false;
   private autoSaveTimer: any = null;
+  private currentFilePath: string | null = null;
+  private currentFileHandle: any = null;
+  private currentFileFormat: 'json' | 'zw1' | 'xml' = 'json';
 
   constructor() {
     const savedLeftW = readAppSetting('left_w');
@@ -119,10 +122,14 @@ export class App {
           const key = e.key.toLowerCase();
           if (key === 's') {
             e.preventDefault();
-            this.saveProjectJson();
+            if (e.shiftKey) {
+              void this.saveProjectJson(true);
+            } else {
+              void this.saveProjectJson(false);
+            }
           } else if (key === 'o') {
             e.preventDefault();
-            document.getElementById('menuFileInput')?.click();
+            void this.openProjectWithPicker();
           } else if (key === 'p') {
             e.preventDefault();
             new PdfExportDialog(this.project, this.project.activePageId).show();
@@ -150,6 +157,9 @@ export class App {
   }
 
   private loadDemoProject(): void {
+    this.currentFilePath = null;
+    this.currentFileHandle = null;
+    this.currentFileFormat = 'json';
     this.initDefaultProject();
     this.selectedComponent = null;
     this.selectedWire = null;
@@ -1003,18 +1013,21 @@ export class App {
     this.bindMenubarEvents();
 
     // File Open
-    document.getElementById('btnOpenProject')?.addEventListener('click',()=>document.getElementById('fileInput')?.click());
+    document.getElementById('btnOpenProject')?.addEventListener('click', () => {
+      void this.openProjectWithPicker();
+    });
     const fileInput = document.getElementById('fileInput') as HTMLInputElement;
     fileInput?.addEventListener('change', async (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
         await this.handleFilesOpen(files);
       }
+      fileInput.value = '';
     });
 
     // Save JSON
     document.getElementById('btnSaveJson')?.addEventListener('click', () => {
-      this.saveProjectJson();
+      void this.saveProjectJson(false);
     });
 
     // Smart PDF Export
@@ -1026,9 +1039,10 @@ export class App {
     if ((window as any).electronAPI) {
       const api = (window as any).electronAPI;
       api.onMenuAction('menu:new', () => this.createNewProject());
-      api.onMenuAction('menu:save', () => this.saveProjectJson());
-      api.onMenuAction('menu:exportZw1', () => this.exportZw1());
-      api.onMenuAction('menu:exportXml', () => this.exportXml());
+      api.onMenuAction('menu:save', () => void this.saveProjectJson(false));
+      api.onMenuAction('menu:saveAs', () => void this.saveProjectJson(true));
+      api.onMenuAction('menu:exportZw1', () => void this.exportZw1());
+      api.onMenuAction('menu:exportXml', () => void this.exportXml());
       api.onMenuAction('menu:exportPdf', () => new PdfExportDialog(this.project, this.project.activePageId).show());
       api.onMenuAction('menu:exportFloorPlanPage', () => this.exportFloorPlanPage());
       api.onMenuAction('menu:importFloorPlanPage', () => this.triggerImportFloorPlanPage());
@@ -1036,7 +1050,7 @@ export class App {
       api.onMenuAction('menu:fileOpened', (fileInfo: { path: string; name: string; data: number[] }) => {
         const uint8 = new Uint8Array(fileInfo.data);
         const file = new File([uint8], fileInfo.name);
-        this.handleFileOpen(file);
+        void this.handleFilesOpen([file], { filePath: fileInfo.path });
       });
     }
   }
@@ -1053,7 +1067,7 @@ export class App {
     };
 
     // Projekt
-    bindMenuOpt('menuOpen',()=>document.getElementById('menuFileInput')?.click());
+    bindMenuOpt('menuOpen', () => void this.openProjectWithPicker());
     bindMenuOpt('menuToggleLeftPanel',()=>this.setLeftPanelCollapsed(!this.isLeftCollapsed));
     bindMenuOpt('menuToggleRightPanel',()=>this.setRightPanelCollapsed(!this.isRightCollapsed));
     bindMenuOpt('menuNew', () => {
@@ -1073,6 +1087,7 @@ export class App {
       closeAllMenus();
       const files = (e.target as HTMLInputElement).files;
       if (files?.length) await this.handleFilesOpen(files);
+      menuFileInput.value = '';
     });
 
     bindMenuOpt('menuInsertCable', () => this.startCableDefinition());
@@ -1090,14 +1105,14 @@ export class App {
     });
     bindMenuOpt('menuSettings', () => this.openSettings());
     bindMenuOpt('menuInsertConnections', () => this.openConnectionSelection());
-    bindMenuOpt('menuSave', () => this.saveProjectJson());
+    bindMenuOpt('menuSave', () => void this.saveProjectJson(false));
+    bindMenuOpt('menuSaveAs', () => void this.saveProjectJson(true));
     bindMenuOpt('menuExportPdf', () => new PdfExportDialog(this.project, this.project.activePageId).show());
     bindMenuOpt('menuExportZw1', async () => await this.exportZw1());
-    bindMenuOpt('menuExportXml', () => this.exportXml());
+    bindMenuOpt('menuExportXml', () => void this.exportXml());
     bindMenuOpt('menuExportPageMacro', () => this.exportCurrentPageAsPageMacro());
     bindMenuOpt('menuExportFloorPlanPage', () => this.exportFloorPlanPage());
     bindMenuOpt('menuImportFloorPlanPage', () => this.triggerImportFloorPlanPage());
-    bindMenuOpt('menuPrint', () => window.print());
 
     // Bearbeiten
     bindMenuOpt('menuUndo', () => this.undo());
@@ -4230,16 +4245,94 @@ export class App {
     }
   }
 
+  private detectProjectFileFormat(filename?: string | null): 'json' | 'zw1' | 'xml' | null {
+    if (!filename) return null;
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.json')) return 'json';
+    if (lower.endsWith('.zw1')) return 'zw1';
+    if (lower.endsWith('.xml')) return 'xml';
+    return null;
+  }
+
+  private async openProjectWithPicker(): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.openFile) {
+      try {
+        const result = await electronAPI.openFile();
+        if (!result) return;
+        const list = Array.isArray(result.files) && result.files.length > 0
+          ? result.files
+          : [result];
+        const files = list.map((f: { name: string; buffer: number[] }) => new File([new Uint8Array(f.buffer)], f.name));
+        await this.handleFilesOpen(files, {
+          filePath: files.length === 1 ? list[0].path : undefined
+        });
+      } catch (err: any) {
+        const isEn = this.project.language === 'en';
+        alert(`${isEn ? 'Error opening file' : 'Fehler beim Öffnen der Datei'}: ${neutralSourceLabel(err.message)}`);
+      }
+      return;
+    }
+
+    const showOpenFilePicker = (window as any).showOpenFilePicker;
+    if (typeof showOpenFilePicker === 'function') {
+      try {
+        const handles = await showOpenFilePicker({
+          multiple: true,
+          types: [
+            {
+              description: 'Schematico Project Files',
+              accept: {
+                'application/json': ['.json'],
+                'application/xml': ['.xml'],
+                'application/octet-stream': ['.zw1', '.zip', '.edz', '.elk', '.001', '.002', '.003']
+              }
+            }
+          ]
+        });
+        if (!handles || handles.length === 0) return;
+        const files: File[] = [];
+        for (const h of handles) {
+          files.push(await h.getFile());
+        }
+        await this.handleFilesOpen(files, {
+          fileHandle: handles.length === 1 ? handles[0] : undefined
+        });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        document.getElementById('fileInput')?.click();
+      }
+      return;
+    }
+
+    document.getElementById('fileInput')?.click();
+  }
+
   private async handleFileOpen(file: File): Promise<void> {
     await this.handleFilesOpen([file]);
   }
 
-  private async handleFilesOpen(files: FileList | File[]): Promise<void> {
+  private async handleFilesOpen(
+    files: FileList | File[],
+    sourceInfo?: { filePath?: string; fileHandle?: any }
+  ): Promise<void> {
     try {
       const result: PackageInspectionResult = await PackageHandler.inspectFiles(files);
       
       if (result.extractedProject) {
         this.project = result.extractedProject;
+        const firstFile = files[0];
+        const electronFilePath = sourceInfo?.filePath || (files.length === 1 ? (firstFile as any)?.path : undefined);
+        const format = this.detectProjectFileFormat(electronFilePath || firstFile?.name);
+        if (format && (electronFilePath || sourceInfo?.fileHandle)) {
+          this.currentFilePath = electronFilePath ?? null;
+          this.currentFileHandle = sourceInfo?.fileHandle ?? null;
+          this.currentFileFormat = format;
+        } else {
+          this.currentFilePath = null;
+          this.currentFileHandle = null;
+          this.currentFileFormat = 'json';
+        }
         prepareProjectPresentation(this.project);
         revealImportedComponentLabels(this.project);
         setProjectSymbolLibrary(this.project);
@@ -4261,6 +4354,9 @@ export class App {
   }
 
   private createNewProject(): void {
+    this.currentFilePath = null;
+    this.currentFileHandle = null;
+    this.currentFileFormat = 'json';
     this.project = {
       id: 'proj_' + Math.random().toString(36).substring(2, 9),
       name: 'Neues_Schematico_Projekt',
@@ -4312,21 +4408,173 @@ export class App {
     this.saveActiveProject();
   }
 
-  private saveProjectJson(): void {
+  private async buildProjectBlob(format: 'json' | 'zw1' | 'xml'): Promise<Blob> {
+    if (format === 'zw1') {
+      return await PackageHandler.exportToZw1(this.project);
+    }
+    if (format === 'xml') {
+      const xml = PackageHandler.generateProjectXml(this.project);
+      return new Blob([xml], { type: 'application/xml' });
+    }
     const jsonStr = JSON.stringify(this.project, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    this.downloadBlob(blob, `${this.project.name}.json`);
+    return new Blob([jsonStr], { type: 'application/json' });
+  }
+
+  private showSaveFeedback(targetLabel: string): void {
+    const status = document.getElementById('statusLeft');
+    if (status) {
+      const isEn = this.project.language === 'en';
+      status.textContent = isEn ? `Saved: ${targetLabel}` : `Gespeichert: ${targetLabel}`;
+    }
+  }
+
+  private async saveProjectJson(forceSaveAs = false): Promise<void> {
+    this.project.modified = new Date().toISOString().split('T')[0];
+    this.saveActiveProject();
+
+    const format = !forceSaveAs && (this.currentFilePath || this.currentFileHandle)
+      ? this.currentFileFormat
+      : 'json';
+    const ext = format;
+    const defaultName = `${this.project.name}.${ext}`;
+    const blob = await this.buildProjectBlob(format);
+
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.saveFile) {
+      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+      const filters = format === 'zw1'
+        ? [{ name: 'Schematico Projektarchiv (.zw1)', extensions: ['zw1'] }, { name: 'JSON Projekt (.json)', extensions: ['json'] }]
+        : format === 'xml'
+          ? [{ name: 'Projekt-XML (.xml)', extensions: ['xml'] }, { name: 'JSON Projekt (.json)', extensions: ['json'] }]
+          : [{ name: 'Schematico Projekt (.json)', extensions: ['json'] }, { name: 'Schematico Projektarchiv (.zw1)', extensions: ['zw1'] }];
+      const saved = await electronAPI.saveFile({
+        filePath: !forceSaveAs && this.currentFilePath ? this.currentFilePath : undefined,
+        defaultName: this.currentFilePath || defaultName,
+        filters,
+        data: bytes
+      });
+      if (saved) {
+        if (typeof saved === 'string') {
+          this.currentFilePath = saved;
+          this.currentFileFormat = this.detectProjectFileFormat(saved) ?? format;
+          this.showSaveFeedback(saved.split(/[\\/]/).pop() || saved);
+        } else {
+          this.showSaveFeedback(defaultName);
+        }
+      }
+      return;
+    }
+
+    if (!forceSaveAs && this.currentFileHandle && typeof this.currentFileHandle.createWritable === 'function') {
+      try {
+        const writable = await this.currentFileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        this.showSaveFeedback(this.currentFileHandle.name || defaultName);
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    const showSaveFilePicker = (window as any).showSaveFilePicker;
+    if (typeof showSaveFilePicker === 'function') {
+      try {
+        const handle = await showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [
+            {
+              description: 'Schematico Project (.json)',
+              accept: { 'application/json': ['.json'] }
+            },
+            {
+              description: 'Schematico Project Archive (.zw1)',
+              accept: { 'application/octet-stream': ['.zw1'] }
+            },
+            {
+              description: 'Project XML (.xml)',
+              accept: { 'application/xml': ['.xml'] }
+            }
+          ]
+        });
+        if (!handle) return;
+        const chosenFormat = this.detectProjectFileFormat(handle.name) ?? 'json';
+        const finalBlob = chosenFormat === format ? blob : await this.buildProjectBlob(chosenFormat);
+        const writable = await handle.createWritable();
+        await writable.write(finalBlob);
+        await writable.close();
+        this.currentFileHandle = handle;
+        this.currentFileFormat = chosenFormat;
+        this.showSaveFeedback(handle.name || defaultName);
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    this.downloadBlob(blob, defaultName);
   }
 
   private async exportZw1(): Promise<void> {
     const blob = await PackageHandler.exportToZw1(this.project);
-    this.downloadBlob(blob, `${this.project.name}.zw1`);
+    await this.saveOrDownloadBlob(blob, `${this.project.name}.zw1`, [
+      { name: 'Schematico Projektarchiv (.zw1)', extensions: ['zw1'] }
+    ], {
+      description: 'Schematico Project Archive (.zw1)',
+      accept: { 'application/octet-stream': ['.zw1'] }
+    });
   }
 
-  private exportXml(): void {
+  private async exportXml(): Promise<void> {
     const xml = PackageHandler.generateProjectXml(this.project);
     const blob = new Blob([xml], { type: 'application/xml' });
-    this.downloadBlob(blob, `${this.project.name}.xml`);
+    await this.saveOrDownloadBlob(blob, `${this.project.name}.xml`, [
+      { name: 'Projekt-XML (.xml)', extensions: ['xml'] }
+    ], {
+      description: 'Project XML (.xml)',
+      accept: { 'application/xml': ['.xml'] }
+    });
+  }
+
+  private async saveOrDownloadBlob(
+    blob: Blob,
+    defaultName: string,
+    electronFilters?: { name: string; extensions: string[] }[],
+    pickerType?: { description: string; accept: Record<string, string[]> }
+  ): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.saveFile) {
+      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+      const saved = await electronAPI.saveFile({
+        defaultName,
+        filters: electronFilters,
+        data: bytes
+      });
+      if (saved) {
+        this.showSaveFeedback(typeof saved === 'string' ? (saved.split(/[\\/]/).pop() || saved) : defaultName);
+      }
+      return;
+    }
+
+    const showSaveFilePicker = (window as any).showSaveFilePicker;
+    if (typeof showSaveFilePicker === 'function') {
+      try {
+        const handle = await showSaveFilePicker({
+          suggestedName: defaultName,
+          ...(pickerType ? { types: [pickerType] } : {})
+        });
+        if (!handle) return;
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        this.showSaveFeedback(handle.name || defaultName);
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    this.downloadBlob(blob, defaultName);
   }
 
   private downloadBlob(blob: Blob, filename: string): void {

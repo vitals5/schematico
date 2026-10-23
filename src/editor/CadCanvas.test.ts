@@ -444,6 +444,7 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
     activePage: fpPage,
     project: { pages: [fpPage], symbolLibrary: [] },
     selectedWallId: 'w1',
+    floorPlanEditMode: true,
     multiSelectMode: false,
     mode: 'select',
     snap: (v: number) => v,
@@ -594,6 +595,44 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   assert.equal(canvas.openingDrag, null, 'openingDrag must be cleared on touchend');
   assert.equal(mockOpeningEl.transform, undefined, 'Temporary transform must be removed on touchend');
   assert.equal(opRenderCalls, 1, 'Must re-render once on touchend to finalize floor plan');
+
+  // 9. When floorPlanEditMode is false, touching or clicking a wall/opening must NOT select or drag it
+  canvas.floorPlanEditMode = false;
+  canvas.selectedWallId = null;
+  canvas.selectedOpeningId = null;
+  canvas.onTouchStart(fakeTouchStart);
+  assert.equal(canvas.selectedOpeningId, null, 'Must not select opening when floorPlanEditMode is disabled');
+  assert.equal(canvas.selectedWallId, null, 'Must not select wall when floorPlanEditMode is disabled');
+  assert.equal(canvas.openingDrag ?? null, null, 'Must not start openingDrag when floorPlanEditMode is disabled');
+  assert.equal(canvas.wallDrag ?? null, null, 'Must not start wallDrag when floorPlanEditMode is disabled');
+
+  // 10. Ctrl+Arrow nudges selected elements by one grid step
+  const nudgeComp: PlacedComponent = {
+    id: 'nudge_c1', symbolId: symbol.id, bmk: '-K1', functionText: '', technicalCharacteristics: '',
+    x: 80, y: 120, rotation: 0, pins: {}
+  };
+  const nudgePage = {
+    id: 'np', pageNumber: '5', title: 'Nudge', higherLevel: '', location: '',
+    components: [nudgeComp], wires: [], plotFrame: { width: 1000, height: 700 },
+    grid: { spacing: 8, origin: { x: 0, y: 0 } }
+  } as unknown as Page;
+  const nudgeCanvas = Object.assign(Object.create(CadCanvas.prototype), {
+    activePage: nudgePage,
+    project: { pages: [nudgePage], symbolLibrary: [symbol] },
+    gridSize: 8,
+    gridSnap: true,
+    gridResolution: 'full',
+    selectedComponentId: 'nudge_c1',
+    autoconnectEnabled: false,
+    callbacks: { onSelectComponent: () => {}, onSelectWire: () => {}, onProjectModified: () => {} },
+    notifyModified: () => {},
+    render: () => {}
+  });
+  assert.equal(nudgeCanvas.nudgeSelectedByGrid(1, 0), true);
+  assert.equal(nudgeComp.x, 88, 'Ctrl+ArrowRight moves component by +1 grid step (8 units)');
+  assert.equal(nudgeComp.y, 120);
+  assert.equal(nudgeCanvas.nudgeSelectedByGrid(0, -1), true);
+  assert.equal(nudgeComp.y, 112, 'Ctrl+ArrowUp moves component by -1 grid step (-8 units)');
 
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }

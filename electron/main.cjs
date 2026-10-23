@@ -49,29 +49,37 @@ ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Projekt-Datei auswählen',
     filters: [
-      { name: 'Schematico- & Projektdateien', extensions: ['zw1', 'edz', 'xml', 'json', 'elk'] },
+      { name: 'Schematico- & Projektdateien', extensions: ['zw1', 'zip', 'edz', 'xml', 'json', 'elk', '001', '002', '003'] },
       { name: 'Alle Dateien', extensions: ['*'] }
     ],
-    properties: ['openFile']
+    properties: ['openFile', 'multiSelections']
   });
   if (canceled || filePaths.length === 0) return null;
-  const filePath = filePaths[0];
-  const data = fs.readFileSync(filePath);
+  const files = filePaths.map(fp => ({
+    path: fp,
+    name: path.basename(fp),
+    buffer: Array.from(fs.readFileSync(fp))
+  }));
   return {
-    path: filePath,
-    name: path.basename(filePath),
-    buffer: Array.from(data)
+    path: files[0].path,
+    name: files[0].name,
+    buffer: files[0].buffer,
+    files
   };
 });
 
-ipcMain.handle('dialog:saveFile', async (_event, { defaultName, filters, data }) => {
-  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: defaultName,
-    filters: filters || [{ name: 'Dateien', extensions: ['*'] }]
-  });
-  if (canceled || !filePath) return false;
-  fs.writeFileSync(filePath, Buffer.from(data));
-  return true;
+ipcMain.handle('dialog:saveFile', async (_event, { filePath: targetPath, defaultName, filters, data }) => {
+  let finalPath = targetPath;
+  if (!finalPath) {
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName,
+      filters: filters || [{ name: 'Dateien', extensions: ['*'] }]
+    });
+    if (canceled || !filePath) return null;
+    finalPath = filePath;
+  }
+  fs.writeFileSync(finalPath, Buffer.from(data));
+  return finalPath;
 });
 
 ipcMain.handle('macroLibrary:getFolder', () => macroLibrary().getFolder());

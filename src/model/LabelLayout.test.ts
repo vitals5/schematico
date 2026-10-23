@@ -129,6 +129,20 @@ inherited.additionalTextPosition={...inherited.additionalTextPosition,visible:fa
 revealImportedComponentLabels({pages:[{components:[inherited]}]} as Project);
 assert.equal(inherited.additionalTextPosition.visible,true,'Loaded legacy text is revealed');
 assert.equal(inherited.functionTextPosition.visible,false,'Loading respects explicit hidden labels');
+const legacyLeftBmk: PlacedComponent = {
+  ...baseComp,
+  source: { format: 'NATIVE_CAD', objectType: 17, objectId: 99 },
+  bmkPosition: { preset: 'custom', offsetX: -24.76, offsetY: 17.52, alignment: 'start', fontSize: 7, visible: true }
+};
+const legacyDeviceBox: PlacedComponent = {
+  ...baseComp,
+  source: { format: 'NATIVE_CAD', objectType: 17, objectId: 100 },
+  deviceBox: { width: 95, height: 28, lineWidth: 0.6, lineStyle: 'dashed' },
+  bmkPosition: { preset: 'custom', offsetX: -44, offsetY: 8, alignment: 'start', fontSize: 7, visible: true }
+};
+revealImportedComponentLabels({ pages: [{ components: [legacyLeftBmk, legacyDeviceBox] }], symbolLibrary: [mockSymbol] } as Project);
+assert.equal(legacyLeftBmk.bmkPosition?.alignment, 'end', 'Legacy imported left-of-symbol BMK is right-aligned so it stays to the left of the symbol');
+assert.equal(legacyDeviceBox.bmkPosition?.alignment, 'start', 'Device box BMK stays left-aligned');
 const additionalScaled=scalePlacedComponent(inherited,2);
 assert.deepEqual(additionalScaled.additionalTextPosition,{...inherited.additionalTextPosition,fontSize:12,offsetX:8,offsetY:14});
 const stacked=computeAdditionalTextPosition({...baseComp,additionalText:'Gravur'},mockSymbol);

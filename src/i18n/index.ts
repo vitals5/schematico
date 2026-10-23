@@ -13,6 +13,7 @@ export const translations = {
     menuNew: 'Neues Projekt…',
     menuOpen: 'Projekt öffnen…',
     menuSave: 'Speichern',
+    menuSaveAs: 'Speichern unter…',
     menuProjectSettings: 'Projekt-Einstellungen…',
     menuLoadDemo: 'Standard-Projekt laden…',
     headingExport: 'Export',
@@ -22,7 +23,6 @@ export const translations = {
     menuExportPageMacro: 'Seite als Makro (.ems)…',
     menuExportFloorPlanPage: 'Grundriss-Seite (.floorplan.json)…',
     menuImportFloorPlanPage: 'Grundriss-Seite importieren…',
-    menuPrint: 'Drucken…',
     menuSettings: 'Allgemeine Einstellungen…',
     menuEdit: 'Bearbeiten',
     menuUndo: 'Rückgängig',
@@ -75,6 +75,7 @@ export const translations = {
 
     // Key shortcuts
     keyCtrlS: 'Strg+S',
+    keyCtrlShiftS: 'Strg+Umschalt+S',
     keyCtrlP: 'Strg+P',
     keyCtrlZ: 'Strg+Z',
     keyCtrlY: 'Strg+Y',
@@ -865,6 +866,7 @@ export const translations = {
     menuNew: 'New Project…',
     menuOpen: 'Open Project…',
     menuSave: 'Save',
+    menuSaveAs: 'Save As…',
     menuProjectSettings: 'Project Settings…',
     menuLoadDemo: 'Load Demo Project…',
     headingExport: 'Export',
@@ -874,7 +876,6 @@ export const translations = {
     menuExportPageMacro: 'Page as Macro (.ems)…',
     menuExportFloorPlanPage: 'Floor Plan Page (.floorplan.json)…',
     menuImportFloorPlanPage: 'Import Floor Plan Page…',
-    menuPrint: 'Print…',
     menuSettings: 'General Settings…',
     menuEdit: 'Edit',
     menuUndo: 'Undo',
@@ -927,6 +928,7 @@ export const translations = {
 
     // Key shortcuts
     keyCtrlS: 'Ctrl+S',
+    keyCtrlShiftS: 'Ctrl+Shift+S',
     keyCtrlP: 'Ctrl+P',
     keyCtrlZ: 'Ctrl+Z',
     keyCtrlY: 'Ctrl+Y',

@@ -749,6 +749,43 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Akustischer Signalgeber / Türklingel / Gong (DIN EN 60617-11)'
   },
   {
+    id: 'inst_speaker_outlet',
+    name: 'Lautsprecher-Anschlussdose',
+    category: 'installation',
+    standard: 'DIN EN 60617-11 / RAL-RG 678',
+    defaultBmkPrefix: '-X',
+    defaultFunctionText: 'Lautsprecheranschluss',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    svgContent: `
+      <line x1="6" y1="0" x2="26" y2="0" stroke="currentColor" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="7" stroke="currentColor" stroke-width="2"/>
+      <rect x="12" y="7" width="8" height="6" fill="none" stroke="currentColor" stroke-width="2"/>
+      <polygon points="12,13 20,13 26,23 6,23" fill="none" stroke="currentColor" stroke-width="2"/>
+    `,
+    description: 'Lautsprecher-Anschlussdose / Audio-Wandauslass nach DIN EN 60617-11 / RAL-RG 678'
+  },
+  {
+    id: 'inst_speaker_ceiling',
+    name: 'Deckenlautsprecher / Einbaulautsprecher',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-B',
+    defaultFunctionText: 'Deckenlautsprecher',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 16 },
+    pins: [],
+    svgContent: `
+      <circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/>
+      <rect x="13" y="8" width="6" height="5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <polygon points="13,13 19,13 23,21 9,21" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    `,
+    description: 'Decken-Einbaulautsprecher (Multiroom / ELA / Smart Home Audio)'
+  },
+  {
     id: 'inst_equipotential',
     name: 'Potenzialausgleichsschiene (PAS)',
     category: 'installation',

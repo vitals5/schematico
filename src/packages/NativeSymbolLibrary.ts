@@ -229,8 +229,10 @@ export function labelPosition(entry: LibraryEntry, field: number, override?: Map
   const d = entry.definition;
   const base = field === 20010 ? { x: d.width / 2, y: -8 }
     : { x: d.width / 2, y: d.height + (field === 20011 ? 12 : field===20025 ? 34 : 22) };
-  return { preset: 'custom', offsetX: entry.origin.x + p.x * NATIVE_SCALE - base.x,
-    offsetY: entry.origin.y - p.y * NATIVE_SCALE - base.y, alignment: 'start', fontSize: field === 20010 ? 7 : 6, visible: true };
+  const localX = entry.origin.x + p.x * NATIVE_SCALE;
+  const alignment = !d.deviceBox && localX <= 0 ? 'end' : 'start';
+  return { preset: 'custom', offsetX: localX - base.x,
+    offsetY: entry.origin.y - p.y * NATIVE_SCALE - base.y, alignment, fontSize: field === 20010 ? 7 : 6, visible: true };
 }
 
 /** Embedded master data, indexed by the project setting and original symbol numbers. */

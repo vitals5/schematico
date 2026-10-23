@@ -55,12 +55,17 @@ export function rotateDrawing(graphics: DrawingPrimitive[], angle: number, width
   });
 }
 
-/** Library SVGs use text anchors without transforms; keep their lettering upright. */
+/** Library SVGs use text anchors without transforms; keep their lettering upright around the text center. */
 export function uprightSymbolSvg(svg: string, rotation = 0): string {
   if (!rotation) return svg;
   return svg.replace(/<text\b([^>]*)>/g, (tag, attrs: string) => {
-    const x = /\bx="([^"]+)"/.exec(attrs)?.[1] ?? '0';
-    const y = /\by="([^"]+)"/.exec(attrs)?.[1] ?? '0';
-    return `<g transform="rotate(${-rotation},${x},${y})">${tag}`;
+    const x = parseFloat(/\bx="([^"]+)"/.exec(attrs)?.[1] ?? '0');
+    const y = parseFloat(/\by="([^"]+)"/.exec(attrs)?.[1] ?? '0');
+    const fontSize = parseFloat(/\bfont-size="([^"]+)"/.exec(attrs)?.[1] ?? '9');
+    const anchor = /\btext-anchor="([^"]+)"/.exec(attrs)?.[1] ?? 'start';
+    const hasCentralBaseline = /\bdominant-baseline="(?:central|middle)"/.test(attrs);
+    const cx = anchor === 'middle' ? x : anchor === 'end' ? x - fontSize * 0.3 : x + fontSize * 0.3;
+    const cy = hasCentralBaseline ? y : y - fontSize * 0.35;
+    return `<g transform="rotate(${-rotation},${cx},${cy})">${tag}`;
   }).replace(/<\/text>/g, '</text></g>');
 }

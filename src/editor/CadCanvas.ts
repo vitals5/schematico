@@ -896,6 +896,15 @@ export class CadCanvas {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement
         || (e.target as HTMLElement)?.isContentEditable || (e.target as Element)?.closest?.('.modal-backdrop')) return;
       if ((e.key === 'Enter' || e.key === ' ') && this.referenceFromEvent(e)) return;
+      if (e.key.startsWith('Arrow') && (e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (document.querySelector('.modal-backdrop')) return;
+        const dirX = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+        const dirY = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0;
+        if (this.nudgeSelectedByGrid(dirX, dirY, e.shiftKey)) {
+          e.preventDefault();
+          return;
+        }
+      }
       if (e.key.startsWith('Arrow') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (document.querySelector('.modal-backdrop')) return;
         e.preventDefault();
@@ -1451,7 +1460,7 @@ export class CadCanvas {
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
 
     // 1. Check wall handle resize (if a wall is already selected)
-    const wallHandle = this.wallHandleFromEvent(e, world, false);
+    const wallHandle = this.floorPlanEditMode ? this.wallHandleFromEvent(e, world, false) : undefined;
     if (wallHandle && this.mode === 'select') {
       this.selectWall(wallHandle.wall);
       this.wallDrag = {
@@ -1466,7 +1475,7 @@ export class CadCanvas {
     }
 
     // 2. Check opening (door / window) - MUST take precedence over wall body!
-    const clickedOpening = this.openingFromEvent(e, world, false);
+    const clickedOpening = this.floorPlanEditMode ? this.openingFromEvent(e, world, false) : undefined;
     if (clickedOpening && this.mode === 'select') {
       this.selectOpening(clickedOpening);
       this.openingDrag = {
@@ -1478,7 +1487,7 @@ export class CadCanvas {
     }
 
     // 3. Check whole wall
-    const wallHit = this.wallFromEvent(e, world, false);
+    const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e, world, false) : undefined;
     if (wallHit && this.mode === 'select') {
       this.selectWall(wallHit.wall);
       const isHandle = !!wallHit.handle;
@@ -1913,7 +1922,7 @@ export class CadCanvas {
       }
 
       // 1. Check wall handle resize (if a wall is already selected)
-      const wallHandle = this.wallHandleFromEvent(e, world, true);
+      const wallHandle = this.floorPlanEditMode ? this.wallHandleFromEvent(e, world, true) : undefined;
       if (wallHandle && this.mode === 'select') {
         e.preventDefault();
         this.clearMultipleSelection();
@@ -1941,7 +1950,7 @@ export class CadCanvas {
       }
 
       // 2. Check opening (door / window) - MUST take precedence over wall body!
-      const clickedOpening = this.openingFromEvent(e, world, true);
+      const clickedOpening = this.floorPlanEditMode ? this.openingFromEvent(e, world, true) : undefined;
       if (clickedOpening && this.mode === 'select') {
         e.preventDefault();
         this.clearMultipleSelection();
@@ -1969,7 +1978,7 @@ export class CadCanvas {
       }
 
       // 3. Check whole wall
-      const wallHit = this.wallFromEvent(e, world, true);
+      const wallHit = this.floorPlanEditMode ? this.wallFromEvent(e, world, true) : undefined;
       if (wallHit && this.mode === 'select') {
         e.preventDefault();
         this.clearMultipleSelection();
@@ -2478,7 +2487,7 @@ export class CadCanvas {
         ${coverPageSvg(this.activePage, this.project)}
 
         <!-- Architectural Floor Plan Layer (Walls, Windows, Doors, Rooms, Curved Wires) -->
-        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: true })}</g>` : ''}
+        ${this.activePage.floorPlan ? `<g id="floorPlanLayer">${floorPlanToSvg(this.activePage.floorPlan, { showBackground: true, showRooms: true, showRoomLabels: this.activePage.floorPlan.showRoomLabels !== false, showWalls: true, showOpenings: true, showWires: true, components: this.activePage.components, selectedWallId: this.selectedWallId, selectedOpeningId: this.selectedOpeningId, interactive: this.floorPlanEditMode || this.isCalibratingWall })}</g>` : ''}
 
         <!-- Structure Boxes (Ortskästen / Schaltschrankumrahmungen) -->
         <g id="boxesLayer">
@@ -2654,7 +2663,67 @@ export class CadCanvas {
   }
 
   public getElementSelection():ElementSelection {
-    return this.multipleSelection ?? {componentIds:this.selectedComponentId?[this.selectedComponentId]:[],cableIds:this.selectedCableId?[this.selectedCableId]:[],...(this.selectedImageId?{imageIds:[this.selectedImageId]}:{}),...(this.selectedBoxId?{boxIds:[this.selectedBoxId]}:{}),...(this.selectedWireId?{wireIds:[this.selectedWireId]}:{})};
+    return this.multipleSelection ?? {componentIds:this.selectedComponentId?[this.selectedComponentId]:[],cableIds:this.selectedCableId?[this.selectedCableId]:[],...(this.selectedImageId?{imageIds:[this.selectedImageId]}:{}),...(this.selectedBoxId?{boxIds:[this.selectedBoxId]}:{}),...(this.selectedWireId?{wireIds:[this.selectedWireId]}:{}),...(this.selectedTextId?{textIds:[this.selectedTextId]}:{})};
+  }
+
+  public nudgeSelectedByGrid(dirX: -1 | 0 | 1, dirY: -1 | 0 | 1, isFineModifier: boolean = false): boolean {
+    const rawStep = this.getEffectiveGridSize(isFineModifier);
+    const step = rawStep > 0 ? rawStep : gridForPage(this.activePage, this.gridSize).spacing;
+    const dx = dirX * step;
+    const dy = dirY * step;
+    if (dx === 0 && dy === 0) return false;
+
+    const sel = this.getElementSelection();
+    if (selectionCount(sel) > 0) {
+      const snapshot = captureSelectionMove(this.activePage, sel);
+      translateSelection(this.activePage, snapshot, dx, dy);
+      for (const id of sel.componentIds) {
+        AutoconnectEngine.clearSuppressedForComponent(this.activePage, id);
+      }
+      if (this.autoconnectEnabled && sel.componentIds.length > 0) {
+        AutoconnectEngine.updatePageAutoconnections(this.activePage);
+      }
+      if (this.selectedTextId) {
+        this.callbacks.onSelectText?.(this.activePage.texts?.find(t => t.id === this.selectedTextId) ?? null);
+      }
+      this.notifyModified();
+      this.render();
+      return true;
+    }
+
+    if (this.floorPlanEditMode && this.selectedWallId) {
+      const wall = this.activePage.floorPlan?.walls?.find(w => w.id === this.selectedWallId);
+      if (wall) {
+        wall.start.x += dx;
+        wall.start.y += dy;
+        wall.end.x += dx;
+        wall.end.y += dy;
+        for (const op of this.activePage.floorPlan?.openings ?? []) {
+          if (op.wallId === wall.id) {
+            op.center.x += dx;
+            op.center.y += dy;
+          }
+        }
+        this.callbacks.onSelectWall?.(wall);
+        this.notifyModified();
+        this.render();
+        return true;
+      }
+    }
+
+    if (this.floorPlanEditMode && this.selectedOpeningId) {
+      const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+      if (op) {
+        op.center.x += dx;
+        op.center.y += dy;
+        this.callbacks.onSelectOpening?.(op);
+        this.notifyModified();
+        this.render();
+        return true;
+      }
+    }
+
+    return false;
   }
 
   public setElementSelection(selection:ElementSelection):void {

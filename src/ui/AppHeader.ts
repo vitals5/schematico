@@ -41,10 +41,10 @@ export function renderAppHeader(projectName:string):string {
       <button type="button" class="menu-trigger compact-menu-toggle" id="btnCompactMenu" aria-expanded="false" aria-controls="mainMenuList">${headerIcon('menu')} ${t('menu')}</button>
       <div class="main-menu-list" id="mainMenuList">
         ${menu('menuProjectTrigger',t('menuProject'),
-          opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+
+          opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+opt('menuSaveAs',t('menuSaveAs'),t('keyCtrlShiftS'))+
           separator+opt('menuProjectSettings',t('menuProjectSettings'))+
           separator+opt('menuLoadDemo',t('menuLoadDemo'))+
-          separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuExportFloorPlanPage',t('menuExportFloorPlanPage'))+opt('menuPrint',t('menuPrint'))+
+          separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuExportFloorPlanPage',t('menuExportFloorPlanPage'))+
           separator+opt('menuSettings',t('menuSettings')),'menu-item')}
         ${menu('menuEditTrigger',t('menuEdit'),
           opt('menuUndo',t('menuUndo'),t('keyCtrlZ'))+opt('menuRedo',t('menuRedo'),t('keyCtrlY'))+separator+

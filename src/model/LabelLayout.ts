@@ -2,6 +2,7 @@
 // Calculates exact screen coordinates, anchors, rotations, and styles for component labels
 
 import { PlacedComponent, TextFormatConfig, SymbolDefinition, Project } from './types';
+import { getSymbolById } from './symbols';
 import { interruptionLabelPosition, interruptionReferencePosition, isInterruptionSymbol } from './ConnectionSymbols';
 import { rotatedLocalPoint } from './SymbolGeometry';
 
@@ -331,9 +332,12 @@ export function computeAdditionalTextPosition(comp: PlacedComponent, sym: Symbol
   return pos;
 }
 
-/** Upgrade inherited hidden defaults in already saved imported projects once.
+/** Upgrade inherited hidden defaults and legacy left-side alignments in already saved imported projects once.
  * New user visibility choices are persisted and are never changed here. */
 export function revealImportedComponentLabels(project: Project): void {
+  const projectSymbols = new Map(
+    (project.symbolLibrary ?? []).map(s => [s.id, s])
+  );
   for (const page of project.pages) for (const comp of page.components) {
     if (!comp.source) continue;
     for (const [property, hasText] of [
@@ -343,6 +347,15 @@ export function revealImportedComponentLabels(project: Project): void {
     ] as const) {
       if (hasText && comp[property]?.visible === false && !comp[property]?.visibilityExplicit)
         comp[property] = { ...comp[property], visible: true };
+    }
+    const sym = projectSymbols.get(comp.symbolId) ?? getSymbolById(comp.symbolId);
+    if (sym && !comp.deviceBox && !sym.deviceBox) {
+      for (const key of ['bmkPosition', 'functionTextPosition', 'technicalDataPosition', 'additionalTextPosition'] as const) {
+        const cfg = comp[key];
+        if (cfg?.preset === 'custom' && cfg.alignment === 'start' && sym.width / 2 + (cfg.offsetX ?? 0) <= 0) {
+          comp[key] = { ...cfg, alignment: 'end' };
+        }
+      }
     }
   }
 }

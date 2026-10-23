@@ -1303,7 +1303,84 @@ export class PdfExporter {
             }
           }
         }
+      } else if (tagName === 'path') {
+        const d = getAttr('d') || '';
+        const fill = getAttr('fill');
+        const isFilled = fill && fill !== 'none';
+        const arcMatch = /M\s*([-\d.]+)[,\s]+([-\d.]+)\s*A\s*([-\d.]+)[,\s]+([-\d.]+)\s+([-\d.]+)\s+([01])[,\s]+([01])\s+([-\d.]+)[,\s]+([-\d.]+)(\s*Z)?/i.exec(d);
+        if (arcMatch) {
+          const x1 = parseFloat(arcMatch[1]), y1 = parseFloat(arcMatch[2]);
+          const rx = parseFloat(arcMatch[3]), ry = parseFloat(arcMatch[4]);
+          const sweepFlag = parseInt(arcMatch[7], 10);
+          const x2 = parseFloat(arcMatch[8]), y2 = parseFloat(arcMatch[9]);
+          const closed = !!arcMatch[10];
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+          const startAng = Math.atan2(y1 - my, x1 - mx);
+          const endAng = Math.atan2(y2 - my, x2 - mx);
+          let delta = endAng - startAng;
+          if (sweepFlag === 1 && delta <= 0) delta += Math.PI * 2;
+          if (sweepFlag === 0 && delta >= 0) delta -= Math.PI * 2;
+          const steps = 16;
+          const pts: [number, number][] = [];
+          for (let s = 0; s <= steps; s++) {
+            const ang = startAng + (delta * s) / steps;
+            pts.push([toX(mx + rx * Math.cos(ang)), toY(my + ry * Math.sin(ang))]);
+          }
+          if (closed && isFilled) {
+            const pathOps = pts.map(([px, py], idx) => ({ op: idx === 0 ? 'm' : 'l', c: [px, py] }));
+            pathOps.push({ op: 'h', c: [] });
+            doc.path(pathOps);
+            doc.fillStroke();
+          } else {
+            for (let s = 1; s < pts.length; s++) {
+              doc.line(pts[s - 1][0], pts[s - 1][1], pts[s][0], pts[s][1]);
+            }
+            if (closed) {
+              doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
+            }
+          }
+        } else {
+          const lineTokens = [...d.matchAll(/([ML])\s*([-\d.]+)[,\s]+([-\d.]+)/gi)];
+          if (lineTokens.length >= 2) {
+            for (let i = 1; i < lineTokens.length; i++) {
+              doc.line(
+                toX(parseFloat(lineTokens[i - 1][2])),
+                toY(parseFloat(lineTokens[i - 1][3])),
+                toX(parseFloat(lineTokens[i][2])),
+                toY(parseFloat(lineTokens[i][3]))
+              );
+            }
+            if (/Z\s*$/i.test(d)) {
+              doc.line(
+                toX(parseFloat(lineTokens[lineTokens.length - 1][2])),
+                toY(parseFloat(lineTokens[lineTokens.length - 1][3])),
+                toX(parseFloat(lineTokens[0][2])),
+                toY(parseFloat(lineTokens[0][3]))
+              );
+            }
+          }
+        }
       }
+    }
+    const textRegex = /<text\b([^>]*)>([\s\S]*?)<\/text>/g;
+    let textMatch: RegExpExecArray | null;
+    while ((textMatch = textRegex.exec(svg)) !== null) {
+      const attrsStr = textMatch[1];
+      const content = textMatch[2].replace(/<[^>]+>/g, '').trim();
+      if (!content) continue;
+      const getAttr = (name: string): string | undefined => {
+        const m = new RegExp(`\\b${name}="([^"]*)"`).exec(attrsStr);
+        return m ? m[1] : undefined;
+      };
+      const tx = parseFloat(getAttr('x') ?? '0');
+      const ty = parseFloat(getAttr('y') ?? '0');
+      const fontSize = parseFloat(getAttr('font-size') ?? '8');
+      const anchor = getAttr('text-anchor');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(Math.max(4, fontSize * scaleY * 72 / 25.4));
+      doc.text(content, toX(tx), toY(ty), {
+        align: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left'
+      });
     }
   }
 
