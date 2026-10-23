@@ -710,7 +710,7 @@ export class PropertiesDialog {
         ${fnSvg}
         ${techSvg}
         ${additionalPos.visible && this.component.additionalText ? `<text class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${escapeSvg(this.component.additionalText)}</text>` : ''}
-        ${this.component.crossRef && refPos.visible ? `<text class="cross-reference" x="${refPos.x}" y="${refPos.y}" text-anchor="${refPos.anchor}" font-size="${refPos.fontSize}" ${refPos.transform} fill="#f6ad55">${escapeSvg(this.component.crossRef)}</text>` : ''}
+        ${this.component.crossRef && refPos.visible ? `<text class="cross-reference" x="${refPos.x}" y="${refPos.y}" text-anchor="${refPos.anchor}" font-size="${refPos.fontSize}" ${refPos.transform} fill="#f6ad55">${referenceMarkup(this.project, this.component, true, refPos)}</text>` : ''}
         </g>
       </svg>
     `;

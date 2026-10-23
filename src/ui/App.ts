@@ -74,6 +74,7 @@ export class App {
   private isRightCollapsed: boolean = false;
   private isFloatingBarMinimized: boolean = false;
   private autoSaveTimer: any = null;
+  private saveFeedbackTimer: any = null;
   private currentFilePath: string | null = null;
   private currentFileHandle: any = null;
   private currentFileFormat: 'json' | 'zw1' | 'xml' = 'json';
@@ -4485,11 +4486,40 @@ export class App {
   }
 
   private showSaveFeedback(targetLabel: string): void {
+    const isEn = this.project.language === 'en';
+    const message = isEn ? `Saved: ${targetLabel}` : `Gespeichert: ${targetLabel}`;
     const status = document.getElementById('statusLeft');
     if (status) {
-      const isEn = this.project.language === 'en';
-      status.textContent = isEn ? `Saved: ${targetLabel}` : `Gespeichert: ${targetLabel}`;
+      status.textContent = `✓ ${message}`;
+      status.style.color = '#68d391';
     }
+    const saveBtn = document.getElementById('btnSaveJson');
+    if (saveBtn) {
+      saveBtn.classList.add('save-feedback');
+      const pathEl = saveBtn.querySelector('svg path');
+      if (pathEl) {
+        if (!saveBtn.dataset.origPath) {
+          saveBtn.dataset.origPath = pathEl.getAttribute('d') || '';
+        }
+        pathEl.setAttribute('d', 'm5 12 5 5L20 7');
+      }
+    }
+    if (this.saveFeedbackTimer) {
+      clearTimeout(this.saveFeedbackTimer);
+    }
+    this.saveFeedbackTimer = setTimeout(() => {
+      if (saveBtn) {
+        saveBtn.classList.remove('save-feedback');
+        const pathEl = saveBtn.querySelector('svg path');
+        if (pathEl && saveBtn.dataset.origPath) {
+          pathEl.setAttribute('d', saveBtn.dataset.origPath);
+        }
+      }
+      if (status) {
+        status.style.color = '';
+      }
+      this.saveFeedbackTimer = null;
+    }, 1400);
   }
 
   private async saveProjectJson(forceSaveAs = false): Promise<void> {
@@ -4577,6 +4607,7 @@ export class App {
     }
 
     this.downloadBlob(blob, defaultName);
+    this.showSaveFeedback(defaultName);
   }
 
   private async exportZw1(): Promise<void> {
@@ -4639,6 +4670,7 @@ export class App {
     }
 
     this.downloadBlob(blob, defaultName);
+    this.showSaveFeedback(defaultName);
   }
 
   private downloadBlob(blob: Blob, filename: string): void {

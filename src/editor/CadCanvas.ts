@@ -3298,7 +3298,7 @@ export class CadCanvas {
       let crossRefDisplay = '';
       const refPos = computeCrossReferencePosition(comp, sym, this.project);
       if (comp.crossRef && refPos.visible && (!isConn || isInterruptionSymbol(sym))) {
-        crossRefDisplay = `<text class="cross-reference" ${refPos.transform} x="${refPos.x}" y="${refPos.y}" font-size="${refPos.fontSize}" font-family="monospace" fill="#f6ad55" text-anchor="${refPos.anchor}">${referenceMarkup(this.project, comp, true)}</text>`;
+        crossRefDisplay = `<text class="cross-reference" ${refPos.transform} x="${refPos.x}" y="${refPos.y}" font-size="${refPos.fontSize}" font-family="monospace" fill="#f6ad55" text-anchor="${refPos.anchor}">${referenceMarkup(this.project, comp, true, refPos)}</text>`;
       }
 
       // Pins render

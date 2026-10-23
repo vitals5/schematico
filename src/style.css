@@ -981,6 +981,7 @@ button:disabled { opacity: .4; cursor: default; }
 .app-chrome .btn { height: 32px; min-width: 32px; justify-content: center; border-color: transparent; background: transparent; padding: 5px 7px; gap: 6px; }
 .app-chrome .btn:hover, .app-chrome .menu-trigger:hover { background: #303d52; }
 .app-chrome .btn.active { background: #2b4767; border-color: #4b7fae; color: #b6ddff; }
+.app-chrome .btn.save-feedback { background: rgba(72, 187, 120, 0.18); border-color: rgba(104, 211, 145, 0.55); color: #68d391; }
 .app-chrome .btn.btn-primary { background: #2e75b4; border-color: #438dc8; color: #fff; }
 .app-chrome .btn:disabled, .app-chrome .menu-opt:disabled { opacity: .36; cursor: default; }
 .app-chrome .btn:disabled:hover, .app-chrome .menu-opt:disabled:hover { background: transparent; color: inherit; }

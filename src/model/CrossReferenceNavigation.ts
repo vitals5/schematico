@@ -77,16 +77,48 @@ export function referenceTargets(project: Project, source: PlacedComponent): Ref
   return result;
 }
 
+export function splitCrossReferenceLines(crossRef?: string): string[] {
+  if (!crossRef) return [];
+  return crossRef.split(/\s*(?:\||,|\r?\n)\s*/).map(line => line.trim()).filter(Boolean);
+}
+
 /** Keep labels intact while giving every reference its own keyboard/click target. */
-export function referenceMarkup(project: Project, source: PlacedComponent, svg = false): string {
+export function referenceMarkup(
+  project: Project,
+  source: PlacedComponent,
+  svg = false,
+  layout?: { x: number; fontSize: number }
+): string {
   const text = source.crossRef ?? '', targets = referenceTargets(project, source);
-  let cursor = 0, result = '';
-  targets.forEach((target, index) => {
-    result += escapeSvg(text.slice(cursor, target.start));
-    const attrs = `class="crossref-link" data-crossref-source="${escapeSvg(source.id)}" data-crossref-index="${index}"`;
-    result += svg ? `<tspan ${attrs} role="link" tabindex="0" aria-label="Zu ${escapeSvg(target.label)} springen">${escapeSvg(target.label)}</tspan>`
-      : `<button type="button" ${attrs} title="Zur Zielstelle springen">${escapeSvg(target.label)}</button>`;
-    cursor = target.end;
-  });
-  return result + escapeSvg(text.slice(cursor));
+  const segments: { start: number; end: number }[] = [];
+  let segStart = 0;
+  for (const sep of text.matchAll(/\s*(?:\||,|\r?\n)\s*/g)) {
+    const end = sep.index!;
+    if (text.slice(segStart, end).trim()) segments.push({ start: segStart, end });
+    segStart = end + sep[0].length;
+  }
+  if (text.slice(segStart).trim()) segments.push({ start: segStart, end: text.length });
+
+  const renderRange = (rangeStart: number, rangeEnd: number) => {
+    let cursor = rangeStart, out = '';
+    targets.forEach((target, index) => {
+      if (target.start < rangeStart || target.end > rangeEnd) return;
+      out += escapeSvg(text.slice(cursor, target.start));
+      const attrs = `class="crossref-link" data-crossref-source="${escapeSvg(source.id)}" data-crossref-index="${index}"`;
+      out += svg ? `<tspan ${attrs} role="link" tabindex="0" aria-label="Zu ${escapeSvg(target.label)} springen">${escapeSvg(target.label)}</tspan>`
+        : `<button type="button" ${attrs} title="Zur Zielstelle springen">${escapeSvg(target.label)}</button>`;
+      cursor = target.end;
+    });
+    return out + escapeSvg(text.slice(cursor, rangeEnd));
+  };
+
+  if (segments.length <= 1) {
+    return renderRange(0, text.length);
+  }
+
+  const lines = segments.map(s => renderRange(s.start, s.end));
+  if (!svg) return lines.join('<br>');
+  const x = layout?.x ?? 0;
+  const lineStep = layout ? Number((layout.fontSize * 1.25).toFixed(3)) : '1.25em';
+  return lines.map((line, i) => `<tspan x="${x}" dy="${i === 0 ? 0 : lineStep}">${line}</tspan>`).join('');
 }

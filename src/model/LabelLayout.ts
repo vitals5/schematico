@@ -5,6 +5,7 @@ import { PlacedComponent, TextFormatConfig, SymbolDefinition, PinDefinition, Pro
 import { getSymbolById } from './symbols';
 import { interruptionLabelPosition, interruptionReferencePosition, isInterruptionSymbol } from './ConnectionSymbols';
 import { rotatedLocalPoint } from './SymbolGeometry';
+import { splitCrossReferenceLines } from './CrossReferenceNavigation';
 
 export interface CalculatedLabelPosition {
   x: number;
@@ -30,7 +31,7 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
     ['additionalTextPosition', comp.additionalText ?? '', 8], ['crossRefPosition', comp.crossRef ?? '', comp.crossRefFontSize ?? 8]
   ];
   const rows = data.filter(([id, text]) => id === key || automatic(comp[id]) && comp[id]?.visible !== false && !!text);
-  const height = ([id, text, size]: typeof data[number]) => Math.max(1, text.split(/\r?\n/).length)
+  const height = ([id, text, size]: typeof data[number]) => Math.max(1, (id === 'crossRefPosition' ? splitCrossReferenceLines(text) : text.split(/\r?\n/)).length)
     * (id === 'crossRefPosition' ? comp.crossRefFontSize ?? comp[id]?.fontSize ?? size : comp[id]?.fontSize ?? size) * 1.4;
   const total = rows.reduce((sum, row) => sum + height(row), 0);
   let y = sym.height / 2 - total / 2;

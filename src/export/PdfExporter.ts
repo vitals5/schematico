@@ -6,7 +6,7 @@ import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '.
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
 import { getAutoSymbolScale, calculateArcControlPoint } from '../model/FloorPlanRenderer';
-import { referenceTargets } from '../model/CrossReferenceNavigation';
+import { referenceTargets, splitCrossReferenceLines } from '../model/CrossReferenceNavigation';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
 // - Multi-page vector PDF (DIN A3 / DIN A4 Landscape)
@@ -765,29 +765,53 @@ export class PdfExporter {
       }
 
       if (comp.crossRef && refPos.visible && !hideLabels && (!isConnection || isInterruptionSymbol(sym))) {
-        const crPoint = rotatedLocalPoint(refPos, sym, comp.rotation);
-        const crX = (comp.x + crPoint.x) * sx, crY = (comp.y + crPoint.y) * sy;
+        const refLines = splitCrossReferenceLines(comp.crossRef);
+        const rad = refPos.rotation * Math.PI / 180;
+        const targets = options.interactiveCrossReferences ? referenceTargets(project, comp) : [];
         doc.setFont('courier', 'bold');
         doc.setFontSize(refPos.fontSize * sy * 72 / 25.4);
         doc.setTextColor(options.colorMode === 'color' ? 200 : 50, 50, 0);
-        doc.text(comp.crossRef, crX, crY, { align: refPos.anchor === 'end' ? 'right' : refPos.anchor === 'start' ? 'left' : 'center', angle: -refPos.rotation });
 
-        // Add PDF Hyperlink on text if interactive cross-references are enabled
-        if (options.interactiveCrossReferences && targetPdfPage) {
-          const textW = doc.getTextWidth(comp.crossRef), textH = refPos.fontSize * sy;
-          const startX = refPos.anchor === 'end' ? -textW : refPos.anchor === 'start' ? 0 : -textW / 2;
-          const a = refPos.rotation * Math.PI / 180;
-          const corners = [[startX,-textH],[startX+textW,-textH],[startX,.25*textH],[startX+textW,.25*textH]]
-            .map(([x,y])=>({x:crX+x*Math.cos(a)-y*Math.sin(a),y:crY+x*Math.sin(a)+y*Math.cos(a)}));
-          const linkX = Math.min(...corners.map(p=>p.x)), linkY = Math.min(...corners.map(p=>p.y));
-          const linkW = Math.max(...corners.map(p=>p.x))-linkX, linkH = Math.max(...corners.map(p=>p.y))-linkY;
-          doc.link(linkX, linkY, linkW, linkH, { pageNumber: targetPdfPage });
-          if (options.colorMode === 'color') {
-            doc.setDrawColor(66, 153, 225);
-            doc.setLineWidth(0.15);
-            doc.rect(linkX, linkY, linkW, linkH);
+        refLines.forEach((line, lineIndex) => {
+          const lineOffset = lineIndex * refPos.fontSize * 1.25;
+          const lineLocal = lineIndex === 0
+            ? refPos
+            : { x: refPos.x - lineOffset * Math.sin(rad), y: refPos.y + lineOffset * Math.cos(rad) };
+          const crPoint = rotatedLocalPoint(lineLocal, sym, comp.rotation);
+          const crX = (comp.x + crPoint.x) * sx, crY = (comp.y + crPoint.y) * sy;
+          doc.text(line, crX, crY, { align: refPos.anchor === 'end' ? 'right' : refPos.anchor === 'start' ? 'left' : 'center', angle: -refPos.rotation });
+
+          let lineTargetPdfPage: number | undefined;
+          if (options.interactiveCrossReferences) {
+            const target = targets[lineIndex];
+            if (target) {
+              const targetPage = project.pages.find(p => p.id === target.pageId);
+              lineTargetPdfPage = pageIdMapping?.get(target.pageId) ?? (targetPage && pageMapping.get(targetPage.pageNumber));
+            }
+            if (!lineTargetPdfPage) {
+              const m = line.match(/\/([^\s,|/:]+)\.(\d+)/);
+              if (m) lineTargetPdfPage = pageMapping.get(m[1]);
+            }
+            lineTargetPdfPage ??= targetPdfPage;
           }
-        }
+
+          // Add PDF Hyperlink on text if interactive cross-references are enabled
+          if (options.interactiveCrossReferences && lineTargetPdfPage) {
+            const textW = doc.getTextWidth(line), textH = refPos.fontSize * sy;
+            const startX = refPos.anchor === 'end' ? -textW : refPos.anchor === 'start' ? 0 : -textW / 2;
+            const a = refPos.rotation * Math.PI / 180;
+            const corners = [[startX,-textH],[startX+textW,-textH],[startX,.25*textH],[startX+textW,.25*textH]]
+              .map(([x,y])=>({x:crX+x*Math.cos(a)-y*Math.sin(a),y:crY+x*Math.sin(a)+y*Math.cos(a)}));
+            const linkX = Math.min(...corners.map(p=>p.x)), linkY = Math.min(...corners.map(p=>p.y));
+            const linkW = Math.max(...corners.map(p=>p.x))-linkX, linkH = Math.max(...corners.map(p=>p.y))-linkY;
+            doc.link(linkX, linkY, linkW, linkH, { pageNumber: lineTargetPdfPage });
+            if (options.colorMode === 'color') {
+              doc.setDrawColor(66, 153, 225);
+              doc.setLineWidth(0.15);
+              doc.rect(linkX, linkY, linkW, linkH);
+            }
+          }
+        });
       }
     }
   }
