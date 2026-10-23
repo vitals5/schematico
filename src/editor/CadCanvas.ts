@@ -26,6 +26,7 @@ import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { floorPlanToSvg, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
+import { t, getUiLanguage } from '../i18n';
 export type { GridResolution } from '../model/DrawingGrid';
 
 export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall' | 'place_opening' | 'place_text';
@@ -729,10 +730,11 @@ export class CadCanvas {
   }
 
   public getGridLabel(): string {
-    if (!this.gridSnap || this.gridResolution === 'off') return 'Aus';
+    if (!this.gridSnap || this.gridResolution === 'off') return t('gridStateOff');
     const prefix = this.gridResolution === 'half' ? '½' : this.gridResolution === 'fine' ? '¼' : '1x';
     const units = getDrawingUnitsPerMm(this.project);
-    return `${prefix} (${(this.getEffectiveGridSize() / units).toLocaleString('de-DE', { maximumFractionDigits: 3 })} mm)`;
+    const locale = getUiLanguage() === 'de' ? 'de-DE' : 'en-US';
+    return `${prefix} (${(this.getEffectiveGridSize() / units).toLocaleString(locale, { maximumFractionDigits: 3 })} mm)`;
   }
 
   public cycleGridResolution(): GridResolution {
@@ -1097,23 +1099,27 @@ export class CadCanvas {
     }
     else if (this.selectedWallId) {
       const wall = this.activePage.floorPlan?.walls?.find(w => w.id === this.selectedWallId);
+      const wallTypeStr = wall?.isExterior ? t('ctxWallExterior') : t('ctxWallInterior');
+      const toggleToType = wall?.isExterior ? t('ctxWallInterior') : t('ctxWallExterior');
       items = `
-        <div class="ctx-header">Wand (${wall?.isExterior ? 'Außenwand' : 'Innenwand'}, ${wall?.thickness || 2}px)</div>
-        <div class="ctx-item" data-action="wall-toggle-type">🔄 Als ${wall?.isExterior ? 'Innenwand' : 'Außenwand'} festlegen</div>
-        <div class="ctx-item" data-action="wall-add-door">🚪 Tür auf dieser Wand einfügen</div>
-        <div class="ctx-item" data-action="wall-add-window">🪟 Fenster auf dieser Wand einfügen</div>
+        <div class="ctx-header">${t('ctxWallHeader', { type: wallTypeStr, thick: wall?.thickness || 2 })}</div>
+        <div class="ctx-item" data-action="wall-toggle-type">${t('ctxWallToggleType', { type: toggleToType })}</div>
+        <div class="ctx-item" data-action="wall-add-door">${t('ctxWallAddDoor')}</div>
+        <div class="ctx-item" data-action="wall-add-window">${t('ctxWallAddWindow')}</div>
         <div class="ctx-sep"></div>
-        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Wand löschen <span class="ctx-key">Entf</span></div>
+        <div class="ctx-item ctx-danger" data-action="delete">${t('wallDeleteBtn')} <span class="ctx-key">Del</span></div>
       `;
     } else if (this.selectedOpeningId) {
       const op = this.activePage.floorPlan?.openings?.find(o => o.id === this.selectedOpeningId);
+      const opTypeStr = op?.kind === 'door' ? t('openingDoorName') : op?.kind === 'window' ? t('openingWindowName') : op?.kind === 'garage_door' ? t('openingGarageName') : t('openingPassageName');
+      const toggleKindStr = op?.kind === 'door' ? t('openingWindowName') : t('openingDoorName');
       items = `
-        <div class="ctx-header">Öffnung: <strong>${op?.kind === 'door' ? 'Tür' : 'Fenster'}</strong> (${op?.width || 80} cm)</div>
-        <div class="ctx-item" data-action="opening-toggle-kind">🔄 Als ${op?.kind === 'door' ? 'Fenster' : 'Tür'} umschalten</div>
-        <div class="ctx-item" data-action="opening-toggle-orientation">📐 Ausrichtung drehen (horizontal/vertikal)</div>
-        ${op?.kind === 'door' ? '<div class="ctx-item" data-action="door-flip-swing">🚪 Türanschlag spiegeln</div>' : ''}
+        <div class="ctx-header">${t('ctxOpeningHeader', { type: opTypeStr, width: op?.width || 80 })}</div>
+        <div class="ctx-item" data-action="opening-toggle-kind">${t('ctxOpeningToggleKind', { type: toggleKindStr })}</div>
+        <div class="ctx-item" data-action="opening-toggle-orientation">${t('ctxOpeningToggleOrientation')}</div>
+        ${op?.kind === 'door' ? `<div class="ctx-item" data-action="door-flip-swing">${t('ctxDoorFlipSwing')}</div>` : ''}
         <div class="ctx-sep"></div>
-        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Öffnung löschen <span class="ctx-key">Entf</span></div>
+        <div class="ctx-item ctx-danger" data-action="delete">${t('openingDeleteBtn')} <span class="ctx-key">Del</span></div>
       `;
     }
     else if (comp) {
@@ -2150,8 +2156,8 @@ export class CadCanvas {
 
       if (this.openingDrag && e.touches.length === 1) {
         e.preventDefault();
-        const t = e.touches[0];
-        const world = this.screenToWorld(t.clientX, t.clientY);
+        const touchPt = e.touches[0];
+        const world = this.screenToWorld(touchPt.clientX, touchPt.clientY);
         const drag = this.openingDrag;
         const dx = world.x - drag.mouseStart.x;
         const dy = world.y - drag.mouseStart.y;
@@ -2203,8 +2209,8 @@ export class CadCanvas {
 
         this.callbacks.onSelectOpening?.(drag.opening);
 
-        const opLabel = drag.opening.kind === 'window' ? '🪟 Fenster' : drag.opening.kind === 'door' ? '🚪 Tür' : 'Öffnung';
-        this.updateMagnifier(t.clientX, t.clientY, drag.opening.center.x, drag.opening.center.y, opLabel);
+        const opLabel = drag.opening.kind === 'window' ? `🪟 ${t('openingWindowName')}` : drag.opening.kind === 'door' ? `🚪 ${t('openingDoorName')}` : t('openingGenericName');
+        this.updateMagnifier(touchPt.clientX, touchPt.clientY, drag.opening.center.x, drag.opening.center.y, opLabel);
         return;
       }
 
@@ -3129,7 +3135,7 @@ export class CadCanvas {
     const p2x = center.x + hw * ux;
     const p2y = center.y + hw * uy;
 
-    const labelName = kind === 'door' ? 'Tür' : kind === 'window' ? 'Fenster' : kind === 'garage_door' ? 'Garagentor' : 'Wandöffnung';
+    const labelName = kind === 'door' ? t('openingDoorName') : kind === 'window' ? t('openingWindowName') : kind === 'garage_door' ? t('openingGarageName') : t('openingPassageName');
 
     return `
       <g class="ghost-opening-layer" pointer-events="none" opacity="0.85">

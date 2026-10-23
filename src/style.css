@@ -275,7 +275,20 @@ body.resizing {
 .tab-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
+}
+
+.sidebar .btn {
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 1;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: hidden;
+  line-height: 1.25;
+  text-align: center;
 }
 
 /* Page Navigator Tree */

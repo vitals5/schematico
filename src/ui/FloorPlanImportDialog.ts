@@ -64,9 +64,11 @@ export class FloorPlanImportDialog {
           <div class="fpi-controls">
             ${!hasKey ? `
               <div style="background:#2d3748;border:1px solid #4a5568;padding:10px 14px;border-radius:4px;font-size:12px;color:#edf2f7;">
-                <div style="font-weight:600;color:#f6ad55;margin-bottom:4px;">💡 Kein Gemini API-Schlüssel hinterlegt</div>
-                Du kannst das Foto/den Plan dennoch direkt als Zeichenvorlage importieren und Wände manuell zeichnen. Für automatische KI-Erkennung trage einen Gemini-Schlüssel ein.
-                <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;display:inline-block;font-size:11px;padding:3px 8px;background:#3182ce;color:#fff;border:none;border-radius:3px;cursor:pointer;">Einstellungen öffnen</button>
+                <div style="font-weight:600;color:#f6ad55;margin-bottom:4px;">💡 ${t('fpApiKeyMissing')}</div>
+                ${getUiLanguage() === 'de'
+                  ? 'Du kannst das Foto/den Plan dennoch direkt als Zeichenvorlage importieren und Wände manuell zeichnen. Für automatische KI-Erkennung trage einen Gemini-Schlüssel ein.'
+                  : 'You can still import the photo/blueprint directly as a drawing template and draw walls manually. For automatic AI detection, enter a Gemini API key.'}
+                <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;display:inline-block;font-size:11px;padding:3px 8px;background:#3182ce;color:#fff;border:none;border-radius:3px;cursor:pointer;">${t('fpOpenSettingsBtn')}</button>
               </div>
             ` : ''}
 
@@ -83,7 +85,7 @@ export class FloorPlanImportDialog {
             <!-- Import existing floor plan page JSON button -->
             <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
               <div style="flex:1;height:1px;background:#3e4656;"></div>
-              <span style="font-size:10px;color:#a0aec0;text-transform:uppercase;font-weight:600;">oder</span>
+              <span style="font-size:10px;color:#a0aec0;text-transform:uppercase;font-weight:600;">${getUiLanguage() === 'de' ? 'oder' : 'or'}</span>
               <div style="flex:1;height:1px;background:#3e4656;"></div>
             </div>
             <button type="button" id="fpi-btn-import-json" class="btn" style="width:100%;padding:8px 12px;font-size:12px;font-weight:600;background:#2d3748;border:1px solid #4a5568;color:#edf2f7;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s;">
@@ -100,10 +102,10 @@ export class FloorPlanImportDialog {
               <div class="fpi-field">
                 <label for="fpi-scale">${t('floorPlanScaleLabel')}</label>
                 <select id="fpi-scale" class="form-input">
-                  <option value="50">1 : 50 (Detail)</option>
-                  <option value="100" selected>1 : 100 (Standard)</option>
-                  <option value="200">1 : 200 (Übersicht)</option>
-                  <option value="custom">Manuell (1 : X)</option>
+                  <option value="50">${t('fpScale1_50')}</option>
+                  <option value="100" selected>${t('fpScale1_100')}</option>
+                  <option value="200">${t('fpScale1_200')}</option>
+                  <option value="custom">${getUiLanguage() === 'de' ? 'Manuell (1 : X)' : 'Custom (1 : X)'}</option>
                 </select>
                 <div id="fpi-custom-scale-wrap" style="display:none;margin-top:6px;align-items:center;gap:6px;">
                   <span style="font-size:11px;color:#cbd5e0;">1 :</span>
@@ -111,25 +113,25 @@ export class FloorPlanImportDialog {
                 </div>
               </div>
               <div class="fpi-field">
-                <label for="fpi-page-num">Blattnummer</label>
+                <label for="fpi-page-num">${t('fpSheetNumberLabel')}</label>
                 <input type="text" id="fpi-page-num" class="form-input" value="${defaultPageNum}" />
               </div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div class="fpi-field">
-                <label for="fpi-level">=Anlage (Gebäude)</label>
-                <input type="text" id="fpi-level" class="form-input" value="=Haus1" />
+                <label for="fpi-level">${t('fpPlantLabel')}</label>
+                <input type="text" id="fpi-level" class="form-input" value="${getUiLanguage() === 'de' ? '=Haus1' : '=Bldg1'}" />
               </div>
               <div class="fpi-field">
-                <label for="fpi-loc">+Ort (Geschoss/UV)</label>
-                <input type="text" id="fpi-loc" class="form-input" value="+EG" />
+                <label for="fpi-loc">${t('fpLocationLabel')}</label>
+                <input type="text" id="fpi-loc" class="form-input" value="${getUiLanguage() === 'de' ? '+EG' : '+GF'}" />
               </div>
             </div>
 
             <div class="fpi-field">
               <label for="fpi-title">${t('floorPlanTitleLabel')}</label>
-              <input type="text" id="fpi-title" class="form-input" value="Elektroinstallation Erdgeschoss" />
+              <input type="text" id="fpi-title" class="form-input" value="${t('fpDefaultPageTitle')}" />
             </div>
 
             <div style="display:flex;flex-direction:column;gap:6px;">
@@ -137,7 +139,7 @@ export class FloorPlanImportDialog {
                 ${t('btnStartVectorization')}
               </button>
               <button type="button" id="fpi-manual-import" class="btn" style="padding:9px;font-size:12px;font-weight:600;background:#2b6cb0;color:#fff;border:none;border-radius:4px;cursor:pointer;" disabled>
-                📐 Als Zeichenvorlage übernehmen (ohne KI)
+                ${t('fpImportAsTemplateBtn')}
               </button>
             </div>
 
@@ -160,28 +162,27 @@ export class FloorPlanImportDialog {
 
             <div class="preview-box" id="fpi-preview-container">
               <div id="fpi-preview-empty" style="color:#718096;font-size:13px;text-align:center;padding:20px;">
-                Noch kein Grundriss geladen.<br/>
-                <span style="font-size:11px;color:#a0aec0;">Lade links ein Bild oder Foto hoch. Es wird direkt als Zeichenvorlage angezeigt.</span>
+                ${t('fpPreviewPlaceholder')}
               </div>
             </div>
 
             <!-- Reference Wall Scale Calibration Panel -->
             <div id="fpi-calibration-panel" style="display:none;background:#232731;border:1px solid #4a5568;border-radius:6px;padding:8px 12px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span style="font-size:11px;font-weight:bold;color:#63b3ed;">📏 Maßstab über Referenzwand kalibrieren</span>
-                <span id="fpi-calib-hint" style="font-size:10px;color:#90cdf4;">💡 Klick auf Wand in Vorschau wählt sie aus</span>
+                <span style="font-size:11px;font-weight:bold;color:#63b3ed;">${t('fpWallCalibLabel')}</span>
+                <span id="fpi-calib-hint" style="font-size:10px;color:#90cdf4;">💡 ${t('fpCalibrateHint')}</span>
               </div>
               <div id="fpi-calib-inputs-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
                 <div class="fpi-field" style="margin:0;">
-                  <label for="fpi-calib-wall" style="font-size:10px;">Referenzwand:</label>
+                  <label for="fpi-calib-wall" style="font-size:10px;">${t('fpSelectWallPrompt')}</label>
                   <select id="fpi-calib-wall" class="form-input" style="font-size:11px;padding:3px 6px;"></select>
                 </div>
                 <div class="fpi-field" style="margin:0;">
-                  <label for="fpi-calib-len" style="font-size:10px;">Wahre Länge (m):</label>
-                  <input type="number" id="fpi-calib-len" class="form-input" step="0.05" min="0.1" max="100" placeholder="z. B. 5.40" style="font-size:11px;padding:3px 6px;" />
+                  <label for="fpi-calib-len" style="font-size:10px;">${t('fpRealLengthPlaceholder')}:</label>
+                  <input type="number" id="fpi-calib-len" class="form-input" step="0.05" min="0.1" max="100" placeholder="5.40" style="font-size:11px;padding:3px 6px;" />
                 </div>
                 <button type="button" id="fpi-btn-calibrate" class="btn btn-primary" style="font-size:11px;padding:5px 10px;background:#3182ce;height:28px;">
-                  Kalibrieren
+                  ${t('fpCalibrateBtn')}
                 </button>
               </div>
               <div id="fpi-calib-info" style="font-size:10px;color:#a0aec0;margin-top:4px;"></div>
@@ -241,7 +242,9 @@ export class FloorPlanImportDialog {
         if (calibInputsRow) calibInputsRow.style.display = 'none';
         if (calibHint) calibHint.style.display = 'none';
         calibInfo.style.display = 'block';
-        calibInfo.innerHTML = `💡 <em>Noch keine Wände vorhanden. Du kannst nach dem Anlegen im Editor mit <strong>Wand zeichnen</strong> Wände über die Vorlage zeichnen und jede Wand mit <strong>Kalibrieren</strong> auf die exakte Originallänge anpassen.</em>`;
+        calibInfo.innerHTML = getUiLanguage() === 'de'
+          ? `💡 <em>Noch keine Wände vorhanden. Du kannst nach dem Anlegen im Editor mit <strong>Wand zeichnen</strong> Wände über die Vorlage zeichnen und jede Wand mit <strong>Kalibrieren</strong> auf die exakte Originallänge anpassen.</em>`
+          : `💡 <em>No walls present yet. After creating the page, you can trace walls over the template using <strong>Draw Wall</strong> and calibrate any wall to its exact real-world length using <strong>Calibrate</strong>.</em>`;
         return;
       }
       calibPanel.style.display = 'block';
@@ -257,7 +260,12 @@ export class FloorPlanImportDialog {
         const lenM = (lenPx / ppm).toFixed(2);
         const opt = document.createElement('option');
         opt.value = w.id;
-        opt.textContent = `Wand ${idx + 1} (${lenM} m, ${w.isExterior ? 'Außen' : 'Innen'})`;
+        opt.textContent = t('fpWallItemLabel', {
+          index: idx + 1,
+          type: w.isExterior ? t('fpWallExteriorShort') : t('fpWallInteriorShort'),
+          px: Math.round(lenPx),
+          meters: lenM
+        });
         if (w.id === this.selectedCalibWallId) opt.selected = true;
         calibWallSelect.appendChild(opt);
       });
@@ -391,7 +399,7 @@ export class FloorPlanImportDialog {
         calibLenInput.value = (lenPx / ppm).toFixed(2);
         calibLenInput.focus();
         calibLenInput.select();
-        calibInfo.textContent = `🎯 Wand ausgewählt (${(lenPx / ppm).toFixed(2)} m). Reale Länge eintragen & kalibrieren.`;
+        calibInfo.textContent = `🎯 ${t('fpStatusWallPickedForCalib')}`;
         this.updatePreview(previewContainer);
       }
     });
@@ -419,7 +427,7 @@ export class FloorPlanImportDialog {
       scaleSelect.value = 'custom';
       customScaleWrap.style.display = 'flex';
       customScaleInput.value = String(newRatio);
-      calibInfo.textContent = `✓ Maßstab kalibriert: 1 : ${newRatio} (${newPpm.toFixed(1)} px/m)`;
+      calibInfo.textContent = t('wallCalibFeedback', { ratio: newRatio, ppm: newPpm.toFixed(1) });
 
       updateCalibWalls(this.currentFloorPlan);
       this.updatePreview(previewContainer);
@@ -428,7 +436,7 @@ export class FloorPlanImportDialog {
     // AI Start
     btnStartAi.addEventListener('click', async () => {
       if (!this.rawImageDataUrl) {
-        alert('Bitte wähle zuerst ein Bild aus.');
+        alert(t('fpErrorSelectImageFirst'));
         return;
       }
       this.isProcessing = true;
@@ -461,7 +469,12 @@ export class FloorPlanImportDialog {
         this.currentFloorPlan = plan;
         progressFill.style.width = '100%';
         statusText.style.color = '#68d391';
-        statusText.textContent = 'Grundriss erfolgreich vektorisiert!';
+        statusText.textContent = t('fpStatusVectorized', {
+          walls: plan.walls?.length ?? 0,
+          openings: plan.openings?.length ?? 0,
+          rooms: plan.rooms?.length ?? 0,
+          scale: scaleVal
+        });
 
         // Update preview
         opacityControl.style.display = 'flex';
@@ -471,7 +484,7 @@ export class FloorPlanImportDialog {
         btnCreateSheet.disabled = false;
       } catch (err: any) {
         statusText.style.color = '#fc8181';
-        statusText.textContent = err?.message || 'Fehler bei der KI-Vektorisierung.';
+        statusText.textContent = err?.message || t('fpErrorAnalysisFailed');
       } finally {
         this.isProcessing = false;
         btnStartAi.disabled = false;
@@ -485,7 +498,7 @@ export class FloorPlanImportDialog {
       const pageNum = (modal.querySelector('#fpi-page-num') as HTMLInputElement).value.trim() || defaultPageNum;
       const higherLevel = (modal.querySelector('#fpi-level') as HTMLInputElement).value.trim() || '=Haus1';
       const location = (modal.querySelector('#fpi-loc') as HTMLInputElement).value.trim() || '+EG';
-      const title = (modal.querySelector('#fpi-title') as HTMLInputElement).value.trim() || 'Installationsplan';
+      const title = (modal.querySelector('#fpi-title') as HTMLInputElement).value.trim() || t('fpDefaultPageTitle');
 
       const newPage: Page = {
         id: `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -535,7 +548,8 @@ export class FloorPlanImportDialog {
     updateCalibWalls: (plan: FloorPlanData) => void
   ): void {
     displayElem.style.display = 'block';
-    displayElem.textContent = `Ausgewählt: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    const selWord = getUiLanguage() === 'de' ? 'Ausgewählt' : 'Selected';
+    displayElem.textContent = `${selWord}: ${file.name} (${Math.round(file.size / 1024)} KB)`;
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -546,7 +560,7 @@ export class FloorPlanImportDialog {
         img.onload = () => {
           this.imageNaturalWidth = img.naturalWidth;
           this.imageNaturalHeight = img.naturalHeight;
-          displayElem.textContent = `Ausgewählt: ${file.name} (${img.naturalWidth} × ${img.naturalHeight} px, ${Math.round(file.size / 1024)} KB)`;
+          displayElem.textContent = `${selWord}: ${file.name} (${img.naturalWidth} × ${img.naturalHeight} px, ${Math.round(file.size / 1024)} KB)`;
 
           // Initialize floor plan with background image template immediately (Non-AI import ready)
           const targetBox = { x: 30, y: 25, width: 780, height: 530 };
@@ -581,7 +595,7 @@ export class FloorPlanImportDialog {
           btnCreateSheet.disabled = false;
           btnManualImport.disabled = false;
           statusText.style.color = '#68d391';
-          statusText.textContent = 'Vorlage geladen. Du kannst sie direkt übernehmen oder per KI vektorisieren.';
+          statusText.textContent = t('fpManualTemplateNotice', { w: img.naturalWidth, h: img.naturalHeight });
         };
         img.src = result;
       }

@@ -75,7 +75,7 @@ export function renderAppHeader(projectName:string):string {
         </div>
         <div class="toolbar-group history-tools" role="group" aria-label="${t('menuUndo')}">${tool('btnUndo',t('toolUndo'),'undo')}${tool('btnRedo',t('toolRedo'),'redo')}</div>
         <div class="toolbar-group draw-tools" role="group" aria-label="${t('toolWire')}">
-          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}${tool('btnToolText',t('toolText'),'text',t('toolTextLabel'))}${tool('btnFloorPlanEdit','Grundriss bearbeiten','wall','Grundriss')}
+          ${tool('btnToolSelect',t('toolSelect'),'select','','active')}${tool('btnToolWire',t('toolWire'),'wire',t('toolWireLabel'))}${tool('btnToolText',t('toolText'),'text',t('toolTextLabel'))}${tool('btnFloorPlanEdit',t('toolFloorPlan'),'wall',t('toolFloorPlanLabel'))}
           <div class="insert-split">
             ${tool('btnOpenSymbolSelection',t('toolInsertSym'),'add',t('toolInsertSymLabel'),'btn-primary')}
             ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">${t('toolMoreInsert')}</span>`,

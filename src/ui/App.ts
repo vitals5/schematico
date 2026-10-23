@@ -510,13 +510,13 @@ export class App {
         bar.style.display = 'flex';
       } else if (this.selectedWall) {
         const len = Math.round(Math.hypot(this.selectedWall.end.x - this.selectedWall.start.x, this.selectedWall.end.y - this.selectedWall.start.y));
-        tag.textContent = `🧱 Wand (${len} mm)`;
+        tag.textContent = t('floatingWallTag', { len });
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'none';
         if (btnDel) { btnDel.title = t('toolDelete'); btnDel.textContent = '🗑️'; }
         bar.style.display = 'flex';
       } else if (this.selectedOpening) {
-        const typeName = this.selectedOpening.kind === 'door' ? 'Tür' : this.selectedOpening.kind === 'window' ? 'Fenster' : this.selectedOpening.kind === 'garage_door' ? 'Garagentor' : 'Öffnung';
+        const typeName = this.selectedOpening.kind === 'door' ? t('openingDoorName') : this.selectedOpening.kind === 'window' ? t('openingWindowName') : this.selectedOpening.kind === 'garage_door' ? t('openingGarageName') : t('openingGenericName');
         tag.textContent = `🚪 ${typeName} (${this.selectedOpening.width} mm)`;
         if (btnEdit) btnEdit.style.display = 'inline-flex';
         if (btnRot) btnRot.style.display = 'none';
@@ -1222,10 +1222,10 @@ export class App {
   public updateGridButtonState(): void {
     if (this.canvas) {
       const resolution=this.canvas.gridSnap?this.canvas.gridResolution:'off';
-      const labels={full:'Vollraster',half:'Halbraster',fine:'Feinraster',off:'Fang aus'};
+      const labels={full:t('gridLabelFull'),half:t('gridLabelHalf'),fine:t('gridLabelFine'),off:t('gridLabelOff')};
       const label=document.getElementById('headerGridLabel');if(label)label.textContent=labels[resolution];
       const gridButton=document.getElementById('btnDrawingOptions');
-      gridButton?.setAttribute('title',`Raster & Verbindungen: ${this.canvas.getGridLabel()}`);
+      gridButton?.setAttribute('title',`${t('headingGrid')}: ${this.canvas.getGridLabel()}`);
       for(const [id,value]of [['menuGridFull','full'],['menuGridHalf','half'],['menuGridFine','fine'],['menuGridOff','off']]as const){
         const checked=value===resolution;
         document.querySelectorAll(`[id="${id}"], [data-header-command="${id}"]`).forEach(el=>{el.setAttribute('aria-pressed',String(checked));el.classList.toggle('checked',checked);});
@@ -1611,9 +1611,9 @@ export class App {
         <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">${t('projectPages')}</span>
         <button class="btn btn-primary" id="btnAddPage" style="padding: 2px 8px; font-size: 11px;">${t('btnNewPage')}</button>
       </div>
-      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-        <button class="btn" id="btnAddCoverPage" style="flex: 1; padding: 4px 6px; font-size: 11px;">${t('btnNewCover')}</button>
-        <button class="btn" id="btnImportFloorPlan" style="flex: 1; padding: 4px 6px; font-size: 11px;" title="${t('importFloorPlanTitle')}">📐 Grundriss</button>
+      <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+        <button class="btn" id="btnAddCoverPage" style="flex: 1 1 90px; min-width: 0; padding: 4px 6px; font-size: 11px; justify-content: center;">${t('btnNewCover')}</button>
+        <button class="btn" id="btnImportFloorPlan" style="flex: 1 1 90px; min-width: 0; padding: 4px 6px; font-size: 11px; justify-content: center;" title="${t('importFloorPlanTitle')}">${t('btnFloorPlan')}</button>
       </div>
 
       <div class="page-tree-toolbar" style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px;">
@@ -1821,9 +1821,9 @@ export class App {
           const status = document.getElementById('statusLeft');
           if (status) {
             if (!newPage.floorPlan.walls || newPage.floorPlan.walls.length === 0) {
-              status.textContent = '📐 Grundriss-Vorlage geladen. Klicke auf "Wand zeichnen", um Wände manuell nachzuzeichnen. Der Maßstab kann jederzeit kalibriert werden.';
+              status.textContent = t('fpStatusTemplateLoaded');
             } else {
-              status.textContent = '📐 Grundriss geladen. Wände und Öffnungen können im Grundriss-Modus editiert werden.';
+              status.textContent = t('fpStatusLoaded');
             }
           }
         }
@@ -2310,7 +2310,7 @@ export class App {
     const targetPage = page || this.project.pages.find(p => p.id === this.project.activePageId);
     if (!targetPage) return;
     if (!targetPage.floorPlan && targetPage.pageType !== 'installation') {
-      alert('Die ausgewählte Seite ist keine Grundriss-Seite.');
+      alert(t('fpErrorNotFloorPlanPage'));
       return;
     }
 
@@ -2332,7 +2332,7 @@ export class App {
 
     const status = document.getElementById('statusLeft');
     if (status) {
-      status.textContent = `✓ Grundriss-Seite "${targetPage.title}" als ${filename} exportiert.`;
+      status.textContent = t('fpStatusExportedPage', { title: targetPage.title, filename });
     }
   }
 
@@ -2444,7 +2444,7 @@ export class App {
 
     const status = document.getElementById('statusLeft');
     if (status) {
-      status.textContent = `✓ Grundriss & Vorlage auf 1 : ${targetRatio} skaliert (${targetPpm.toFixed(1)} px/m).`;
+      status.textContent = t('fpStatusRescaled', { ratio: targetRatio, ppm: targetPpm.toFixed(1) });
     }
   }
 
@@ -2487,12 +2487,12 @@ export class App {
           rawPage = parsed.page;
           symbolLib = parsed.symbolLibrary;
         } else {
-          throw new Error('Die Datei enthält keine Grundriss-Seiten-Daten.');
+          throw new Error(t('fpErrorNoFloorPlanData'));
         }
       }
 
       if (!rawPage) {
-        throw new Error('Grundriss-Seite konnte nicht aus der Datei gelesen werden.');
+        throw new Error(t('fpErrorReadFloorPlanFailed'));
       }
 
       // Clone page and assign fresh unique ID
@@ -2568,10 +2568,10 @@ export class App {
 
       const status = document.getElementById('statusLeft');
       if (status) {
-        status.textContent = `✓ Grundriss-Seite "${pageClone.title}" erfolgreich importiert (Blatt ${pageClone.pageNumber}).`;
+        status.textContent = t('fpStatusImportedPage', { title: pageClone.title, number: pageClone.pageNumber });
       }
     } catch (err: any) {
-      alert(`Fehler beim Importieren der Grundriss-Seite: ${err?.message || err}`);
+      alert(t('fpErrorImportPageFailed', { error: err?.message || err }));
     }
   }
 
@@ -2911,30 +2911,30 @@ export class App {
 
     container.innerHTML = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-        🧱 Wand Eigenschaften
+        ${t('wallPropsHeading')}
       </div>
 
       <div class="form-group">
-        <label class="form-label">Wandtyp</label>
+        <label class="form-label">${t('wallTypeLabel')}</label>
         <select class="form-input" id="propWallType">
-          <option value="exterior" ${isExt ? 'selected' : ''}>Außenwand (tragend)</option>
-          <option value="interior" ${!isExt ? 'selected' : ''}>Innenwand (nicht tragend)</option>
+          <option value="exterior" ${isExt ? 'selected' : ''}>${t('wallTypeExterior')}</option>
+          <option value="interior" ${!isExt ? 'selected' : ''}>${t('wallTypeInterior')}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Wandstärke / Dicke (m)</label>
+        <label class="form-label">${t('wallThicknessLabel')}</label>
         <input class="form-input" id="propWallThickness" type="number" min="0.05" max="1.50" step="0.005" value="${thicknessM.toFixed(3)}">
-        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.115" style="flex:1;font-size:10px;padding:3px;">0.115 m (Innen)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.175" style="flex:1;font-size:10px;padding:3px;">0.175 m (Tragend)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.240" style="flex:1;font-size:10px;padding:3px;">0.240 m (Außen)</button>
-          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.365" style="flex:1;font-size:10px;padding:3px;">0.365 m (Massiv)</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;">
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.115" style="font-size:10px;padding:3px;justify-content:center;">${t('wallThickPreset115')}</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.175" style="font-size:10px;padding:3px;justify-content:center;">${t('wallThickPreset175')}</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.240" style="font-size:10px;padding:3px;justify-content:center;">${t('wallThickPreset240')}</button>
+          <button type="button" class="btn btn-sm btnWallThickPreset" data-thick="0.365" style="font-size:10px;padding:3px;justify-content:center;">${t('wallThickPreset365')}</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Startpunkt (m) [X₁, Y₁]</label>
+        <label class="form-label">${t('wallStartPointLabel')}</label>
         <div style="display:flex;gap:6px;">
           <input class="form-input" id="propWallStartX" type="number" step="0.01" value="${(wall.start.x / pxPerMeter).toFixed(2)}">
           <input class="form-input" id="propWallStartY" type="number" step="0.01" value="${(wall.start.y / pxPerMeter).toFixed(2)}">
@@ -2942,7 +2942,7 @@ export class App {
       </div>
 
       <div class="form-group">
-        <label class="form-label">Endpunkt (m) [X₂, Y₂]</label>
+        <label class="form-label">${t('wallEndPointLabel')}</label>
         <div style="display:flex;gap:6px;">
           <input class="form-input" id="propWallEndX" type="number" step="0.01" value="${(wall.end.x / pxPerMeter).toFixed(2)}">
           <input class="form-input" id="propWallEndY" type="number" step="0.01" value="${(wall.end.y / pxPerMeter).toFixed(2)}">
@@ -2950,62 +2950,62 @@ export class App {
       </div>
 
       <div class="form-group" style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-bottom:12px;">
-        <label class="form-label" style="font-weight:bold;color:#63b3ed;margin-bottom:4px;">Wandlänge (m)</label>
+        <label class="form-label" style="font-weight:bold;color:#63b3ed;margin-bottom:4px;">${t('wallLengthLabel')}</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input class="form-input" id="propWallLengthM" type="number" step="0.05" min="0.05" max="200" value="${lenM}" style="flex:1;font-size:12px;font-weight:bold;">
           <span style="font-size:11px;color:#cbd5e0;">m</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text-muted);">
-          <span>Winkel: <strong>${angleDeg}°</strong></span>
-          <span>Pixel: <strong>${Math.round(lenPx)} px</strong></span>
+          <span>${t('wallAngleLabel')} <strong>${angleDeg}°</strong></span>
+          <span>${t('wallPixelLabel')} <strong>${Math.round(lenPx)} px</strong></span>
         </div>
       </div>
 
       <!-- Scale Calibration from Reference Wall -->
       <div class="form-group" style="background:rgba(49, 130, 206, 0.12);border:1px solid rgba(49, 130, 206, 0.35);padding:10px;border-radius:6px;margin-bottom:12px;">
-        <label class="form-label" style="color:#63b3ed;font-weight:bold;margin-bottom:4px;">📏 Maßstab über diese Wand kalibrieren</label>
+        <label class="form-label" style="color:#63b3ed;font-weight:bold;margin-bottom:4px;">${t('wallCalibHeading')}</label>
         <div style="font-size:10px;color:#cbd5e0;margin-bottom:6px;">
-          Erkannte Länge: <strong>${lenM} m</strong> (${Math.round(lenPx)} px) bei 1 : ${scale?.scaleRatio || 100}
+          ${t('wallCalibDetectedLen', { meters: lenM, px: Math.round(lenPx), ratio: scale?.scaleRatio || 100 })}
         </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input class="form-input" id="propCalibRealLenM" type="number" step="0.05" min="0.1" max="100" placeholder="Wahre Länge" value="${lenM}" style="flex:1;font-size:11px;padding:4px 6px;">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <input class="form-input" id="propCalibRealLenM" type="number" step="0.05" min="0.1" max="100" placeholder="${t('wallCalibRealLenPlaceholder')}" value="${lenM}" style="flex:1 1 70px;min-width:60px;font-size:11px;padding:4px 6px;">
           <span style="font-size:11px;color:#cbd5e0;">m</span>
-          <button type="button" class="btn btn-primary" id="btnCalibWallScale" style="font-size:11px;padding:5px 10px;background:#3182ce;white-space:nowrap;">
-            📐 Kalibrieren
+          <button type="button" class="btn btn-primary" id="btnCalibWallScale" style="font-size:11px;padding:5px 10px;background:#3182ce;justify-content:center;">
+            ${t('wallCalibActionBtn')}
           </button>
         </div>
-        <button type="button" class="btn" id="btnWallCalibPickOther" style="width:100%;font-size:10px;padding:4px;margin-top:6px;background:#2d3748;color:#cbd5e0;border:1px solid #4a5568;">
-          🎯 Andere Wand per Klick auswählen
+        <button type="button" class="btn" id="btnWallCalibPickOther" style="width:100%;font-size:10px;padding:4px;margin-top:6px;background:#2d3748;color:#cbd5e0;border:1px solid #4a5568;justify-content:center;">
+          ${t('wallCalibPickOtherBtn')}
         </button>
         <div id="txtCalibWallFeedback" style="font-size:10px;color:#68d391;margin-top:4px;"></div>
         <div id="boxCalibScalePresets" style="margin-top:8px;padding-top:6px;border-top:1px dashed #4a5568;">
-          <div style="font-size:10px;color:#a0aec0;margin-bottom:4px;">Auf Norm-Maßstab skalieren (A3):</div>
+          <div style="font-size:10px;color:#a0aec0;margin-bottom:4px;">${t('wallCalibNormScaleHeading')}</div>
           <div style="display:flex;gap:4px;">
-            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:50 skalieren">1:50</button>
-            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:75 skalieren">1:75</button>
-            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;" title="Grundriss & Vorlage auf 1:100 skalieren">1:100</button>
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;justify-content:center;" title="${t('wallCalibNormScaleTitle', { scale: 50 })}">1:50</button>
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;justify-content:center;" title="${t('wallCalibNormScaleTitle', { scale: 75 })}">1:75</button>
+            <button type="button" class="btn btn-sm btn-rescale-wall-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px;background:#2b6cb0;color:#fff;justify-content:center;" title="${t('wallCalibNormScaleTitle', { scale: 100 })}">1:100</button>
           </div>
         </div>
       </div>
 
-      <div style="font-size:10px;font-weight:bold;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Öffnung auf dieser Wand:</div>
+      <div style="font-size:10px;font-weight:bold;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">${t('wallOpeningsHeading')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
-        <button type="button" class="btn btn-primary" id="btnWallAddDoor" style="font-size:11px;padding:5px;">
-          🚪 Tür
+        <button type="button" class="btn btn-primary" id="btnWallAddDoor" style="font-size:11px;padding:5px;justify-content:center;">
+          ${t('fpDoorBtn')}
         </button>
-        <button type="button" class="btn btn-primary" id="btnWallAddWindow" style="font-size:11px;padding:5px;">
-          🪟 Fenster
+        <button type="button" class="btn btn-primary" id="btnWallAddWindow" style="font-size:11px;padding:5px;justify-content:center;">
+          ${t('fpWindowBtn')}
         </button>
-        <button type="button" class="btn btn-primary" id="btnWallAddOpening" style="font-size:11px;padding:5px;">
-          🚪 Durchgang
+        <button type="button" class="btn btn-primary" id="btnWallAddOpening" style="font-size:11px;padding:5px;justify-content:center;">
+          ${t('fpPassageBtn')}
         </button>
-        <button type="button" class="btn btn-primary" id="btnWallAddGarage" style="font-size:11px;padding:5px;">
-          🚗 Garagentor
+        <button type="button" class="btn btn-primary" id="btnWallAddGarage" style="font-size:11px;padding:5px;justify-content:center;">
+          ${t('fpGarageBtn')}
         </button>
       </div>
 
-      <button type="button" class="btn btn-danger" id="btnWallDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);">
-        🗑️ Wand löschen
+      <button type="button" class="btn btn-danger" id="btnWallDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);justify-content:center;">
+        ${t('wallDeleteBtn')}
       </button>
     `;
 
@@ -3106,7 +3106,7 @@ export class App {
           realLengthMeters: realM
         };
         const fb = container.querySelector('#txtCalibWallFeedback');
-        if (fb) fb.textContent = `✓ Maßstab: 1 : ${newRatio} (${newPpm.toFixed(1)} px/m)`;
+        if (fb) fb.textContent = t('wallCalibFeedback', { ratio: newRatio, ppm: newPpm.toFixed(1) });
         this.notifyChange();
         this.canvas.render();
         this.renderWallProperties(container, wall);
@@ -3122,12 +3122,12 @@ export class App {
 
     container.querySelector('#btnWallCalibPickOther')?.addEventListener('click', () => {
       const status = document.getElementById('statusLeft');
-      if (status) status.textContent = '📏 Bitte eine Wand auf dem Grundriss anklicken, deren wahre Länge bekannt ist.';
+      if (status) status.textContent = t('fpStatusPickCalibWall');
       this.canvas.startWallCalibrationPick((pickedWall) => {
         this.selectedWall = pickedWall;
         this.canvas.selectedWallId = pickedWall.id;
         this.renderRightTab();
-        if (status) status.textContent = 'Wand ausgewählt. Bitte wahre Länge eingeben und auf "📐 Kalibrieren" klicken.';
+        if (status) status.textContent = t('fpStatusWallPickedForCalib');
       });
     });
 
@@ -3169,75 +3169,75 @@ export class App {
     const orientation = op.orientation || 'horizontal';
     const swing = op.swingDirection || 'left_in';
 
-    const titleIcon = isDoor ? '🚪 Tür' : isWindow ? '🪟 Fenster' : isGarage ? '🚗 Garagentor' : '🚪 Wandöffnung';
+    const titleIcon = isDoor ? `🚪 ${t('openingDoorName')}` : isWindow ? `🪟 ${t('openingWindowName')}` : isGarage ? `🚗 ${t('openingGarageName')}` : `🚪 ${t('openingPassageName')}`;
 
     container.innerHTML = `
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
-        ${titleIcon} Eigenschaften
+        ${titleIcon} ${t('openingPropsSuffix')}
       </div>
 
       <div class="form-group">
-        <label class="form-label">Art der Öffnung</label>
+        <label class="form-label">${t('openingKindLabel')}</label>
         <select class="form-input" id="propOpeningKind">
-          <option value="door" ${isDoor ? 'selected' : ''}>🚪 Tür (mit Aufschlagbogen)</option>
-          <option value="window" ${isWindow ? 'selected' : ''}>🪟 Fenster (Verglasung)</option>
-          <option value="opening" ${isOpening ? 'selected' : ''}>🚪 Wandöffnung / Durchgang</option>
-          <option value="garage_door" ${isGarage ? 'selected' : ''}>🚗 Garagentor (Sektionaltor)</option>
+          <option value="door" ${isDoor ? 'selected' : ''}>${t('openingKindDoor')}</option>
+          <option value="window" ${isWindow ? 'selected' : ''}>${t('openingKindWindow')}</option>
+          <option value="opening" ${isOpening ? 'selected' : ''}>${t('openingKindOpening')}</option>
+          <option value="garage_door" ${isGarage ? 'selected' : ''}>${t('openingKindGarage')}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Breite (m)</label>
+        <label class="form-label">${t('openingWidthLabel')}</label>
         <input class="form-input" id="propOpeningWidth" type="number" min="0.30" max="8.00" step="0.005" value="${widthM.toFixed(3)}">
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
           ${isDoor ? `
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;">0.75 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;">0.885 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;">1.25 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;justify-content:center;">0.75 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;justify-content:center;">0.885 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.25 m</button>
           ` : isWindow ? `
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;">0.75 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;">1.25 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;">1.50 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;">2.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.750" style="flex:1;font-size:10px;padding:3px;justify-content:center;">0.75 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.250" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.25 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;justify-content:center;">2.00 m</button>
           ` : isGarage ? `
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.500" style="flex:1;font-size:10px;padding:3px;">2.50 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="3.000" style="flex:1;font-size:10px;padding:3px;">3.00 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="4.000" style="flex:1;font-size:10px;padding:3px;">4.00 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="5.000" style="flex:1;font-size:10px;padding:3px;">5.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.500" style="flex:1;font-size:10px;padding:3px;justify-content:center;">2.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="3.000" style="flex:1;font-size:10px;padding:3px;justify-content:center;">3.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="4.000" style="flex:1;font-size:10px;padding:3px;justify-content:center;">4.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="5.000" style="flex:1;font-size:10px;padding:3px;justify-content:center;">5.00 m</button>
           ` : `
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;">0.885 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;">1.01 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;">1.50 m</button>
-            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;">2.00 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="0.885" style="flex:1;font-size:10px;padding:3px;justify-content:center;">0.885 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.010" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.01 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="1.500" style="flex:1;font-size:10px;padding:3px;justify-content:center;">1.50 m</button>
+            <button type="button" class="btn btn-sm btnOpWidthPreset" data-w="2.000" style="flex:1;font-size:10px;padding:3px;justify-content:center;">2.00 m</button>
           `}
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Ausrichtung</label>
+        <label class="form-label">${t('openingOrientationLabel')}</label>
         <select class="form-input" id="propOpeningOrientation">
-          <option value="horizontal" ${orientation === 'horizontal' ? 'selected' : ''}>Horizontal (Waagerecht)</option>
-          <option value="vertical" ${orientation === 'vertical' ? 'selected' : ''}>Vertikal (Senkrecht)</option>
+          <option value="horizontal" ${orientation === 'horizontal' ? 'selected' : ''}>${t('openingOrientHorizontal')}</option>
+          <option value="vertical" ${orientation === 'vertical' ? 'selected' : ''}>${t('openingOrientVertical')}</option>
         </select>
       </div>
 
       ${isDoor ? `
         <div class="form-group">
-          <label class="form-label">Anschlagrichtung (Türblatt)</label>
+          <label class="form-label">${t('openingSwingLabel')}</label>
           <select class="form-input" id="propOpeningSwing">
-            <option value="left_in" ${swing === 'left_in' ? 'selected' : ''}>Einwärts links (DIN Links)</option>
-            <option value="right_in" ${swing === 'right_in' ? 'selected' : ''}>Einwärts rechts (DIN Rechts)</option>
-            <option value="left_out" ${swing === 'left_out' ? 'selected' : ''}>Auswärts links (DIN Links)</option>
-            <option value="right_out" ${swing === 'right_out' ? 'selected' : ''}>Auswärts rechts (DIN Rechts)</option>
-            <option value="none" ${swing === 'none' ? 'selected' : ''}>Kein Bogen (Schiebetür/Durchgang)</option>
+            <option value="left_in" ${swing === 'left_in' ? 'selected' : ''}>${t('openingSwingLeftIn')}</option>
+            <option value="right_in" ${swing === 'right_in' ? 'selected' : ''}>${t('openingSwingRightIn')}</option>
+            <option value="left_out" ${swing === 'left_out' ? 'selected' : ''}>${t('openingSwingLeftOut')}</option>
+            <option value="right_out" ${swing === 'right_out' ? 'selected' : ''}>${t('openingSwingRightOut')}</option>
+            <option value="none" ${swing === 'none' ? 'selected' : ''}>${t('openingSwingNone')}</option>
           </select>
         </div>
       ` : ''}
 
       <div class="form-group">
-        <label class="form-label">Position Mitte (m) [X, Y]</label>
+        <label class="form-label">${t('openingCenterPosLabel')}</label>
         <div style="display:flex;gap:6px;">
           <input class="form-input" id="propOpeningCenterX" type="number" step="0.01" value="${(op.center.x / pxPerMeter).toFixed(2)}">
           <input class="form-input" id="propOpeningCenterY" type="number" step="0.01" value="${(op.center.y / pxPerMeter).toFixed(2)}">
@@ -3246,12 +3246,12 @@ export class App {
 
       ${op.wallId ? `
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
-          Zugeordnete Wand: <code style="color:#63b3ed;">${escapeSvg(op.wallId)}</code>
+          ${t('openingAssignedWallLabel')} <code style="color:#63b3ed;">${escapeSvg(op.wallId)}</code>
         </div>
       ` : ''}
 
-      <button type="button" class="btn btn-danger" id="btnOpeningDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);">
-        🗑️ Öffnung löschen
+      <button type="button" class="btn btn-danger" id="btnOpeningDelete" style="width:100%;font-size:11px;padding:6px;border-color:var(--danger);color:var(--danger);justify-content:center;">
+        ${t('openingDeleteBtn')}
       </button>
     `;
 
@@ -3635,20 +3635,20 @@ export class App {
 
         ${page?.floorPlan ? `
           <div class="form-group" style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-bottom:12px;">
-            <div style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:6px;">🏠 Grundriss-Darstellung</div>
+            <div style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:6px;">${t('fpCompDisplayHeading')}</div>
             <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;margin-bottom:6px;color:#cbd5e0;">
               <input type="checkbox" id="propCompShowLabel" ${comp.showLabels ? 'checked' : ''} style="accent-color:#3182ce;" />
-              <span>Beschriftung (BMK) am Symbol anzeigen</span>
+              <span>${t('fpCompShowBmkLabel')}</span>
             </label>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="font-size:10px;color:#a0aec0;">Symbol-Skalierung:</span>
-              <select id="propCompScale" class="form-input" style="font-size:10px;padding:2px 4px;width:120px;">
-                <option value="inherit" ${!comp.scale ? 'selected' : ''}>Plan-Standard</option>
-                <option value="0.35" ${comp.scale === 0.35 ? 'selected' : ''}>35% (Sehr klein)</option>
-                <option value="0.45" ${comp.scale === 0.45 ? 'selected' : ''}>45% (Kompakt)</option>
-                <option value="0.6" ${comp.scale === 0.6 ? 'selected' : ''}>60% (Mittel)</option>
-                <option value="0.75" ${comp.scale === 0.75 ? 'selected' : ''}>75% (Groß)</option>
-                <option value="1.0" ${comp.scale === 1.0 ? 'selected' : ''}>100% (Original)</option>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:10px;color:#a0aec0;">${t('fpCompScaleLabel')}</span>
+              <select id="propCompScale" class="form-input" style="font-size:10px;padding:2px 4px;width:120px;flex:1;min-width:100px;">
+                <option value="inherit" ${!comp.scale ? 'selected' : ''}>${t('fpCompScaleInherit')}</option>
+                <option value="0.35" ${comp.scale === 0.35 ? 'selected' : ''}>${t('fpCompScale35')}</option>
+                <option value="0.45" ${comp.scale === 0.45 ? 'selected' : ''}>${t('fpCompScale45')}</option>
+                <option value="0.6" ${comp.scale === 0.6 ? 'selected' : ''}>${t('fpCompScale60')}</option>
+                <option value="0.75" ${comp.scale === 0.75 ? 'selected' : ''}>${t('fpCompScale75')}</option>
+                <option value="1.0" ${comp.scale === 1.0 ? 'selected' : ''}>${t('fpCompScale100')}</option>
               </select>
             </div>
           </div>
@@ -3922,44 +3922,44 @@ export class App {
         ${activePage?.pageType==='cover'?`<button class="btn btn-primary" id="btnEditCoverPage" style="width:100%;margin-bottom:12px">${t('btnEditCoverPage')}</button>`:''}
         ${activePage?.pageType==='installation' && activePage.floorPlan ? `
           <div style="background:#232731;border:1px solid #4a5568;border-radius:6px;padding:10px;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;">
-                🏠 Installationsplan – Grundriss
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;">
+              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;">
+                ${t('fpPanelHeading')}
               </div>
-              <span style="font-size:10px;color:#a0aec0;font-weight:bold;">1 : ${activePage.floorPlan.scale?.scaleRatio || 100}</span>
+              <span style="font-size:10px;color:#a0aec0;font-weight:bold;flex-shrink:0;">1 : ${activePage.floorPlan.scale?.scaleRatio || 100}</span>
             </div>
 
             <!-- Floor plan edit mode toggle button -->
-            <button type="button" class="btn" id="btnToggleFloorPlanEditCard" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;font-weight:bold;background:${this.canvas?.floorPlanEditMode ? '#2b6cb0' : '#2d3748'};color:#ffffff;border:1px solid ${this.canvas?.floorPlanEditMode ? '#63b3ed' : '#4a5568'};">
-              ${this.canvas?.floorPlanEditMode ? '🧱 Grundriss-Bearbeitung: AKTIV' : '🧱 Grundriss bearbeiten (Aktivieren)'}
+            <button type="button" class="btn" id="btnToggleFloorPlanEditCard" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;font-weight:bold;justify-content:center;background:${this.canvas?.floorPlanEditMode ? '#2b6cb0' : '#2d3748'};color:#ffffff;border:1px solid ${this.canvas?.floorPlanEditMode ? '#63b3ed' : '#4a5568'};">
+              ${this.canvas?.floorPlanEditMode ? t('fpEditModeActive') : t('fpEditModeEnable')}
             </button>
 
             <!-- Wall Calibration Pick Button -->
             <button type="button" class="btn" id="btnPickCalibWall" style="width:100%;margin-bottom:8px;font-size:11px;padding:6px;background:#2b6cb0;color:#fff;border:1px solid #63b3ed;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;">
-              <span>📏 Wand anklicken zum Kalibrieren</span>
+              <span>${t('fpPickWallCalibBtn')}</span>
             </button>
 
             <!-- Hide symbol labels toggle -->
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;">
                 <input type="checkbox" id="chkHideSymbolLabels" ${activePage.floorPlan.hideSymbolLabels !== false ? 'checked' : ''} style="accent-color:#3182ce;" />
-                <span>Symbol-Beschriftungen (BMK) ausblenden</span>
+                <span>${t('fpHideSymbolLabels')}</span>
               </label>
             </div>
 
             <!-- Symbol Scale setting -->
             <div style="margin-bottom:10px;background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <span style="font-size:10px;color:#a0aec0;">Symbolgröße im Plan:</span>
+                <span style="font-size:10px;color:#a0aec0;">${t('fpSymbolSizeLabel')}</span>
                 <span style="font-size:10px;color:#68d391;">${activePage.floorPlan.symbolScale ? `${Math.round(activePage.floorPlan.symbolScale * 100)}%` : 'Auto'}</span>
               </div>
               <select id="selFloorPlanSymbolScale" class="form-input" style="font-size:11px;padding:3px 6px;width:100%;">
-                <option value="auto" ${!activePage.floorPlan.symbolScale ? 'selected' : ''}>Auto (nach Maßstab)</option>
-                <option value="0.35" ${activePage.floorPlan.symbolScale === 0.35 ? 'selected' : ''}>Sehr klein (35%)</option>
-                <option value="0.45" ${activePage.floorPlan.symbolScale === 0.45 ? 'selected' : ''}>Kompakt / 1:100 (45%)</option>
-                <option value="0.60" ${activePage.floorPlan.symbolScale === 0.60 ? 'selected' : ''}>Mittel / 1:50 (60%)</option>
-                <option value="0.75" ${activePage.floorPlan.symbolScale === 0.75 ? 'selected' : ''}>Groß (75%)</option>
-                <option value="1.0" ${activePage.floorPlan.symbolScale === 1.0 ? 'selected' : ''}>Originalgröße (100%)</option>
+                <option value="auto" ${!activePage.floorPlan.symbolScale ? 'selected' : ''}>${t('fpSymbolScaleAuto')}</option>
+                <option value="0.35" ${activePage.floorPlan.symbolScale === 0.35 ? 'selected' : ''}>${t('fpSymbolScale35')}</option>
+                <option value="0.45" ${activePage.floorPlan.symbolScale === 0.45 ? 'selected' : ''}>${t('fpSymbolScale45')}</option>
+                <option value="0.60" ${activePage.floorPlan.symbolScale === 0.60 ? 'selected' : ''}>${t('fpSymbolScale60')}</option>
+                <option value="0.75" ${activePage.floorPlan.symbolScale === 0.75 ? 'selected' : ''}>${t('fpSymbolScale75')}</option>
+                <option value="1.0" ${activePage.floorPlan.symbolScale === 1.0 ? 'selected' : ''}>${t('fpSymbolScale100')}</option>
               </select>
             </div>
 
@@ -3967,12 +3967,12 @@ export class App {
               <div style="margin-bottom:8px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;">
                   <input type="checkbox" id="chkShowBlueprintBg" ${activePage.floorPlan.backgroundImage.visible ? 'checked' : ''} style="accent-color:#3182ce;" />
-                  <span>Bauplan-Hintergrund</span>
+                  <span>${t('fpBlueprintBgLabel')}</span>
                 </label>
               </div>
               <div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px;">
-                  <span>Deckkraft:</span>
+                  <span>${t('fpOpacityLabel')}</span>
                   <span id="txtBlueprintOpacity">${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}%</span>
                 </div>
                 <input type="range" id="rngBlueprintOpacity" min="0" max="100" value="${Math.round(activePage.floorPlan.backgroundImage.opacity * 100)}" style="width:100%;accent-color:#3182ce;" />
@@ -3980,55 +3980,49 @@ export class App {
             ` : ''}
 
             <!-- Quick Add Elements -->
-            <div style="font-size:10px;font-weight:bold;color:#a0aec0;text-transform:uppercase;margin-bottom:4px;">Elemente einfügen:</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-              <button type="button" class="btn" id="btnDrawWall" style="font-size:11px;padding:4px 6px;background:#2b6cb0;color:#fff;border:none;">
-                🧱 Wand zeichnen
+            <div style="font-size:10px;font-weight:bold;color:#a0aec0;text-transform:uppercase;margin-bottom:4px;">${t('fpInsertElementsHeading')}</div>
+            <div class="sidebar-btn-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(105px, 1fr));gap:6px;margin-bottom:8px;">
+              <button type="button" class="btn" id="btnDrawWall" style="font-size:11px;padding:5px 6px;background:#2b6cb0;color:#fff;border:none;justify-content:center;">
+                ${t('fpDrawWallBtn')}
               </button>
-              <button type="button" class="btn" id="btnAddDoorQuick" style="font-size:11px;padding:4px 6px;">
-                🚪 Tür
+              <button type="button" class="btn" id="btnAddDoorQuick" style="font-size:11px;padding:5px 6px;justify-content:center;">
+                ${t('fpDoorBtn')}
               </button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-              <button type="button" class="btn" id="btnAddWindowQuick" style="font-size:11px;padding:4px 6px;">
-                🪟 Fenster
+              <button type="button" class="btn" id="btnAddWindowQuick" style="font-size:11px;padding:5px 6px;justify-content:center;">
+                ${t('fpWindowBtn')}
               </button>
-              <button type="button" class="btn" id="btnAddOpeningQuick" style="font-size:11px;padding:4px 6px;">
-                🚪 Durchgang
+              <button type="button" class="btn" id="btnAddOpeningQuick" style="font-size:11px;padding:5px 6px;justify-content:center;">
+                ${t('fpPassageBtn')}
               </button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-              <button type="button" class="btn" id="btnAddGarageQuick" style="font-size:11px;padding:4px 6px;">
-                🚗 Garagentor
+              <button type="button" class="btn" id="btnAddGarageQuick" style="font-size:11px;padding:5px 6px;justify-content:center;">
+                ${t('fpGarageBtn')}
               </button>
-              <button type="button" class="btn" id="btnReimportFloorPlan" style="font-size:11px;padding:4px 6px;">
-                🔄 Neu importieren
+              <button type="button" class="btn" id="btnReimportFloorPlan" style="font-size:11px;padding:5px 6px;justify-content:center;">
+                ${t('fpReimportBtn')}
               </button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
-              <button type="button" class="btn" id="btnExportFloorPlanRight" style="font-size:11px;padding:4px 6px;" title="Diese Grundriss-Seite exportieren (.floorplan.json)">
-                📤 Seite exportieren
+              <button type="button" class="btn" id="btnExportFloorPlanRight" style="font-size:11px;padding:5px 6px;justify-content:center;" title="${t('fpExportPageTitle')}">
+                ${t('fpExportPageBtn')}
               </button>
-              <button type="button" class="btn" id="btnImportFloorPlanRight" style="font-size:11px;padding:4px 6px;" title="Grundriss-Seite importieren (.floorplan.json, .ems)">
-                📥 Seite importieren
+              <button type="button" class="btn" id="btnImportFloorPlanRight" style="font-size:11px;padding:5px 6px;justify-content:center;" title="${t('fpImportPageTitle')}">
+                ${t('fpImportPageBtn')}
               </button>
             </div>
 
             <!-- Scale setting with A3 Norm presets -->
             <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:6px 8px;margin-top:6px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <span style="font-size:10px;color:#a0aec0;">Ziel-Maßstab (A3):</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+                <span style="font-size:10px;color:#a0aec0;">${t('fpTargetScaleA3Label')}</span>
                 <span style="font-size:10px;color:#68d391;">1 : ${activePage.floorPlan.scale?.scaleRatio || 100} (${(activePage.floorPlan.scale?.pixelPerMeter || 50).toFixed(1)} px/m)</span>
               </div>
               <div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">
-                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 50 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:50 Detailmaßstab skalieren">1:50</button>
-                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 75 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:75 Maßstab skalieren">1:75</button>
-                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px 4px;${activePage.floorPlan.scale?.scaleRatio === 100 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="Auf 1:100 Gesamtgrundriss skalieren">1:100</button>
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="50" style="flex:1;font-size:10px;padding:3px 4px;justify-content:center;${activePage.floorPlan.scale?.scaleRatio === 50 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="${t('fpScalePreset50Title')}">1:50</button>
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="75" style="flex:1;font-size:10px;padding:3px 4px;justify-content:center;${activePage.floorPlan.scale?.scaleRatio === 75 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="${t('fpScalePreset75Title')}">1:75</button>
+                <button type="button" class="btn btn-sm btn-scale-preset" data-scale="100" style="flex:1;font-size:10px;padding:3px 4px;justify-content:center;${activePage.floorPlan.scale?.scaleRatio === 100 ? 'background:#3182ce;color:#fff;' : 'background:#2d3748;color:#cbd5e0;'}" title="${t('fpScalePreset100Title')}">1:100</button>
               </div>
-              <div style="display:flex;gap:4px;align-items:center;">
+              <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
                 <span style="font-size:11px;color:#cbd5e0;">1 :</span>
-                <input type="number" id="inpFloorPlanScaleRatio" class="form-input" min="1" max="1000" value="${activePage.floorPlan.scale?.scaleRatio || 100}" style="font-size:11px;padding:2px 6px;width:70px;" />
-                <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;" title="Grundriss & Vorlage auf diesen Maßstab skalieren">Skalieren</button>
+                <input type="number" id="inpFloorPlanScaleRatio" class="form-input" min="1" max="1000" value="${activePage.floorPlan.scale?.scaleRatio || 100}" style="font-size:11px;padding:2px 6px;flex:1 1 55px;min-width:50px;" />
+                <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;justify-content:center;" title="${t('fpRescaleBtnTitle')}">${t('fpRescaleBtn')}</button>
               </div>
             </div>
           </div>
@@ -4054,10 +4048,10 @@ export class App {
           <input class="form-input" id="pageLocationInput" value="${activePage?.location || '+S1'}">
         </div>
 
-        <div style="display: flex; gap: 6px; margin: 12px 0 16px 0;">
-          <button class="btn" id="btnMovePageUp" style="flex: 1;" ${canMoveUp ? '' : 'disabled'} title="${t('movePageUp')}">${t('btnMoveUp')}</button>
-          <button class="btn" id="btnMovePageDown" style="flex: 1;" ${canMoveDown ? '' : 'disabled'} title="${t('movePageDown')}">${t('btnMoveDown')}</button>
-          <button class="btn" id="btnDeleteCurrentPage" style="flex: 1; border-color: var(--danger); color: var(--danger);" ${canDelete ? '' : 'disabled'} title="${t('deletePage')}">🗑️ ${t('menuDelete')}</button>
+        <div style="display: flex; gap: 6px; margin: 12px 0 16px 0; flex-wrap: wrap;">
+          <button class="btn" id="btnMovePageUp" style="flex: 1 1 70px; min-width: 0; justify-content: center;" ${canMoveUp ? '' : 'disabled'} title="${t('movePageUp')}">${t('btnMoveUp')}</button>
+          <button class="btn" id="btnMovePageDown" style="flex: 1 1 70px; min-width: 0; justify-content: center;" ${canMoveDown ? '' : 'disabled'} title="${t('movePageDown')}">${t('btnMoveDown')}</button>
+          <button class="btn" id="btnDeleteCurrentPage" style="flex: 1 1 70px; min-width: 0; justify-content: center; border-color: var(--danger); color: var(--danger);" ${canDelete ? '' : 'disabled'} title="${t('deletePage')}">🗑️ ${t('menuDelete')}</button>
         </div>
 
         <div style="margin-top: 20px; font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">
@@ -4088,7 +4082,7 @@ export class App {
       });
       document.getElementById('btnPickCalibWall')?.addEventListener('click', () => {
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = '📏 Bitte eine Wand auf dem Grundriss anklicken, deren wahre Länge bekannt ist.';
+        if (status) status.textContent = t('fpStatusPickCalibWall');
         this.canvas.startWallCalibrationPick((wall) => {
           this.selectedWall = wall;
           this.selectedComponent = null;
@@ -4097,7 +4091,7 @@ export class App {
           this.selectedOpening = null;
           this.canvas.selectedWallId = wall.id;
           this.renderRightTab();
-          if (status) status.textContent = 'Wand ausgewählt. Bitte wahre Länge eingeben und auf "📐 Kalibrieren" klicken.';
+          if (status) status.textContent = t('fpStatusWallPickedForCalib');
           setTimeout(() => {
             const input = document.getElementById('propCalibRealLenM') as HTMLInputElement;
             if (input) {
@@ -4147,27 +4141,27 @@ export class App {
       document.getElementById('btnDrawWall')?.addEventListener('click', () => {
         this.canvas.setMode('draw_wall');
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = 'Wand zeichnen: Startpunkt auf dem Grundriss anklicken, dann Endpunkt anklicken. Esc bricht ab.';
+        if (status) status.textContent = t('fpStatusDrawWallPrompt');
       });
       document.getElementById('btnAddDoorQuick')?.addEventListener('click', () => {
         this.canvas.startPlacingOpening('door');
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = '🚪 Tür platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
+        if (status) status.textContent = t('fpStatusPlaceDoorPrompt');
       });
       document.getElementById('btnAddWindowQuick')?.addEventListener('click', () => {
         this.canvas.startPlacingOpening('window');
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = '🪟 Fenster platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
+        if (status) status.textContent = t('fpStatusPlaceWindowPrompt');
       });
       document.getElementById('btnAddOpeningQuick')?.addEventListener('click', () => {
         this.canvas.startPlacingOpening('opening');
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = '🚪 Wandöffnung platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
+        if (status) status.textContent = t('fpStatusPlaceOpeningPrompt');
       });
       document.getElementById('btnAddGarageQuick')?.addEventListener('click', () => {
         this.canvas.startPlacingOpening('garage_door');
         const status = document.getElementById('statusLeft');
-        if (status) status.textContent = '🚗 Garagentor platzieren: Maus über die gewünschte Wand bewegen und mit Klick platzieren. Esc bricht ab.';
+        if (status) status.textContent = t('fpStatusPlaceGaragePrompt');
       });
       document.getElementById('btnApplyFloorPlanScale')?.addEventListener('click', () => {
         const inp = document.getElementById('inpFloorPlanScaleRatio') as HTMLInputElement;
