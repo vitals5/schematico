@@ -24,7 +24,8 @@ const paths:Record<string,string>={
   right:'M3 4h18v16H3z M15 4v16',
   wall:'M3 5h18v14H3z M3 12h18 M12 5v7 M7 12v7 M17 12v7',
   text:'M4 7V4h16v3 M12 4v16 M9 20h6',
-  menu:'M4 6h16 M4 12h16 M4 18h16'
+  menu:'M4 6h16 M4 12h16 M4 18h16',
+  sparkle:'m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z'
 };
 export const headerIcon=(name:string)=>`<svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[name]??paths.add}"/></svg>`;
 const opt=(id:string,label:string,key='',extra='')=>`<button type="button" class="menu-opt" id="${id}" ${extra}><span>${label}</span>${key?`<span class="opt-key">${key}</span>`:''}</button>`;
@@ -63,8 +64,13 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuDataTrigger',t('menuData'),
           opt('menuPlausibility',t('menuPlausibility'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
           opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
+        ${menu('menuAiTrigger','AI & MCP',
+          opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+
+          opt('menuAiSettings','Gemini API-Key (BYOK)...')+separator+
+          opt('menuAiClear','Chatverlauf leeren'),'menu-item')}
         ${menu('menuHelpTrigger',t('menuHelp'),opt('menuShortcuts',t('menuShortcuts'))+opt('menuMobile',t('menuMobile'))+separator+opt('menuAbout',t('menuAbout')),'menu-item')}
       </div>
+      <div id="headerStatusBadgeContainer" class="header-status-badge-container"></div>
       <span id="headerProjectName" class="header-project-name" title="${escapeSvg(projectName)}">${escapeSvg(projectName)}</span>
     </nav>
     <header class="app-header" aria-label="${t('toolToggleLeft')}">
@@ -93,6 +99,7 @@ export function renderAppHeader(projectName:string):string {
             proxy('menuToggleAutoconnect',t('menuToggleAutoconnect')),'drawing-options')}
         </div>
         <div class="toolbar-group output-tools" role="group" aria-label="${t('headingExport')}">${tool('btnExportPdf',t('toolExportPdf'),'pdf','PDF')}</div>
+        <div class="toolbar-group ai-tools" role="group" aria-label="AI & MCP">${tool('btnToggleAiChat','AI Chat & MCP Bridge (Alt+A)','sparkle','AI','btn-ai-toggle')}</div>
         <div class="toolbar-group inspector-tools" role="group" aria-label="${t('tabProperties')}">${tool('btnToggleRightSidebar',t('toolToggleRight'),'right')}</div>
       </div>
     </header>

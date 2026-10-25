@@ -1,0 +1,14 @@
+{
+  "name": "schematico-mcp-bridge",
+  "version": "1.0.0",
+  "description": "Local MCP Bridge Server for Schematico CAD",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "ws": "^8.18.0"
+  }
+}

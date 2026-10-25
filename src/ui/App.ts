@@ -1,5 +1,9 @@
 import { readAppSetting, writeAppSetting } from '../model/LegacyCompatibility';
 import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey } from '../ai/GeminiConfig';
+import { AiChatSidebar } from '../ai/components/AiChatSidebar';
+import { StatusBadge } from '../ai/components/StatusBadge';
+import { defaultBridgeClient } from '../ai/bridge/bridgeClient';
+import type { CanvasStateManager } from '../ai/mcp-tools';
 import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { AboutDialog } from './AboutDialog';
@@ -79,6 +83,8 @@ export class App {
   private currentFilePath: string | null = null;
   private currentFileHandle: any = null;
   private currentFileFormat: 'json' | 'zw1' | 'xml' = 'json';
+  private aiChatSidebar!: AiChatSidebar;
+  private statusBadge!: StatusBadge;
 
   constructor() {
     const savedLeftW = readAppSetting('left_w');
@@ -98,6 +104,7 @@ export class App {
     }
     this.renderLayout();
     this.initCanvas();
+    this.initAiAssistant();
     this.history.reset(this.project);
     this.initHistoryEvents();
     this.initPanelResizers();
@@ -141,6 +148,9 @@ export class App {
             e.preventDefault();
             this.createNewProject();
           }
+        } else if (e.altKey && e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          this.toggleAiChat();
         }
       });
     }
@@ -774,6 +784,10 @@ export class App {
       this.setRightPanelCollapsed(!this.isRightCollapsed);
     });
 
+    document.getElementById('btnToggleAiChat')?.addEventListener('click', () => {
+      this.toggleAiChat();
+    });
+
     document.getElementById('btnCollapseLeft')?.addEventListener('click', () => {
       this.setLeftPanelCollapsed(true);
     });
@@ -1276,6 +1290,14 @@ export class App {
       alert(t('shortcutsHelp'));
     });
     bindMenuOpt('menuAbout', () => AboutDialog.show());
+
+    // AI & MCP
+    bindMenuOpt('menuToggleAiChat', () => this.toggleAiChat());
+    bindMenuOpt('menuAiSettings', () => this.aiChatSidebar?.showApiKeyModal());
+    bindMenuOpt('menuAiClear', () => {
+      const clearBtn = document.getElementById('btnAiClearHistory');
+      clearBtn?.click();
+    });
   }
 
   private updateToolButtons(activeId: string): void {
@@ -5068,6 +5090,68 @@ export class App {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  private createCanvasStateManager(): CanvasStateManager {
+    return {
+      getProject: () => this.project,
+      getActivePage: (pageId?: string) => {
+        if (pageId) {
+          const found = this.project.pages.find(p => p.id === pageId);
+          if (found) return found;
+        }
+        return this.project.pages.find(p => p.id === this.project.activePageId) || this.project.pages[0];
+      },
+      getCanvas: () => this.canvas,
+      notifyModified: () => {
+        this.notifyChange();
+      },
+      render: () => {
+        this.canvas?.render();
+      }
+    };
+  }
+
+  private initAiAssistant(): void {
+    const stateManager = this.createCanvasStateManager();
+    defaultBridgeClient.setStateManager(stateManager);
+
+    // Mount Status Badge in header
+    const badgeContainer = document.getElementById('headerStatusBadgeContainer');
+    if (badgeContainer) {
+      this.statusBadge = new StatusBadge({
+        onClick: () => this.toggleAiChat(),
+        onApiKeyClick: () => this.aiChatSidebar?.showApiKeyModal()
+      });
+      badgeContainer.appendChild(this.statusBadge.getElement());
+    }
+
+    // Mount AI Chat Sidebar
+    const mainContainer = document.getElementById('mainContainer');
+    this.aiChatSidebar = new AiChatSidebar({
+      stateManager,
+      onClose: () => {
+        const btn = document.getElementById('btnToggleAiChat');
+        btn?.classList.remove('active');
+      },
+      onApiKeyUpdated: () => {
+        this.statusBadge?.refresh();
+      }
+    });
+
+    if (mainContainer) {
+      mainContainer.appendChild(this.aiChatSidebar.getElement());
+    }
+  }
+
+  public toggleAiChat(): void {
+    this.aiChatSidebar?.toggle();
+    const btn = document.getElementById('btnToggleAiChat');
+    if (this.aiChatSidebar?.isOpen()) {
+      btn?.classList.add('active');
+    } else {
+      btn?.classList.remove('active');
+    }
   }
 
   private notifyChange(): void {
