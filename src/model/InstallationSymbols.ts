@@ -949,6 +949,122 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Decken-Dome-Kamera / 360° IP-Überwachungskamera (DIN EN 60617-11)'
   },
   {
+    id: 'inst_router',
+    name: 'Router / WLAN-Router',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-K',
+    defaultFunctionText: 'Router',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['router', 'wlan', 'wifi', 'gateway', 'modem', 'fritzbox', 'access point', 'internet'],
+    svgContent: `
+      <rect x="4" y="0" width="24" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <circle cx="16" cy="10" r="6" fill="none" stroke="#63b3ed" stroke-width="1.5"/>
+      <line x1="11.5" y1="10" x2="20.5" y2="10" stroke="#63b3ed" stroke-width="1.4"/>
+      <line x1="16" y1="5.5" x2="16" y2="14.5" stroke="#63b3ed" stroke-width="1.4"/>
+      <line x1="11" y1="20" x2="9" y2="27" stroke="currentColor" stroke-width="1.8"/>
+      <line x1="21" y1="20" x2="23" y2="27" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="9" cy="27.5" r="1.3" fill="#63b3ed"/>
+      <circle cx="23" cy="27.5" r="1.3" fill="#63b3ed"/>
+    `,
+    description: 'Netzwerk-Router / WLAN-Router / Internet-Gateway (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_network_switch',
+    name: 'Netzwerkswitch (Ethernet-Switch)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-K',
+    defaultFunctionText: 'Netzwerkswitch',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['netzwerkswitch', 'switch', 'ethernet', 'poe', 'patchfeld', 'lan', 'network'],
+    svgContent: `
+      <rect x="3" y="0" width="26" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="7" y1="7" x2="23" y2="7" stroke="#63b3ed" stroke-width="1.6"/>
+      <polyline points="19.5,4.5 23.5,7 19.5,9.5" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+      <line x1="25" y1="15" x2="9" y2="15" stroke="#63b3ed" stroke-width="1.6"/>
+      <polyline points="12.5,12.5 8.5,15 12.5,17.5" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+    `,
+    description: 'Netzwerk-Switch / PoE Ethernet-Switch für Gebäudeverkabelung (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_pv_inverter',
+    name: 'PV-Wechselrichter (Solar-Wechselrichter)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11 / IEC 60617',
+    defaultBmkPrefix: '-G',
+    defaultFunctionText: 'PV-Wechselrichter',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['pv', 'wechselrichter', 'pv-wechselrichter', 'solar', 'photovoltaik', 'inverter', 'hybridwechselrichter'],
+    svgContent: `
+      <rect x="4" y="0" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" rx="1.5"/>
+      <line x1="4" y1="24" x2="28" y2="0" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="7" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="7" y1="9" x2="9.5" y2="9" stroke="currentColor" stroke-width="1.4"/>
+      <line x1="11.5" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.4"/>
+      <polyline points="16,18 18,15.5 20,18 22,20.5 24,18" fill="none" stroke="#68d391" stroke-width="1.6"/>
+    `,
+    description: 'Photovoltaik-Wechselrichter / Solar-Hybridwechselrichter DC/AC (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_ups',
+    name: 'USV (Unterbrechungsfreie Stromversorgung)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-G',
+    defaultFunctionText: 'USV',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['usv', 'ups', 'notstrom', 'batterie', 'speicher', 'stromversorgung', 'akkumulator'],
+    svgContent: `
+      <rect x="4" y="0" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <line x1="8" y1="8" x2="11.5" y2="8" stroke="#68d391" stroke-width="1.5"/>
+      <line x1="11.5" y1="4.5" x2="11.5" y2="11.5" stroke="#68d391" stroke-width="2"/>
+      <line x1="14.5" y1="6" x2="14.5" y2="10" stroke="#68d391" stroke-width="1.5"/>
+      <line x1="17.5" y1="4.5" x2="17.5" y2="11.5" stroke="#68d391" stroke-width="2"/>
+      <line x1="20.5" y1="6" x2="20.5" y2="10" stroke="#68d391" stroke-width="1.5"/>
+      <line x1="20.5" y1="8" x2="24" y2="8" stroke="#68d391" stroke-width="1.5"/>
+      <text x="16" y="20" font-size="7.5" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="currentColor">USV</text>
+    `,
+    description: 'Unterbrechungsfreie Stromversorgung (USV / Batterie-Notstromsystem nach DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_server',
+    name: 'Server / Netzwerkschrank (19" Rack)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-U',
+    defaultFunctionText: 'Server',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['server', 'serverschrank', 'netzwerkschrank', 'rack', 'nas', 'it', '19 zoll'],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="24" fill="none" stroke="currentColor" stroke-width="2" rx="1.5"/>
+      <line x1="5" y1="8" x2="27" y2="8" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="5" y1="16" x2="27" y2="16" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="9" cy="4" r="1.3" fill="#68d391"/>
+      <circle cx="9" cy="12" r="1.3" fill="#68d391"/>
+      <circle cx="9" cy="20" r="1.3" fill="#68d391"/>
+      <line x1="14" y1="4" x2="23" y2="4" stroke="#63b3ed" stroke-width="1.5"/>
+      <line x1="14" y1="12" x2="23" y2="12" stroke="#63b3ed" stroke-width="1.5"/>
+      <line x1="14" y1="20" x2="23" y2="20" stroke="#63b3ed" stroke-width="1.5"/>
+    `,
+    description: 'Server / 19-Zoll-Netzwerkschrank / NAS-System (DIN EN 60617-11)'
+  },
+  {
     id: 'inst_equipotential',
     name: 'Potenzialausgleichsschiene (PAS)',
     category: 'installation',
