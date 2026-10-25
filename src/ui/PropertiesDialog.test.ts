@@ -138,3 +138,52 @@ assert.equal(dialog.component.pinLabelFontSize, 5);
 assert.match(dialog.generatePreviewSvg(), />13<\/text>/, 'Enabling Pin visibility renders pin labels in preview');
 assert.match(dialog.generatePreviewSvg(), />14<\/text>/);
 console.log('✓ Pin designations row in Display tab toggles visibility, position, alignment, rotation, and font size');
+
+// Multi-component properties editing test
+const multiComp1: PlacedComponent = {
+  id: 'c1', symbolId: symbol.id, bmk: '-K1', functionText: 'Antrieb',
+  x: 10, y: 20, rotation: 0, pins: { '0': { customLabel: '1' } },
+  manufacturer: 'Siemens', articleNumber: '3RT20'
+};
+const multiComp2: PlacedComponent = {
+  id: 'c2', symbolId: symbol.id, bmk: '-K2', functionText: 'Antrieb',
+  x: 50, y: 20, rotation: 0, pins: { '0': { customLabel: '1' } },
+  manufacturer: 'Siemens', articleNumber: '3RT20'
+};
+let savedMulti: PlacedComponent[] = [];
+const multiDialog = new PropertiesDialog([multiComp1, multiComp2], project, {
+  onSave: () => undefined,
+  onSaveMultiple: (list) => { savedMulti = list; }
+}) as any;
+
+assert.equal(multiDialog.isMulti, true);
+assert.equal(multiDialog.components.length, 2);
+assert(multiDialog.differingFields.has('bmk'), 'Differing BMKs are flagged in differingFields');
+assert(!multiDialog.differingFields.has('functionText'), 'Identical functionText is not flagged');
+
+const multiHtml = multiDialog.renderActiveTabContent() as string;
+assert.match(multiHtml, /id="propBmk"[^>]*value=""/, 'Differing BMK is rendered with empty value');
+assert.match(multiHtml, /id="propFunctionText"[^>]*>Antrieb<\/textarea>/, 'Identical functionText is prefilled');
+
+const multiModalFields: Record<string, any> = {
+  '#propFunctionText': { value: 'Gemeinsamer Antrieb' },
+  '#propHigherLevel': { value: '=ANLAGE1' }
+};
+const multiModal = {
+  querySelector: (sel: string) => multiModalFields[sel] ?? null,
+  querySelectorAll: () => []
+};
+
+// Simulate user changing functionText and higherLevel
+multiDialog.dirtyFields.add('propFunctionText');
+multiDialog.dirtyFields.add('propHigherLevel');
+multiDialog.saveChanges(multiModal);
+
+assert.equal(savedMulti.length, 2);
+assert.equal(savedMulti[0].bmk, '-K1', 'Untouched BMK -K1 is preserved on first component');
+assert.equal(savedMulti[1].bmk, '-K2', 'Untouched BMK -K2 is preserved on second component');
+assert.equal(savedMulti[0].functionText, 'Gemeinsamer Antrieb', 'Edited functionText is applied to first component');
+assert.equal(savedMulti[1].functionText, 'Gemeinsamer Antrieb', 'Edited functionText is applied to second component');
+assert.equal(savedMulti[0].higherLevelFunction, '=ANLAGE1', 'Edited higherLevelFunction is applied to first component');
+assert.equal(savedMulti[1].higherLevelFunction, '=ANLAGE1', 'Edited higherLevelFunction is applied to second component');
+console.log('✓ Multi-component properties editing applies dirty fields across all components and preserves differing properties');

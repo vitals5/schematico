@@ -77,3 +77,25 @@ imageHistory.record(project);
 assert.equal(JSON.stringify(imageHistory.undo()!.pages[0]),beforeImageMove);
 assert.deepEqual(imageHistory.redo()!.pages[0].images,page.images);
 console.log('✓ Images support window selection, relative movement and one-step history without changing electrical objects');
+
+// Multi-selection intersection and property existence tests
+const { propertyExistsOnAllSelected } = await import('./SelectionProperties');
+const twoCompsSelection = { componentIds: ['a', 'b'], cableIds: [] };
+assert.equal(propertyExistsOnAllSelected(page, twoCompsSelection, 'bmk'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoCompsSelection, 'functionText'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoCompsSelection, 'higherLevel'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoCompsSelection, 'cableType'), false);
+
+const mixedCompCableSelection = { componentIds: ['a'], cableIds: ['cable'] };
+assert.equal(propertyExistsOnAllSelected(page, mixedCompCableSelection, 'bmk'), true);
+assert.equal(propertyExistsOnAllSelected(page, mixedCompCableSelection, 'bmkFontSize'), true);
+assert.equal(propertyExistsOnAllSelected(page, mixedCompCableSelection, 'deviceTag'), false);
+assert.equal(propertyExistsOnAllSelected(page, mixedCompCableSelection, 'cableType'), false);
+
+page.texts = [{ id: 'txt1', text: 'T1', x: 0, y: 0 }, { id: 'txt2', text: 'T2', x: 10, y: 10 }];
+const twoTextsSelection = { componentIds: [], cableIds: [], textIds: ['txt1', 'txt2'] };
+assert.equal(propertyExistsOnAllSelected(page, twoTextsSelection, 'textContent'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoTextsSelection, 'textFontSize'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoTextsSelection, 'textAlign'), true);
+assert.equal(propertyExistsOnAllSelected(page, twoTextsSelection, 'bmk'), false);
+console.log('✓ propertyExistsOnAllSelected correctly intersects supported properties across all selected element types');

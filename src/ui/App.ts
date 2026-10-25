@@ -16,7 +16,7 @@ import { defaultPlotFrame } from '../model/PlotFrame';
 import { t, getUiLanguage, setUiLanguage, onLanguageChange, Language, getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from '../i18n';
 import { CoverPageDialog } from './CoverPageDialog';
 import { neutralSourceLabel, prepareProjectPresentation } from '../model/PresentationNaming';
-import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties } from '../model/SelectionProperties';
+import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
 import { cableCrossings } from '../model/CableDefinition';
 // src/ui/App.ts
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
@@ -432,7 +432,7 @@ export class App {
         }
         this.updateFloatingSelectionBar();this.renderRightTab();
       },
-      onOpenSelectionProperties: () => this.openSelectionProperties(),
+      onOpenSelectionProperties: () => this.openSelectionProperties(true),
       onOpenCoverPage:()=>{const page=this.project.pages.find(p=>p.id===this.project.activePageId);if(page?.pageType==='cover')this.openCoverPage(page);},
       onOpenProperties: (comp) => {
         this.openPropertiesDialog(comp);
@@ -797,20 +797,20 @@ export class App {
 
     // Floating action buttons (mobile bar & selection bar)
     document.getElementById('fabEdit')?.addEventListener('click', () => {
-      if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties();return;}
+      if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties(true);return;}
       if (this.selectedComponent) {
         this.openPropertiesDialog(this.selectedComponent);
       } else if (this.selectedCable || this.selectedText || this.selectedWall || this.selectedOpening) {
-        this.openSelectionProperties();
+        this.openSelectionProperties(true);
       } else {
         alert('Bitte tippen Sie zuerst ein Bauteil im Plan an.');
       }
     });
 
     document.getElementById('btnFloatingEdit')?.addEventListener('click', () => {
-      if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties();return;}
+      if(this.canvas.selectedBoxId||this.canvas.selectedImageId||selectionCount(this.canvas.getElementSelection())>1){this.openSelectionProperties(true);return;}
       if (this.selectedComponent) this.openPropertiesDialog(this.selectedComponent);
-      else if (this.selectedCable || this.selectedText || this.selectedWall || this.selectedOpening) { this.openSelectionProperties(); }
+      else if (this.selectedCable || this.selectedText || this.selectedWall || this.selectedOpening) { this.openSelectionProperties(true); }
     });
 
     document.getElementById('btnFloatingExportMacro')?.addEventListener('click', () => {
@@ -2862,8 +2862,53 @@ export class App {
     this.renderPropertiesTab(container);
   }
 
-  private openSelectionProperties():void {
-    if(this.isRightCollapsed)this.setRightPanelCollapsed(false);this.renderRightTab();
+  private openSelectionProperties(openModal = false): void {
+    if (this.isRightCollapsed) this.setRightPanelCollapsed(false);
+    this.renderRightTab();
+    if (openModal) {
+      this.openSelectionPropertiesModal();
+    }
+  }
+
+  private openSelectionPropertiesModal(): void {
+    const selection = this.canvas.getElementSelection();
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    if (!page) return;
+
+    if (selectionCount(selection) > 1) {
+      if (selection.componentIds.length > 1 && !selection.cableIds.length && !selection.boxIds?.length && !selection.imageIds?.length && !selection.wireIds?.length && !selection.textIds?.length) {
+        const comps = page.components.filter(c => selection.componentIds.includes(c.id));
+        new PropertiesDialog(comps, this.project, {
+          onSave: (updated) => {
+            const idx = page.components.findIndex(c => c.id === updated.id);
+            if (idx >= 0) page.components[idx] = updated;
+            this.notifyChange();
+            this.renderRightTab();
+            this.updateFloatingSelectionBar();
+          },
+          onSaveMultiple: (updatedList) => {
+            for (const updated of updatedList) {
+              const idx = page.components.findIndex(c => c.id === updated.id);
+              if (idx >= 0) page.components[idx] = updated;
+            }
+            this.notifyChange();
+            this.renderRightTab();
+            this.updateFloatingSelectionBar();
+          }
+        }).show();
+        return;
+      }
+      PropertiesDialog.showSelectionModal(page, this.project, selection, () => {
+        this.notifyChange();
+        this.renderRightTab();
+        this.updateFloatingSelectionBar();
+      });
+      return;
+    }
+
+    if (this.selectedComponent) {
+      this.openPropertiesDialog(this.selectedComponent);
+    }
   }
 
   private renderImageProperties(container:HTMLElement):void {
@@ -2895,39 +2940,201 @@ export class App {
     });
   }
 
-  private renderSelectionProperties(container:HTMLElement):void {
-    const selection=this.canvas.getElementSelection(),page=this.project.pages.find(p=>p.id===this.project.activePageId)!;
-    const hasFrames=!!selection.boxIds?.length||page.components.some(c=>selection.componentIds.includes(c.id)&&c.deviceBox);
-    const field=(key:SharedProperty,label:string,number=false)=>{
-      const value=sharedPropertyValue(page,this.project,selection,key);
-      return `<label class="form-label" style="display:block;margin-bottom:8px">${label}<input class="form-input" data-shared-property="${key}" id="shared-${key}" type="${number?'number':'text'}" ${number?'min="0.1" max="20" step="any"':''} value="${value===undefined?'':escapeSvg(String(typeof value==='number'?Number(value.toFixed(4)):value))}" placeholder="${value===undefined?t('sharedDifferentValues'):''}"></label>`;
+  private renderSelectionProperties(container: HTMLElement): void {
+    const selection = this.canvas.getElementSelection();
+    const page = this.project.pages.find(p => p.id === this.project.activePageId)!;
+
+    const count = selectionCount(selection);
+
+    const field = (key: SharedProperty, label: string, number = false) => {
+      if (!propertyExistsOnAllSelected(page, selection, key)) return '';
+      const value = sharedPropertyValue(page, this.project, selection, key);
+      const isMixed = value === undefined;
+      const displayVal = isMixed ? '' : typeof value === 'number' ? Number(value.toFixed(4)) : value;
+      return `<label class="form-label" style="display:block;margin-bottom:8px">${escapeSvg(label)}<input class="form-input" data-shared-property="${key}" id="shared-${key}" type="${number ? 'number' : 'text'}" ${number ? 'min="0.05" max="200" step="any"' : ''} value="${escapeSvg(String(displayVal))}" placeholder="${isMixed ? escapeSvg(t('sharedDifferentValues')) : ''}"></label>`;
     };
-    container.innerHTML=`<h3>${t('sharedPropsHeading')}</h3><p>${t('sharedPropsSelected', { count: selectionCount(selection), components: selection.componentIds.length, cables: selection.cableIds.length, images: selection.imageIds?.length ?? 0, boxes: selection.boxIds?.length ?? 0 })}</p>
-      <p style="font-size:12px;color:var(--text-muted)">${t('sharedPropsHint')}</p>
-      ${selection.componentIds.length||selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendFontSizes')}</legend>
-      ${field('bmkFontSize',t('labelBmk'),true)}${field('functionFontSize',`${t('labelFunctionText')} / ${t('cableHeading')}`,true)}
-      ${selection.componentIds.length?field('additionalFontSize',`${t('labelAdditionalText')} (${t('legendComponents')})`,true)+field('technicalFontSize',`${t('labelTechnical')} (${t('legendComponents')})`,true)+field('crossRefFontSize',`${t('labelCrossRef')} (${t('legendComponents')})`,true):''}
-      ${field('pinFontSize',t('symPins', { count: '' }),true)}</fieldset>`:''}
-      ${selection.componentIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendComponents')}</legend>${field('functionText',t('labelFunctionText'))}${field('additionalText',t('labelAdditionalText'))}${field('deviceTag',t('labelDeviceTag'))}${field('technicalCharacteristics',t('labelTechnical'))}</fieldset>`:''}
-      ${selection.cableIds.length?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendCableDefs')}</legend>${field('cableType',t('cableType'))}${field('crossSection',t('cableSection'))}</fieldset>`:''}
-      ${hasFrames?`<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${t('legendDeviceBoxes')}</legend>
-      ${selection.boxIds?.length?field('boxFontSize',t('boxLabelFontSize'),true):''}
-      <label class="form-label">${t('boxLabelLineWidth')} (mm)<input class="form-input" data-shared-property="boxLineWidth" type="number" min="0.05" max="5" step="any" value="${sharedPropertyValue(page,this.project,selection,'boxLineWidth')??''}"></label>
-      <label class="form-label">${t('boxLabelLineStyle')}<select class="form-input" data-shared-property="boxLineStyle">${[['',t('sharedDifferentValues')],['solid',t('boxStyleSolid')],['dashed',t('boxStyleDashed')]].map(([value,label])=>`<option value="${value}" ${value===''?'disabled':''} ${value===(sharedPropertyValue(page,this.project,selection,'boxLineStyle')??'')?'selected':''}>${label}</option>`).join('')}</select></label></fieldset>`:''}
-      <button class="btn btn-primary" id="applySharedProperties" disabled>${t('sharedApplyChanges')}</button>
-      <button class="btn" id="clearElementSelection">${t('sharedClearSelection')}</button>`;
-    const patch:SelectionPatch={},apply=container.querySelector('#applySharedProperties') as HTMLButtonElement;
-    container.querySelectorAll<HTMLInputElement>('[data-shared-property]').forEach(input=>input.addEventListener('input',()=>{
-      const key=input.dataset.sharedProperty as SharedProperty;
-      if(input.type==='number' && input.value==='')delete patch[key];else patch[key]=input.type==='number'?Number(input.value):input.value;
-      apply.disabled=Object.keys(patch).length===0||[...container.querySelectorAll<HTMLInputElement>('[data-shared-property]')].some(i=>i.dataset.sharedProperty! in patch && !i.validity.valid);
-    }));
-    apply.addEventListener('click',()=>{
-      if(apply.disabled)return;
-      if(applySelectionProperties(page,this.project,this.canvas.getElementSelection(),patch))this.notifyChange();
+
+    const selectField = (key: SharedProperty, label: string, options: [string, string][]) => {
+      if (!propertyExistsOnAllSelected(page, selection, key)) return '';
+      const value = sharedPropertyValue(page, this.project, selection, key);
+      const isMixed = value === undefined;
+      return `
+        <label class="form-label" style="display:block;margin-bottom:8px">
+          ${escapeSvg(label)}
+          <select class="form-input" data-shared-property="${key}" id="shared-${key}">
+            <option value="" ${isMixed ? 'selected' : ''} disabled>— (${escapeSvg(t('sharedDifferentValues'))}) —</option>
+            ${options.map(([optVal, optLabel]) => `
+              <option value="${optVal}" ${!isMixed && String(value) === optVal ? 'selected' : ''}>${escapeSvg(optLabel)}</option>
+            `).join('')}
+          </select>
+        </label>
+      `;
+    };
+
+    const checkboxField = (key: SharedProperty, label: string) => {
+      if (!propertyExistsOnAllSelected(page, selection, key)) return '';
+      const value = sharedPropertyValue(page, this.project, selection, key);
+      return `
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" data-shared-property="${key}" id="shared-${key}" ${value === 'true' ? 'checked' : ''} style="accent-color:#3182ce;">
+          <span>${escapeSvg(label)}</span>
+        </label>
+      `;
+    };
+
+    // Build fieldset groups
+    const idFields = [
+      field('bmk', t('labelBmk')),
+      field('deviceTag', t('labelDeviceTag')),
+      field('functionText', t('labelFunctionText')),
+      field('additionalText', t('labelAdditionalText')),
+      field('technicalCharacteristics', t('labelTechnical')),
+      field('higherLevel', t('labelStructure') + ' (=Anlage)'),
+      field('location', t('labelStructure') + ' (+Ort)'),
+      field('manufacturer', t('labelManufacturer')),
+      field('articleNumber', t('labelArticleNumber'))
+    ].filter(Boolean).join('');
+
+    const fontFields = [
+      field('bmkFontSize', t('labelBmk') + ' (mm)', true),
+      field('functionFontSize', t('labelFunctionText') + ' (mm)', true),
+      field('additionalFontSize', t('labelAdditionalText') + ' (mm)', true),
+      field('technicalFontSize', t('labelTechnical') + ' (mm)', true),
+      field('crossRefFontSize', t('labelCrossRef') + ' (mm)', true),
+      field('pinFontSize', t('symPins', { count: '' }) + ' (mm)', true),
+      field('boxFontSize', t('boxLabelFontSize') + ' (mm)', true),
+      field('textFontSize', t('textFontSize'), true),
+    ].filter(Boolean).join('');
+
+    const visFields = [
+      checkboxField('bmkVisible', 'BMK sichtbar'),
+      checkboxField('fnVisible', 'Funktionstext sichtbar'),
+      checkboxField('techVisible', 'Technische Daten sichtbar'),
+      checkboxField('additionalVisible', 'Zusatztext sichtbar'),
+      checkboxField('crossRefVisible', 'Querverweise sichtbar'),
+      checkboxField('pinVisible', 'Anschlüsse / Adern sichtbar'),
+      selectField('bmkPreset', t('labelBmkPosition'), [
+        ['auto', t('bmkPresetAuto')],
+        ['top', t('bmkPresetTop')],
+        ['top_left', t('bmkPresetTopLeft')],
+        ['top_right', t('bmkPresetTopRight')],
+        ['bottom', t('bmkPresetBottom')],
+        ['bottom_left', t('bmkPresetBottomLeft')],
+        ['bottom_right', t('bmkPresetBottomRight')],
+        ['left', t('bmkPresetLeft')],
+        ['right', t('bmkPresetRight')],
+      ])
+    ].filter(Boolean).join('');
+
+    const cableFields = [
+      field('cableType', t('cableType')),
+      field('crossSection', t('cableSection')),
+      field('coreCount', t('cableCoreCount'), true),
+      field('cableDescription', t('cableDescription')),
+      selectField('cableMarkStyle', t('cableMarkStyle'), [['slash', t('cableMarkSlash')], ['none', t('cableMarkNone')]])
+    ].filter(Boolean).join('');
+
+    const wireFields = [
+      field('wirePotential', t('wirePotential')),
+      selectField('wireColor', t('wireColor'), [['BK', t('wireColorBk')], ['BU', t('wireColorBu')], ['GNYE', t('wireColorGnye')], ['RD', t('wireColorRd')], ['DBU', t('wireColorDbu')]]),
+      field('wireNumber', 'Adernummer')
+    ].filter(Boolean).join('');
+
+    const textFields = [
+      field('textContent', t('textContent')),
+      selectField('textAlign', t('textAlign'), [['start', t('textAlignLeft')], ['center', t('textAlignCenter')], ['end', t('textAlignRight')]]),
+      selectField('textFontWeight', 'Schriftschnitt', [['normal', 'Normal'], ['bold', 'Fett']]),
+      selectField('textFontStyle', 'Schriftstil', [['normal', 'Normal'], ['italic', 'Kursiv']])
+    ].filter(Boolean).join('');
+
+    const boxFields = [
+      field('boxLineWidth', t('boxLabelLineWidth') + ' (mm)', true),
+      selectField('boxLineStyle', t('boxLabelLineStyle'), [['solid', t('boxStyleSolid')], ['dashed', t('boxStyleDashed')]])
+    ].filter(Boolean).join('');
+
+    const geomFields = [
+      field('posX', t('boxLabelPosX') + ' (mm)', true),
+      field('posY', t('boxLabelPosY') + ' (mm)', true),
+      field('width', t('boxLabelWidth') + ' (mm)', true),
+      field('height', t('boxLabelHeight') + ' (mm)', true),
+      selectField('rotation', t('propRotationAngle'), [['0', '0°'], ['90', '90°'], ['180', '180°'], ['270', '270°']])
+    ].filter(Boolean).join('');
+
+    const floorPlanFields = [
+      checkboxField('compShowLabels', t('fpCompShowBmkLabel')),
+      selectField('compScale', t('fpCompScaleLabel'), [
+        ['inherit', t('fpCompScaleInherit')],
+        ['0.35', t('fpCompScale35')],
+        ['0.45', t('fpCompScale45')],
+        ['0.6', t('fpCompScale60')],
+        ['0.75', t('fpCompScale75')],
+        ['1.0', t('fpCompScale100')],
+      ])
+    ].filter(Boolean).join('');
+
+    container.innerHTML = `
+      <button class="btn btn-primary" id="btnOpenFullPropModal" style="width: 100%; margin-bottom: 12px; font-weight: 600; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #3182ce; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+        <span>⚙️ ${escapeSvg(t('btnOpenFullPropModal'))}</span>
+        <span style="font-size: 10px; opacity: 0.8; font-family: monospace;">[Enter / F2]</span>
+      </button>
+
+      <h3>${escapeSvg(t('sharedPropsHeading'))}</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;">
+        ${escapeSvg(t('sharedPropsSelected', { count, components: selection.componentIds.length, cables: selection.cableIds.length, images: selection.imageIds?.length ?? 0, boxes: selection.boxIds?.length ?? 0 }))}
+      </p>
+      <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+        ${escapeSvg(t('sharedPropsHint'))}
+      </p>
+
+      ${idFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Identifikation & Texte</legend>${idFields}</fieldset>` : ''}
+      ${fontFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${escapeSvg(t('legendFontSizes'))}</legend>${fontFields}</fieldset>` : ''}
+      ${visFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Anzeige & Position</legend>${visFields}</fieldset>` : ''}
+      ${cableFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${escapeSvg(t('legendCableDefs'))}</legend>${cableFields}</fieldset>` : ''}
+      ${wireFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Verbindungen</legend>${wireFields}</fieldset>` : ''}
+      ${textFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Textformatierung</legend>${textFields}</fieldset>` : ''}
+      ${boxFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>${escapeSvg(t('legendDeviceBoxes'))}</legend>${boxFields}</fieldset>` : ''}
+      ${geomFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Lage & Abmessungen</legend>${geomFields}</fieldset>` : ''}
+      ${floorPlanFields ? `<fieldset style="border:1px solid var(--border-color);padding:8px;margin:10px 0"><legend>Grundriss-Darstellung</legend>${floorPlanFields}</fieldset>` : ''}
+
+      <button class="btn btn-primary" id="applySharedProperties" disabled style="width: 100%; margin-top: 10px;">${escapeSvg(t('sharedApplyChanges'))}</button>
+      <button class="btn" id="clearElementSelection" style="width: 100%; margin-top: 6px;">${escapeSvg(t('sharedClearSelection'))}</button>
+    `;
+
+    container.querySelector('#btnOpenFullPropModal')?.addEventListener('click', () => {
+      this.openSelectionPropertiesModal();
+    });
+
+    const patch: SelectionPatch = {};
+    const apply = container.querySelector('#applySharedProperties') as HTMLButtonElement;
+
+    container.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-shared-property]').forEach(input => {
+      const handler = () => {
+        const key = input.dataset.sharedProperty as SharedProperty;
+        if (input.type === 'checkbox') {
+          patch[key] = (input as HTMLInputElement).checked ? 'true' : 'false';
+        } else if (input.type === 'number') {
+          if (input.value === '') delete patch[key];
+          else patch[key] = Number(input.value);
+        } else {
+          patch[key] = input.value;
+        }
+        apply.disabled = Object.keys(patch).length === 0 || [...container.querySelectorAll<HTMLInputElement>('[data-shared-property]')].some(i => i.dataset.sharedProperty! in patch && !i.validity.valid);
+      };
+      input.addEventListener('input', handler);
+      input.addEventListener('change', handler);
+    });
+
+    apply.addEventListener('click', () => {
+      if (apply.disabled) return;
+      if (applySelectionProperties(page, this.project, this.canvas.getElementSelection(), patch)) {
+        this.notifyChange();
+      }
       this.renderRightTab();
     });
-    container.querySelector('#clearElementSelection')?.addEventListener('click',()=>this.canvas.setElementSelection({componentIds:[],cableIds:[]}));
+
+    container.querySelector('#clearElementSelection')?.addEventListener('click', () => {
+      this.canvas.setElementSelection({ componentIds: [], cableIds: [] });
+    });
   }
 
   private startDeviceBox():void {
@@ -3604,6 +3811,10 @@ export class App {
   }
 
   private renderPropertiesTab(container: HTMLElement): void {
+    if (this.canvas && selectionCount(this.canvas.getElementSelection()) > 1) {
+      this.renderSelectionProperties(container);
+      return;
+    }
     if (this.selectedWall) {
       this.renderWallProperties(container, this.selectedWall);
       return;
@@ -3631,7 +3842,6 @@ export class App {
       return;
     }
     if(this.canvas?.selectedImageId){this.renderImageProperties(container);return;}
-    if(this.canvas && selectionCount(this.canvas.getElementSelection())>1){this.renderSelectionProperties(container);return;}
     if (this.selectedCable) { this.renderCableProperties(container,this.selectedCable);return; }
     if (this.selectedComponent) {
       const comp = this.selectedComponent;

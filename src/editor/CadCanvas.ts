@@ -431,7 +431,37 @@ export class CadCanvas {
   }
 
   public rotateSelected(delta: number = 90): void {
-    if(this.multipleSelection)return;
+    if (this.multipleSelection) {
+      const sel = this.getElementSelection();
+      let changed = false;
+      for (const compId of sel.componentIds) {
+        const comp = this.activePage.components.find(c => c.id === compId);
+        if (comp) {
+          const symbol = getSymbolForComponent(comp, this.project);
+          const insertion = symbol && componentInsertionPoint(comp, symbol);
+          comp.rotation = (((comp.rotation || 0) + delta + 360) % 360) as any;
+          const s = this.getComponentScale(comp);
+          if (symbol && insertion) Object.assign(comp, positionAtInsertionPoint(insertion, symbol, comp.rotation, s));
+          AutoconnectEngine.clearSuppressedForComponent(this.activePage, comp.id);
+          changed = true;
+        }
+      }
+      for (const textId of sel.textIds ?? []) {
+        const text = this.activePage.texts?.find(t => t.id === textId);
+        if (text) {
+          text.rotation = (((text.rotation || 0) + delta + 360) % 360) as any;
+          changed = true;
+        }
+      }
+      if (changed) {
+        if (this.autoconnectEnabled) {
+          AutoconnectEngine.updatePageAutoconnections(this.activePage);
+        }
+        this.notifyModified();
+        this.render();
+      }
+      return;
+    }
     if (this.selectedTextId) {
       const text = this.activePage.texts?.find(t => t.id === this.selectedTextId);
       if (text) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { jsPDF } from 'jspdf';
 import { PdfExporter } from './PdfExporter';
 import { getSymbolById } from '../model/symbols';
+import { TerminalDiagramGenerator, layoutTerminalDiagramPdf } from '../reports/TerminalDiagram';
 import type { Project, Page, PlacedComponent, Wire } from '../model/types';
 
 // Verify that connection elements (potential arrows, tees, corners, crossings)
@@ -369,6 +370,85 @@ for (const symbolId of connectionSymbolIds) {
   assert(fontSizes[1] > 10 && fontSizes[1] < 12, `Expected font size ~10.8 pt for fontSize 9, got ${fontSizes[1]}`);
 }
 
+// Test multi-page terminal diagram (Klemmenplan) pagination in PDF export
+{
+  const terminalComponents: PlacedComponent[] = [];
+  for (let i = 1; i <= 55; i++) {
+    terminalComponents.push({
+      id: `term_${i}`,
+      symbolId: 'terminal_single',
+      x: 100,
+      y: 50 + i * 10,
+      rotation: 0,
+      bmk: i <= 4 ? '-X0' : '',
+      functionText: `Durchgangsklemme ${i}`,
+      pins: {},
+    });
+  }
+
+  const termPage: Page = {
+    id: 'term_src_page',
+    pageNumber: '1',
+    title: 'Terminals',
+    pageType: 'schematic',
+    higherLevel: '=A1',
+    location: '+S1',
+    components: terminalComponents,
+    wires: [],
+    plotFrame: {
+      type: 'DIN_A3_LANDSCAPE',
+      width: 1000,
+      height: 700,
+      columns: 10,
+      rows: ['A'],
+      titleBlock: {
+        projectTitle: 'Terminal Pagination Test',
+        commission: '',
+        company: '',
+        author: '',
+        date: '',
+        revision: '',
+        sheetNumber: '1',
+        totalSheets: '1',
+      },
+    },
+  };
+
+  const termProject: Project = {
+    id: 'term_proj',
+    name: 'Terminal Pagination Test',
+    description: '',
+    author: '',
+    company: '',
+    standard: 'DIN EN 81346-2 / IEC 60617',
+    version: '1.0',
+    created: '2026-01-01',
+    modified: '2026-01-01',
+    pages: [termPage],
+    activePageId: 'term_src_page',
+  };
+
+  const strips = TerminalDiagramGenerator.generateTerminalReport(termProject);
+  assert(strips.has('-X0'), 'Terminals with empty BMK on the same page should inherit the strip name -X0');
+  assert(!strips.has(''), 'Must not create an unnamed terminal strip ""');
+  assert.equal(strips.get('-X0')!.length, 55, 'All 55 terminals should be grouped in strip -X0');
+
+  const terminalPages = layoutTerminalDiagramPdf(strips, 297);
+  assert.equal(terminalPages.length, 2, `55 terminals on DIN A3 must paginate onto 2 pages, got ${terminalPages.length}`);
+  assert.equal(terminalPages[0][0].continued, false);
+  assert.equal(terminalPages[1][0].continued, true);
+  assert.equal(
+    terminalPages[0][0].entries.length + terminalPages[1][0].entries.length,
+    55,
+    'All 55 terminal entries must be preserved across pages'
+  );
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+  (PdfExporter as any).renderTerminalDiagramPage(doc, termProject, 420, 297, 'color', 3, terminalPages);
+  assert.equal(doc.getNumberOfPages(), 2, 'renderTerminalDiagramPage must add continuation PDF pages');
+}
+
 console.log('✓ Connection elements render as vector arrows/junctions in PDF without placeholder blocks');
 console.log('✓ Floor plan elements (walls, doors, windows, arc wires, background image) render cleanly in PDF export');
 console.log('✓ Page texts render with proportional font sizing in PDF export');
+console.log('✓ Terminal diagram (Klemmenplan) paginates cleanly across multiple PDF pages');

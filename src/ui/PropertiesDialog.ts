@@ -3,31 +3,93 @@ import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 // Component properties modal ("Eigenschaften (Schaltzeichen)")
 
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
-import { PlacedComponent, Project, TextFormatConfig } from '../model/types';
+import { Page, PlacedComponent, Project, TextFormatConfig } from '../model/types';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { MANUFACTURER_PARTS } from '../model/PartCatalogue';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, arePinLabelsVisible, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
+import { resizeDeviceBox } from '../model/DeviceBoxElement';
 import { t, getLocalizedSymbol } from '../i18n';
+import { ElementSelection, selectionCount } from '../model/ElementSelection';
+import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
 
 export interface PropertiesDialogCallbacks {
   onSave: (updated: PlacedComponent) => void;
+  onSaveMultiple?: (updatedList: PlacedComponent[]) => void;
+  components?: PlacedComponent[];
   onNavigateToPage?: (pageId: string) => void;
   onNavigateToReference?: (index: number) => void;
 }
 
 export class PropertiesDialog {
-  private component: PlacedComponent;
+  public component: PlacedComponent;
+  public components: PlacedComponent[];
+  public isMulti: boolean;
   private project: Project;
   private callbacks: PropertiesDialogCallbacks;
   private activeTab: 'symbol' | 'display' | 'part' | 'crossref' | 'format' = 'symbol';
+  private dirtyFields = new Set<string>();
+  private differingFields = new Set<string>();
+  private resetPositionsTriggered = false;
 
-  constructor(component: PlacedComponent, project: Project, callbacks: PropertiesDialogCallbacks) {
-    this.component = JSON.parse(JSON.stringify(component)); // deep clone for editing
+  constructor(componentOrComponents: PlacedComponent | PlacedComponent[], project: Project, callbacks: PropertiesDialogCallbacks) {
+    if (Array.isArray(componentOrComponents) && componentOrComponents.length > 0) {
+      this.components = JSON.parse(JSON.stringify(componentOrComponents));
+      this.isMulti = this.components.length > 1;
+    } else if (callbacks.components && callbacks.components.length > 1) {
+      this.components = JSON.parse(JSON.stringify(callbacks.components));
+      this.isMulti = true;
+    } else {
+      const single = Array.isArray(componentOrComponents) ? componentOrComponents[0] : componentOrComponents;
+      this.components = [JSON.parse(JSON.stringify(single))];
+      this.isMulti = false;
+    }
+
     this.project = project;
     this.callbacks = callbacks;
+    this.component = JSON.parse(JSON.stringify(this.components[0]));
+
+    if (this.isMulti) {
+      this.initMultiComponentState();
+    }
+  }
+
+  private initMultiComponentState(): void {
+    const fieldsToCheck: (keyof PlacedComponent)[] = [
+      'bmk', 'deviceTag', 'functionText', 'additionalText', 'technicalCharacteristics',
+      'higherLevelFunction', 'mountingLocation', 'manufacturer', 'articleNumber',
+      'rotation', 'x', 'y'
+    ];
+
+    for (const field of fieldsToCheck) {
+      const firstVal = this.components[0][field];
+      const allSame = this.components.every(c => c[field] === firstVal);
+      if (!allSame) {
+        this.differingFields.add(field as string);
+        if (field === 'x' || field === 'y') {
+          (this.component as any)[field] = NaN;
+        } else if (field === 'rotation') {
+          // keep component rotation as 0 fallback
+        } else {
+          (this.component as any)[field] = '';
+        }
+      }
+    }
+
+    // Check deviceBox: only retain deviceBox on this.component if ALL components have deviceBox
+    const allHaveBox = this.components.every(c => !!c.deviceBox);
+    if (!allHaveBox) {
+      delete this.component.deviceBox;
+    } else {
+      for (const boxField of ['lineWidth', 'lineStyle', 'width', 'height', 'color'] as const) {
+        const firstVal = this.components[0].deviceBox?.[boxField];
+        if (!this.components.every(c => c.deviceBox?.[boxField] === firstVal)) {
+          this.differingFields.add('box' + boxField);
+        }
+      }
+    }
   }
 
   public show(): void {
@@ -36,6 +98,9 @@ export class PropertiesDialog {
 
     const sym = getSymbolForComponent(this.component, this.project);
     const symName = sym ? getLocalizedSymbol(sym).name : t('symbol');
+    const titleText = this.isMulti
+      ? `Gemeinsame Eigenschaften (${this.components.length} Betriebsmittel ausgewählt)`
+      : t('propDialogTitle', { bmk: this.component.bmk, name: symName });
 
     const modal = document.createElement('div');
     modal.id = 'propertiesModal';
@@ -75,7 +140,7 @@ export class PropertiesDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #dd6b20; font-weight: bold;">⚡</span>
-            <span>${escapeSvg(t('propDialogTitle', { bmk: this.component.bmk, name: symName }))}</span>
+            <span>${escapeSvg(titleText)}</span>
           </div>
           <button id="btnClosePropModal" style="background: none; border: none; color: #a0aec0; font-size: 20px; cursor: pointer; line-height: 1;">&times;</button>
         </div>
@@ -121,64 +186,121 @@ export class PropertiesDialog {
     this.bindEvents(modal);
   }
 
+  private getCommonPins(): { id: string; name: string }[] {
+    if (!this.isMulti) {
+      const sym = getSymbolForComponent(this.component, this.project);
+      return sym ? sym.pins.map(p => ({ id: p.id, name: p.name })) : [];
+    }
+    const pinCounts = new Map<string, { count: number; name: string }>();
+    for (const c of this.components) {
+      const s = getSymbolForComponent(c, this.project);
+      if (!s) continue;
+      const seen = new Set<string>();
+      for (const p of s.pins) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          const entry = pinCounts.get(p.id) ?? { count: 0, name: p.name };
+          entry.count++;
+          pinCounts.set(p.id, entry);
+        }
+      }
+    }
+    const result: { id: string; name: string }[] = [];
+    for (const [id, entry] of pinCounts.entries()) {
+      if (entry.count === this.components.length) {
+        result.push({ id, name: entry.name });
+      }
+    }
+    return result;
+  }
+
   private renderActiveTabContent(): string {
     const sym = getSymbolForComponent(this.component, this.project);
 
+    const fieldMeta = (field: keyof PlacedComponent, inputId: string, val: string, defaultPlaceholder: string) => {
+      if (this.isMulti && this.differingFields.has(field as string) && !this.dirtyFields.has(inputId)) {
+        return { value: '', placeholder: t('sharedDifferentValues') };
+      }
+      return { value: val, placeholder: defaultPlaceholder };
+    };
+
     if (this.activeTab === 'symbol') {
+      const bmkMeta = fieldMeta('bmk', 'propBmk', this.component.bmk, '-K1');
+      const tagMeta = fieldMeta('deviceTag', 'propDeviceTag', this.component.deviceTag || '', t('propDeviceTagPlaceholder'));
+      const fnMeta = fieldMeta('functionText', 'propFunctionText', this.component.functionText || '', t('propFunctionPlaceholder'));
+      const addMeta = fieldMeta('additionalText', 'propAdditionalText', this.component.additionalText || '', t('propAdditionalPlaceholder'));
+      const hlMeta = fieldMeta('higherLevelFunction', 'propHigherLevel', this.component.higherLevelFunction ?? '=A1', '=A1');
+      const locMeta = fieldMeta('mountingLocation', 'propLocation', this.component.mountingLocation ?? '+S1', '+S1');
+      const techMeta = fieldMeta('technicalCharacteristics', 'propTechChar', this.component.technicalCharacteristics || '', t('propTechnicalPlaceholder'));
+
+      const commonPins = this.getCommonPins();
+
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propVisibleBmk'))}</label>
-              <input type="text" id="propBmk" class="form-input" value="${escapeSvg(this.component.bmk)}" placeholder="-K1">
+              <input type="text" id="propBmk" class="form-input" value="${escapeSvg(bmkMeta.value)}" placeholder="${escapeSvg(bmkMeta.placeholder)}">
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propFullBmkPreview'))}</label>
-              <input type="text" class="form-input" disabled value="${escapeSvg(this.component.higherLevelFunction ?? '=A1')}${escapeSvg(this.component.mountingLocation ?? '+S1')}${escapeSvg(this.component.bmk)}" style="background: #181b22; color: #a0aec0;">
+              <input type="text" class="form-input" disabled value="${this.isMulti ? '—' : escapeSvg(this.component.higherLevelFunction ?? '=A1') + escapeSvg(this.component.mountingLocation ?? '+S1') + escapeSvg(this.component.bmk)}" style="background: #181b22; color: #a0aec0;">
             </div>
           </div>
 
           <div>
             <label class="form-label">${escapeSvg(t('propDeviceTag'))}</label>
-            <input type="text" id="propDeviceTag" class="form-input" value="${escapeSvg(this.component.deviceTag || '')}" placeholder="${escapeSvg(t('propDeviceTagPlaceholder'))}">
+            <input type="text" id="propDeviceTag" class="form-input" value="${escapeSvg(tagMeta.value)}" placeholder="${escapeSvg(tagMeta.placeholder)}">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propFunctionText'))}</label>
-              <textarea id="propFunctionText" class="form-input" rows="2" placeholder="${escapeSvg(t('propFunctionPlaceholder'))}">${escapeSvg(this.component.functionText || '')}</textarea>
+              <textarea id="propFunctionText" class="form-input" rows="2" placeholder="${escapeSvg(fnMeta.placeholder)}">${escapeSvg(fnMeta.value)}</textarea>
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propAdditionalText'))}</label>
-              <textarea id="propAdditionalText" class="form-input" rows="2" placeholder="${escapeSvg(t('propAdditionalPlaceholder'))}">${escapeSvg(this.component.additionalText || '')}</textarea>
+              <textarea id="propAdditionalText" class="form-input" rows="2" placeholder="${escapeSvg(addMeta.placeholder)}">${escapeSvg(addMeta.value)}</textarea>
             </div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propPlant'))}</label>
-              <input type="text" id="propHigherLevel" class="form-input" value="${escapeSvg(this.component.higherLevelFunction ?? '=A1')}">
+              <input type="text" id="propHigherLevel" class="form-input" value="${escapeSvg(hlMeta.value)}" placeholder="${escapeSvg(hlMeta.placeholder)}">
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propLocation'))}</label>
-              <input type="text" id="propLocation" class="form-input" value="${escapeSvg(this.component.mountingLocation ?? '+S1')}">
+              <input type="text" id="propLocation" class="form-input" value="${escapeSvg(locMeta.value)}" placeholder="${escapeSvg(locMeta.placeholder)}">
             </div>
           </div>
 
           <div>
             <label class="form-label">${escapeSvg(t('propTechnicalData'))}</label>
-            <textarea id="propTechChar" class="form-input" rows="2" placeholder="${escapeSvg(t('propTechnicalPlaceholder'))}">${escapeSvg(this.component.technicalCharacteristics || '')}</textarea>
+            <textarea id="propTechChar" class="form-input" rows="2" placeholder="${escapeSvg(techMeta.placeholder)}">${escapeSvg(techMeta.value)}</textarea>
           </div>
 
           <div>
             <label class="form-label">${escapeSvg(t('propPinLabel'))}</label>
             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
-              ${sym?.pins.map(p => `
-                <div style="display: flex; align-items: center; gap: 4px; background: #1a202c; border: 1px solid #3e4656; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
-                  <span style="color: #63b3ed; font-family: monospace;">${escapeSvg(t('propPinPrefix'))} ${p.id}:</span>
-                  <input type="text" class="prop-pin-label" data-pin-id="${p.id}" value="${escapeSvg(this.component.pins[p.id]?.customLabel ?? p.name)}" style="width: 45px; background: #2d3748; border: 1px solid #4a5568; color: white; padding: 2px 4px; border-radius: 2px; font-size: 11px; text-align: center;">
-                </div>
-              `).join('') || `<span style="font-size: 11px; color: #a0aec0;">${escapeSvg(t('propPinsNone'))}</span>`}
+              ${commonPins.length > 0 ? commonPins.map(p => {
+                let pinVal = this.component.pins[p.id]?.customLabel ?? p.name;
+                let placeholder = '';
+                if (this.isMulti && !this.dirtyFields.has('pin:' + p.id)) {
+                  const firstPinVal = this.components[0].pins[p.id]?.customLabel ?? p.name;
+                  const allPinsSame = this.components.every(c => (c.pins[p.id]?.customLabel ?? p.name) === firstPinVal);
+                  if (!allPinsSame) {
+                    pinVal = '';
+                    placeholder = t('sharedDifferentValues');
+                  }
+                }
+                return `
+                  <div style="display: flex; align-items: center; gap: 4px; background: #1a202c; border: 1px solid #3e4656; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+                    <span style="color: #63b3ed; font-family: monospace;">${escapeSvg(t('propPinPrefix'))} ${p.id}:</span>
+                    <input type="text" class="prop-pin-label" data-pin-id="${p.id}" value="${escapeSvg(pinVal)}" placeholder="${escapeSvg(placeholder)}" style="width: ${placeholder ? '65px' : '45px'}; background: #2d3748; border: 1px solid #4a5568; color: white; padding: 2px 4px; border-radius: 2px; font-size: 11px; text-align: center;">
+                  </div>
+                `;
+              }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? 'Keine gemeinsamen Anschlüsse auf allen Elementen' : escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
         </div>
@@ -406,6 +528,10 @@ export class PropertiesDialog {
     }
 
     if (this.activeTab === 'part') {
+      const mfrMeta = fieldMeta('manufacturer', 'propManufacturer', this.component.manufacturer || '', 'z.B. Siemens / Hager / Finder');
+      const artMeta = fieldMeta('articleNumber', 'propArticleNumber', this.component.articleNumber || '', 'z.B. 3RT2016-1BB41');
+      const partDescMeta = fieldMeta('technicalCharacteristics', 'propPartDesc', this.component.technicalCharacteristics || '', t('propPartDescPlaceholder'));
+
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="background: #1c212c; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
@@ -426,24 +552,26 @@ export class PropertiesDialog {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propManufacturer'))}</label>
-              <input type="text" id="propManufacturer" class="form-input" value="${escapeSvg(this.component.manufacturer || '')}" placeholder="z.B. Siemens / Hager / Finder">
+              <input type="text" id="propManufacturer" class="form-input" value="${escapeSvg(mfrMeta.value)}" placeholder="${escapeSvg(mfrMeta.placeholder)}">
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propOrderNumber'))}</label>
-              <input type="text" id="propArticleNumber" class="form-input" value="${escapeSvg(this.component.articleNumber || '')}" placeholder="z.B. 3RT2016-1BB41">
+              <input type="text" id="propArticleNumber" class="form-input" value="${escapeSvg(artMeta.value)}" placeholder="${escapeSvg(artMeta.placeholder)}">
             </div>
           </div>
 
           <div>
             <label class="form-label">${escapeSvg(t('propPartShortDesc'))}</label>
-            <input type="text" id="propPartDesc" class="form-input" value="${escapeSvg(this.component.technicalCharacteristics || '')}" placeholder="${escapeSvg(t('propPartDescPlaceholder'))}">
+            <input type="text" id="propPartDesc" class="form-input" value="${escapeSvg(partDescMeta.value)}" placeholder="${escapeSvg(partDescMeta.placeholder)}">
           </div>
         </div>
       `;
     }
 
     if (this.activeTab === 'crossref') {
-      const crossRefText = referenceMarkup(this.project, this.component) || t('propCrossRefNone');
+      const crossRefText = this.isMulti
+        ? `Gemeinsame Querverweise für ${this.components.length} Betriebsmittel`
+        : (referenceMarkup(this.project, this.component) || t('propCrossRefNone'));
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <div style="background: #181d26; border: 1px solid #3e4656; border-radius: 6px; padding: 12px;">
@@ -470,29 +598,58 @@ export class PropertiesDialog {
 
     if (this.activeTab === 'format') {
       const insertion = sym ? componentInsertionPoint(this.component, sym) : this.component;
+      const isXDiff = this.isMulti && this.differingFields.has('x') && !this.dirtyFields.has('propPosX');
+      const isYDiff = this.isMulti && this.differingFields.has('y') && !this.dirtyFields.has('propPosY');
+      const isRotDiff = this.isMulti && this.differingFields.has('rotation') && !this.dirtyFields.has('propRotation');
+
+      const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
+      const isFloorPlan = !!activePage?.floorPlan;
+
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
-          ${deviceBoxFields(this.component,getDrawingUnitsPerMm(this.project))}
+          ${this.component.deviceBox ? deviceBoxFields(this.component, getDrawingUnitsPerMm(this.project)) : ''}
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propPosX'))}</label>
-              <input type="number" step="any" id="propPosX" class="form-input" value="${insertion.x}">
+              <input type="number" step="any" id="propPosX" class="form-input" value="${isXDiff ? '' : insertion.x}" placeholder="${isXDiff ? escapeSvg(t('sharedDifferentValues')) : ''}">
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propPosY'))}</label>
-              <input type="number" step="any" id="propPosY" class="form-input" value="${insertion.y}">
+              <input type="number" step="any" id="propPosY" class="form-input" value="${isYDiff ? '' : insertion.y}" placeholder="${isYDiff ? escapeSvg(t('sharedDifferentValues')) : ''}">
             </div>
           </div>
 
           <div>
             <label class="form-label">${escapeSvg(t('propRotationAngle'))}</label>
             <select id="propRotation" class="form-input">
-              <option value="0" ${this.component.rotation === 0 ? 'selected' : ''}>${escapeSvg(t('propRot0'))}</option>
-              <option value="90" ${this.component.rotation === 90 ? 'selected' : ''}>${escapeSvg(t('propRot90'))}</option>
-              <option value="180" ${this.component.rotation === 180 ? 'selected' : ''}>${escapeSvg(t('propRot180'))}</option>
-              <option value="270" ${this.component.rotation === 270 ? 'selected' : ''}>${escapeSvg(t('propRot270'))}</option>
+              ${isRotDiff ? `<option value="" selected disabled>— (${escapeSvg(t('sharedDifferentValues'))}) —</option>` : ''}
+              <option value="0" ${!isRotDiff && this.component.rotation === 0 ? 'selected' : ''}>${escapeSvg(t('propRot0'))}</option>
+              <option value="90" ${!isRotDiff && this.component.rotation === 90 ? 'selected' : ''}>${escapeSvg(t('propRot90'))}</option>
+              <option value="180" ${!isRotDiff && this.component.rotation === 180 ? 'selected' : ''}>${escapeSvg(t('propRot180'))}</option>
+              <option value="270" ${!isRotDiff && this.component.rotation === 270 ? 'selected' : ''}>${escapeSvg(t('propRot270'))}</option>
             </select>
           </div>
+
+          ${isFloorPlan ? `
+            <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:10px;margin-top:6px;">
+              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:8px;">${escapeSvg(t('fpCompDisplayHeading'))}</div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;margin-bottom:8px;color:#cbd5e0;">
+                <input type="checkbox" id="propCompShowLabel" ${this.component.showLabels ? 'checked' : ''} style="accent-color:#3182ce;" />
+                <span>${escapeSvg(t('fpCompShowBmkLabel'))}</span>
+              </label>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#a0aec0;">${escapeSvg(t('fpCompScaleLabel'))}</span>
+                <select id="propCompScale" class="form-input" style="font-size:11px;padding:3px 6px;width:140px;">
+                  <option value="inherit" ${!this.component.scale ? 'selected' : ''}>${escapeSvg(t('fpCompScaleInherit'))}</option>
+                  <option value="0.35" ${this.component.scale === 0.35 ? 'selected' : ''}>${escapeSvg(t('fpCompScale35'))}</option>
+                  <option value="0.45" ${this.component.scale === 0.45 ? 'selected' : ''}>${escapeSvg(t('fpCompScale45'))}</option>
+                  <option value="0.6" ${this.component.scale === 0.6 ? 'selected' : ''}>${escapeSvg(t('fpCompScale60'))}</option>
+                  <option value="0.75" ${this.component.scale === 0.75 ? 'selected' : ''}>${escapeSvg(t('fpCompScale75'))}</option>
+                  <option value="1.0" ${this.component.scale === 1.0 ? 'selected' : ''}>${escapeSvg(t('fpCompScale100'))}</option>
+                </select>
+              </div>
+            </div>
+          ` : ''}
         </div>
       `;
     }
@@ -778,6 +935,16 @@ export class PropertiesDialog {
       });
     });
 
+    // Track user edits across all inputs in modal
+    const markDirty = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target?.id) this.dirtyFields.add(target.id);
+      if (target?.dataset?.pinId) this.dirtyFields.add('pin:' + target.dataset.pinId);
+      if (target?.dataset?.sharedProperty) this.dirtyFields.add(target.dataset.sharedProperty);
+    };
+    modal.addEventListener('input', markDirty);
+    modal.addEventListener('change', markDirty);
+
     // Modal keyboard shortcuts (Enter = OK, Escape = Cancel)
     modal.addEventListener('keydown', (e) => {
       const link = (e.target as Element)?.closest?.('[data-crossref-source]');
@@ -788,8 +955,7 @@ export class PropertiesDialog {
       }
       if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault();
-        if(this.collectFormData(modal)===false)return;
-        this.callbacks.onSave(structuredClone(this.component));
+        if (this.saveChanges(modal) === false) return;
         closeModal();
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -799,8 +965,7 @@ export class PropertiesDialog {
 
     // Apply & Save
     modal.querySelector('#btnApplyProp')?.addEventListener('click', () => {
-      if(this.collectFormData(modal)===false)return;
-      this.callbacks.onSave(structuredClone(this.component));
+      if (this.saveChanges(modal) === false) return;
       const applyBtn = modal.querySelector('#btnApplyProp') as HTMLElement;
       if (applyBtn) {
         const origText = applyBtn.textContent || t('propBtnApply');
@@ -812,12 +977,395 @@ export class PropertiesDialog {
     });
 
     modal.querySelector('#btnSaveProp')?.addEventListener('click', () => {
-      if(this.collectFormData(modal)===false)return;
-      this.callbacks.onSave(structuredClone(this.component));
+      if (this.saveChanges(modal) === false) return;
       closeModal();
     });
 
     this.bindTabInternalEvents(modal);
+  }
+
+  private saveChanges(modal: HTMLElement): boolean | void {
+    if (this.collectFormData(modal) === false) return false;
+    if (!this.isMulti) {
+      this.callbacks.onSave(structuredClone(this.component));
+      return true;
+    }
+
+    // Apply dirty fields across all components
+    const units = getDrawingUnitsPerMm(this.project);
+    for (const c of this.components) {
+      const sym = getSymbolForComponent(c, this.project);
+      const isInterruption = sym && isInterruptionSymbol(sym);
+
+      if (this.dirtyFields.has('propBmk')) {
+        c.bmk = this.component.bmk;
+        if (isInterruption) c.functionText = c.bmk;
+      }
+      if (this.dirtyFields.has('propDeviceTag')) {
+        setComponentLabelText(c, 'deviceTag', this.component.deviceTag || '');
+      }
+      if (this.dirtyFields.has('propFunctionText')) {
+        setComponentLabelText(c, 'functionText', this.component.functionText || '');
+        if (isInterruption && (!c.bmk || !c.bmk.trim())) c.bmk = c.functionText;
+      }
+      if (this.dirtyFields.has('propAdditionalText')) {
+        setComponentLabelText(c, 'additionalText', this.component.additionalText || '');
+      }
+      if (this.dirtyFields.has('propTechChar') || this.dirtyFields.has('propPartDesc')) {
+        setComponentLabelText(c, 'technicalCharacteristics', this.component.technicalCharacteristics || '');
+      }
+      if (this.dirtyFields.has('propHigherLevel')) {
+        c.higherLevelFunction = this.component.higherLevelFunction;
+      }
+      if (this.dirtyFields.has('propLocation')) {
+        c.mountingLocation = this.component.mountingLocation;
+      }
+      if (this.dirtyFields.has('propManufacturer')) {
+        c.manufacturer = this.component.manufacturer;
+      }
+      if (this.dirtyFields.has('propArticleNumber')) {
+        c.articleNumber = this.component.articleNumber;
+      }
+      if (this.dirtyFields.has('propRotation')) {
+        c.rotation = this.component.rotation;
+      }
+      if (this.dirtyFields.has('propPosX')) {
+        c.x = this.component.x;
+      }
+      if (this.dirtyFields.has('propPosY')) {
+        c.y = this.component.y;
+      }
+
+      // Pin labels
+      for (const field of this.dirtyFields) {
+        if (field.startsWith('pin:')) {
+          const pinId = field.substring(4);
+          if (this.component.pins[pinId]) {
+            c.pins[pinId] = { ...c.pins[pinId], customLabel: this.component.pins[pinId]?.customLabel };
+          }
+        }
+      }
+
+      // Font sizes
+      if (this.dirtyFields.has('propBmkFontSize') && this.component.bmkPosition?.fontSize) {
+        c.bmkPosition = { ...c.bmkPosition, fontSize: this.component.bmkPosition.fontSize };
+      }
+      if (this.dirtyFields.has('propFnFontSize') && this.component.functionTextPosition?.fontSize) {
+        c.functionTextPosition = { ...c.functionTextPosition, fontSize: this.component.functionTextPosition.fontSize };
+      }
+      if (this.dirtyFields.has('propAdditionalFontSize') && this.component.additionalTextPosition?.fontSize) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, fontSize: this.component.additionalTextPosition.fontSize };
+      }
+      if (this.dirtyFields.has('propTechFontSize') && this.component.technicalDataPosition?.fontSize) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, fontSize: this.component.technicalDataPosition.fontSize };
+      }
+      if (this.dirtyFields.has('propCrossRefFontSize') && this.component.crossRefFontSize) {
+        c.crossRefFontSize = this.component.crossRefFontSize;
+      }
+      if (this.dirtyFields.has('propPinFontSize') && this.component.pinLabelFontSize) {
+        c.pinLabelFontSize = this.component.pinLabelFontSize;
+      }
+
+      // Positions & Presets & Visibilities
+      if ([...this.dirtyFields].some(f => f.startsWith('propBmk') && f !== 'propBmk' && f !== 'propBmkFontSize')) {
+        c.bmkPosition = { ...c.bmkPosition, ...this.component.bmkPosition };
+      }
+      if ([...this.dirtyFields].some(f => f.startsWith('propFn') && f !== 'propFn' && f !== 'propFnFontSize')) {
+        c.functionTextPosition = { ...c.functionTextPosition, ...this.component.functionTextPosition };
+      }
+      if ([...this.dirtyFields].some(f => f.startsWith('propTech') && f !== 'propTech' && f !== 'propTechFontSize')) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, ...this.component.technicalDataPosition };
+      }
+      if ([...this.dirtyFields].some(f => f.startsWith('propAdditional') && f !== 'propAdditional' && f !== 'propAdditionalFontSize')) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, ...this.component.additionalTextPosition };
+      }
+      if ([...this.dirtyFields].some(f => f.startsWith('propCrossRef') && f !== 'propCrossRef' && f !== 'propCrossRefFontSize')) {
+        c.crossRefPosition = { ...c.crossRefPosition, ...this.component.crossRefPosition };
+      }
+      if ([...this.dirtyFields].some(f => f.startsWith('propPin') && f !== 'propPin' && f !== 'propPinFontSize')) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, ...this.component.pinLabelPosition };
+      }
+
+      // DeviceBox
+      if (c.deviceBox && this.component.deviceBox) {
+        if (this.dirtyFields.has('boxWidth')) resizeDeviceBox(c, this.component.deviceBox.width, c.deviceBox.height);
+        if (this.dirtyFields.has('boxHeight')) resizeDeviceBox(c, c.deviceBox.width, this.component.deviceBox.height);
+        if (this.dirtyFields.has('boxLineWidth')) c.deviceBox.lineWidth = this.component.deviceBox.lineWidth;
+        if (this.dirtyFields.has('boxLineStyle')) c.deviceBox.lineStyle = this.component.deviceBox.lineStyle;
+        if (this.dirtyFields.has('boxOwnColor') || this.dirtyFields.has('boxColor')) {
+          if (this.component.deviceBox.color) c.deviceBox.color = this.component.deviceBox.color;
+          else delete c.deviceBox.color;
+        }
+      }
+
+      if (this.dirtyFields.has('propCompShowLabel')) {
+        c.showLabels = this.component.showLabels;
+      }
+      if (this.dirtyFields.has('propCompScale')) {
+        if (this.component.scale !== undefined) c.scale = this.component.scale;
+        else delete c.scale;
+      }
+
+      if (this.resetPositionsTriggered) {
+        delete c.bmkPosition;
+        delete c.functionTextPosition;
+        delete c.additionalTextPosition;
+        delete c.technicalDataPosition;
+        delete c.crossRefPosition;
+        delete c.pinLabelPosition;
+      }
+    }
+
+    if (this.callbacks.onSaveMultiple) {
+      this.callbacks.onSaveMultiple(this.components.map(c => structuredClone(c)));
+    } else {
+      this.components.forEach(c => this.callbacks.onSave(structuredClone(c)));
+    }
+    return true;
+  }
+
+  /**
+   * Opens a general shared properties modal for any multi-selection
+   * (e.g. multiple cables, boxes, wires, texts, images, or mixed element types).
+   */
+  public static showSelectionModal(page: Page, project: Project, selection: ElementSelection, onApply: () => void): void {
+    const existing = document.getElementById('propertiesModal');
+    if (existing) existing.remove();
+
+    const count = selectionCount(selection);
+    const units = getDrawingUnitsPerMm(project);
+
+    // Filter available shared properties that exist on ALL selected elements
+    const allCandidateKeys: { key: SharedProperty; label: string; group: string; type: 'text' | 'number' | 'select' | 'checkbox'; options?: [string, string][] }[] = [
+      // Identifikation & Texte
+      { key: 'bmk', label: t('labelBmk'), group: 'id', type: 'text' },
+      { key: 'deviceTag', label: t('labelDeviceTag'), group: 'id', type: 'text' },
+      { key: 'functionText', label: t('labelFunctionText'), group: 'id', type: 'text' },
+      { key: 'additionalText', label: t('labelAdditionalText'), group: 'id', type: 'text' },
+      { key: 'technicalCharacteristics', label: t('labelTechnical'), group: 'id', type: 'text' },
+      { key: 'higherLevel', label: t('labelStructure') + ' (=Anlage)', group: 'id', type: 'text' },
+      { key: 'location', label: t('labelStructure') + ' (+Ort)', group: 'id', type: 'text' },
+      { key: 'manufacturer', label: t('labelManufacturer'), group: 'id', type: 'text' },
+      { key: 'articleNumber', label: t('labelArticleNumber'), group: 'id', type: 'text' },
+
+      // Kabel & Leitungen
+      { key: 'cableType', label: t('cableType'), group: 'cable', type: 'text' },
+      { key: 'crossSection', label: t('cableSection'), group: 'cable', type: 'text' },
+      { key: 'coreCount', label: t('cableCoreCount'), group: 'cable', type: 'number' },
+      { key: 'cableDescription', label: t('cableDescription'), group: 'cable', type: 'text' },
+      { key: 'cableMarkStyle', label: t('cableMarkStyle'), group: 'cable', type: 'select', options: [['slash', t('cableMarkSlash')], ['none', t('cableMarkNone')]] },
+      { key: 'wirePotential', label: t('wirePotential'), group: 'wire', type: 'text' },
+      { key: 'wireColor', label: t('wireColor'), group: 'wire', type: 'select', options: [['BK', t('wireColorBk')], ['BU', t('wireColorBu')], ['GNYE', t('wireColorGnye')], ['RD', t('wireColorRd')], ['DBU', t('wireColorDbu')]] },
+      { key: 'wireNumber', label: 'Adernummer', group: 'wire', type: 'text' },
+
+      // Freier Text
+      { key: 'textContent', label: t('textContent'), group: 'text', type: 'text' },
+      { key: 'textFontSize', label: t('textFontSize'), group: 'text', type: 'number' },
+      { key: 'textAlign', label: t('textAlign'), group: 'text', type: 'select', options: [['start', t('textAlignLeft')], ['center', t('textAlignCenter')], ['end', t('textAlignRight')]] },
+      { key: 'textFontWeight', label: 'Schriftschnitt', group: 'text', type: 'select', options: [['normal', 'Normal'], ['bold', 'Fett']] },
+      { key: 'textFontStyle', label: 'Schriftstil', group: 'text', type: 'select', options: [['normal', 'Normal'], ['italic', 'Kursiv']] },
+
+      // Schriftgrößen & Anzeige
+      { key: 'bmkFontSize', label: 'BMK / Kabel-Schriftgröße (mm)', group: 'font', type: 'number' },
+      { key: 'functionFontSize', label: 'Funktionstext / Text-Größe (mm)', group: 'font', type: 'number' },
+      { key: 'additionalFontSize', label: 'Zusatztext-Größe (mm)', group: 'font', type: 'number' },
+      { key: 'technicalFontSize', label: 'Technische-Daten-Größe (mm)', group: 'font', type: 'number' },
+      { key: 'crossRefFontSize', label: 'Querverweis-Größe (mm)', group: 'font', type: 'number' },
+      { key: 'pinFontSize', label: 'Anschluss- / Ader-Größe (mm)', group: 'font', type: 'number' },
+      { key: 'boxFontSize', label: 'Kasten-Schriftgröße (mm)', group: 'font', type: 'number' },
+      { key: 'bmkVisible', label: 'BMK / Beschriftung sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'fnVisible', label: 'Funktionstext sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'techVisible', label: 'Technische Daten sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'additionalVisible', label: 'Zusatztext sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'crossRefVisible', label: 'Querverweise sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'pinVisible', label: 'Anschlüsse / Adern sichtbar', group: 'vis', type: 'checkbox' },
+
+      // Kasten / Rahmen
+      { key: 'boxLineWidth', label: t('boxLabelLineWidth') + ' (mm)', group: 'box', type: 'number' },
+      { key: 'boxLineStyle', label: t('boxLabelLineStyle'), group: 'box', type: 'select', options: [['solid', t('boxStyleSolid')], ['dashed', t('boxStyleDashed')]] },
+
+      // Geometrie & Position
+      { key: 'posX', label: t('boxLabelPosX') + ' (mm)', group: 'geom', type: 'number' },
+      { key: 'posY', label: t('boxLabelPosY') + ' (mm)', group: 'geom', type: 'number' },
+      { key: 'width', label: t('boxLabelWidth') + ' (mm)', group: 'geom', type: 'number' },
+      { key: 'height', label: t('boxLabelHeight') + ' (mm)', group: 'geom', type: 'number' },
+      { key: 'rotation', label: t('propRotationAngle'), group: 'geom', type: 'select', options: [['0', '0°'], ['90', '90°'], ['180', '180°'], ['270', '270°']] },
+    ];
+
+    const validProps = allCandidateKeys.filter(item => propertyExistsOnAllSelected(page, selection, item.key));
+
+    const modal = document.createElement('div');
+    modal.id = 'propertiesModal';
+    modal.className = 'modal-backdrop';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.75)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '2100';
+    modal.style.padding = '12px';
+
+    const renderInput = (item: typeof allCandidateKeys[0]) => {
+      const val = sharedPropertyValue(page, project, selection, item.key);
+      const isMixed = val === undefined;
+      const placeholder = isMixed ? `placeholder="${t('sharedDifferentValues')}"` : '';
+
+      if (item.type === 'checkbox') {
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+            <label style="font-size:12px;color:#cbd5e0;cursor:pointer;" for="shared-${item.key}">${escapeSvg(item.label)}</label>
+            <input type="checkbox" id="shared-${item.key}" data-shared-property="${item.key}" ${val === 'true' ? 'checked' : ''} style="width:16px;height:16px;accent-color:#3182ce;">
+          </div>
+        `;
+      }
+      if (item.type === 'select' && item.options) {
+        return `
+          <div style="margin-bottom:10px;">
+            <label class="form-label" style="font-size:11px;">${escapeSvg(item.label)}</label>
+            <select class="form-input" id="shared-${item.key}" data-shared-property="${item.key}">
+              <option value="" ${isMixed ? 'selected' : ''} disabled>— (${t('sharedDifferentValues')}) —</option>
+              ${item.options.map(([optVal, optLabel]) => `
+                <option value="${optVal}" ${!isMixed && String(val) === optVal ? 'selected' : ''}>${escapeSvg(optLabel)}</option>
+              `).join('')}
+            </select>
+          </div>
+        `;
+      }
+      const numAttrs = item.type === 'number' ? 'type="number" step="any"' : 'type="text"';
+      const displayVal = val === undefined ? '' : typeof val === 'number' ? Number(val.toFixed(4)) : val;
+      return `
+        <div style="margin-bottom:10px;">
+          <label class="form-label" style="font-size:11px;">${escapeSvg(item.label)}</label>
+          <input class="form-input" id="shared-${item.key}" data-shared-property="${item.key}" ${numAttrs} value="${escapeSvg(String(displayVal))}" ${placeholder}>
+        </div>
+      `;
+    };
+
+    const countDetails = [];
+    if (selection.componentIds.length) countDetails.push(`${selection.componentIds.length} ${t('legendComponents')}`);
+    if (selection.cableIds.length) countDetails.push(`${selection.cableIds.length} ${t('legendCableDefs')}`);
+    if (selection.boxIds?.length) countDetails.push(`${selection.boxIds.length} ${t('legendDeviceBoxes')}`);
+    if (selection.imageIds?.length) countDetails.push(`${selection.imageIds.length} ${t('imageHeading')}`);
+    if (selection.wireIds?.length) countDetails.push(`${selection.wireIds.length} Verbindungen`);
+    if (selection.textIds?.length) countDetails.push(`${selection.textIds.length} Texte`);
+
+    modal.innerHTML = `
+      <div class="modal-card ecad-window" style="
+        background: #232731;
+        border: 1px solid #4a5568;
+        border-radius: 6px;
+        width: 100%;
+        max-width: 680px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        color: #edf2f7;
+        font-family: inherit;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      ">
+        <div class="ecad-window-header" style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 14px;
+          background: #2d323e;
+          border-bottom: 1px solid #3e4656;
+          user-select: none;
+        ">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
+            <span style="color: #63b3ed; font-weight: bold;">⚙️</span>
+            <span>Gemeinsame Eigenschaften (${count} Elemente ausgewählt: ${countDetails.join(', ')})</span>
+          </div>
+          <button id="btnClosePropModal" style="background: none; border: none; color: #a0aec0; font-size: 20px; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+
+        <div style="padding: 16px; max-height: 70vh; overflow-y: auto;">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 0; margin-bottom: 14px;">
+            Hier werden alle Eigenschaften angezeigt, die bei <strong>allen</strong> markierten Elementen existieren. Nur geänderte Felder werden gemeinsam übertragen.
+          </p>
+
+          ${validProps.length === 0 ? `
+            <div style="padding: 24px; text-align: center; color: #a0aec0; font-size: 13px;">
+              Die ausgewählten Elemente teilen keine gemeinsamen Eigenschaften.
+            </div>
+          ` : `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              ${validProps.map(p => renderInput(p)).join('')}
+            </div>
+          `}
+        </div>
+
+        <div style="
+          padding: 10px 16px;
+          border-top: 1px solid #3e4656;
+          background: #1c1f26;
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        ">
+          <button id="btnApplyProp" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnApply'))}</button>
+          <button id="btnSaveProp" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">${escapeSvg(t('propBtnOk'))}</button>
+          <button id="btnCancelProp" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnCancel'))}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('#btnClosePropModal')?.addEventListener('click', closeModal);
+    modal.querySelector('#btnCancelProp')?.addEventListener('click', closeModal);
+
+    const patch: SelectionPatch = {};
+    modal.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-shared-property]').forEach(input => {
+      const key = input.dataset.sharedProperty as SharedProperty;
+      const handler = () => {
+        if (input.type === 'checkbox') {
+          patch[key] = (input as HTMLInputElement).checked ? 'true' : 'false';
+        } else if (input.type === 'number') {
+          if (input.value === '') delete patch[key];
+          else patch[key] = Number(input.value);
+        } else {
+          patch[key] = input.value;
+        }
+      };
+      input.addEventListener('input', handler);
+      input.addEventListener('change', handler);
+    });
+
+    const executeApply = () => {
+      if (Object.keys(patch).length > 0) {
+        applySelectionProperties(page, project, selection, patch);
+        onApply();
+      }
+    };
+
+    modal.querySelector('#btnApplyProp')?.addEventListener('click', () => {
+      executeApply();
+      const applyBtn = modal.querySelector('#btnApplyProp') as HTMLElement;
+      if (applyBtn) {
+        const origText = applyBtn.textContent || t('propBtnApply');
+        applyBtn.textContent = t('propAppliedBadge');
+        setTimeout(() => { applyBtn.textContent = origText; }, 1200);
+      }
+    });
+
+    modal.querySelector('#btnSaveProp')?.addEventListener('click', () => {
+      executeApply();
+      closeModal();
+    });
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        executeApply();
+        closeModal();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    });
   }
 
   private bindTabInternalEvents(modal: HTMLElement): void {
@@ -1064,6 +1612,19 @@ export class PropertiesDialog {
           visible: nextVisible,
           ...(visExplicit ? { visibilityExplicit: true } : {})
         };
+      }
+    }
+
+    const compShowLabel = modal.querySelector('#propCompShowLabel') as HTMLInputElement | null;
+    if (compShowLabel) {
+      this.component.showLabels = compShowLabel.checked;
+    }
+    const compScale = modal.querySelector('#propCompScale') as HTMLSelectElement | null;
+    if (compScale) {
+      if (compScale.value === 'inherit') delete this.component.scale;
+      else {
+        const sc = parseFloat(compScale.value);
+        if (!isNaN(sc)) this.component.scale = sc;
       }
     }
   }

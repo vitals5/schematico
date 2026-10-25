@@ -23,7 +23,7 @@ import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextP
 import { jsPDF } from 'jspdf';
 import { Project, Page, PlacedComponent, Wire, DrawingPrimitive, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
-import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
+import { TerminalDiagramGenerator, layoutTerminalDiagramPdf, type TerminalPdfPage } from '../reports/TerminalDiagram';
 import { PartsListGenerator } from '../reports/PartsList';
 import { layoutPartsListPdf, BOM_COLUMNS, BOM_FONT_SIZE, BOM_LINE_HEIGHT, BOM_ROWS_TOP, getBomColumns, type BomPage } from './PartsListPdf';
 
@@ -82,8 +82,11 @@ export class PdfExporter {
 
     // Total sheet count update
     const bomColumns = getBomColumns(project.language ?? 'de');
+    const terminalPages = options.includeTerminalDiagram
+      ? layoutTerminalDiagramPdf(TerminalDiagramGenerator.generateTerminalReport(project), pageHeightMm)
+      : [];
     const bomPages = options.includePartsList ? layoutPartsListPdf(doc, PartsListGenerator.generatePartsList(project), pageHeightMm, bomColumns) : [];
-    const extraSheets = (options.includeTerminalDiagram ? 1 : 0) + bomPages.length;
+    const extraSheets = terminalPages.length + bomPages.length;
     const totalSheetsCount = pagesToExport.length + extraSheets;
 
     // Render schematic pages
@@ -147,7 +150,7 @@ export class PdfExporter {
           doc.outline.add(null, project.language === 'en' ? 'Report: Terminal Diagram (-X1)' : 'Auswertung: Klemmenplan (-X1)', { pageNumber: pdfPageNum });
         } catch {}
       }
-      this.renderTerminalDiagramPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount);
+      this.renderTerminalDiagramPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, terminalPages);
     }
 
     // Render Optional Stückliste Page
@@ -1525,7 +1528,7 @@ export class PdfExporter {
   }
 
   /**
-   * Generates formatted DIN A3 Klemmenplan (terminal matrix) page in PDF
+   * Generates formatted DIN A3/A4 Klemmenplan (terminal matrix) pages in PDF
    */
   private static renderTerminalDiagramPage(
     doc: jsPDF,
@@ -1533,12 +1536,15 @@ export class PdfExporter {
     wMm: number,
     hMm: number,
     colorMode: 'color' | 'monochrome',
-    totalSheets: number
+    totalSheets: number,
+    pages?: TerminalPdfPage[]
   ): void {
     const isEn = project.language === 'en';
+    const pagePrefix = isEn ? 'TD' : 'KP';
+    const terminalPages = pages ?? layoutTerminalDiagramPdf(TerminalDiagramGenerator.generateTerminalReport(project), hMm);
     const dummyPage: Page = {
       id: 'rep_term',
-      pageNumber: isEn ? 'TD' : 'KP',
+      pageNumber: pagePrefix,
       pageType: 'terminal_diagram',
       title: isEn ? 'Report: Terminal Diagram' : 'Auswertung: Klemmenplan',
       higherLevel: '=A1',
@@ -1558,79 +1564,94 @@ export class PdfExporter {
           author: project.author,
           date: new Date().toISOString().split('T')[0],
           revision: '1.0',
-          sheetNumber: isEn ? 'TD' : 'KP',
+          sheetNumber: pagePrefix,
           totalSheets: totalSheets.toString()
         }
       }
     };
 
-    this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets);
+    const tableX = 20;
+    const colWidths = [30, 45, 45, 60, 30];
+    const headers = isEn
+      ? ['Terminal', 'Internal Target', 'External Target', 'Function Text', 'Cross Section']
+      : ['Klemme', 'Internes Ziel', 'Externes Ziel', 'Funktionstext', 'Querschnitt'];
 
-    const strips = TerminalDiagramGenerator.generateTerminalReport(project);
-    let curY = 30;
+    for (let index = 0; index < terminalPages.length; index++) {
+      if (index > 0) {
+        doc.addPage(wMm > 300 ? 'a3' : 'a4', 'landscape');
+      }
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text(isEn ? 'TERMINAL DIAGRAM (DIN EN 81346 / IEC 60617)' : 'KLEMMENPLAN (DIN EN 81346 / IEC 60617)', 20, curY);
-    curY += 10;
+      dummyPage.pageNumber = terminalPages.length > 1 ? `${pagePrefix}${index + 1}` : pagePrefix;
+      dummyPage.plotFrame.titleBlock.sheetNumber = dummyPage.pageNumber;
+      this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets, project);
 
-    for (const [stripName, entries] of strips.entries()) {
+      let curY = 30;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(colorMode === 'color' ? 200 : 0, colorMode === 'color' ? 100 : 0, 0);
-      doc.text(isEn ? `Terminal Strip: ${stripName} (Cabinet +S1)` : `Klemmenleiste: ${stripName} (Schaltschrank +S1)`, 20, curY);
-      curY += 5;
-
-      // Table Header
-      const tableX = 20;
-      const colWidths = [30, 45, 45, 60, 30];
-      const headers = isEn
-        ? ['Terminal', 'Internal Target', 'External Target', 'Function Text', 'Cross Section']
-        : ['Klemme', 'Internes Ziel', 'Externes Ziel', 'Funktionstext', 'Querschnitt'];
-
-      doc.setFillColor(240, 240, 240);
-      doc.rect(tableX, curY, 210, 7, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
+      doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
-
-      let tx = tableX;
-      for (let h = 0; h < headers.length; h++) {
-        doc.text(headers[h], tx + 2, curY + 5);
-        tx += colWidths[h];
-      }
-      curY += 7;
-
-      // Table Rows
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      for (const entry of entries) {
-        doc.setDrawColor(220, 220, 220);
-        doc.line(tableX, curY + 6, tableX + 210, curY + 6);
-
-        tx = tableX;
-        doc.setFont('courier', 'bold');
-        doc.text(entry.terminalNumber, tx + 2, curY + 4.5);
-        tx += colWidths[0];
-
-        doc.setFont('courier', 'normal');
-        doc.text(entry.internalTarget, tx + 2, curY + 4.5);
-        tx += colWidths[1];
-
-        doc.text(entry.externalTarget, tx + 2, curY + 4.5);
-        tx += colWidths[2];
-
-        doc.setFont('helvetica', 'normal');
-        doc.text(entry.functionText, tx + 2, curY + 4.5);
-        tx += colWidths[3];
-
-        doc.text(entry.crossSection || '2.5mm²', tx + 2, curY + 4.5);
-
-        curY += 6;
-      }
-
+      doc.text(isEn ? 'TERMINAL DIAGRAM (DIN EN 81346 / IEC 60617)' : 'KLEMMENPLAN (DIN EN 81346 / IEC 60617)', tableX, curY);
       curY += 10;
+
+      for (const chunk of terminalPages[index]) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(colorMode === 'color' ? 200 : 0, colorMode === 'color' ? 100 : 0, 0);
+        const contSuffix = chunk.continued
+          ? (isEn ? ' – continued' : ' – Fortsetzung')
+          : '';
+        doc.text(
+          isEn
+            ? `Terminal Strip: ${chunk.stripName} (Cabinet +S1)${contSuffix}`
+            : `Klemmenleiste: ${chunk.stripName} (Schaltschrank +S1)${contSuffix}`,
+          tableX,
+          curY
+        );
+        curY += 5;
+
+        // Table Header
+        doc.setFillColor(240, 240, 240);
+        doc.rect(tableX, curY, 210, 7, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+
+        let tx = tableX;
+        for (let h = 0; h < headers.length; h++) {
+          doc.text(headers[h], tx + 2, curY + 5);
+          tx += colWidths[h];
+        }
+        curY += 7;
+
+        // Table Rows
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        for (const entry of chunk.entries) {
+          doc.setDrawColor(220, 220, 220);
+          doc.line(tableX, curY + 6, tableX + 210, curY + 6);
+
+          tx = tableX;
+          doc.setFont('courier', 'bold');
+          doc.text(entry.terminalNumber, tx + 2, curY + 4.5);
+          tx += colWidths[0];
+
+          doc.setFont('courier', 'normal');
+          doc.text(entry.internalTarget, tx + 2, curY + 4.5);
+          tx += colWidths[1];
+
+          doc.text(entry.externalTarget, tx + 2, curY + 4.5);
+          tx += colWidths[2];
+
+          doc.setFont('helvetica', 'normal');
+          doc.text(entry.functionText, tx + 2, curY + 4.5);
+          tx += colWidths[3];
+
+          doc.text(entry.crossSection || '2.5mm²', tx + 2, curY + 4.5);
+
+          curY += 6;
+        }
+
+        curY += 10;
+      }
     }
   }
 

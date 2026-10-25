@@ -14,17 +14,85 @@ export interface TerminalEntry {
   crossSection?: string;
 }
 
+export interface TerminalPdfStripChunk {
+  stripName: string;
+  continued: boolean;
+  entries: TerminalEntry[];
+}
+
+export type TerminalPdfPage = TerminalPdfStripChunk[];
+
+export const TERMINAL_PDF_START_Y = 40;
+export const TERMINAL_PDF_STRIP_HEADER_HEIGHT = 12; // 5mm strip title + 7mm table header
+export const TERMINAL_PDF_ROW_HEIGHT = 6;
+export const TERMINAL_PDF_STRIP_GAP = 10;
+
+export function layoutTerminalDiagramPdf(
+  strips: Map<string, TerminalEntry[]>,
+  pageHeightMm: number
+): TerminalPdfPage[] {
+  const bottom = pageHeightMm - 25;
+  const pages: TerminalPdfPage[] = [[]];
+  let curY = TERMINAL_PDF_START_Y;
+
+  const startNextPage = () => {
+    pages.push([]);
+    curY = TERMINAL_PDF_START_Y;
+  };
+
+  for (const [stripName, entries] of strips.entries()) {
+    if (entries.length === 0) continue;
+
+    const minStripStartHeight = TERMINAL_PDF_STRIP_HEADER_HEIGHT + TERMINAL_PDF_ROW_HEIGHT;
+    if (pages.at(-1)!.length > 0 && curY + minStripStartHeight > bottom + 1e-8) {
+      startNextPage();
+    }
+
+    let currentChunk: TerminalPdfStripChunk = {
+      stripName,
+      continued: false,
+      entries: [],
+    };
+    pages.at(-1)!.push(currentChunk);
+    curY += TERMINAL_PDF_STRIP_HEADER_HEIGHT;
+
+    for (const entry of entries) {
+      if (currentChunk.entries.length > 0 && curY + TERMINAL_PDF_ROW_HEIGHT > bottom + 1e-8) {
+        startNextPage();
+        currentChunk = {
+          stripName,
+          continued: true,
+          entries: [],
+        };
+        pages.at(-1)!.push(currentChunk);
+        curY += TERMINAL_PDF_STRIP_HEADER_HEIGHT;
+      }
+      currentChunk.entries.push(entry);
+      curY += TERMINAL_PDF_ROW_HEIGHT;
+    }
+
+    curY += TERMINAL_PDF_STRIP_GAP;
+  }
+
+  return pages;
+}
+
 export class TerminalDiagramGenerator {
   public static generateTerminalReport(project: Project): Map<string, TerminalEntry[]> {
     const strips = new Map<string, TerminalEntry[]>();
 
     for (const page of project.pages) {
+      let lastStripName = '-X1';
       // Find all terminal components
       for (const comp of page.components) {
-        const sym = getSymbolForComponent(comp);
+        const sym = getSymbolForComponent(comp, project);
         if (sym?.category !== 'terminals' || comp.bmk === 'PE') continue;
 
-        const stripName = comp.bmk;
+        const rawBmk = comp.bmk?.trim() || '';
+        if (rawBmk) {
+          lastStripName = rawBmk;
+        }
+        const stripName = rawBmk || lastStripName;
         if (!strips.has(stripName)) {
           strips.set(stripName, []);
         }
