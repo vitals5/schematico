@@ -90,6 +90,79 @@ export class PropertiesDialog {
         }
       }
     }
+
+    const units = getDrawingUnitsPerMm(this.project);
+    const checkDisplayFieldDiff = (id: string, getter: (c: PlacedComponent) => any) => {
+      const first = getter(this.components[0]);
+      const allSame = this.components.every(c => {
+        const val = getter(c);
+        if (typeof val === 'number' && typeof first === 'number') {
+          return Math.abs(val - first) < 1e-4;
+        }
+        return val === first;
+      });
+      if (!allSame) {
+        this.differingFields.add(id);
+      }
+    };
+
+    // BMK
+    checkDisplayFieldDiff('propBmkVisible', c => c.bmkPosition?.visible !== false);
+    checkDisplayFieldDiff('propBmkPreset', c => c.bmkPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propBmkOffsetX', c => c.bmkPosition?.offsetX ?? 0);
+    checkDisplayFieldDiff('propBmkOffsetY', c => c.bmkPosition?.offsetY ?? 0);
+    checkDisplayFieldDiff('propBmkAlignment', c => { const s = getSymbolForComponent(c, this.project); return c.bmkPosition?.alignment ?? (s ? computeBmkPosition(c, s).anchor : 'end'); });
+    checkDisplayFieldDiff('propBmkRotation', c => c.bmkPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propBmkFontSize', c => { const s = getSymbolForComponent(c, this.project); return Number(((s ? computeBmkPosition(c, s).fontSize : (c.bmkPosition?.fontSize ?? 10)) / units).toFixed(4)); });
+
+    // FunctionText
+    checkDisplayFieldDiff('propFnVisible', c => c.functionTextPosition?.visible !== false);
+    checkDisplayFieldDiff('propFnPreset', c => c.functionTextPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propFnOffsetX', c => c.functionTextPosition?.offsetX ?? 0);
+    checkDisplayFieldDiff('propFnOffsetY', c => c.functionTextPosition?.offsetY ?? 0);
+    checkDisplayFieldDiff('propFnAlignment', c => { const s = getSymbolForComponent(c, this.project); return c.functionTextPosition?.alignment ?? (s ? computeFunctionTextPosition(c, s).anchor : 'end'); });
+    checkDisplayFieldDiff('propFnRotation', c => c.functionTextPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propFnFontSize', c => { const s = getSymbolForComponent(c, this.project); return Number(((s ? computeFunctionTextPosition(c, s).fontSize : (c.functionTextPosition?.fontSize ?? 8)) / units).toFixed(4)); });
+
+    // TechnicalData
+    checkDisplayFieldDiff('propTechVisible', c => c.technicalDataPosition?.visible ?? !!(c.deviceTag || c.technicalCharacteristics));
+    checkDisplayFieldDiff('propTechPreset', c => c.technicalDataPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propTechOffsetX', c => c.technicalDataPosition?.offsetX ?? 0);
+    checkDisplayFieldDiff('propTechOffsetY', c => c.technicalDataPosition?.offsetY ?? 0);
+    checkDisplayFieldDiff('propTechAlignment', c => { const s = getSymbolForComponent(c, this.project); return c.technicalDataPosition?.alignment ?? (s ? computeTechnicalDataPosition(c, s).anchor : 'end'); });
+    checkDisplayFieldDiff('propTechRotation', c => c.technicalDataPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propTechFontSize', c => { const s = getSymbolForComponent(c, this.project); return Number(((s ? computeTechnicalDataPosition(c, s).fontSize : (c.technicalDataPosition?.fontSize ?? 8)) / units).toFixed(4)); });
+
+    // AdditionalText
+    checkDisplayFieldDiff('propAdditionalVisible', c => c.additionalTextPosition?.visible !== false);
+    checkDisplayFieldDiff('propAdditionalPreset', c => c.additionalTextPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propAdditionalOffsetX', c => (c.additionalTextPosition?.offsetX ?? 0) / units);
+    checkDisplayFieldDiff('propAdditionalOffsetY', c => (c.additionalTextPosition?.offsetY ?? 0) / units);
+    checkDisplayFieldDiff('propAdditionalAlignment', c => { const s = getSymbolForComponent(c, this.project); return c.additionalTextPosition?.alignment ?? (s ? computeAdditionalTextPosition(c, s).anchor : 'end'); });
+    checkDisplayFieldDiff('propAdditionalRotation', c => c.additionalTextPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propAdditionalFontSize', c => { const s = getSymbolForComponent(c, this.project); return Number(((s ? computeAdditionalTextPosition(c, s).fontSize : (c.additionalTextPosition?.fontSize ?? 8)) / units).toFixed(4)); });
+
+    // CrossRef
+    checkDisplayFieldDiff('propCrossRefVisible', c => c.crossRefPosition?.visible !== false);
+    checkDisplayFieldDiff('propCrossRefPreset', c => c.crossRefPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propCrossRefOffsetX', c => (c.crossRefPosition?.offsetX ?? 0) / units);
+    checkDisplayFieldDiff('propCrossRefOffsetY', c => (c.crossRefPosition?.offsetY ?? 0) / units);
+    checkDisplayFieldDiff('propCrossRefAlignment', c => c.crossRefPosition?.alignment ?? '');
+    checkDisplayFieldDiff('propCrossRefRotation', c => c.crossRefPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propCrossRefFontSize', c => Number(((c.crossRefFontSize ?? c.crossRefPosition?.fontSize ?? 8) / units).toFixed(4)));
+
+    // PinLabel
+    checkDisplayFieldDiff('propPinVisible', c => { const s = getSymbolForComponent(c, this.project); return arePinLabelsVisible(c, s); });
+    checkDisplayFieldDiff('propPinPreset', c => c.pinLabelPosition?.preset ?? 'auto');
+    checkDisplayFieldDiff('propPinOffsetX', c => (c.pinLabelPosition?.offsetX ?? 0) / units);
+    checkDisplayFieldDiff('propPinOffsetY', c => (c.pinLabelPosition?.offsetY ?? 0) / units);
+    checkDisplayFieldDiff('propPinAlignment', c => c.pinLabelPosition?.alignment ?? '');
+    checkDisplayFieldDiff('propPinRotation', c => c.pinLabelPosition?.rotation ?? 0);
+    checkDisplayFieldDiff('propPinFontSize', c => {
+      const s = getSymbolForComponent(c, this.project);
+      const base = c.pinLabelFontSize ?? c.pinLabelPosition?.fontSize ?? Object.values(c.pins).find(p => p.labelPosition)?.labelPosition?.fontSize ?? s?.pins.find(p => p.labelPosition)?.labelPosition?.fontSize ?? 6.5;
+      return Number((Number(base) / units).toFixed(4));
+    });
   }
 
   public show(): void {
@@ -214,6 +287,60 @@ export class PropertiesDialog {
     return result;
   }
 
+  private renderDisplayPresetSelect(id: string, currentVal: string, options: [string, string][]): string {
+    const isDiff = this.isMulti && this.differingFields.has(id) && !this.dirtyFields.has(id);
+    return `
+      <select id="${id}" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+        ${isDiff ? `<option value="" disabled selected>— (${escapeSvg(t('sharedDifferentValues'))}) —</option>` : ''}
+        ${options.map(([optVal, optLabel]) => `
+          <option value="${optVal}" ${!isDiff && currentVal === optVal ? 'selected' : ''}>${escapeSvg(optLabel)}</option>
+        `).join('')}
+      </select>
+    `;
+  }
+
+  private renderDisplayAlignmentSelect(id: string, currentVal: string, options: [string, string][]): string {
+    const isDiff = this.isMulti && this.differingFields.has(id) && !this.dirtyFields.has(id);
+    return `
+      <select id="${id}" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+        ${isDiff ? `<option value="" disabled selected>— (${escapeSvg(t('sharedDifferentValues'))}) —</option>` : ''}
+        ${options.map(([optVal, optLabel]) => `
+          <option value="${optVal}" ${!isDiff && currentVal === optVal ? 'selected' : ''}>${escapeSvg(optLabel)}</option>
+        `).join('')}
+      </select>
+    `;
+  }
+
+  private renderDisplayRotationSelect(id: string, currentVal: number): string {
+    const isDiff = this.isMulti && this.differingFields.has(id) && !this.dirtyFields.has(id);
+    return `
+      <select id="${id}" class="form-input" style="font-size: 11px; padding: 4px 6px;">
+        ${isDiff ? `<option value="" disabled selected>— (${escapeSvg(t('sharedDifferentValues'))}) —</option>` : ''}
+        <option value="0" ${!isDiff && currentVal === 0 ? 'selected' : ''}>0°</option>
+        <option value="90" ${!isDiff && currentVal === 90 ? 'selected' : ''}>90°</option>
+        <option value="180" ${!isDiff && currentVal === 180 ? 'selected' : ''}>180°</option>
+        <option value="270" ${!isDiff && currentVal === 270 ? 'selected' : ''}>270°</option>
+      </select>
+    `;
+  }
+
+  private renderDisplayNumberInput(id: string, val: number, step = 'any', min?: number, max?: number): string {
+    const isDiff = this.isMulti && this.differingFields.has(id) && !this.dirtyFields.has(id);
+    const minAttr = min !== undefined ? ` min="${min}"` : '';
+    const maxAttr = max !== undefined ? ` max="${max}"` : '';
+    return `<input type="number" step="${step}"${minAttr}${maxAttr} id="${id}" value="${isDiff ? '' : val}" class="form-input" placeholder="${isDiff ? escapeSvg(t('sharedDifferentValues')) : ''}" style="font-size: 11px; padding: 4px 6px;">`;
+  }
+
+  private renderDisplayCheckbox(id: string, checked: boolean, label: string): string {
+    const isDiff = this.isMulti && this.differingFields.has(id) && !this.dirtyFields.has(id);
+    return `
+      <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${isDiff ? 'data-indeterminate="true"' : ''}>
+        ${escapeSvg(label)}
+      </label>
+    `;
+  }
+
   private renderActiveTabContent(): string {
     const sym = getSymbolForComponent(this.component, this.project);
 
@@ -329,61 +456,44 @@ export class PropertiesDialog {
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-weight: 600; font-size: 12px; color: #f6e05e;">${escapeSvg(t('propBmkHeading'))}</span>
-              <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="propBmkVisible" ${bmkPos.visible !== false ? 'checked' : ''}>
-                ${escapeSvg(t('propVisible'))}
-              </label>
+              ${this.renderDisplayCheckbox('propBmkVisible', bmkPos.visible !== false, t('propVisible'))}
             </div>
 
             <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-                <select id="propBmkPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${bmkPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
-                  <option value="top" ${bmkPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
-                  <option value="top_left" ${bmkPos.preset === 'top_left' ? 'selected' : ''}>${escapeSvg(t('propPresetTopLeft'))}</option>
-                  <option value="top_right" ${bmkPos.preset === 'top_right' ? 'selected' : ''}>${escapeSvg(t('propPresetTopRight'))}</option>
-                  <option value="bottom" ${bmkPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottom'))}</option>
-                  <option value="bottom_left" ${bmkPos.preset === 'bottom_left' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomLeft'))}</option>
-                  <option value="bottom_right" ${bmkPos.preset === 'bottom_right' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomRight'))}</option>
-                  <option value="left" ${bmkPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
-                  <option value="right" ${bmkPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
-                  <option value="custom" ${bmkPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
-                </select>
+                ${this.renderDisplayPresetSelect('propBmkPreset', bmkPos.preset || 'auto', [
+                  ['auto', t('propPresetAuto')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')],
+                  ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')],
+                  ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-                <input type="number" step="any" id="propBmkOffsetX" class="form-input" value="${bmkPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propBmkOffsetX', bmkPos.offsetX || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-                <input type="number" step="any" id="propBmkOffsetY" class="form-input" value="${bmkPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propBmkOffsetY', bmkPos.offsetY || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-                <select id="propBmkAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${bmkPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
-                  <option value="start" ${bmkPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
-                  <option value="end" ${bmkPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
-                </select>
+                ${this.renderDisplayAlignmentSelect('propBmkAlignment', bmkPos.alignment || 'middle', [
+                  ['middle', t('propAlignMiddle')], ['start', t('propAlignStart')], ['end', t('propAlignEnd')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-                <select id="propBmkRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="0" ${bmkPos.rotation === 0 ? 'selected' : ''}>0°</option>
-                  <option value="90" ${bmkPos.rotation === 90 ? 'selected' : ''}>90°</option>
-                  <option value="180" ${bmkPos.rotation === 180 ? 'selected' : ''}>180°</option>
-                  <option value="270" ${bmkPos.rotation === 270 ? 'selected' : ''}>270°</option>
-                </select>
+                ${this.renderDisplayRotationSelect('propBmkRotation', bmkPos.rotation || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-                <input type="number" min="0.1" max="20" step="0.1" id="propBmkFontSize" class="form-input" value="${bmkFontVal}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propBmkFontSize', bmkFontVal, '0.1', 0.1, 20)}
               </div>
             </div>
           </div>
@@ -392,61 +502,44 @@ export class PropertiesDialog {
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-weight: 600; font-size: 12px; color: #e2e8f0;">${escapeSvg(t('propFnHeading'))}</span>
-              <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="propFnVisible" ${fnPos.visible !== false ? 'checked' : ''}>
-                ${escapeSvg(t('propVisible'))}
-              </label>
+              ${this.renderDisplayCheckbox('propFnVisible', fnPos.visible !== false, t('propVisible'))}
             </div>
 
             <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-                <select id="propFnPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${fnPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
-                  <option value="bottom" ${fnPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottom'))}</option>
-                  <option value="bottom_left" ${fnPos.preset === 'bottom_left' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomLeft'))}</option>
-                  <option value="bottom_right" ${fnPos.preset === 'bottom_right' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomRight'))}</option>
-                  <option value="top" ${fnPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
-                  <option value="top_left" ${fnPos.preset === 'top_left' ? 'selected' : ''}>${escapeSvg(t('propPresetTopLeft'))}</option>
-                  <option value="top_right" ${fnPos.preset === 'top_right' ? 'selected' : ''}>${escapeSvg(t('propPresetTopRight'))}</option>
-                  <option value="left" ${fnPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
-                  <option value="right" ${fnPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
-                  <option value="custom" ${fnPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
-                </select>
+                ${this.renderDisplayPresetSelect('propFnPreset', fnPos.preset || 'auto', [
+                  ['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')],
+                  ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')],
+                  ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-                <input type="number" step="any" id="propFnOffsetX" class="form-input" value="${fnPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propFnOffsetX', fnPos.offsetX || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-                <input type="number" step="any" id="propFnOffsetY" class="form-input" value="${fnPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propFnOffsetY', fnPos.offsetY || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-                <select id="propFnAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${fnPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
-                  <option value="start" ${fnPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
-                  <option value="end" ${fnPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
-                </select>
+                ${this.renderDisplayAlignmentSelect('propFnAlignment', fnPos.alignment || 'middle', [
+                  ['middle', t('propAlignMiddle')], ['start', t('propAlignStart')], ['end', t('propAlignEnd')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-                <select id="propFnRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="0" ${fnPos.rotation === 0 ? 'selected' : ''}>0°</option>
-                  <option value="90" ${fnPos.rotation === 90 ? 'selected' : ''}>90°</option>
-                  <option value="180" ${fnPos.rotation === 180 ? 'selected' : ''}>180°</option>
-                  <option value="270" ${fnPos.rotation === 270 ? 'selected' : ''}>270°</option>
-                </select>
+                ${this.renderDisplayRotationSelect('propFnRotation', fnPos.rotation || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-                <input type="number" min="0.1" max="20" step="0.1" id="propFnFontSize" class="form-input" value="${fnFontVal}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propFnFontSize', fnFontVal, '0.1', 0.1, 20)}
               </div>
             </div>
           </div>
@@ -455,57 +548,43 @@ export class PropertiesDialog {
           <div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-weight: 600; font-size: 12px; color: #68d391;">${escapeSvg(t('propTechHeading'))}</span>
-              <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="propTechVisible" ${techPos.visible ? 'checked' : ''}>
-                ${escapeSvg(t('propVisible'))}
-              </label>
+              ${this.renderDisplayCheckbox('propTechVisible', !!techPos.visible, t('propVisible'))}
             </div>
 
             <div style="${rowGridStyle}">
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-                <select id="propTechPreset" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="auto" ${techPos.preset === 'auto' ? 'selected' : ''}>${escapeSvg(t('propPresetAuto'))}</option>
-                  <option value="bottom" ${techPos.preset === 'bottom' ? 'selected' : ''}>${escapeSvg(t('propPresetBottomUnderFn'))}</option>
-                  <option value="top" ${techPos.preset === 'top' ? 'selected' : ''}>${escapeSvg(t('propPresetTop'))}</option>
-                  <option value="right" ${techPos.preset === 'right' ? 'selected' : ''}>${escapeSvg(t('propPresetRight'))}</option>
-                  <option value="left" ${techPos.preset === 'left' ? 'selected' : ''}>${escapeSvg(t('propPresetLeft'))}</option>
-                  <option value="custom" ${techPos.preset === 'custom' ? 'selected' : ''}>${escapeSvg(t('propPresetCustom'))}</option>
-                </select>
+                ${this.renderDisplayPresetSelect('propTechPreset', techPos.preset || 'auto', [
+                  ['auto', t('propPresetAuto')], ['bottom', t('propPresetBottomUnderFn')], ['top', t('propPresetTop')],
+                  ['right', t('propPresetRight')], ['left', t('propPresetLeft')], ['custom', t('propPresetCustom')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-                <input type="number" step="any" id="propTechOffsetX" class="form-input" value="${techPos.offsetX || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propTechOffsetX', techPos.offsetX || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-                <input type="number" step="any" id="propTechOffsetY" class="form-input" value="${techPos.offsetY || 0}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propTechOffsetY', techPos.offsetY || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-                <select id="propTechAlignment" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="middle" ${techPos.alignment === 'middle' ? 'selected' : ''}>${escapeSvg(t('propAlignMiddle'))}</option>
-                  <option value="start" ${techPos.alignment === 'start' ? 'selected' : ''}>${escapeSvg(t('propAlignStart'))}</option>
-                  <option value="end" ${techPos.alignment === 'end' ? 'selected' : ''}>${escapeSvg(t('propAlignEnd'))}</option>
-                </select>
+                ${this.renderDisplayAlignmentSelect('propTechAlignment', techPos.alignment || 'middle', [
+                  ['middle', t('propAlignMiddle')], ['start', t('propAlignStart')], ['end', t('propAlignEnd')]
+                ])}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-                <select id="propTechRotation" class="form-input" style="font-size: 11px; padding: 4px 6px;">
-                  <option value="0" ${techPos.rotation === 0 ? 'selected' : ''}>0°</option>
-                  <option value="90" ${techPos.rotation === 90 ? 'selected' : ''}>90°</option>
-                  <option value="180" ${techPos.rotation === 180 ? 'selected' : ''}>180°</option>
-                  <option value="270" ${techPos.rotation === 270 ? 'selected' : ''}>270°</option>
-                </select>
+                ${this.renderDisplayRotationSelect('propTechRotation', techPos.rotation || 0)}
               </div>
 
               <div>
                 <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-                <input type="number" min="0.1" max="20" step="0.1" id="propTechFontSize" class="form-input" value="${techFontVal}" style="font-size: 11px; padding: 4px 6px;">
+                ${this.renderDisplayNumberInput('propTechFontSize', techFontVal, '0.1', 0.1, 20)}
               </div>
             </div>
           </div>
@@ -665,40 +744,37 @@ export class PropertiesDialog {
     return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-weight: 600; font-size: 12px; color: #f6ad55;">${escapeSvg(t('propCrossRefHeading'))}</span>
-        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-          <input type="checkbox" id="propCrossRefVisible" ${cfg?.visible !== false ? 'checked' : ''}>
-          ${escapeSvg(t('propVisible'))}
-        </label>
+        ${this.renderDisplayCheckbox('propCrossRefVisible', cfg?.visible !== false, t('propVisible'))}
       </div>
       <div style="${rowGridStyle}">
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-          <select class="form-input" id="propCrossRefPreset" style="font-size: 11px; padding: 4px 6px;">${[
+          ${this.renderDisplayPresetSelect('propCrossRefPreset', cfg?.preset ?? 'auto', [
             ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
             ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
-          ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select>
+          ])}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-          <input type="number" step="any" class="form-input" id="propCrossRefOffsetX" value="${(cfg?.offsetX ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propCrossRefOffsetX', (cfg?.offsetX ?? 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-          <input type="number" step="any" class="form-input" id="propCrossRefOffsetY" value="${(cfg?.offsetY ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propCrossRefOffsetY', (cfg?.offsetY ?? 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-          <select class="form-input" id="propCrossRefAlignment" style="font-size: 11px; padding: 4px 6px;">${[
+          ${this.renderDisplayAlignmentSelect('propCrossRefAlignment', cfg?.alignment ?? '', [
             ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
-          ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select>
+          ])}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-          <select class="form-input" id="propCrossRefRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select>
+          ${this.renderDisplayRotationSelect('propCrossRefRotation', cfg?.rotation ?? 0)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-          <input type="number" min="0.1" max="20" step="0.1" id="propCrossRefFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propCrossRefFontSize', fontVal, '0.1', 0.1, 20)}
         </div>
       </div>
     </div>`;
@@ -709,40 +785,39 @@ export class PropertiesDialog {
     const cfg = { alignment: symbol ? computeAdditionalTextPosition(this.component, symbol).anchor : 'end', ...this.component.additionalTextPosition };
     const units = getDrawingUnitsPerMm(this.project);
     const fontVal = Number(((symbol ? computeAdditionalTextPosition(this.component, symbol).fontSize : (cfg.fontSize ?? 8)) / units).toFixed(4));
-    const presets = [['auto',t('propPresetAuto')],['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')],['custom',t('propPresetCustom')]];
+    const presets: [string, string][] = [['auto',t('propPresetAuto')],['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')],['custom',t('propPresetCustom')]];
     const rowGridStyle = 'display: grid; grid-template-columns: 1.7fr 0.85fr 0.85fr 1.15fr 0.8fr 0.9fr; gap: 8px; align-items: end;';
     return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-weight: 600; font-size: 12px; color: #cbd5e0;">${escapeSvg(t('propAdditionalHeading'))}</span>
-        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-          <input id="propAdditionalVisible" type="checkbox" ${cfg.visible !== false ? 'checked' : ''}>
-          ${escapeSvg(t('propVisible'))}
-        </label>
+        ${this.renderDisplayCheckbox('propAdditionalVisible', cfg.visible !== false, t('propVisible'))}
       </div>
       <div style="${rowGridStyle}">
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-          <select class="form-input" id="propAdditionalPreset" style="font-size: 11px; padding: 4px 6px;">${presets.map(([key,label])=>`<option value="${key}" ${(cfg.preset || 'auto')===key?'selected':''}>${label}</option>`).join('')}</select>
+          ${this.renderDisplayPresetSelect('propAdditionalPreset', cfg.preset || 'auto', presets)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-          <input class="form-input" id="propAdditionalOffsetX" type="number" step="any" value="${(cfg.offsetX || 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propAdditionalOffsetX', (cfg.offsetX || 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-          <input class="form-input" id="propAdditionalOffsetY" type="number" step="any" value="${(cfg.offsetY || 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propAdditionalOffsetY', (cfg.offsetY || 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-          <select class="form-input" id="propAdditionalAlignment" style="font-size: 11px; padding: 4px 6px;">${[['middle',t('propAlignMiddle')],['start',t('propAlignStart')],['end',t('propAlignEnd')]].map(([key,label])=>`<option value="${key}" ${(cfg.alignment || 'middle')===key?'selected':''}>${label}</option>`).join('')}</select>
+          ${this.renderDisplayAlignmentSelect('propAdditionalAlignment', cfg.alignment || 'middle', [
+            ['middle',t('propAlignMiddle')],['start',t('propAlignStart')],['end',t('propAlignEnd')]
+          ])}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-          <select class="form-input" id="propAdditionalRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(angle=>`<option value="${angle}" ${(cfg.rotation || 0)===angle?'selected':''}>${angle}°</option>`).join('')}</select>
+          ${this.renderDisplayRotationSelect('propAdditionalRotation', cfg.rotation || 0)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-          <input type="number" min="0.1" max="20" step="0.1" id="propAdditionalFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propAdditionalFontSize', fontVal, '0.1', 0.1, 20)}
         </div>
       </div>
     </div>`;
@@ -763,40 +838,37 @@ export class PropertiesDialog {
     return `<div style="background: #1f242e; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-weight: 600; font-size: 12px; color: #63b3ed;">${escapeSvg(t('propPinHeading'))}</span>
-        <label style="font-size: 11px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-          <input type="checkbox" id="propPinVisible" ${visible ? 'checked' : ''}>
-          ${escapeSvg(t('propVisible'))}
-        </label>
+        ${this.renderDisplayCheckbox('propPinVisible', visible, t('propVisible'))}
       </div>
       <div style="${rowGridStyle}">
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propPositionPreset'))}</label>
-          <select class="form-input" id="propPinPreset" style="font-size: 11px; padding: 4px 6px;">${[
+          ${this.renderDisplayPresetSelect('propPinPreset', cfg?.preset ?? 'auto', [
             ['auto',t('propPresetAutoStandard')],['custom',t('propPresetCustomWithOffset')],['top',t('propPresetTop')],['top_left',t('propPresetTopLeft')],['top_right',t('propPresetTopRight')],
             ['bottom',t('propPresetBottom')],['bottom_left',t('propPresetBottomLeft')],['bottom_right',t('propPresetBottomRight')],['left',t('propPresetLeft')],['right',t('propPresetRight')]
-          ].map(([value,label])=>`<option value="${value}" ${(cfg?.preset ?? 'auto')===value?'selected':''}>${label}</option>`).join('')}</select>
+          ])}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetX'))}</label>
-          <input type="number" step="any" class="form-input" id="propPinOffsetX" value="${(cfg?.offsetX ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propPinOffsetX', (cfg?.offsetX ?? 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propOffsetY'))}</label>
-          <input type="number" step="any" class="form-input" id="propPinOffsetY" value="${(cfg?.offsetY ?? 0)/units}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propPinOffsetY', (cfg?.offsetY ?? 0)/units)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propAlignment'))}</label>
-          <select class="form-input" id="propPinAlignment" style="font-size: 11px; padding: 4px 6px;">${[
+          ${this.renderDisplayAlignmentSelect('propPinAlignment', cfg?.alignment ?? '', [
             ['',t('propAlignAuto')],['start',t('propAlignStart')],['middle',t('propAlignMiddle')],['end',t('propAlignEnd')]
-          ].map(([value,label])=>`<option value="${value}" ${(cfg?.alignment ?? '')===value?'selected':''}>${label}</option>`).join('')}</select>
+          ])}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propRotation'))}</label>
-          <select class="form-input" id="propPinRotation" style="font-size: 11px; padding: 4px 6px;">${[0,90,180,270].map(value=>`<option value="${value}" ${(cfg?.rotation ?? 0)===value?'selected':''}>${value}°</option>`).join('')}</select>
+          ${this.renderDisplayRotationSelect('propPinRotation', cfg?.rotation ?? 0)}
         </div>
         <div>
           <label class="form-label" style="font-size: 10px;">${escapeSvg(t('propFontSize'))}</label>
-          <input type="number" min="0.1" max="20" step="0.1" id="propPinFontSize" class="form-input" value="${fontVal}" style="font-size: 11px; padding: 4px 6px;">
+          ${this.renderDisplayNumberInput('propPinFontSize', fontVal, '0.1', 0.1, 20)}
         </div>
       </div>
     </div>`;
@@ -941,6 +1013,10 @@ export class PropertiesDialog {
       if (target?.id) this.dirtyFields.add(target.id);
       if (target?.dataset?.pinId) this.dirtyFields.add('pin:' + target.dataset.pinId);
       if (target?.dataset?.sharedProperty) this.dirtyFields.add(target.dataset.sharedProperty);
+      if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+        target.removeAttribute('data-indeterminate');
+        target.indeterminate = false;
+      }
     };
     modal.addEventListener('input', markDirty);
     modal.addEventListener('change', markDirty);
@@ -1046,44 +1122,153 @@ export class PropertiesDialog {
         }
       }
 
-      // Font sizes
+      if (this.resetPositionsTriggered) {
+        delete c.bmkPosition;
+        delete c.functionTextPosition;
+        delete c.additionalTextPosition;
+        delete c.technicalDataPosition;
+        delete c.crossRefPosition;
+        delete c.pinLabelPosition;
+      }
+
+      // BMK Position & Layout
+      if (this.dirtyFields.has('propBmkVisible')) {
+        c.bmkPosition = { ...c.bmkPosition, visible: this.component.bmkPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propBmkPreset') && this.component.bmkPosition?.preset) {
+        c.bmkPosition = { ...c.bmkPosition, preset: this.component.bmkPosition.preset, ...(this.component.bmkPosition.preset === 'auto' ? { alignment: 'end' } : {}) };
+      }
+      if (this.dirtyFields.has('propBmkOffsetX')) {
+        c.bmkPosition = { ...c.bmkPosition, offsetX: this.component.bmkPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propBmkOffsetY')) {
+        c.bmkPosition = { ...c.bmkPosition, offsetY: this.component.bmkPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propBmkAlignment') && this.component.bmkPosition?.alignment) {
+        c.bmkPosition = { ...c.bmkPosition, alignment: this.component.bmkPosition.alignment };
+      }
+      if (this.dirtyFields.has('propBmkRotation') && this.component.bmkPosition?.rotation !== undefined) {
+        c.bmkPosition = { ...c.bmkPosition, rotation: this.component.bmkPosition.rotation };
+      }
       if (this.dirtyFields.has('propBmkFontSize') && this.component.bmkPosition?.fontSize) {
         c.bmkPosition = { ...c.bmkPosition, fontSize: this.component.bmkPosition.fontSize };
+      }
+
+      // FunctionText Position & Layout
+      if (this.dirtyFields.has('propFnVisible')) {
+        c.functionTextPosition = { ...c.functionTextPosition, visible: this.component.functionTextPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propFnPreset') && this.component.functionTextPosition?.preset) {
+        c.functionTextPosition = { ...c.functionTextPosition, preset: this.component.functionTextPosition.preset, ...(this.component.functionTextPosition.preset === 'auto' ? { alignment: 'end' } : {}) };
+      }
+      if (this.dirtyFields.has('propFnOffsetX')) {
+        c.functionTextPosition = { ...c.functionTextPosition, offsetX: this.component.functionTextPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propFnOffsetY')) {
+        c.functionTextPosition = { ...c.functionTextPosition, offsetY: this.component.functionTextPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propFnAlignment') && this.component.functionTextPosition?.alignment) {
+        c.functionTextPosition = { ...c.functionTextPosition, alignment: this.component.functionTextPosition.alignment };
+      }
+      if (this.dirtyFields.has('propFnRotation') && this.component.functionTextPosition?.rotation !== undefined) {
+        c.functionTextPosition = { ...c.functionTextPosition, rotation: this.component.functionTextPosition.rotation };
       }
       if (this.dirtyFields.has('propFnFontSize') && this.component.functionTextPosition?.fontSize) {
         c.functionTextPosition = { ...c.functionTextPosition, fontSize: this.component.functionTextPosition.fontSize };
       }
-      if (this.dirtyFields.has('propAdditionalFontSize') && this.component.additionalTextPosition?.fontSize) {
-        c.additionalTextPosition = { ...c.additionalTextPosition, fontSize: this.component.additionalTextPosition.fontSize };
+
+      // TechnicalData Position & Layout
+      if (this.dirtyFields.has('propTechVisible')) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, visible: this.component.technicalDataPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propTechPreset') && this.component.technicalDataPosition?.preset) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, preset: this.component.technicalDataPosition.preset, ...(this.component.technicalDataPosition.preset === 'auto' ? { alignment: 'end' } : {}) };
+      }
+      if (this.dirtyFields.has('propTechOffsetX')) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, offsetX: this.component.technicalDataPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propTechOffsetY')) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, offsetY: this.component.technicalDataPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propTechAlignment') && this.component.technicalDataPosition?.alignment) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, alignment: this.component.technicalDataPosition.alignment };
+      }
+      if (this.dirtyFields.has('propTechRotation') && this.component.technicalDataPosition?.rotation !== undefined) {
+        c.technicalDataPosition = { ...c.technicalDataPosition, rotation: this.component.technicalDataPosition.rotation };
       }
       if (this.dirtyFields.has('propTechFontSize') && this.component.technicalDataPosition?.fontSize) {
         c.technicalDataPosition = { ...c.technicalDataPosition, fontSize: this.component.technicalDataPosition.fontSize };
       }
+
+      // AdditionalText Position & Layout
+      if (this.dirtyFields.has('propAdditionalVisible')) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, visible: this.component.additionalTextPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propAdditionalPreset') && this.component.additionalTextPosition?.preset) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, preset: this.component.additionalTextPosition.preset, ...(this.component.additionalTextPosition.preset === 'auto' ? { alignment: 'end' } : {}) };
+      }
+      if (this.dirtyFields.has('propAdditionalOffsetX')) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, offsetX: this.component.additionalTextPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propAdditionalOffsetY')) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, offsetY: this.component.additionalTextPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propAdditionalAlignment') && this.component.additionalTextPosition?.alignment) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, alignment: this.component.additionalTextPosition.alignment };
+      }
+      if (this.dirtyFields.has('propAdditionalRotation') && this.component.additionalTextPosition?.rotation !== undefined) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, rotation: this.component.additionalTextPosition.rotation };
+      }
+      if (this.dirtyFields.has('propAdditionalFontSize') && this.component.additionalTextPosition?.fontSize) {
+        c.additionalTextPosition = { ...c.additionalTextPosition, fontSize: this.component.additionalTextPosition.fontSize };
+      }
+
+      // CrossRef Position & Layout
+      if (this.dirtyFields.has('propCrossRefVisible')) {
+        c.crossRefPosition = { ...c.crossRefPosition, visible: this.component.crossRefPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propCrossRefPreset') && this.component.crossRefPosition?.preset) {
+        c.crossRefPosition = { ...c.crossRefPosition, preset: this.component.crossRefPosition.preset };
+      }
+      if (this.dirtyFields.has('propCrossRefOffsetX')) {
+        c.crossRefPosition = { ...c.crossRefPosition, offsetX: this.component.crossRefPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propCrossRefOffsetY')) {
+        c.crossRefPosition = { ...c.crossRefPosition, offsetY: this.component.crossRefPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propCrossRefAlignment')) {
+        c.crossRefPosition = { ...c.crossRefPosition, alignment: this.component.crossRefPosition?.alignment };
+      }
+      if (this.dirtyFields.has('propCrossRefRotation') && this.component.crossRefPosition?.rotation !== undefined) {
+        c.crossRefPosition = { ...c.crossRefPosition, rotation: this.component.crossRefPosition.rotation };
+      }
       if (this.dirtyFields.has('propCrossRefFontSize') && this.component.crossRefFontSize) {
         c.crossRefFontSize = this.component.crossRefFontSize;
+        if (c.crossRefPosition) c.crossRefPosition.fontSize = this.component.crossRefFontSize;
+      }
+
+      // Pin Labels Position & Layout
+      if (this.dirtyFields.has('propPinVisible')) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, visible: this.component.pinLabelPosition?.visible !== false, visibilityExplicit: true };
+      }
+      if (this.dirtyFields.has('propPinPreset') && this.component.pinLabelPosition?.preset) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, preset: this.component.pinLabelPosition.preset };
+      }
+      if (this.dirtyFields.has('propPinOffsetX')) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, offsetX: this.component.pinLabelPosition?.offsetX ?? 0 };
+      }
+      if (this.dirtyFields.has('propPinOffsetY')) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, offsetY: this.component.pinLabelPosition?.offsetY ?? 0 };
+      }
+      if (this.dirtyFields.has('propPinAlignment')) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, alignment: this.component.pinLabelPosition?.alignment };
+      }
+      if (this.dirtyFields.has('propPinRotation') && this.component.pinLabelPosition?.rotation !== undefined) {
+        c.pinLabelPosition = { ...c.pinLabelPosition, rotation: this.component.pinLabelPosition.rotation };
       }
       if (this.dirtyFields.has('propPinFontSize') && this.component.pinLabelFontSize) {
         c.pinLabelFontSize = this.component.pinLabelFontSize;
-      }
-
-      // Positions & Presets & Visibilities
-      if ([...this.dirtyFields].some(f => f.startsWith('propBmk') && f !== 'propBmk' && f !== 'propBmkFontSize')) {
-        c.bmkPosition = { ...c.bmkPosition, ...this.component.bmkPosition };
-      }
-      if ([...this.dirtyFields].some(f => f.startsWith('propFn') && f !== 'propFn' && f !== 'propFnFontSize')) {
-        c.functionTextPosition = { ...c.functionTextPosition, ...this.component.functionTextPosition };
-      }
-      if ([...this.dirtyFields].some(f => f.startsWith('propTech') && f !== 'propTech' && f !== 'propTechFontSize')) {
-        c.technicalDataPosition = { ...c.technicalDataPosition, ...this.component.technicalDataPosition };
-      }
-      if ([...this.dirtyFields].some(f => f.startsWith('propAdditional') && f !== 'propAdditional' && f !== 'propAdditionalFontSize')) {
-        c.additionalTextPosition = { ...c.additionalTextPosition, ...this.component.additionalTextPosition };
-      }
-      if ([...this.dirtyFields].some(f => f.startsWith('propCrossRef') && f !== 'propCrossRef' && f !== 'propCrossRefFontSize')) {
-        c.crossRefPosition = { ...c.crossRefPosition, ...this.component.crossRefPosition };
-      }
-      if ([...this.dirtyFields].some(f => f.startsWith('propPin') && f !== 'propPin' && f !== 'propPinFontSize')) {
-        c.pinLabelPosition = { ...c.pinLabelPosition, ...this.component.pinLabelPosition };
+        if (c.pinLabelPosition) c.pinLabelPosition.fontSize = this.component.pinLabelFontSize;
       }
 
       // DeviceBox
@@ -1179,6 +1364,12 @@ export class PropertiesDialog {
       { key: 'additionalVisible', label: 'Zusatztext sichtbar', group: 'vis', type: 'checkbox' },
       { key: 'crossRefVisible', label: 'Querverweise sichtbar', group: 'vis', type: 'checkbox' },
       { key: 'pinVisible', label: 'Anschlüsse / Adern sichtbar', group: 'vis', type: 'checkbox' },
+      { key: 'bmkPreset', label: 'BMK Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'fnPreset', label: 'Funktionstext Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'techPreset', label: 'Technische Daten Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottomUnderFn')], ['top', t('propPresetTop')], ['right', t('propPresetRight')], ['left', t('propPresetLeft')], ['custom', t('propPresetCustom')]] },
+      { key: 'additionalPreset', label: 'Zusatztext Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'crossRefPreset', label: 'Querverweis Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
+      { key: 'pinPreset', label: 'Anschluss-Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
 
       // Kasten / Rahmen
       { key: 'boxLineWidth', label: t('boxLabelLineWidth') + ' (mm)', group: 'box', type: 'number' },
@@ -1391,6 +1582,10 @@ export class PropertiesDialog {
 
     // Live update on display tab controls
     if (this.activeTab === 'display') {
+      modal.querySelectorAll('input[type="checkbox"][data-indeterminate="true"]').forEach(el => {
+        (el as HTMLInputElement).indeterminate = true;
+      });
+
       const liveInputs = modal.querySelectorAll('input, select, textarea');
       liveInputs.forEach(input => {
         const refresh = () => {
@@ -1407,12 +1602,24 @@ export class PropertiesDialog {
 
       // Reset positions button
       modal.querySelector('#btnResetPositions')?.addEventListener('click', () => {
+        this.resetPositionsTriggered = true;
+        this.dirtyFields.add('resetPositions');
         delete this.component.bmkPosition;
         delete this.component.functionTextPosition;
         delete this.component.additionalTextPosition;
         delete this.component.technicalDataPosition;
         delete this.component.crossRefPosition;
         delete this.component.pinLabelPosition;
+        if (this.isMulti) {
+          for (const c of this.components) {
+            delete c.bmkPosition;
+            delete c.functionTextPosition;
+            delete c.additionalTextPosition;
+            delete c.technicalDataPosition;
+            delete c.crossRefPosition;
+            delete c.pinLabelPosition;
+          }
+        }
         const content = modal.querySelector('#propTabContent');
         if (content) {
           content.innerHTML = this.renderActiveTabContent();

@@ -187,3 +187,76 @@ assert.equal(savedMulti[1].functionText, 'Gemeinsamer Antrieb', 'Edited function
 assert.equal(savedMulti[0].higherLevelFunction, '=ANLAGE1', 'Edited higherLevelFunction is applied to first component');
 assert.equal(savedMulti[1].higherLevelFunction, '=ANLAGE1', 'Edited higherLevelFunction is applied to second component');
 console.log('✓ Multi-component properties editing applies dirty fields across all components and preserves differing properties');
+
+// Multi-component label & display tab batch editing test
+const multiCompLabel1: PlacedComponent = {
+  id: 'cl1', symbolId: symbol.id, bmk: '-K1', functionText: 'Antrieb 1',
+  x: 10, y: 20, rotation: 0, pins: {},
+  bmkPosition: { preset: 'top', offsetX: 10, offsetY: 2, visible: true, alignment: 'start', rotation: 0, fontSize: 10 },
+  functionTextPosition: { preset: 'bottom', offsetX: 0, offsetY: 5, visible: true, alignment: 'start', rotation: 0, fontSize: 8 },
+  pinLabelPosition: { preset: 'auto', offsetX: 0, offsetY: 0, visible: true, alignment: 'start', rotation: 0, fontSize: 6.5 }
+};
+const multiCompLabel2: PlacedComponent = {
+  id: 'cl2', symbolId: symbol.id, bmk: '-K2', functionText: 'Antrieb 2',
+  x: 50, y: 20, rotation: 0, pins: {},
+  bmkPosition: { preset: 'bottom', offsetX: 20, offsetY: -3, visible: false, alignment: 'end', rotation: 90, fontSize: 14 },
+  functionTextPosition: { preset: 'bottom', offsetX: 0, offsetY: 5, visible: true, alignment: 'start', rotation: 0, fontSize: 8 },
+  pinLabelPosition: { preset: 'auto', offsetX: 0, offsetY: 0, visible: true, alignment: 'start', rotation: 0, fontSize: 6.5 }
+};
+let savedLabelMulti: PlacedComponent[] = [];
+const multiLabelDialog = new PropertiesDialog([multiCompLabel1, multiCompLabel2], project, {
+  onSave: () => undefined,
+  onSaveMultiple: (list) => { savedLabelMulti = list; }
+}) as any;
+
+assert(multiLabelDialog.differingFields.has('propBmkPreset'), 'Differing BMK preset is flagged');
+assert(multiLabelDialog.differingFields.has('propBmkOffsetX'), 'Differing BMK offsetX is flagged');
+assert(multiLabelDialog.differingFields.has('propBmkVisible'), 'Differing BMK visible is flagged');
+assert(multiLabelDialog.differingFields.has('propBmkFontSize'), 'Differing BMK fontSize is flagged');
+assert(!multiLabelDialog.differingFields.has('propFnPreset'), 'Identical functionText preset is not flagged');
+assert(!multiLabelDialog.differingFields.has('propFnFontSize'), 'Identical functionText fontSize is not flagged');
+
+multiLabelDialog.activeTab = 'display';
+const displayTabHtml = multiLabelDialog.renderActiveTabContent() as string;
+assert.match(displayTabHtml, /id="propBmkPreset"[\s\S]*— \(Different [Vv]alues\) —/, 'Differing BMK preset has different values placeholder option');
+assert.match(displayTabHtml, /id="propBmkOffsetX"[^>]*placeholder="Different [Vv]alues"/, 'Differing BMK offsetX has empty value with different values placeholder');
+assert.match(displayTabHtml, /id="propBmkVisible"[^>]*data-indeterminate="true"/, 'Differing BMK visible has data-indeterminate');
+assert.match(displayTabHtml, /id="propFnPreset"[\s\S]*<option value="bottom" selected>/, 'Identical functionText preset is selected');
+
+// 1. Batch change ONLY BMK Preset to 'top_left' and BMK FontSize to 16
+multiLabelDialog.component.bmkPosition = {
+  ...multiLabelDialog.component.bmkPosition,
+  preset: 'top_left',
+  fontSize: 16 * (project.drawingUnitsPerMm ?? 1)
+};
+multiLabelDialog.dirtyFields.add('propBmkPreset');
+multiLabelDialog.dirtyFields.add('propBmkFontSize');
+
+const dummyModal = { querySelector: () => null, querySelectorAll: () => [] };
+multiLabelDialog.saveChanges(dummyModal);
+
+assert.equal(savedLabelMulti.length, 2);
+// Preset and FontSize were changed on both components
+assert.equal(savedLabelMulti[0].bmkPosition?.preset, 'top_left', 'BMK preset applied to comp 1');
+assert.equal(savedLabelMulti[1].bmkPosition?.preset, 'top_left', 'BMK preset applied to comp 2');
+assert.equal(savedLabelMulti[0].bmkPosition?.fontSize, 16 * (project.drawingUnitsPerMm ?? 1), 'BMK fontSize applied to comp 1');
+assert.equal(savedLabelMulti[1].bmkPosition?.fontSize, 16 * (project.drawingUnitsPerMm ?? 1), 'BMK fontSize applied to comp 2');
+// But unedited individual offsets and visibilities MUST be preserved!
+assert.equal(savedLabelMulti[0].bmkPosition?.offsetX, 10, 'Comp 1 untouched offsetX 10 preserved');
+assert.equal(savedLabelMulti[1].bmkPosition?.offsetX, 20, 'Comp 2 untouched offsetX 20 preserved');
+assert.equal(savedLabelMulti[0].bmkPosition?.offsetY, 2, 'Comp 1 untouched offsetY 2 preserved');
+assert.equal(savedLabelMulti[1].bmkPosition?.offsetY, -3, 'Comp 2 untouched offsetY -3 preserved');
+assert.equal(savedLabelMulti[0].bmkPosition?.visible, true, 'Comp 1 untouched visible true preserved');
+assert.equal(savedLabelMulti[1].bmkPosition?.visible, false, 'Comp 2 untouched visible false preserved');
+assert.equal(savedLabelMulti[0].bmkPosition?.rotation, 0, 'Comp 1 untouched rotation 0 preserved');
+assert.equal(savedLabelMulti[1].bmkPosition?.rotation, 90, 'Comp 2 untouched rotation 90 preserved');
+
+// 2. Batch reset label positions across all selected components
+multiLabelDialog.resetPositionsTriggered = true;
+multiLabelDialog.dirtyFields.clear();
+multiLabelDialog.saveChanges(dummyModal);
+assert.equal(savedLabelMulti[0].bmkPosition, undefined, 'Comp 1 bmkPosition reset');
+assert.equal(savedLabelMulti[1].bmkPosition, undefined, 'Comp 2 bmkPosition reset');
+assert.equal(savedLabelMulti[0].functionTextPosition, undefined, 'Comp 1 functionTextPosition reset');
+assert.equal(savedLabelMulti[1].functionTextPosition, undefined, 'Comp 2 functionTextPosition reset');
+console.log('✓ Multi-component label layout batch editing applies granular dirty fields and preserves individual overrides');

@@ -29,6 +29,11 @@ export type SharedProperty =
   | 'crossRefVisible'
   | 'pinVisible'
   | 'bmkPreset'
+  | 'fnPreset'
+  | 'techPreset'
+  | 'additionalPreset'
+  | 'crossRefPreset'
+  | 'pinPreset'
   | 'posX'
   | 'posY'
   | 'width'
@@ -61,7 +66,8 @@ const COMPONENT_ALWAYS_PROPS = new Set<SharedProperty>([
   'higherLevel', 'location', 'manufacturer', 'articleNumber',
   'bmkFontSize', 'functionFontSize', 'additionalFontSize', 'technicalFontSize', 'crossRefFontSize', 'pinFontSize',
   'bmkVisible', 'fnVisible', 'techVisible', 'additionalVisible', 'crossRefVisible', 'pinVisible',
-  'bmkPreset', 'posX', 'posY', 'rotation', 'compShowLabels', 'compScale',
+  'bmkPreset', 'fnPreset', 'techPreset', 'additionalPreset', 'crossRefPreset', 'pinPreset',
+  'posX', 'posY', 'rotation', 'compShowLabels', 'compScale',
 ]);
 const COMPONENT_DEVICE_BOX_PROPS = new Set<SharedProperty>(['boxLineStyle', 'boxLineWidth', 'width', 'height']);
 const CABLE_PROPS = new Set<SharedProperty>([
@@ -134,6 +140,11 @@ export function sharedPropertyValue(page:Page,project:Project,s:ElementSelection
     else if(key==='crossRefVisible')values.push(String(c.crossRefPosition?.visible !== false));
     else if(key==='pinVisible')values.push(String(c.pinLabelPosition?.visible !== false));
     else if(key==='bmkPreset')values.push(c.bmkPosition?.preset ?? 'auto');
+    else if(key==='fnPreset')values.push(c.functionTextPosition?.preset ?? 'auto');
+    else if(key==='techPreset')values.push(c.technicalDataPosition?.preset ?? 'auto');
+    else if(key==='additionalPreset')values.push(c.additionalTextPosition?.preset ?? 'auto');
+    else if(key==='crossRefPreset')values.push(c.crossRefPosition?.preset ?? 'auto');
+    else if(key==='pinPreset')values.push(c.pinLabelPosition?.preset ?? 'auto');
     else if(key==='posX')values.push(c.x/units);
     else if(key==='posY')values.push(c.y/units);
     else if(key==='rotation')values.push(c.rotation ?? 0);
@@ -249,10 +260,11 @@ export function applySelectionProperties(page:Page,project:Project,s:ElementSele
         c[propKey]={...c[propKey],visible:vis,visibilityExplicit:true};
         changed=true;
       }
-    }else if(key==='bmkPreset'){
+    }else if(key==='bmkPreset'||key==='fnPreset'||key==='techPreset'||key==='additionalPreset'||key==='crossRefPreset'||key==='pinPreset'){
+      const propKey=key==='bmkPreset'?'bmkPosition':key==='fnPreset'?'functionTextPosition':key==='techPreset'?'technicalDataPosition':key==='additionalPreset'?'additionalTextPosition':key==='crossRefPreset'?'crossRefPosition':'pinLabelPosition';
       const preset=value as TextFormatConfig['preset'];
-      if((c.bmkPosition?.preset??'auto')!==preset){
-        c.bmkPosition={...c.bmkPosition,preset,...(preset==='auto'?{alignment:'end'}:{})};
+      if((c[propKey]?.preset??'auto')!==preset){
+        c[propKey]={...c[propKey],preset,...(preset==='auto'?{alignment:key==='crossRefPreset'||key==='pinPreset'?'start':'end'}:{})};
         changed=true;
       }
     }else if(key==='posX'){
