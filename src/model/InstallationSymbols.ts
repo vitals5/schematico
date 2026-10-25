@@ -888,6 +888,67 @@ export const INSTALLATION_SYMBOLS: SymbolDefinition[] = [
     description: 'Decken-Einbaulautsprecher (Multiroom / ELA / Smart Home Audio)'
   },
   {
+    id: 'inst_water_detector',
+    name: 'Wassermelder / Leckagemelder',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-B',
+    defaultFunctionText: 'Wassermelder',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['wassermelder', 'leckagemelder', 'wassersensor', 'feuchtemelder', 'hochwasser', 'water', 'leak'],
+    svgContent: `
+      <rect x="5" y="0" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+      <polygon points="16,3 12.5,9.5 14,12.5 18,12.5 19.5,9.5" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+      <polyline points="8,15.5 11,14 14,15.5 18,14 21,15.5 24,14" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+      <polyline points="8,18.5 11,17 14,18.5 18,17 21,18.5 24,17" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+    `,
+    description: 'Wassermelder / Leckagesensor zur Überwachung von Wasseraustritt (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_camera',
+    name: 'Überwachungskamera / IP-Kamera (Wand)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-B',
+    defaultFunctionText: 'Kamera',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 0 },
+    pins: [],
+    keywords: ['kamera', 'ip-kamera', 'videokamera', 'überwachungskamera', 'cctv', 'poe', 'camera'],
+    svgContent: `
+      <line x1="8" y1="0" x2="24" y2="0" stroke="currentColor" stroke-width="2.2"/>
+      <line x1="16" y1="0" x2="16" y2="5" stroke="currentColor" stroke-width="2"/>
+      <rect x="9" y="5" width="14" height="12" fill="none" stroke="currentColor" stroke-width="2" rx="1.5"/>
+      <circle cx="16" cy="11" r="3" fill="none" stroke="#63b3ed" stroke-width="1.5"/>
+      <polygon points="12,17 20,17 24,24 8,24" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    `,
+    description: 'Überwachungskamera / Netzwerk-Videokamera für Wandmontage (DIN EN 60617-11)'
+  },
+  {
+    id: 'inst_camera_dome',
+    name: 'Dome-Kamera / Deckenkamera (360°)',
+    category: 'installation',
+    standard: 'DIN EN 60617-11',
+    defaultBmkPrefix: '-B',
+    defaultFunctionText: 'Dome-Kamera',
+    width: 32,
+    height: 32,
+    insertionPoint: { x: 16, y: 16 },
+    pins: [],
+    keywords: ['kamera', 'dome', 'deckenkameras', 'ip-kamera', 'überwachungskamera', 'cctv', 'camera'],
+    svgContent: `
+      <circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="16" cy="16" r="5.5" fill="none" stroke="#63b3ed" stroke-width="1.6"/>
+      <circle cx="16" cy="16" r="2" fill="currentColor"/>
+      <polygon points="13,10.5 19,10.5 22,6 10,6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    `,
+    description: 'Decken-Dome-Kamera / 360° IP-Überwachungskamera (DIN EN 60617-11)'
+  },
+  {
     id: 'inst_equipotential',
     name: 'Potenzialausgleichsschiene (PAS)',
     category: 'installation',

@@ -5,7 +5,7 @@ import { prepareProjectPresentation } from '../model/PresentationNaming';
 import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '../model/PlotFrame';
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { rotatedLocalPoint } from '../model/SymbolGeometry';
-import { getAutoSymbolScale, calculateArcControlPoint } from '../model/FloorPlanRenderer';
+import { getAutoSymbolScale, calculateArcControlPoint, computeFloorPlanLegendLayout } from '../model/FloorPlanRenderer';
 import { referenceTargets, splitCrossReferenceLines } from '../model/CrossReferenceNavigation';
 // src/export/PdfExporter.ts
 // Smart Vector PDF Export:
@@ -133,6 +133,9 @@ export class PdfExporter {
       this.renderTexts(doc, page, pageWidthMm, pageHeightMm, options.colorMode);
       this.renderImportedGraphics(doc, page.importedDrawing?.graphics ?? [], pageWidthMm / page.plotFrame.width,
         pageHeightMm / page.plotFrame.height, options.colorMode);
+      if (page.floorPlan) {
+        this.renderFloorPlanLegend(doc, page, project, pageWidthMm, pageHeightMm, options.colorMode);
+      }
     }
 
     // Render Optional Klemmenplan Page
@@ -530,6 +533,114 @@ export class PdfExporter {
         }
       }
     }
+  }
+
+  /**
+   * Renders the automatic symbol legend table on floor plan pages in PDF export
+   */
+  private static renderFloorPlanLegend(
+    doc: jsPDF,
+    page: Page,
+    project: Project,
+    wMm: number,
+    hMm: number,
+    colorMode: 'color' | 'monochrome'
+  ): void {
+    if (!page.floorPlan) return;
+    const lang = project.language ?? 'de';
+    const layout = computeFloorPlanLegendLayout(
+      page.floorPlan,
+      page.components,
+      project,
+      { width: page.plotFrame.width, height: page.plotFrame.height },
+      lang
+    );
+    if (!layout) return;
+
+    const sx = wMm / page.plotFrame.width;
+    const sy = hMm / page.plotFrame.height;
+    const isColor = colorMode === 'color';
+    const { x, y, width, height, columns, rows, colWidth, headerHeight, rowHeight, scale, items, totalCount, showCounts, title } = layout;
+
+    // Outer box
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(isColor ? 74 : 0, isColor ? 85 : 0, isColor ? 104 : 0);
+    doc.setLineWidth(0.3);
+    doc.rect(x * sx, y * sy, width * sx, height * sy, 'FD');
+
+    // Header bar
+    doc.setFillColor(isColor ? 237 : 242, isColor ? 242 : 242, isColor ? 247 : 242);
+    doc.rect(x * sx, y * sy, width * sx, headerHeight * sy, 'FD');
+
+    // Header text
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(4.5, 6.6 * scale * sy * 72 / 25.4));
+    doc.setTextColor(isColor ? 43 : 0, isColor ? 108 : 0, isColor ? 176 : 0);
+    doc.text(title, (x + 7 * scale) * sx, (y + headerHeight * 0.68) * sy);
+
+    if (showCounts) {
+      const sumLabel = lang === 'en' ? `Total: ${totalCount}` : `Gesamt: ${totalCount}`;
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(Math.max(4, 6.0 * scale * sy * 72 / 25.4));
+      doc.setTextColor(isColor ? 100 : 40, isColor ? 116 : 40, isColor ? 139 : 40);
+      doc.text(sumLabel, (x + width - 6 * scale) * sx, (y + headerHeight * 0.68) * sy, { align: 'right' });
+    }
+
+    // Column dividers
+    doc.setDrawColor(isColor ? 203 : 160, isColor ? 213 : 160, isColor ? 224 : 160);
+    doc.setLineWidth(0.2);
+    for (let c = 1; c < columns; c++) {
+      const cx = (x + c * colWidth) * sx;
+      doc.line(cx, (y + headerHeight) * sy, cx, (y + height) * sy);
+    }
+
+    // Items
+    items.forEach((item, idx) => {
+      const col = Math.floor(idx / rows);
+      const row = idx % rows;
+      const cellX = x + col * colWidth;
+      const cellY = y + headerHeight + row * rowHeight;
+
+      if (row > 0) {
+        doc.setDrawColor(isColor ? 226 : 190, isColor ? 232 : 190, isColor ? 240 : 190);
+        doc.setLineWidth(0.15);
+        doc.line((cellX + 3) * sx, cellY * sy, (cellX + colWidth - 3) * sx, cellY * sy);
+      }
+
+      const sym = item.symbol;
+      const symW = sym.width || 32;
+      const symH = sym.height || 32;
+      const iconBox = 11 * scale;
+      const iconScale = iconBox / Math.max(symW, symH, 1);
+      const iconX = cellX + 11 * scale - (symW * iconScale) / 2;
+      const iconY = cellY + rowHeight / 2 - (symH * iconScale) / 2;
+
+      doc.setDrawColor(0, 0, 0);
+      doc.setFillColor(0, 0, 0);
+      doc.setLineWidth(0.25);
+      if (sym.importedGraphics) {
+        this.renderImportedGraphics(doc, sym.importedGraphics, sx * iconScale, sy * iconScale, colorMode, iconX / iconScale, iconY / iconScale, '#000000');
+      } else {
+        this.drawVectorSymbol(doc, sym.id, iconX * sx, iconY * sy, symW * iconScale * sx, symH * iconScale * sy, sym);
+      }
+
+      const maxLabelChars = Math.max(12, Math.floor((colWidth / scale - (showCounts ? 46 : 26)) / 3.9));
+      const displayLabel = item.name.length > maxLabelChars
+        ? item.name.slice(0, maxLabelChars - 1) + '…'
+        : item.name;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(Math.max(4, 6.6 * scale * sy * 72 / 25.4));
+      doc.setTextColor(0, 0, 0);
+      doc.text(displayLabel, (cellX + 21 * scale) * sx, (cellY + rowHeight * 0.66) * sy);
+
+      if (showCounts) {
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(Math.max(4, 6.6 * scale * sy * 72 / 25.4));
+        doc.setTextColor(isColor ? 43 : 0, isColor ? 108 : 0, isColor ? 176 : 0);
+        doc.text(`${item.count}x`, (cellX + colWidth - 6 * scale) * sx, (cellY + rowHeight * 0.66) * sy, { align: 'right' });
+      }
+    });
   }
 
   /**

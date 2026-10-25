@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { findNearestWall, calculateArcControlPoint, arcWireSvgPath, floorPlanToSvg } from './FloorPlanRenderer';
-import { FloorPlanData, WallSegment } from './types';
+import { findNearestWall, calculateArcControlPoint, arcWireSvgPath, floorPlanToSvg, collectFloorPlanLegendItems, computeFloorPlanLegendLayout, floorPlanLegendToSvg } from './FloorPlanRenderer';
+import { FloorPlanData, PlacedComponent, WallSegment } from './types';
 
 console.log('Testing FloorPlanRenderer...');
 
@@ -126,5 +126,34 @@ assert(tier0Snap, 'Must snap to wall');
 const tier1Snap = findNearestWall({ x: 250, y: 130 }, walls, 50, 50, 16);
 assert(tier1Snap, 'Must snap to wall tier');
 assert(tier1Snap.snappedPoint.y > tier0Snap.snappedPoint.y, 'Tier 1 must be further away from wall than Tier 0');
+
+// 6. Test automatic floor plan symbol legend (including Wassermelder and Kamera symbols)
+const placedComponents: PlacedComponent[] = [
+  { id: 'c1', symbolId: 'inst_water_detector', bmk: '-B1', functionText: 'Wassermelder HWR', x: 120, y: 120, rotation: 0, pins: {} },
+  { id: 'c2', symbolId: 'inst_camera', bmk: '-B2', functionText: 'Kamera Eingang', x: 180, y: 120, rotation: 0, pins: {} },
+  { id: 'c3', symbolId: 'inst_camera', bmk: '-B3', functionText: 'Kamera Terrasse', x: 220, y: 120, rotation: 90, pins: {} },
+  { id: 'c4', symbolId: 'inst_camera_dome', bmk: '-B4', functionText: 'Dome Flur', x: 260, y: 180, rotation: 0, pins: {} }
+];
+const legendItems = collectFloorPlanLegendItems(placedComponents, undefined, 'de');
+assert.equal(legendItems.length, 3, 'Should group 4 placed symbols into 3 unique symbol types');
+assert.equal(legendItems.find(i => i.symbolId === 'inst_water_detector')?.count, 1);
+assert.equal(legendItems.find(i => i.symbolId === 'inst_camera')?.count, 2);
+assert.equal(legendItems.find(i => i.symbolId === 'inst_camera_dome')?.count, 1);
+
+const legendLayout = computeFloorPlanLegendLayout(testPlan, placedComponents, undefined, { width: 1000, height: 700 }, 'de');
+assert(legendLayout, 'Should compute legend layout when visible');
+assert.equal(legendLayout.totalCount, 4);
+assert.equal(legendLayout.columns, 1);
+
+const legendSvg = floorPlanLegendToSvg(testPlan, placedComponents, undefined, { width: 1000, height: 700 }, 'de');
+assert(legendSvg.includes('id="floorPlanLegend"'), 'Should render floorPlanLegend SVG group');
+assert(legendSvg.includes('Wassermelder'), 'Should render Wassermelder name in legend');
+assert(legendSvg.includes('Überwachungskamera'), 'Should render Kamera name in legend');
+assert(legendSvg.includes('2×'), 'Should render count badge 2× for camera');
+
+// Hidden legend returns null/empty
+const hiddenPlan: FloorPlanData = { ...testPlan, legend: { visible: false } };
+assert.equal(computeFloorPlanLegendLayout(hiddenPlan, placedComponents), null);
+assert.equal(floorPlanLegendToSvg(hiddenPlan, placedComponents), '');
 
 console.log('✓ FloorPlanRenderer tests passed successfully!');

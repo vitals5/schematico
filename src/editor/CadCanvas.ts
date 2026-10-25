@@ -24,7 +24,7 @@ import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextP
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
-import { floorPlanToSvg, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
+import { floorPlanToSvg, floorPlanLegendToSvg, computeFloorPlanLegendLayout, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 import { t, getUiLanguage } from '../i18n';
 export type { GridResolution } from '../model/DrawingGrid';
@@ -118,6 +118,7 @@ export class CadCanvas {
   public selectedTextId: string | null = null;
   private wallDrag: { wall: WallSegment; handle: 'start' | 'end' | 'both'; startPos: { x: number; y: number }; startEnd?: { x: number; y: number }; isMovingWholeWall: boolean; mouseStart: { x: number; y: number }; openingsStart?: Record<string, { x: number; y: number }> } | null = null;
   private openingDrag: { opening: WallOpening; startCenter: { x: number; y: number }; mouseStart: { x: number; y: number } } | null = null;
+  private legendDrag: { startX: number; startY: number; mouseStart: { x: number; y: number }; moved: boolean } | null = null;
   private activeImageToPlace?: Omit<PageImage, 'id' | 'x' | 'y'>;
   private multipleSelection?: ElementSelection;
   private selectionWindow?: {start:{x:number;y:number};end:{x:number;y:number};client:{x:number;y:number};moved:boolean;base:ElementSelection;additive:boolean};
@@ -1456,6 +1457,19 @@ export class CadCanvas {
       return;
     }
     if (this.mode === 'cable') { this.placeCablePoint(world); return; }
+    if (this.mode === 'select' && this.activePage.floorPlan && (e.target as Element)?.closest?.('[data-floorplan-legend]')) {
+      const layout = computeFloorPlanLegendLayout(
+        this.activePage.floorPlan,
+        this.activePage.components,
+        this.project,
+        { width: this.activePage.plotFrame.width, height: this.activePage.plotFrame.height },
+        getUiLanguage()
+      );
+      if (layout) {
+        this.legendDrag = { startX: layout.x, startY: layout.y, mouseStart: { ...world }, moved: false };
+        return;
+      }
+    }
     if(this.mode==='select' && this.handleSelectionMouseDown(e,world))return;
     this.clearMultipleSelection();this.selectedImageId=null;this.selectedBoxId=null;this.selectedRoomId=null;
 
@@ -1607,6 +1621,22 @@ export class CadCanvas {
       this.moveElementSelection(dx,dy);return;
     }
     if (this.cableDrag) { this.moveCable(world);return; }
+    if (this.legendDrag && this.activePage.floorPlan) {
+      const dx = world.x - this.legendDrag.mouseStart.x;
+      const dy = world.y - this.legendDrag.mouseStart.y;
+      if (Math.hypot(dx, dy) > 1) {
+        this.legendDrag.moved = true;
+        this.activePage.floorPlan.legend = {
+          ...this.activePage.floorPlan.legend,
+          visible: true,
+          position: 'custom',
+          x: Math.round(this.legendDrag.startX + dx),
+          y: Math.round(this.legendDrag.startY + dy)
+        };
+        this.render();
+      }
+      return;
+    }
 
     if (this.wallDrag) {
       const drag = this.wallDrag;
@@ -1763,6 +1793,12 @@ export class CadCanvas {
       this.render();
     }
     if (this.cableDrag) { const moved=this.cableDrag.moved;this.cableDrag=undefined;if(moved)this.notifyModified();this.render(); }
+    if (this.legendDrag) {
+      const moved = this.legendDrag.moved;
+      this.legendDrag = null;
+      if (moved) this.notifyModified();
+      this.render();
+    }
     if (this.wallDrag) {
       this.wallDrag = null;
       this.notifyModified();
@@ -2519,6 +2555,9 @@ export class CadCanvas {
           ${this.renderTexts()}
           ${drawingToSvg(this.activePage.importedDrawing?.graphics ?? [], { color: '#e2e8f0' })}
         </g>
+
+        <!-- Floor Plan Symbol Legend (Gebäudetechnik / Installation) -->
+        ${this.activePage.floorPlan ? `<g id="floorPlanLegendLayer">${floorPlanLegendToSvg(this.activePage.floorPlan, this.activePage.components, this.project, { width: pageWidth, height: pageHeight }, getUiLanguage())}</g>` : ''}
 
         <!-- Live Autoconnect Previews (Cyan Dashed Guide Lines & Targets) -->
         <g id="autoconnectPreviewLayer">

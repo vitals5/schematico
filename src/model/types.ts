@@ -63,6 +63,16 @@ export interface InstallationArcWire {
   label?: string; // e.g. "NYM-J 3x1.5"
 }
 
+export interface FloorPlanLegendConfig {
+  visible?: boolean;
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'custom';
+  x?: number;
+  y?: number;
+  columns?: 'auto' | 1 | 2 | 3;
+  showCounts?: boolean;
+  scale?: number;
+}
+
 export interface FloorPlanData {
   scale: ScaleCalibration;
   walls: WallSegment[];
@@ -73,6 +83,7 @@ export interface FloorPlanData {
   showRoomLabels?: boolean;
   symbolScale?: number;
   hideSymbolLabels?: boolean;
+  legend?: FloorPlanLegendConfig;
   backgroundImage?: {
     dataUrl: string;
     opacity: number;

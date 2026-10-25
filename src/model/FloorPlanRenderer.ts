@@ -1,8 +1,10 @@
 // src/model/FloorPlanRenderer.ts
 // SVG rendering and wall-snapping calculation for architectural floor plans and curved installation wiring
 
-import { FloorPlanData, WallSegment, WallOpening, RoomDefinition, InstallationArcWire, InstallationCircuit, PlacedComponent } from './types';
-import { escapeSvg } from './ImportedDrawing';
+import { FloorPlanData, WallSegment, WallOpening, RoomDefinition, InstallationArcWire, InstallationCircuit, PlacedComponent, Project, SymbolDefinition } from './types';
+import { drawingToSvg, escapeSvg } from './ImportedDrawing';
+import { getSymbolForComponent } from './symbols';
+import { getLocalizedSymbol, getUiLanguage } from '../i18n';
 
 export interface WallSnapResult {
   wall: WallSegment;
@@ -426,4 +428,202 @@ export function floorPlanToSvg(
   }
 
   return parts.join('\n');
+}
+
+export interface FloorPlanLegendItem {
+  symbolId: string;
+  symbol: SymbolDefinition;
+  name: string;
+  count: number;
+}
+
+export interface FloorPlanLegendLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  columns: number;
+  rows: number;
+  colWidth: number;
+  headerHeight: number;
+  rowHeight: number;
+  scale: number;
+  items: FloorPlanLegendItem[];
+  totalCount: number;
+  showCounts: boolean;
+  title: string;
+}
+
+/**
+ * Collects and counts all unique symbols placed on a floor plan page.
+ */
+export function collectFloorPlanLegendItems(
+  components: PlacedComponent[],
+  project?: Project,
+  lang: 'de' | 'en' = getUiLanguage()
+): FloorPlanLegendItem[] {
+  const map = new Map<string, FloorPlanLegendItem>();
+  for (const comp of components || []) {
+    const sym = getSymbolForComponent(comp, project);
+    if (!sym) continue;
+    const existing = map.get(sym.id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      const loc = getLocalizedSymbol(sym, lang);
+      map.set(sym.id, {
+        symbolId: sym.id,
+        symbol: sym,
+        name: loc.name || sym.name,
+        count: 1
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Calculates the bounding box and table cell metrics for the floor plan symbol legend.
+ */
+export function computeFloorPlanLegendLayout(
+  plan: FloorPlanData,
+  components: PlacedComponent[],
+  project?: Project,
+  pageBounds: { width: number; height: number } = { width: 1000, height: 700 },
+  lang: 'de' | 'en' = getUiLanguage()
+): FloorPlanLegendLayout | null {
+  const cfg = plan.legend;
+  if (cfg?.visible === false) return null;
+
+  const items = collectFloorPlanLegendItems(components, project, lang);
+  if (items.length === 0) return null;
+
+  const scale = cfg?.scale ?? 1;
+  const rawCols = cfg?.columns && cfg.columns !== 'auto'
+    ? Number(cfg.columns)
+    : (items.length > 8 ? 2 : 1);
+  const columns = Math.max(1, Math.min(3, Math.min(items.length, rawCols)));
+  const rows = Math.ceil(items.length / columns);
+  const showCounts = cfg?.showCounts !== false;
+
+  const headerHeight = 16 * scale;
+  const rowHeight = 15 * scale;
+  const maxChars = Math.max(18, ...items.map(i => i.name.length));
+  const colWidth = Math.max(150, Math.min(235, 28 + maxChars * 4.2 + (showCounts ? 24 : 6))) * scale;
+  const width = columns * colWidth;
+  const height = headerHeight + rows * rowHeight + 3 * scale;
+
+  const pos = cfg?.position ?? 'bottom-right';
+  const marginX = 16;
+  const topY = 18;
+  const bottomY = pageBounds.height - 44; // Above DIN A3 title block
+
+  let x = pageBounds.width - marginX - width;
+  let y = bottomY - height;
+
+  if (pos === 'bottom-left') {
+    x = marginX;
+    y = bottomY - height;
+  } else if (pos === 'top-right') {
+    x = pageBounds.width - marginX - width;
+    y = topY;
+  } else if (pos === 'top-left') {
+    x = marginX;
+    y = topY;
+  } else if (pos === 'custom' && typeof cfg?.x === 'number' && typeof cfg?.y === 'number') {
+    x = Math.max(4, Math.min(pageBounds.width - 40, cfg.x));
+    y = Math.max(12, Math.min(pageBounds.height - 30, cfg.y));
+  }
+
+  const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+  const title = lang === 'en' ? 'SYMBOL LEGEND' : 'LEGENDE / ZEICHENERKLÄRUNG';
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    columns,
+    rows,
+    colWidth,
+    headerHeight,
+    rowHeight,
+    scale,
+    items,
+    totalCount,
+    showCounts,
+    title
+  };
+}
+
+/**
+ * Renders the floor plan symbol legend as a draggable vector SVG overlay inside the sheet.
+ */
+export function floorPlanLegendToSvg(
+  plan: FloorPlanData,
+  components: PlacedComponent[],
+  project?: Project,
+  pageBounds: { width: number; height: number } = { width: 1000, height: 700 },
+  lang: 'de' | 'en' = getUiLanguage()
+): string {
+  const layout = computeFloorPlanLegendLayout(plan, components, project, pageBounds, lang);
+  if (!layout) return '';
+
+  const { x, y, width, height, columns, rows, colWidth, headerHeight, rowHeight, scale, items, totalCount, showCounts, title } = layout;
+  const cells: string[] = [];
+
+  for (let c = 1; c < columns; c++) {
+    const cx = (c * colWidth).toFixed(1);
+    cells.push(`<line x1="${cx}" y1="${headerHeight.toFixed(1)}" x2="${cx}" y2="${height.toFixed(1)}" stroke="#354052" stroke-width="0.8"/>`);
+  }
+
+  items.forEach((item, idx) => {
+    const col = Math.floor(idx / rows);
+    const row = idx % rows;
+    const cellX = col * colWidth;
+    const cellY = headerHeight + row * rowHeight;
+
+    if (row > 0) {
+      cells.push(
+        `<line x1="${(cellX + 3).toFixed(1)}" y1="${cellY.toFixed(1)}" x2="${(cellX + colWidth - 3).toFixed(1)}" y2="${cellY.toFixed(1)}" stroke="#283141" stroke-width="0.6"/>`
+      );
+    }
+
+    const sym = item.symbol;
+    const symW = sym.width || 32;
+    const symH = sym.height || 32;
+    const iconBox = 11 * scale;
+    const iconScale = iconBox / Math.max(symW, symH, 1);
+    const iconX = cellX + 11 * scale - (symW * iconScale) / 2;
+    const iconY = cellY + rowHeight / 2 - (symH * iconScale) / 2;
+    const symMarkup = sym.importedGraphics
+      ? drawingToSvg(sym.importedGraphics, { color: '#e2e8f0' })
+      : sym.svgContent;
+
+    const maxLabelChars = Math.max(12, Math.floor((colWidth / scale - (showCounts ? 46 : 26)) / 3.9));
+    const displayLabel = item.name.length > maxLabelChars
+      ? item.name.slice(0, maxLabelChars - 1) + '…'
+      : item.name;
+
+    cells.push(`
+      <g transform="translate(${iconX.toFixed(2)}, ${iconY.toFixed(2)}) scale(${iconScale.toFixed(4)})" color="#e2e8f0">
+        ${symMarkup}
+      </g>
+      <text x="${(cellX + 21 * scale).toFixed(1)}" y="${(cellY + rowHeight * 0.66).toFixed(1)}" font-size="${(6.8 * scale).toFixed(2)}" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" fill="#e2e8f0">${escapeSvg(displayLabel)}</text>
+      ${showCounts ? `<text x="${(cellX + colWidth - 6 * scale).toFixed(1)}" y="${(cellY + rowHeight * 0.66).toFixed(1)}" font-size="${(6.8 * scale).toFixed(2)}" font-family="monospace" font-weight="bold" fill="#63b3ed" text-anchor="end">${item.count}×</text>` : ''}
+    `);
+  });
+
+  const sumLabel = lang === 'en' ? `Total: ${totalCount}` : `Gesamt: ${totalCount}`;
+
+  return `
+    <g id="floorPlanLegend" class="floorplan-legend" data-floorplan-legend="true" transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})" style="cursor: move; user-select: none;">
+      <rect x="0" y="0" width="${width.toFixed(1)}" height="${height.toFixed(1)}" rx="3" fill="rgba(20, 25, 35, 0.94)" stroke="#4a5568" stroke-width="1.1"/>
+      <rect x="0" y="0" width="${width.toFixed(1)}" height="${headerHeight.toFixed(1)}" rx="3" fill="#232d3d"/>
+      <line x1="0" y1="${headerHeight.toFixed(1)}" x2="${width.toFixed(1)}" y2="${headerHeight.toFixed(1)}" stroke="#4a5568" stroke-width="0.9"/>
+      <text x="${(7 * scale).toFixed(1)}" y="${(headerHeight * 0.68).toFixed(1)}" font-size="${(6.8 * scale).toFixed(2)}" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-weight="bold" letter-spacing="0.4" fill="#90cdf4">${escapeSvg(title)}</text>
+      ${showCounts ? `<text x="${(width - 6 * scale).toFixed(1)}" y="${(headerHeight * 0.68).toFixed(1)}" font-size="${(6.2 * scale).toFixed(2)}" font-family="monospace" fill="#a0aec0" text-anchor="end">${escapeSvg(sumLabel)}</text>` : ''}
+      ${cells.join('\n')}
+    </g>
+  `;
 }

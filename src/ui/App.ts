@@ -43,6 +43,7 @@ import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { MacroManager, WindowMacro, PageMacro, MacroItem } from '../model/MacroManager';
 import { MacroSelectionDialog } from './MacroSelectionDialog';
 import { FloorPlanImportDialog } from './FloorPlanImportDialog';
+import { collectFloorPlanLegendItems } from '../model/FloorPlanRenderer';
 
 export class App {
   private project!: Project;
@@ -4105,6 +4106,73 @@ export class App {
                 <button type="button" class="btn btn-sm btn-primary" id="btnApplyFloorPlanScale" style="font-size:10px;padding:3px 8px;background:#3182ce;justify-content:center;" title="${t('fpRescaleBtnTitle')}">${t('fpRescaleBtn')}</button>
               </div>
             </div>
+
+            <!-- Symbol Legend Settings & Live Summary -->
+            ${(() => {
+              const isEn = getUiLanguage() === 'en';
+              const leg = activePage.floorPlan.legend ?? {};
+              const legVisible = leg.visible !== false;
+              const legCounts = leg.showCounts !== false;
+              const legPos = leg.position ?? 'bottom-right';
+              const legCols = String(leg.columns ?? 'auto');
+              const legScale = String(leg.scale ?? 1);
+              const legendItems = collectFloorPlanLegendItems(activePage.components, this.project, getUiLanguage());
+              return `
+                <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-top:8px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;">📋 ${isEn ? 'Symbol Legend' : 'Symbollegende'}</span>
+                    <span style="font-size:10px;color:#68d391;font-family:monospace;">${legendItems.length} ${isEn ? 'types' : 'Typen'}</span>
+                  </div>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;margin-bottom:5px;">
+                    <input type="checkbox" id="chkFloorPlanLegendVisible" ${legVisible ? 'checked' : ''} style="accent-color:#3182ce;" />
+                    <span>${isEn ? 'Show symbol legend on sheet' : 'Legende auf Grundriss-Blatt anzeigen'}</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:#cbd5e0;margin-bottom:6px;">
+                    <input type="checkbox" id="chkFloorPlanLegendCounts" ${legCounts ? 'checked' : ''} style="accent-color:#3182ce;" />
+                    <span>${isEn ? 'Show symbol counts (× N)' : 'Stückzahl je Symbol anzeigen (× N)'}</span>
+                  </label>
+                  <div style="display:grid;grid-template-columns:1.2fr 0.9fr 0.8fr;gap:5px;margin-bottom:6px;">
+                    <div>
+                      <label style="display:block;font-size:9px;color:#a0aec0;margin-bottom:2px;">${isEn ? 'Position' : 'Position'}</label>
+                      <select id="selFloorPlanLegendPos" class="form-input" style="font-size:10px;padding:3px 4px;width:100%;">
+                        <option value="bottom-right" ${legPos === 'bottom-right' ? 'selected' : ''}>${isEn ? 'Bottom Right' : 'Unten rechts'}</option>
+                        <option value="bottom-left" ${legPos === 'bottom-left' ? 'selected' : ''}>${isEn ? 'Bottom Left' : 'Unten links'}</option>
+                        <option value="top-right" ${legPos === 'top-right' ? 'selected' : ''}>${isEn ? 'Top Right' : 'Oben rechts'}</option>
+                        <option value="top-left" ${legPos === 'top-left' ? 'selected' : ''}>${isEn ? 'Top Left' : 'Oben links'}</option>
+                        <option value="custom" ${legPos === 'custom' ? 'selected' : ''}>${isEn ? 'Custom (Drag)' : 'Frei (Verschoben)'}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:9px;color:#a0aec0;margin-bottom:2px;">${isEn ? 'Columns' : 'Spalten'}</label>
+                      <select id="selFloorPlanLegendCols" class="form-input" style="font-size:10px;padding:3px 4px;width:100%;">
+                        <option value="auto" ${legCols === 'auto' ? 'selected' : ''}>Auto</option>
+                        <option value="1" ${legCols === '1' ? 'selected' : ''}>1</option>
+                        <option value="2" ${legCols === '2' ? 'selected' : ''}>2</option>
+                        <option value="3" ${legCols === '3' ? 'selected' : ''}>3</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:9px;color:#a0aec0;margin-bottom:2px;">${isEn ? 'Scale' : 'Größe'}</label>
+                      <select id="selFloorPlanLegendScale" class="form-input" style="font-size:10px;padding:3px 4px;width:100%;">
+                        <option value="0.8" ${legScale === '0.8' ? 'selected' : ''}>80%</option>
+                        <option value="1" ${legScale === '1' ? 'selected' : ''}>100%</option>
+                        <option value="1.2" ${legScale === '1.2' ? 'selected' : ''}>120%</option>
+                      </select>
+                    </div>
+                  </div>
+                  ${legendItems.length > 0 ? `
+                    <div style="max-height:110px;overflow-y:auto;border-top:1px solid #2d3748;padding-top:5px;display:flex;flex-direction:column;gap:3px;">
+                      ${legendItems.map(item => `
+                        <div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#cbd5e0;gap:6px;">
+                          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeSvg(item.name)}</span>
+                          <span style="font-family:monospace;color:#63b3ed;font-weight:bold;flex-shrink:0;">${item.count}×</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : `<div style="font-size:10px;color:#718096;">${isEn ? 'Place symbols on the floor plan to populate the legend automatically.' : 'Platzieren Sie Symbole im Grundriss, um die Legende automatisch zu füllen.'}</div>`}
+                </div>
+              `;
+            })()}
           </div>
         ` : ''}
 
@@ -4264,6 +4332,61 @@ export class App {
       });
       document.getElementById('btnImportFloorPlanRight')?.addEventListener('click', () => {
         this.triggerImportFloorPlanPage();
+      });
+      document.getElementById('chkFloorPlanLegendVisible')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          activePage.floorPlan.legend = {
+            ...activePage.floorPlan.legend,
+            visible: (e.target as HTMLInputElement).checked
+          };
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('chkFloorPlanLegendCounts')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          activePage.floorPlan.legend = {
+            ...activePage.floorPlan.legend,
+            showCounts: (e.target as HTMLInputElement).checked
+          };
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('selFloorPlanLegendPos')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          const pos = (e.target as HTMLSelectElement).value as any;
+          activePage.floorPlan.legend = {
+            ...activePage.floorPlan.legend,
+            position: pos
+          };
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('selFloorPlanLegendCols')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          const val = (e.target as HTMLSelectElement).value;
+          activePage.floorPlan.legend = {
+            ...activePage.floorPlan.legend,
+            columns: val === 'auto' ? 'auto' : (Number(val) as 1 | 2 | 3)
+          };
+          this.canvas.render();
+          this.notifyChange();
+        }
+      });
+      document.getElementById('selFloorPlanLegendScale')?.addEventListener('change', (e) => {
+        if (activePage?.floorPlan) {
+          const val = parseFloat((e.target as HTMLSelectElement).value);
+          if (!isNaN(val) && val > 0) {
+            activePage.floorPlan.legend = {
+              ...activePage.floorPlan.legend,
+              scale: val
+            };
+            this.canvas.render();
+            this.notifyChange();
+          }
+        }
       });
       document.getElementById('pageNumberInput')?.addEventListener('input', (e) => {
         if (activePage) {
