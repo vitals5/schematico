@@ -90,13 +90,49 @@ const SYMBOL_SYNONYMS: Record<string, string> = {
   sicherung: 'fuse_1p',
   fuse_1p: 'fuse_1p',
   fuse_3p: 'fuse_switch_3p',
+  sls: 'circuit_breaker_3p',
+  'sls-schalter': 'circuit_breaker_3p',
+  sls_schalter: 'circuit_breaker_3p',
+  hak: 'fuse_switch_3p',
+  hausanschluss: 'fuse_switch_3p',
+  hauseanschluss: 'fuse_switch_3p',
+  hauseinspeisung: 'fuse_switch_3p',
+  hausanschlusskasten: 'fuse_switch_3p',
   circuit_breaker: 'circuit_breaker_1p',
   leitungsschutzschalter: 'circuit_breaker_1p',
   lss: 'circuit_breaker_1p',
   mcb: 'circuit_breaker_1p',
+  rcd: 'rcd_4p',
+  rccb: 'rcd_4p',
+  fi: 'rcd_4p',
+  'fi-schutzschalter': 'rcd_4p',
+  rcbo: 'rcbo_1p_n',
+  spd: 'surge_arrester_spd',
+  überspannungsschutz: 'surge_arrester_spd',
+  ueberspannungsschutz: 'surge_arrester_spd',
+  überspannungsableiter: 'surge_arrester_spd',
   motor_protection: 'motor_protective_switch',
   motorschutzschalter: 'motor_protective_switch',
   mss: 'motor_protective_switch',
+
+  // Energy Meters & Generation
+  zähler: 'energy_meter_3p',
+  zaehler: 'energy_meter_3p',
+  stromzähler: 'energy_meter_3p',
+  stromzaehler: 'energy_meter_3p',
+  energiezähler: 'energy_meter_3p',
+  drehstromzähler: 'energy_meter_3p',
+  zweirichtungszähler: 'energy_meter_3p',
+  kaskadenzähler: 'energy_meter_3p',
+  unterzähler: 'energy_meter_3p',
+  pv: 'inverter_solar',
+  photovoltaik: 'inverter_solar',
+  speicher: 'inverter_solar',
+  batteriespeicher: 'inverter_solar',
+  wärmepumpe: 'motor_3phase',
+  waermepumpe: 'motor_3phase',
+  heat_pump: 'motor_3phase',
+  verdichter: 'motor_3phase',
 
   // Lights and Lamps
   lamp: 'pilot_lamp',
@@ -393,8 +429,16 @@ export async function handleAddComponent(
   manager.notifyModified();
   manager.render();
 
+  const sheetWidth = page.plotFrame?.width || 420;
+  const sheetHeight = page.plotFrame?.height || 297;
+  let boundaryWarning: string | undefined;
+  if (newComp.x > sheetWidth - 25 || newComp.y > sheetHeight - 40 || newComp.x < 20 || newComp.y < 20) {
+    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) are outside standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
+  }
+
   return {
     success: true,
+    warning: boundaryWarning,
     component: {
       id: newComp.id,
       bmk: newComp.bmk,
@@ -945,13 +989,15 @@ export async function handleSearchSymbols(
   }
 
   if (query) {
+    const synonymTargetId = SYMBOL_SYNONYMS[query];
     filtered = filtered.filter(
       s =>
         s.id.toLowerCase().includes(query) ||
         s.name.toLowerCase().includes(query) ||
         s.description?.toLowerCase().includes(query) ||
         s.keywords?.some(k => k.toLowerCase().includes(query)) ||
-        s.category?.toLowerCase().includes(query)
+        s.category?.toLowerCase().includes(query) ||
+        (synonymTargetId && s.id === synonymTargetId)
     );
   }
 
