@@ -1,3 +1,6 @@
+import { componentShapes, union as unionRects, usableArea, overlaps as overlapsRect, contains as containsRect } from '../../layout/geometry';
+import { getDrawingUnitsPerMm } from '../../model/symbols';
+import type { LayoutPreview, LayoutOptions } from '../../layout/types';
 // src/ai/mcp-tools/handlers.ts
 // Handlers for Schematico MCP Tools that inspect and mutate canvas and project state
 
@@ -21,17 +24,12 @@ import { CrossReferenceEngine } from '../../model/CrossReferenceEngine';
 import { PartsListGenerator } from '../../reports/PartsList';
 import { TerminalDiagramGenerator } from '../../reports/TerminalDiagram';
 import { MacroManager, WindowMacro, PageMacro } from '../../model/MacroManager';
-import {
-  computeBmkPosition,
-  computeFunctionTextPosition,
-  computeTechnicalDataPosition,
-  computeAdditionalTextPosition,
-  CalculatedLabelPosition
-} from '../../model/LabelLayout';
+
 import type { CadCanvas } from '../../editor/CadCanvas';
 
 export interface CanvasStateManager {
   getProject(): Project;
+  showLayoutPreview?(preview:LayoutPreview,draft?:Project,options?:LayoutOptions):void;
   getActivePage(pageId?: string): Page;
   getCanvas?(): CadCanvas | undefined;
   switchPage?(pageId: string): void;
@@ -248,129 +246,7 @@ export interface ComponentBounds {
 }
 
 /**
- * Computes bounding box of all visible labels (BMK, Function Text, Technical data, Additional text)
- * for a placed component in world sheet coordinates (mm).
- */
-export function computeComponentLabelBounds(
-  comp: {
-    x: number;
-    y: number;
-    rotation?: number;
-    bmk?: string;
-    functionText?: string;
-    technicalCharacteristics?: string;
-    additionalText?: string;
-    deviceTag?: string;
-    bmkPosition?: any;
-    functionTextPosition?: any;
-    technicalDataPosition?: any;
-    additionalTextPosition?: any;
-    crossRef?: string;
-    crossRefFontSize?: number;
-  },
-  sym: SymbolDefinition
-): ComponentBounds | undefined {
-  if (!sym || sym.category === 'connections') return undefined;
-
-  const mockComp = comp as PlacedComponent;
-  let bmkPos: CalculatedLabelPosition | undefined;
-  let fnPos: CalculatedLabelPosition | undefined;
-  let techPos: CalculatedLabelPosition | undefined;
-  let addPos: CalculatedLabelPosition | undefined;
-
-  try { bmkPos = computeBmkPosition(mockComp, sym); } catch {}
-  try { fnPos = computeFunctionTextPosition(mockComp, sym); } catch {}
-  try { techPos = computeTechnicalDataPosition(mockComp, sym); } catch {}
-  try { addPos = computeAdditionalTextPosition(mockComp, sym); } catch {}
-
-  const techText = comp.deviceTag
-    ? comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : '')
-    : comp.technicalCharacteristics || '';
-
-  const labelItems: Array<{ pos: CalculatedLabelPosition; text: string; isMonospace: boolean }> = [];
-
-  if (bmkPos && bmkPos.visible && comp.bmk?.trim()) {
-    labelItems.push({ pos: bmkPos, text: comp.bmk.trim(), isMonospace: true });
-  }
-  if (fnPos && fnPos.visible && comp.functionText?.trim()) {
-    labelItems.push({ pos: fnPos, text: comp.functionText.trim(), isMonospace: false });
-  }
-  if (techPos && techPos.visible && techText.trim()) {
-    labelItems.push({ pos: techPos, text: techText.trim(), isMonospace: false });
-  }
-  if (addPos && addPos.visible && comp.additionalText?.trim()) {
-    labelItems.push({ pos: addPos, text: comp.additionalText.trim(), isMonospace: false });
-  }
-
-  if (labelItems.length === 0) return undefined;
-
-  const cx = comp.x + sym.width / 2;
-  const cy = comp.y + sym.height / 2;
-  const rad = (((comp.rotation || 0) % 360) * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-
-  for (const item of labelItems) {
-    const { pos, text, isMonospace } = item;
-    const dx = pos.x - sym.width / 2;
-    const dy = pos.y - sym.height / 2;
-    const worldAnchorX = cx + (dx * cos - dy * sin);
-    const worldAnchorY = cy + (dx * sin + dy * cos);
-
-    const lines = text.split(/\r?\n/);
-    const maxChars = Math.max(...lines.map(l => l.length), 1);
-    const fs = pos.fontSize || 8;
-    const charWidth = isMonospace ? fs * 0.62 : fs * 0.52;
-    const textWidth = maxChars * charWidth;
-    const lineH = fs * 1.35;
-
-    let lLeft = worldAnchorX;
-    let lRight = worldAnchorX;
-
-    if (pos.anchor === 'end') {
-      lLeft = worldAnchorX - textWidth;
-      lRight = worldAnchorX;
-    } else if (pos.anchor === 'start') {
-      lLeft = worldAnchorX;
-      lRight = worldAnchorX + textWidth;
-    } else {
-      lLeft = worldAnchorX - textWidth / 2;
-      lRight = worldAnchorX + textWidth / 2;
-    }
-
-    const lTop = worldAnchorY - fs * 0.85;
-    const lBottom = worldAnchorY + (lines.length - 1) * lineH + fs * 0.3;
-
-    minX = Math.min(minX, lLeft);
-    maxX = Math.max(maxX, lRight);
-    minY = Math.min(minY, lTop);
-    maxY = Math.max(maxY, lBottom);
-  }
-
-  if (minX === Infinity) return undefined;
-
-  const left = Math.round(minX * 10) / 10;
-  const top = Math.round(minY * 10) / 10;
-  const right = Math.round(maxX * 10) / 10;
-  const bottom = Math.round(maxY * 10) / 10;
-
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    width: Math.round((right - left) * 10) / 10,
-    height: Math.round((bottom - top) * 10) / 10
-  };
-}
-
-/**
- * Calculates physical bounding box in sheet millimeters for a placed component,
+ * Calculates the bounding box in project drawing units using shared physical geometry for a placed component,
  * taking into account rotation and visible labels (BMK, Function text, Technical data).
  */
 export function getComponentBounds(
@@ -390,56 +266,15 @@ export function getComponentBounds(
     crossRef?: string;
     crossRefFontSize?: number;
   },
-  sym?: SymbolDefinition | { width: number; height: number; [key: string]: any }
+  sym?: SymbolDefinition | { width: number; height: number; [key: string]: any },
+  project?:Project
 ): ComponentBounds {
-  const w = sym?.width ?? 20;
-  const h = sym?.height ?? 20;
-  const rot = (comp.rotation || 0) % 360;
-  const isRotated90or270 = rot === 90 || rot === 270;
-  const effW = isRotated90or270 ? h : w;
-  const effH = isRotated90or270 ? w : h;
-
-  const cx = comp.x + w / 2;
-  const cy = comp.y + h / 2;
-
-  const bodyLeft = Math.round((cx - effW / 2) * 10) / 10;
-  const bodyTop = Math.round((cy - effH / 2) * 10) / 10;
-  const bodyRight = Math.round((cx + effW / 2) * 10) / 10;
-  const bodyBottom = Math.round((cy + effH / 2) * 10) / 10;
-
-  const body: ComponentBounds = {
-    left: bodyLeft,
-    top: bodyTop,
-    right: bodyRight,
-    bottom: bodyBottom,
-    width: effW,
-    height: effH
-  };
-
-  let labels: ComponentBounds | undefined;
-  if (sym && (sym as SymbolDefinition).pins) {
-    try {
-      labels = computeComponentLabelBounds(comp, sym as SymbolDefinition);
-    } catch {
-      // Non-blocking
-    }
-  }
-
-  const left = labels ? Math.min(body.left, labels.left) : body.left;
-  const top = labels ? Math.min(body.top, labels.top) : body.top;
-  const right = labels ? Math.max(body.right, labels.right) : body.right;
-  const bottom = labels ? Math.max(body.bottom, labels.bottom) : body.bottom;
-
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    width: Math.round((right - left) * 10) / 10,
-    height: Math.round((bottom - top) * 10) / 10,
-    body,
-    labels
-  };
+  const u=getDrawingUnitsPerMm(project);
+  const shapes=sym&&'pins' in sym?componentShapes(comp as PlacedComponent,sym as SymbolDefinition,project??({drawingUnitsPerMm:u} as Project)):[];
+  const rect=(r:{x:number;y:number;width:number;height:number}):ComponentBounds=>({left:r.x*u,top:r.y*u,right:(r.x+r.width)*u,bottom:(r.y+r.height)*u,width:r.width*u,height:r.height*u});
+  const body=shapes[0]?rect(shapes[0].rect):{left:comp.x,top:comp.y,right:comp.x+(sym?.width??20),bottom:comp.y+(sym?.height??20),width:sym?.width??20,height:sym?.height??20};
+  const labels=shapes.length>1?rect(unionRects(shapes.slice(1).map(s=>s.rect))):undefined;
+  return {...(shapes.length?rect(unionRects(shapes.map(s=>s.rect))):body),body,labels};
 }
 
 /**
@@ -452,35 +287,9 @@ export function detectComponentCollisions(
   page: Page,
   project: Project
 ): string[] {
-  const collisions: string[] = [];
-  for (const other of page.components) {
-    if (other.id === targetComp.id) continue;
-    const otherSym = getSymbolForComponent(other, project);
-    const oBounds = getComponentBounds(other, otherSym);
-
-    // Overlap test with 3mm tolerance to permit touching terminals
-    const overlapX = Math.min(targetBounds.right, oBounds.right) - Math.max(targetBounds.left, oBounds.left);
-    const overlapY = Math.min(targetBounds.bottom, oBounds.bottom) - Math.max(targetBounds.top, oBounds.top);
-
-    if (overlapX > 3 && overlapY > 3) {
-      const tBody = targetBounds.body || targetBounds;
-      const oBody = oBounds.body || oBounds;
-      const bodyOverlapX = Math.min(tBody.right, oBody.right) - Math.max(tBody.left, oBody.left);
-      const bodyOverlapY = Math.min(tBody.bottom, oBody.bottom) - Math.max(tBody.top, oBody.top);
-      const isBodyOverlap = bodyOverlapX > 3 && bodyOverlapY > 3;
-
-      if (isBodyOverlap) {
-        collisions.push(
-          `Overlap with ${other.bmk} (${otherSym?.name || other.symbolId}) body at [x: ${oBounds.left}..${oBounds.right}, y: ${oBounds.top}..${oBounds.bottom}]. Recommended free X >= ${Math.round(oBounds.right + 20)} or free Y >= ${Math.round(oBounds.bottom + 25)}`
-        );
-      } else {
-        collisions.push(
-          `Label collision: Beschriftung von ${targetComp.bmk} überschneidet sich mit ${other.bmk} (${otherSym?.name || other.symbolId}) im Bereich [x: ${Math.round(Math.max(targetBounds.left, oBounds.left))}..${Math.round(Math.min(targetBounds.right, oBounds.right))}]. Bitte mehr horizontalen Abstand (X >= ${Math.round(oBounds.right + 30)}) halten!`
-        );
-      }
-    }
-  }
-  return collisions;
+  const sym=getSymbolForComponent(targetComp,project);if(!sym)return[];
+  const own=componentShapes(targetComp,sym,project).filter(s=>s.kind!=='frame');
+  return page.components.filter(c=>c.id!==targetComp.id).flatMap(other=>{const otherSym=getSymbolForComponent(other,project);if(!otherSym)return[];const shapes=componentShapes(other,otherSym,project).filter(s=>s.kind!=='frame');return own.some(a=>shapes.some(b=>overlapsRect(a.rect,b.rect)))?[`Collision with ${other.bmk||other.id}; visible bodies or labels intersect.`]:[];});
 }
 
 // -------------------------------------------------------------
@@ -508,10 +317,12 @@ export async function handleGetCanvasState(
       for (const pin of sym.pins) {
         let pinWorldX = comp.x + pin.x;
         let pinWorldY = comp.y + pin.y;
+        let direction=pin.direction;
         try {
           const info = AutoconnectEngine.getRotatedPinInfo(comp, pin, sym);
           pinWorldX = info.worldX;
           pinWorldY = info.worldY;
+          direction=info.direction;
         } catch {
           // Fallback
         }
@@ -519,12 +330,12 @@ export async function handleGetCanvasState(
           name: pin.name,
           x: Math.round(pinWorldX * 10) / 10,
           y: Math.round(pinWorldY * 10) / 10,
-          direction: pin.direction
+          direction
         };
       }
     }
 
-    const bounds = getComponentBounds(comp, sym);
+    const bounds = getComponentBounds(comp, sym, project);
 
     return {
       id: comp.id,
@@ -600,43 +411,10 @@ export async function handleGetCanvasState(
     maxY = Math.max(maxY, c.bounds.bottom);
   }
 
-  const rawWidth = page.plotFrame?.width || 420;
-  const rawHeight = page.plotFrame?.height || 297;
-  const sheetMmWidth = rawWidth <= 600 ? rawWidth : 420;
-  const sheetMmHeight = rawHeight <= 450 ? rawHeight : 297;
-  const usableWidth = sheetMmWidth - 80; // 340 mm (X: 40..380)
-  const usableHeight = sheetMmHeight - 92; // 205 mm (Y: 40..245)
-
-  const usedWidth = minX < Infinity ? Math.round((maxX - minX) * 10) / 10 : 0;
-  const usedHeight = minY < Infinity ? Math.round((maxY - minY) * 10) / 10 : 0;
-  const horizPercent = Math.min(100, Math.round((usedWidth / usableWidth) * 100));
-  const vertPercent = Math.min(100, Math.round((usedHeight / usableHeight) * 100));
-
-  const isCramped = components.length >= 3 && (maxX < 280 || horizPercent < 68);
-
-  let sheetWarning: string | undefined;
-  if (isCramped) {
-    sheetWarning = `⚠️ SHEET UNDERUTILIZATION DETECTED: Circuit occupies only ${horizPercent}% of DIN A3 width (X: ${minX}..${maxX} mm) and ${vertPercent}% of height (Y: ${minY}..${maxY} mm). The right half (X: 180..380 mm) and bottom (Y: 140..250 mm) are completely blank! Distribute columns across the full sheet: Column 1 at X=85, Column 2 at X=205, Column 3 at X=315, and rows down to Y=230, or call tool 'distribute_sheet_layout'!`;
-  }
-
-  const sheetUtilization = {
-    minX: minX < Infinity ? minX : 0,
-    maxX: maxX > -Infinity ? maxX : 0,
-    minY: minY < Infinity ? minY : 0,
-    maxY: maxY > -Infinity ? maxY : 0,
-    usedWidth,
-    usedHeight,
-    horizontalUtilizationPercent: horizPercent,
-    verticalUtilizationPercent: vertPercent,
-    isCramped,
-    recommendedColumnPositions: {
-      twoColumns: [110, 270],
-      threeColumns: [85, 205, 315],
-      fourColumns: [75, 155, 245, 335]
-    },
-    recommendedRowPositions: [55, 115, 175, 230],
-    warning: sheetWarning
-  };
+  const unitsPerMm=getDrawingUnitsPerMm(project),area=usableArea(page,project);
+  const usedWidth=minX<Infinity?(maxX-minX)/unitsPerMm:0,usedHeight=minY<Infinity?(maxY-minY)/unitsPerMm:0;
+  const sheetWarning=undefined;
+  const sheetUtilization={minX:minX<Infinity?minX/unitsPerMm:0,maxX:maxX>-Infinity?maxX/unitsPerMm:0,minY:minY<Infinity?minY/unitsPerMm:0,maxY:maxY>-Infinity?maxY/unitsPerMm:0,usedWidth,usedHeight,horizontalUtilizationPercent:Math.round(usedWidth/area.width*100),verticalUtilizationPercent:Math.round(usedHeight/area.height*100),units:'mm',isCramped:false};
 
   return {
     success: true,
@@ -654,6 +432,7 @@ export async function handleGetCanvasState(
         columns: page.plotFrame?.columns || 10
       }
     },
+    geometry:{coordinateUnits:'drawing_units',unitsPerMm,widthMm:page.plotFrame.width/unitsPerMm,heightMm:page.plotFrame.height/unitsPerMm,usableAreaMm:area},
     sheetUtilization,
     components,
     wires,
@@ -743,44 +522,17 @@ export async function handleAddComponent(
   manager.notifyModified();
   manager.render();
 
-  const newBounds = getComponentBounds(newComp, sym);
+  const newBounds = getComponentBounds(newComp, sym, project);
   const collisions = detectComponentCollisions(newComp, newBounds, page, project);
 
-  const sheetWidth = page.plotFrame?.width || 420;
-  const sheetHeight = page.plotFrame?.height || 297;
-  let boundaryWarning: string | undefined;
-
-  const leftMarginNeeded = newBounds.body && newBounds.labels ? Math.round(newBounds.body.left - newBounds.left) : 0;
-
-  if (newBounds.left < 35) {
-    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) cause labels of '${newComp.bmk}' to extend to X=${newBounds.left}mm (outside left sheet border X: 35). Labels require ~${leftMarginNeeded}mm left clearance. Recommended placement is X >= ${Math.max(80, Math.round(35 + leftMarginNeeded + 5))}mm!`;
-  } else if (newComp.x + (sym?.width ?? 30) > sheetWidth - 10 || newComp.y + (sym?.height ?? 30) > sheetHeight - 40 || newBounds.top < 20) {
-    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) with size ${newBounds.width}x${newBounds.height}mm exceed standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
-  }
-
-  // Check for cramped column spacing or sheet underutilization
-  let utilizationWarning: string | undefined;
-  if (page.components.length > 1) {
-    const otherXs = page.components.filter(c => c.id !== newComp.id).map(c => c.x);
-    const minOtherX = Math.min(...otherXs);
-    const maxOtherX = Math.max(...otherXs);
-
-    const isNewColumn = otherXs.every(ox => Math.abs(newComp.x - ox) >= 20);
-    const distanceToClosest = Math.min(...otherXs.map(ox => Math.abs(newComp.x - ox)));
-
-    if (isNewColumn && distanceToClosest < 75 && minOtherX <= 85 && newComp.x <= 165) {
-      utilizationWarning = `⚠️ CRAMPED COLUMN SPACING: Placing Column at X=${newComp.x}mm leaves only ${Math.round(distanceToClosest)}mm distance to adjacent column. On DIN A3, standard multi-branch column centers are: Col 1 at X=85mm, Col 2 at X=205mm, Col 3 at X=315mm. Distribute across full sheet to avoid label overlap!`;
-    } else if (page.components.length >= 4 && maxOtherX < 200 && newComp.x < 200) {
-      utilizationWarning = `⚠️ SHEET UNDERUTILIZATION: Circuit is compressed into the left third of DIN A3 (all X <= ${Math.max(newComp.x, maxOtherX)}mm). Spread remaining branches across X=205 and X=315, or run 'distribute_sheet_layout'!`;
-    }
-  }
-
+  const u=getDrawingUnitsPerMm(project),area=usableArea(page,project);
+  const boundaryWarning=containsRect(area,{x:newBounds.left/u,y:newBounds.top/u,width:newBounds.width/u,height:newBounds.height/u})?undefined:'Object or label lies outside drawing area. Coordinates are project drawing units; inspect usableAreaMm and unitsPerMm.';
   const warningsList: string[] = [];
   if (boundaryWarning) warningsList.push(boundaryWarning);
   if (collisions.length > 0) {
     warningsList.push(`⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}`);
   }
-  if (utilizationWarning) warningsList.push(utilizationWarning);
+
 
   const warning = warningsList.length > 0 ? warningsList.join(' | ') : undefined;
 
@@ -858,7 +610,7 @@ export async function handleUpdateComponent(
   manager.render();
 
   const sym = getSymbolForComponent(comp, project);
-  const bounds = getComponentBounds(comp, sym);
+  const bounds = getComponentBounds(comp, sym, project);
   const collisions =
     args.x !== undefined || args.y !== undefined || args.rotation !== undefined
       ? detectComponentCollisions(comp, bounds, page, project)
@@ -950,7 +702,7 @@ export async function handleMoveElement(
     manager.render();
 
     const sym = getSymbolForComponent(comp, project);
-    const bounds = getComponentBounds(comp, sym);
+    const bounds = getComponentBounds(comp, sym, project);
     const collisions = detectComponentCollisions(comp, bounds, page, project);
 
     return {
@@ -999,506 +751,10 @@ export async function handleMoveElement(
   return { success: false, error: `Element "${args.id}" not found on active page.` };
 }
 
-export async function handleDistributeSheetLayout(
-  args: {
-    pageId?: string;
-    horizontalSpread?: 'full_sheet' | 'compact' | 'center';
-    columnCoordinates?: number[];
-    clearIntermediateWireWaypoints?: boolean;
-  },
-  manager: CanvasStateManager
-): Promise<any> {
-  const project = manager.getProject();
-  const page = manager.getActivePage(args?.pageId);
-  if (!page) {
-    return { success: false, error: `Page "${args?.pageId || 'active'}" not found in project.` };
-  }
-
-  if (!page.components || page.components.length === 0) {
-    return { success: true, message: 'Keine Bauteile auf der Seite vorhanden zum Verteilen.', componentsMoved: 0 };
-  }
-
-  // 1. Cluster components into columns
-  // Check if components form a 3-branch Messkonzept scheme (Netz, WP, Haushalt/PV):
-  const isMkScheme =
-    page.components.some(c => c.bmk.includes('F0') || c.bmk.includes('Q0') || c.bmk.includes('Z1')) &&
-    page.components.some(c => c.bmk.includes('M1') || c.functionText?.toLowerCase().includes('wärmepumpe') || c.functionText?.toLowerCase().includes('wp')) &&
-    page.components.some(c => c.bmk.includes('Z2') || c.bmk.includes('G1') || c.symbolId.includes('inverter') || c.functionText?.toLowerCase().includes('pv') || c.functionText?.toLowerCase().includes('haushalt'));
-
-  const columnGroups: PlacedComponent[][] = [];
-
-  if (isMkScheme) {
-    const col0: PlacedComponent[] = [];
-    const col1: PlacedComponent[] = [];
-    const col2: PlacedComponent[] = [];
-
-    for (const comp of page.components) {
-      const bmk = (comp.bmk || '').toUpperCase();
-      const fn = (comp.functionText || '').toLowerCase();
-      const sym = comp.symbolId.toLowerCase();
-
-      if (bmk.includes('F0') || bmk.includes('Q0') || bmk.includes('Z1') || bmk.includes('X0') || fn.includes('hak') || fn.includes('sls') || fn.includes('netz') || fn.includes('z1')) {
-        col0.push(comp);
-      } else if (bmk.includes('M1') || fn.includes('wärmepumpe') || fn.includes('verdichter') || fn.includes('wp') || bmk.includes('X1') || (bmk.includes('F1') && !bmk.includes('F0')) || (bmk.includes('Q1') && !bmk.includes('Q0'))) {
-        col1.push(comp);
-      } else if (bmk.includes('Z2') || bmk.includes('G1') || bmk.includes('X2') || sym.includes('inverter') || fn.includes('pv') || fn.includes('haushalt') || fn.includes('wechselrichter') || fn.includes('speicher') || bmk.includes('F2') || bmk.includes('F3') || bmk.includes('Q2') || bmk.includes('Q3')) {
-        col2.push(comp);
-      } else {
-        if (comp.x < 140) col0.push(comp);
-        else if (comp.x < 260) col1.push(comp);
-        else col2.push(comp);
-      }
-    }
-
-    if (col0.length > 0) columnGroups.push(col0);
-    if (col1.length > 0) columnGroups.push(col1);
-    if (col2.length > 0) columnGroups.push(col2);
-  } else {
-    // General X-proximity clustering
-    const sortedByX = [...page.components].sort((a, b) => a.x - b.x);
-    for (const comp of sortedByX) {
-      if (columnGroups.length === 0) {
-        columnGroups.push([comp]);
-      } else {
-        const lastGroup = columnGroups[columnGroups.length - 1];
-        const avgX = lastGroup.reduce((sum, c) => sum + c.x, 0) / lastGroup.length;
-        const hasSameY = lastGroup.some(c => Math.abs(c.y - comp.y) <= 30);
-        if (!hasSameY && Math.abs(comp.x - avgX) <= 35) {
-          lastGroup.push(comp);
-        } else {
-          columnGroups.push([comp]);
-        }
-      }
-    }
-  }
-
-  const oldColumnCenters = columnGroups.map(group =>
-    Math.round(group.reduce((sum, c) => sum + c.x, 0) / group.length)
-  );
-
-  const numCols = columnGroups.length;
-  let targetXs: number[] = [];
-
-  if (args?.columnCoordinates && args.columnCoordinates.length === numCols) {
-    targetXs = [...args.columnCoordinates];
-  } else if (args?.horizontalSpread === 'compact') {
-    const startX = 85;
-    targetXs = columnGroups.map((_, i) => startX + i * 65);
-  } else {
-    // 'full_sheet' (default) or 'center'
-    if (numCols === 1) {
-      targetXs = [args?.horizontalSpread === 'center' ? 210 : 85];
-    } else if (numCols === 2) {
-      targetXs = [110, 270];
-    } else if (numCols === 3) {
-      targetXs = [85, 215, 345];
-    } else if (numCols === 4) {
-      targetXs = [75, 155, 245, 335];
-    } else if (numCols === 5) {
-      targetXs = [75, 135, 195, 255, 315];
-    } else {
-      const minX = 75;
-      const maxX = 355;
-      const step = (maxX - minX) / (numCols - 1);
-      targetXs = columnGroups.map((_, i) => Math.round(minX + i * step));
-    }
-  }
-
-  // 2. Cluster components into row levels across the sheet based on Y proximity
-  const sortedByY = [...page.components].sort((a, b) => a.y - b.y);
-  const rowGroups: PlacedComponent[][] = [];
-
-  for (const comp of sortedByY) {
-    if (rowGroups.length === 0) {
-      rowGroups.push([comp]);
-    } else {
-      const lastRow = rowGroups[rowGroups.length - 1];
-      const avgY = lastRow.reduce((sum, c) => sum + c.y, 0) / lastRow.length;
-      if (Math.abs(comp.y - avgY) <= 25) {
-        lastRow.push(comp);
-      } else {
-        rowGroups.push([comp]);
-      }
-    }
-  }
-
-  const numRows = rowGroups.length;
-  let targetYs: number[] = [];
-  if (numRows === 1) {
-    targetYs = [120];
-  } else if (numRows === 2) {
-    targetYs = [75, 185];
-  } else if (numRows === 3) {
-    targetYs = [60, 125, 195];
-  } else if (numRows === 4) {
-    targetYs = [55, 115, 175, 230];
-  } else if (numRows === 5) {
-    targetYs = [50, 95, 140, 185, 230];
-  } else {
-    const minY = 50;
-    const maxY = 230;
-    const step = (maxY - minY) / (numRows - 1);
-    targetYs = rowGroups.map((_, i) => Math.round(minY + i * step));
-  }
-
-  // Map each component to its row index
-  const compRowIndexMap = new Map<string, number>();
-  for (let r = 0; r < rowGroups.length; r++) {
-    for (const c of rowGroups[r]) {
-      compRowIndexMap.set(c.id, r);
-    }
-  }
-
-  // Pre-calculate which components belong to each box (before components are moved)
-  const boxCompsMap = new Map<string, PlacedComponent[]>();
-  if (page.boxes && page.boxes.length > 0) {
-    for (const box of page.boxes) {
-      const boxBmkClean = (box.bmk || '').replace(/^[+=]/, '').trim().toLowerCase();
-      const boxLabelClean = (box.label || '').replace(/^[+=]/, '').trim().toLowerCase();
-
-      // Determine target column semantically
-      let colIdx = -1;
-      if (boxBmkClean.includes('hak') || boxBmkClean.includes('zp') || boxBmkClean.includes('netz') || boxLabelClean.includes('hak') || boxLabelClean.includes('netz') || boxLabelClean.includes('zähler')) {
-        colIdx = 0;
-      } else if (boxBmkClean.includes('wp') || boxLabelClean.includes('wp') || boxLabelClean.includes('wärmepumpe')) {
-        colIdx = Math.min(1, numCols - 1);
-      } else if (boxBmkClean.includes('hh') || boxBmkClean.includes('pv') || boxLabelClean.includes('haushalt') || boxLabelClean.includes('speicher')) {
-        colIdx = Math.min(2, numCols - 1);
-      }
-
-      if (colIdx === -1 && oldColumnCenters.length > 0) {
-        let bestDist = Infinity;
-        const boxCenterX = box.x + box.width / 2;
-        for (let c = 0; c < oldColumnCenters.length; c++) {
-          const dist = Math.abs(boxCenterX - oldColumnCenters[c]);
-          if (dist < bestDist) {
-            bestDist = dist;
-            colIdx = c;
-          }
-        }
-      }
-
-      let matched = columnGroups[colIdx] || [];
-
-      // If multiple boxes share this column (e.g. +HAK at top, +ZP1 below):
-      if (boxBmkClean.includes('hak')) {
-        const topComps = matched.filter(c => c.bmk.includes('F0') || c.y <= 95);
-        if (topComps.length > 0) matched = topComps;
-      } else if (boxBmkClean.includes('zp')) {
-        const botComps = matched.filter(c => !c.bmk.includes('F0') || c.y > 95);
-        if (botComps.length > 0) matched = botComps;
-      }
-
-      boxCompsMap.set(box.id, matched);
-    }
-  }
-
-  // 3. Reposition components to target (X, Y)
-  for (let colIdx = 0; colIdx < numCols; colIdx++) {
-    const group = columnGroups[colIdx];
-    const targetX = targetXs[colIdx];
-    const colBaseOldX = Math.min(...group.map(c => c.x));
-
-    for (const comp of group) {
-      const subOffsetX = comp.x - colBaseOldX;
-      if (Math.abs(subOffsetX) < 30) {
-        comp.x = targetX;
-      } else {
-        comp.x = Math.round(targetX + subOffsetX);
-      }
-
-      const rIdx = compRowIndexMap.get(comp.id);
-      if (rIdx !== undefined && targetYs[rIdx] !== undefined) {
-        comp.y = targetYs[rIdx];
-      }
-
-      // Check left/right boundary clearance taking labels into account
-      const sym = getSymbolForComponent(comp, project);
-      const bounds = getComponentBounds(comp, sym);
-      if (bounds.left < 35) {
-        comp.x += Math.round(35 - bounds.left + 5);
-      } else if (comp.x + (sym?.width ?? 30) > 405) {
-        comp.x = Math.round(405 - (sym?.width ?? 30));
-      }
-    }
-
-    // Ensure vertical non-overlap within this column
-    group.sort((a, b) => a.y - b.y);
-    for (let i = 0; i < group.length - 1; i++) {
-      const curr = group[i];
-      const next = group[i + 1];
-      const currSym = getSymbolForComponent(curr, project);
-      const currH = currSym?.height ?? 30;
-      const minNextY = curr.y + currH + 18;
-      if (next.y < minNextY) {
-        next.y = minNextY;
-      }
-    }
-
-    // Ensure column components fit vertically above the title block (Y <= 248)
-    const maxBottom = Math.max(...group.map(c => {
-      const s = getSymbolForComponent(c, project);
-      return c.y + (s?.height ?? 30);
-    }));
-    if (maxBottom > 248 && group.length > 1) {
-      const overflow = maxBottom - 248;
-      for (let i = 1; i < group.length; i++) {
-        const factor = i / (group.length - 1);
-        group[i].y = Math.round(group[i].y - overflow * factor);
-      }
-    }
-  }
-
-  // 3b. Update Device Boxes (Gerätekästen, e.g. =HAK, =WP, =PV) to wrap cleanly around distributed components
-  if (page.boxes && page.boxes.length > 0) {
-    for (const box of page.boxes) {
-      const targetComps = boxCompsMap.get(box.id) || [];
-      if (targetComps.length > 0) {
-        let minBodyX = Infinity, maxBodyX = -Infinity;
-        let minBodyY = Infinity, maxBodyY = -Infinity;
-        for (const c of targetComps) {
-          const sym = getSymbolForComponent(c, project);
-          const w = sym?.width ?? 30;
-          const h = sym?.height ?? 30;
-          minBodyX = Math.min(minBodyX, c.x);
-          maxBodyX = Math.max(maxBodyX, c.x + w);
-          minBodyY = Math.min(minBodyY, c.y);
-          maxBodyY = Math.max(maxBodyY, c.y + h);
-        }
-        box.x = Math.max(35, Math.round(minBodyX - 8));
-        box.y = Math.max(48, Math.round(minBodyY - 8));
-        box.width = Math.round(maxBodyX - minBodyX + 16);
-        box.height = Math.round(maxBodyY - minBodyY + 16);
-      }
-    }
-
-    // Sort boxes from left to right and enforce strict non-overlapping boundary guarantees
-    page.boxes.sort((a, b) => a.x - b.x);
-    for (let i = 0; i < page.boxes.length - 1; i++) {
-      const curr = page.boxes[i];
-      const next = page.boxes[i + 1];
-      const yOverlap = Math.min(curr.y + curr.height, next.y + next.height) - Math.max(curr.y, next.y);
-      if (yOverlap > 10 && curr.x + curr.width >= next.x) {
-        // Enforce at least 6mm separation between horizontally adjacent boxes
-        curr.width = Math.max(20, next.x - curr.x - 6);
-      }
-    }
-  }
-
-  // 4. Update texts: eliminate overlapping titles, subtitles, and column headers
-  if (page.texts && page.texts.length > 0) {
-    for (const txt of page.texts) {
-      const lower = txt.text.toLowerCase();
-
-      // 1. Check if text is a specific column / strang title FIRST to prevent collision with page titles
-      let targetColIdx = -1;
-      if (lower.includes('strang 1') || lower.includes('pfad 1') || lower.includes('spalte 1') || lower.includes('netzeinspeisung')) {
-        targetColIdx = 0;
-      } else if (lower.includes('strang 2') || lower.includes('pfad 2') || lower.includes('spalte 2') || lower.includes('wärmepumpe') || lower.includes('kaskadenzweig') || lower.includes('kaskadenmessung wp') || (lower.includes('wp') && !lower.includes('mk'))) {
-        targetColIdx = Math.min(1, numCols - 1);
-      } else if (lower.includes('strang 3') || lower.includes('pfad 3') || lower.includes('spalte 3') || lower.includes('haushalt') || lower.includes('pv') || lower.includes('speicher')) {
-        targetColIdx = Math.min(2, numCols - 1);
-      } else if (lower.includes('strang 4') || lower.includes('pfad 4') || lower.includes('spalte 4')) {
-        targetColIdx = Math.min(3, numCols - 1);
-      }
-
-      if (targetColIdx !== -1) {
-        if (targetColIdx < targetXs.length) {
-          txt.x = targetXs[targetColIdx];
-          if (txt.y >= 130) {
-            txt.y = 250;
-          } else {
-            txt.y = 46;
-          }
-        }
-        continue;
-      }
-
-      // 2. Check if text is a subtitle / norm reference or billing formula
-      if (lower.includes('vde') || lower.includes('din') || lower.includes('iec') || lower.includes('enwg') || lower.includes('abrechnung') || lower.includes('berechnung') || lower.includes('formel') || lower.includes('differenz')) {
-        if (lower.includes('abrechnung') || lower.includes('berechnung') || lower.includes('formel') || lower.includes('differenz')) {
-          txt.x = 55;
-          txt.y = 254;
-        } else {
-          txt.x = 55;
-          txt.y = 36;
-        }
-        continue;
-      }
-
-      // 3. Check if text is a main page title (e.g. Messkonzept MK C3 ..., Hauseinspeisung MK C3 ...)
-      if (
-        lower.includes('messkonzept') || lower.includes('übersichtsplan') || lower.includes('stromlaufplan') || lower.includes('hauseinspeisung') || lower.includes('kaskaden')
-      ) {
-        txt.x = 55;
-        txt.y = 28;
-        continue;
-      }
-
-      // Proximity fallback for any remaining column-associated annotations
-      let closestColIdx = -1;
-      let minDistance = Infinity;
-      for (let c = 0; c < oldColumnCenters.length; c++) {
-        const dist = Math.abs(txt.x - oldColumnCenters[c]);
-        if (dist < minDistance && dist <= 60) {
-          minDistance = dist;
-          closestColIdx = c;
-        }
-      }
-
-      if (closestColIdx >= 0 && closestColIdx < targetXs.length) {
-        txt.x = targetXs[closestColIdx];
-        if (txt.y >= 130) {
-          txt.y = 250;
-        } else {
-          txt.y = 46;
-        }
-      }
-    }
-  }
-
-  // 5. Intelligent Orthogonal Wire Routing: eliminate wires crossing through switches/meters
-  for (const wire of page.wires) {
-    const fromComp = page.components.find(c => c.id === wire.from.componentId);
-    const toComp = page.components.find(c => c.id === wire.to.componentId);
-
-    if (!fromComp || !toComp) {
-      if (args?.clearIntermediateWireWaypoints !== false) {
-        wire.waypoints = [];
-      }
-      continue;
-    }
-
-    const fromColIdx = columnGroups.findIndex(g => g.some(c => c.id === fromComp.id));
-    const toColIdx = columnGroups.findIndex(g => g.some(c => c.id === toComp.id));
-
-    if (fromColIdx === -1 || toColIdx === -1 || fromColIdx === toColIdx) {
-      // Intra-column wire: clean straight vertical connection without zigzag waypoints
-      wire.waypoints = [];
-      continue;
-    }
-
-    // Inter-column wire:
-    const fromSym = getSymbolForComponent(fromComp, project);
-    const toSym = getSymbolForComponent(toComp, project);
-    const fromPinDef = fromSym?.pins.find(p => p.id === wire.from.pinId);
-    const toPinDef = toSym?.pins.find(p => p.id === wire.to.pinId);
-
-    let fromPinWorld = { x: fromComp.x + (fromPinDef?.x ?? 0), y: fromComp.y + (fromPinDef?.y ?? 0) };
-    let toPinWorld = { x: toComp.x + (toPinDef?.x ?? 0), y: toComp.y + (toPinDef?.y ?? 0) };
-
-    if (fromSym && fromPinDef) {
-      try {
-        const info = AutoconnectEngine.getRotatedPinInfo(fromComp, fromPinDef, fromSym);
-        fromPinWorld = { x: info.worldX, y: info.worldY };
-      } catch { /* Fallback */ }
-    }
-    if (toSym && toPinDef) {
-      try {
-        const info = AutoconnectEngine.getRotatedPinInfo(toComp, toPinDef, toSym);
-        toPinWorld = { x: info.worldX, y: info.worldY };
-      } catch { /* Fallback */ }
-    }
-
-    // Distribute parallel conductors (L1, L2, L3, N, PE) across clean channels
-    let phaseOffset = 0;
-    const pot = (wire.potential || '').toUpperCase();
-    if (pot === 'L1') phaseOffset = -3;
-    else if (pot === 'L2') phaseOffset = -1;
-    else if (pot === 'L3') phaseOffset = 1;
-    else if (pot === 'N') phaseOffset = 3;
-    else if (pot === 'PE') phaseOffset = 5;
-
-    const minCol = Math.min(fromColIdx, toColIdx);
-    const maxCol = Math.max(fromColIdx, toColIdx);
-    const corridorX = Math.round((targetXs[minCol] + targetXs[maxCol]) / 2) + phaseOffset;
-
-    const isFromBottom = fromPinWorld.y >= 140;
-    const isToTop = toPinWorld.y <= 120;
-
-    if (isFromBottom && isToTop) {
-      // Feed from bottom of Column 1 up to top of Column 2/3:
-      // Drop down into lower duct, across to corridor, up to top duct, drop into destination
-      const ductY = Math.min(255, Math.max(fromPinWorld.y + 12, 248) + phaseOffset);
-      const topDuctY = Math.max(42, Math.min(toPinWorld.y - 12, 48) + phaseOffset);
-      wire.waypoints = [
-        { x: fromPinWorld.x, y: ductY },
-        { x: corridorX, y: ductY },
-        { x: corridorX, y: topDuctY },
-        { x: toPinWorld.x, y: topDuctY }
-      ];
-    } else if (!isFromBottom && !isToTop) {
-      const ductY = Math.min(255, Math.max(fromPinWorld.y, toPinWorld.y) + 12 + phaseOffset);
-      wire.waypoints = [
-        { x: fromPinWorld.x, y: ductY },
-        { x: toPinWorld.x, y: ductY }
-      ];
-    } else {
-      const topDuctY = Math.max(42, Math.min(fromPinWorld.y, toPinWorld.y) - 12 + phaseOffset);
-      wire.waypoints = [
-        { x: fromPinWorld.x, y: topDuctY },
-        { x: corridorX, y: topDuctY },
-        { x: toPinWorld.x, y: topDuctY }
-      ];
-    }
-  }
-
-  // 6. Recalculate autoconnects and cross-references
-  try {
-    AutoconnectEngine.updatePageAutoconnections(page);
-    CrossReferenceEngine.updateProjectCrossReferences(project);
-  } catch {
-    // Non-blocking
-  }
-
-  manager.notifyModified();
-  manager.render();
-
-  // 7. Calculate new sheet utilization metrics
-  let newMinX = Infinity;
-  let newMaxX = -Infinity;
-  let newMinY = Infinity;
-  let newMaxY = -Infinity;
-
-  for (const comp of page.components) {
-    const sym = getSymbolForComponent(comp, project);
-    const b = getComponentBounds(comp, sym);
-    newMinX = Math.min(newMinX, b.left);
-    newMaxX = Math.max(newMaxX, b.right);
-    newMinY = Math.min(newMinY, b.top);
-    newMaxY = Math.max(newMaxY, b.bottom);
-  }
-
-  const rawWidth = page.plotFrame?.width || 420;
-  const rawHeight = page.plotFrame?.height || 297;
-  const sheetMmWidth = rawWidth <= 600 ? rawWidth : 420;
-  const sheetMmHeight = rawHeight <= 450 ? rawHeight : 297;
-  const usableWidth = sheetMmWidth - 80; // 340 mm
-  const usableHeight = sheetMmHeight - 92; // 205 mm
-  const newWidth = newMinX < Infinity ? Math.round((newMaxX - newMinX) * 10) / 10 : 0;
-  const newHeight = newMinY < Infinity ? Math.round((newMaxY - newMinY) * 10) / 10 : 0;
-  const horizUtil = Math.min(100, Math.round((newWidth / usableWidth) * 100));
-  const vertUtil = Math.min(100, Math.round((newHeight / usableHeight) * 100));
-
-  return {
-    success: true,
-    columns: numCols,
-    rows: numRows,
-    componentsMoved: page.components.length,
-    columnPositions: targetXs,
-    rowPositions: targetYs,
-    sheetUtilization: {
-      minX: newMinX,
-      maxX: newMaxX,
-      minY: newMinY,
-      maxY: newMaxY,
-      width: newWidth,
-      height: newHeight,
-      horizontalUtilizationPercent: horizUtil,
-      verticalUtilizationPercent: vertUtil
-    },
-    message: `Erfolgreich ${page.components.length} Bauteile auf ${numCols} Spalten (${targetXs.join(' mm, ')} mm) über das gesamte DIN A3 Blatt verteilt. Flächenausnutzung: ${horizUtil}% horizontal, ${vertUtil}% vertikal.`
-  };
+/** Compatibility entry point: coordinates are no longer guessed or applied immediately. */
+export async function handleDistributeSheetLayout(args:any,manager:CanvasStateManager):Promise<any>{
+ const {handleOptimizeLayout}=await import('../../layout/tools');
+ return handleOptimizeLayout(args??{},manager);
 }
 
 export async function handleDrawWire(

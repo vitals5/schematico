@@ -1,3 +1,4 @@
+import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL } from '../../layout/tools';
 // src/ai/mcp-tools/definitions.ts
 // Standard MCP Tool Schema Definitions for Schematico Electrical CAD
 
@@ -61,11 +62,11 @@ export const ADD_COMPONENT_TOOL: McpToolDefinition = {
       },
       x: {
         type: 'number',
-        description: 'X coordinate in drawing units (standard page width is ~420 mm, grid ~8 mm).'
+        description: 'X coordinate in project drawing units, NOT millimeters. Inspect get_canvas_state for scale and page geometry.'
       },
       y: {
         type: 'number',
-        description: 'Y coordinate in drawing units (standard page height is ~297 mm, grid ~8 mm).'
+        description: 'Y coordinate in project drawing units, NOT millimeters. Prefer create_schematic_draft for complete circuits.'
       },
       rotation: {
         type: 'number',
@@ -713,33 +714,8 @@ export const ZOOM_CANVAS_TOOL: McpToolDefinition = {
   }
 };
 
-export const DISTRIBUTE_SHEET_LAYOUT_TOOL: McpToolDefinition = {
-  name: 'distribute_sheet_layout',
-  description:
-    'Automatically analyzes and distributes all components, columns, and wires evenly across the entire DIN A3 drawing sheet (X: 75..345 mm, Y: 50..240 mm). Eliminates cramped layouts, maximizes sheet utilization, avoids label collisions, and updates autoconnections.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      pageId: {
-        type: 'string',
-        description: 'Optional ID of the page to distribute. If omitted, the currently active page is rebalanced.'
-      },
-      horizontalSpread: {
-        type: 'string',
-        enum: ['full_sheet', 'compact', 'center'],
-        description: 'Layout mode. "full_sheet" (default) spreads columns across the full DIN A3 width (X: 75..340 mm). "center" centers the layout. "compact" keeps columns closer together.'
-      },
-      columnCoordinates: {
-        type: 'array',
-        items: { type: 'number' },
-        description: 'Optional explicit X coordinates for each column (e.g. [85, 205, 315] for a 3-strang circuit). If omitted, optimal full-sheet column centers are automatically calculated.'
-      },
-      clearIntermediateWireWaypoints: {
-        type: 'boolean',
-        description: 'Whether to clear manual zigzag waypoints on moved wires so the CAD engine re-routes cleanly (default: true).'
-      }
-    }
-  }
+export const DISTRIBUTE_SHEET_LAYOUT_TOOL:McpToolDefinition={
+ ...OPTIMIZE_LAYOUT_TOOL,name:'distribute_sheet_layout',description:'Compatibility alias for optimize_schematic_layout. Computes a checked preview; does not immediately change the page. Requires user confirmation.'
 };
 
 // -------------------------------------------------------------
@@ -747,6 +723,7 @@ export const DISTRIBUTE_SHEET_LAYOUT_TOOL: McpToolDefinition = {
 // -------------------------------------------------------------
 
 export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
+  VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL,
   // Core Elements
   GET_CANVAS_STATE_TOOL,
   ADD_COMPONENT_TOOL,

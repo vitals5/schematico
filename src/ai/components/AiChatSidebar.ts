@@ -143,7 +143,7 @@ export class AiChatSidebar {
         </div>
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
-          <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Schaltung optimal über das gesamte DIN A3 Blatt verteilen (Flächenausnutzung maximieren & Überlappungen auflösen)">📐</button>
+          <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Geprüfte Layoutvorschau berechnen; Änderungen erst nach Übernehmen">📐</button>
           <button type="button" class="ai-header-btn" id="btnAiSettings" title="Gemini API-Key & Thinking-Modus verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
@@ -227,28 +227,26 @@ export class AiChatSidebar {
     const btnSettings = this.container.querySelector('#btnAiSettings');
     btnSettings?.addEventListener('click', () => this.showApiKeyModal());
 
-    const btnDistribute = this.container.querySelector('#btnAiDistribute');
+    const btnDistribute = this.container.querySelector<HTMLButtonElement>('#btnAiDistribute');
     btnDistribute?.addEventListener('click', async () => {
+      btnDistribute.disabled=true;
       try {
         const { defaultToolRegistry } = await import('../mcp-tools');
         const res = await defaultToolRegistry.executeTool('distribute_sheet_layout', {}, this.stateManager);
         if (res?.success) {
-          this.stateManager.notifyModified();
-          this.stateManager.render();
-          try {
-            await defaultToolRegistry.executeTool('zoom_canvas', { mode: 'fit' }, this.stateManager);
-          } catch { /* Non-blocking */ }
           this.appendModelResponse({
             id: 'distribute_' + Date.now(),
             role: 'model',
-            text: `📐 **Blatt-Layout optimiert:** ${res.message}`,
+            text: `📐 **Layoutvorschau:** ${res.message}`,
             timestamp: Date.now()
           });
         } else {
-          this.appendErrorMessage(`Layout-Optimierung fehlgeschlagen: ${res?.error || 'Unbekannter Fehler'}`);
+          this.appendErrorMessage(res?.message || res?.error || 'Layoutvorschau konnte nicht berechnet werden.');
         }
       } catch (err: any) {
         this.appendErrorMessage(`Fehler bei Layout-Optimierung: ${err?.message || err}`);
+      } finally {
+        btnDistribute.disabled=false;
       }
     });
 

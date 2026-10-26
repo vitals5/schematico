@@ -29,6 +29,12 @@
 
 ---
 
+## Checked schematic layout
+
+The drawing assistant can propose complete circuits using library symbols, pin-to-pin connections and functional groups **without coordinates**. ELK graph placement, obstacle-aware orthogonal routing and an independent validator produce layout previews. Existing sheets or a selection can also be optimized while keeping objects fixed.
+
+Only **Übernehmen / Apply** changes the project, as one undo step. Infeasible layouts return explicit issues and a proposed group split instead of shrinking symbols or fonts. Full-sheet utilization alone is not a quality guarantee. See [layout workflow, MCP tools and limitations](docs/layout.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.
@@ -341,3 +347,5 @@ Automated releases are compiled and deployed via GitHub Actions on every tag pus
 
 Schematico is open-source software licensed under the [MIT License](LICENSE).  
 The embedded WebAssembly 7-Zip decompression library is distributed under the LGPL (see [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt)).
+
+The optional graph-layout library elkjs is distributed under EPL-2.0; see [license and corresponding source](public/licenses/elkjs.txt).

@@ -1,3 +1,5 @@
+import { applyLayout } from '../layout/service';
+import { LayoutPreviewDialog } from '../layout/PreviewDialog';
 import { readAppSetting, writeAppSetting } from '../model/LegacyCompatibility';
 import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey, getGeminiModel, setGeminiModel, GeminiModelId } from '../ai/GeminiConfig';
 import { AiChatSidebar } from '../ai/components/AiChatSidebar';
@@ -5130,6 +5132,18 @@ export class App {
       },
       deletePage: (pageId: string) => {
         this.deletePage(pageId);
+      },
+      showLayoutPreview: (preview, draft, options) => {
+        const selection=this.canvas.getElementSelection();
+        new LayoutPreviewDialog({getProject:()=>this.project,preview,draft,options,selection:[...selection.componentIds,...(selection.textIds??[]),...(selection.imageIds??[]),...selection.cableIds,...(selection.boxIds??[])],onApply:(candidate,draft)=>{
+          this.canvas.finishInteraction();
+          this.history.record(this.project);
+          applyLayout(this.project,candidate,draft);
+          this.project.activePageId=candidate.pageId;
+          setProjectSymbolLibrary(this.project);
+          this.canvas.setProject(this.project,false);
+          this.notifyChange();
+        }}).show();
       },
       notifyModified: () => {
         this.notifyChange();

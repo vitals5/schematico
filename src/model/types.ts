@@ -317,6 +317,7 @@ export interface ElementGroup {
 }
 
 export interface Page {
+  layoutConstraints?: import('../layout/types').LayoutConstraints;
   nativeData?: import('./NativeMacroData').NativeMacroData;
   id: string;
   pageNumber: string;           // e.g. "1", "2", "3"

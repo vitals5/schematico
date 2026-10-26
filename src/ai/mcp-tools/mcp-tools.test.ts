@@ -407,7 +407,7 @@ async function runTests() {
   if (!cLabelTest.success || !cLabelTest.component?.labelBounds) {
     throw new Error(`Expected labelBounds on component, got: ${JSON.stringify(cLabelTest)}`);
   }
-  if (!cLabelTest.warning || !cLabelTest.warning.includes('outside left sheet border')) {
+  if (!cLabelTest.warning || !cLabelTest.warning.includes('outside drawing area')) {
     throw new Error(`Expected left border warning when placing at x=55 with long label, got warning: ${cLabelTest.warning}`);
   }
   if (cLabelTest.component.bounds.left >= 35) {
@@ -425,145 +425,18 @@ async function runTests() {
   }
   console.log('✓ Test 18: Sheet utilization telemetry verified, horiz %:', utilState.sheetUtilization.horizontalUtilizationPercent);
 
-  // Test 19: distribute_sheet_layout on cramped 3-column circuit
-  await registry.executeTool('clear_canvas', { confirm: true }, manager);
-
-  // Place a cramped MK C3 schematic in the left corner (X: 55..140, Y: 50..120)
-  await registry.executeTool('add_component', { symbolId: 'fuse_switch_3p', bmk: '-F0', x: 55, y: 50 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q0', x: 55, y: 85 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z1', x: 55, y: 120 }, manager);
-
-  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z2', x: 95, y: 50 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F1', x: 95, y: 85 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'motor_3phase', bmk: '-M1', x: 95, y: 120 }, manager);
-
-  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q2', x: 140, y: 50 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q3', x: 140, y: 85 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'terminal_pe', bmk: '-X1', x: 140, y: 120 }, manager);
-
-  await registry.executeTool('add_text', { text: 'Strang 1: Netz', x: 55, y: 200 }, manager);
-  await registry.executeTool('add_text', { text: 'Strang 2: Wärmepumpe', x: 95, y: 200 }, manager);
-  await registry.executeTool('add_text', { text: 'Strang 3: Haushalt', x: 140, y: 200 }, manager);
-
-  // Add device boxes and cross-column wire
-  await registry.executeTool('add_device_box', { bmk: '=HAK', x: 45, y: 40, width: 40, height: 90 }, manager);
-  await registry.executeTool('add_device_box', { bmk: '=WP', x: 85, y: 40, width: 40, height: 90 }, manager);
-  await registry.executeTool('add_device_box', { bmk: '=PV', x: 130, y: 40, width: 40, height: 90 }, manager);
-
-  // Cross-column wire from Z1 (Column 1) to F1 (Column 2)
-  const z1Comp = manager.getActivePage().components.find((c: any) => c.bmk === '-Z1');
-  const f1Comp = manager.getActivePage().components.find((c: any) => c.bmk === '-F1');
-  await registry.executeTool('draw_wire', {
-    fromComponentId: z1Comp.id,
-    fromPinId: '2',
-    toComponentId: f1Comp.id,
-    toPinId: '1',
-    potential: 'L1'
-  }, manager);
-
-  // Before distribute: verify it's flagged as cramped
-  const crampedState = await registry.executeTool('get_canvas_state', {}, manager);
-  if (!crampedState.sheetUtilization?.isCramped) {
-    throw new Error(`Expected cramped schematic to be flagged as isCramped=true, got: ${JSON.stringify(crampedState.sheetUtilization)}`);
-  }
-  if (!crampedState.warning || !crampedState.warning.includes('SHEET UNDERUTILIZATION')) {
-    throw new Error(`Expected sheet underutilization warning, got: ${crampedState.warning}`);
-  }
-
-  // Execute distribute_sheet_layout
-  const distRes = await registry.executeTool('distribute_sheet_layout', {}, manager);
-  if (!distRes.success || distRes.columns !== 3 || distRes.componentsMoved !== 9) {
-    throw new Error(`distribute_sheet_layout failed: ${JSON.stringify(distRes)}`);
-  }
-  if (distRes.columnPositions[0] !== 85 || distRes.columnPositions[1] !== 215 || distRes.columnPositions[2] !== 345) {
-    throw new Error(`Expected targetXs [85, 215, 345], got: ${JSON.stringify(distRes.columnPositions)}`);
-  }
-
-  // Verify full-sheet state after distribution
-  const distributedState = await registry.executeTool('get_canvas_state', {}, manager);
-  if (distributedState.sheetUtilization?.isCramped) {
-    throw new Error(`Expected circuit to no longer be cramped, got: ${JSON.stringify(distributedState.sheetUtilization)}`);
-  }
-  if (distributedState.sheetUtilization.horizontalUtilizationPercent < 80) {
-    throw new Error(`Expected horizontal utilization >= 80%, got: ${distributedState.sheetUtilization.horizontalUtilizationPercent}%`);
-  }
-
-  // Verify texts moved with the columns
-  const textPage = manager.getActivePage();
-  const t1 = textPage.texts.find((t: any) => t.text.includes('Strang 1'));
-  const t2 = textPage.texts.find((t: any) => t.text.includes('Strang 2'));
-  const t3 = textPage.texts.find((t: any) => t.text.includes('Strang 3'));
-  if (!t1 || !t2 || !t3 || t1.x !== 85 || t2.x !== 215 || t3.x !== 345) {
-    throw new Error(`Texts did not move with distributed columns: t1=${t1?.x}, t2=${t2?.x}, t3=${t3?.x}`);
-  }
-
-  // Verify device boxes were separated without overlapping
-  const bHak = textPage.boxes.find((b: any) => b.bmk === '=HAK');
-  const bWp = textPage.boxes.find((b: any) => b.bmk === '=WP');
-  const bPv = textPage.boxes.find((b: any) => b.bmk === '=PV');
-  if (!bHak || !bWp || !bPv) {
-    throw new Error('Device boxes missing after distribution');
-  }
-  if (bHak.x + bHak.width > bWp.x || bWp.x + bWp.width > bPv.x) {
-    throw new Error(`Device boxes overlap: HAK=${bHak.x}..${bHak.x + bHak.width}, WP=${bWp.x}..${bWp.x + bWp.width}, PV=${bPv.x}..${bPv.x + bPv.width}`);
-  }
-
-  // Verify inter-column wire was routed via duct waypoints
-  const crossWire = textPage.wires.find((w: any) => w.from.componentId === z1Comp.id && w.to.componentId === f1Comp.id);
-  if (!crossWire || !crossWire.waypoints || crossWire.waypoints.length === 0) {
-    throw new Error('Expected inter-column wire to have non-overlapping duct waypoints');
-  }
-
-  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 215, 345] with >80% sheet utilization, non-overlapping boxes, and orthogonal duct wiring');
-
-  // Test 20: distribute_sheet_layout on 4-box layout (+HAK, +ZP1, +UV-WP, +UV-HH) with stacked texts
-  await registry.executeTool('clear_canvas', { confirm: true }, manager);
-  await registry.executeTool('add_component', { symbolId: 'fuse_switch_3p', bmk: '-F0', x: 85, y: 58 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q0', x: 85, y: 120 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z1', x: 85, y: 185 }, manager);
-
-  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F1', x: 135, y: 58 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q1', x: 135, y: 124 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'motor_3phase', bmk: '-M1', x: 135, y: 185 }, manager);
-
-  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z2', x: 160, y: 58 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F2', x: 160, y: 124 }, manager);
-  await registry.executeTool('add_component', { symbolId: 'inverter_solar', bmk: '-G1', x: 160, y: 195 }, manager);
-
-  await registry.executeTool('add_device_box', { bmk: '+HAK', x: 75, y: 45, width: 90, height: 60 }, manager);
-  await registry.executeTool('add_device_box', { bmk: '+ZP1', x: 75, y: 110, width: 100, height: 130 }, manager);
-  await registry.executeTool('add_device_box', { bmk: '+UV-WP', x: 130, y: 45, width: 90, height: 190 }, manager);
-  await registry.executeTool('add_device_box', { bmk: '+UV-HH', x: 155, y: 45, width: 90, height: 190 }, manager);
-
-  await registry.executeTool('add_text', { text: 'Messkonzept MK C3: Kaskadenmessung Wärmepumpe & Haushalt', x: 45, y: 38 }, manager);
-  await registry.executeTool('add_text', { text: 'STRANG 1: Netzeinspeisung', x: 85, y: 48 }, manager);
-  await registry.executeTool('add_text', { text: 'STRANG 2: Kaskadenzweig Wärmepumpe', x: 85, y: 48 }, manager);
-  await registry.executeTool('add_text', { text: 'STRANG 3: Haushaltsnetz & PV', x: 85, y: 48 }, manager);
-
-  const dist20Res = await registry.executeTool('distribute_sheet_layout', {}, manager);
-  if (!dist20Res.success || dist20Res.columns !== 3) {
-    throw new Error(`Test 20 failed: expected 3 columns, got ${dist20Res.columns}`);
-  }
-
-  const p20 = manager.getActivePage();
-  const txt1 = p20.texts.find((t: any) => t.text.includes('STRANG 1'));
-  const txt2 = p20.texts.find((t: any) => t.text.includes('STRANG 2'));
-  const txt3 = p20.texts.find((t: any) => t.text.includes('STRANG 3'));
-  if (!txt1 || !txt2 || !txt3 || txt1.x !== 85 || txt2.x !== 215 || txt3.x !== 345) {
-    throw new Error(`Test 20 failed: Texts not separated: txt1=${txt1?.x}, txt2=${txt2?.x}, txt3=${txt3?.x}`);
-  }
-
-  const boxHak = p20.boxes.find((b: any) => b.bmk === '+HAK');
-  const boxZp = p20.boxes.find((b: any) => b.bmk === '+ZP1');
-  const boxWp = p20.boxes.find((b: any) => b.bmk === '+UV-WP');
-  const boxHh = p20.boxes.find((b: any) => b.bmk === '+UV-HH');
-  if (!boxHak || !boxZp || !boxWp || !boxHh) {
-    throw new Error('Test 20 failed: missing boxes');
-  }
-  if (boxWp.x + boxWp.width > boxHh.x) {
-    throw new Error(`Test 20 failed: +UV-WP overlaps +UV-HH: WP=${boxWp.x}..${boxWp.x + boxWp.width}, HH=${boxHh.x}..${boxHh.x + boxHh.width}`);
-  }
-  console.log('✓ Test 20: distribute_sheet_layout separated narrow columns (25mm), resolved 4 boxes (+HAK, +ZP1, +UV-WP, +UV-HH), and distributed stacked Strang headers to X: [85, 215, 345]');
+  delete project.pages.find(p=>p.id===project.activePageId)!.floorPlan;
+  // The compatibility alias now computes a validated proposal without mutating the page.
+  await registry.executeTool('clear_canvas',{confirm:true},manager);
+  const snapshot=JSON.stringify(project);
+  const validation=await registry.executeTool('validate_schematic_layout',{},manager);
+  if(!validation.success||!validation.metrics)throw new Error('Structured layout report missing');
+  await registry.executeTool('distribute_sheet_layout',{},manager);
+  if(JSON.stringify(project)!==snapshot)throw new Error('Layout preview mutated project');
+  const draft=await registry.executeTool('create_schematic_draft',{components:[{id:'draft-test',symbolId:'contactor_coil',functionText:'Steuerung'}],connections:[]},manager);
+  if(draft.status!=='preview_ready'||!draft.requiresUserApply)throw new Error('Expected checked draft proposal: '+JSON.stringify(draft));
+  if(JSON.stringify(project)!==snapshot)throw new Error('Draft mutated project before approval');
+  console.log('✓ Layout diagnostics, compatibility preview and batched circuit draft preserve the project until user acceptance');
 
   // Test 21: place_macro with Page Macro (macro_ems_messkonzept_mk_c3)
   await registry.executeTool('clear_canvas', { confirm: true }, manager);
