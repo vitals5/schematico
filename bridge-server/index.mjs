@@ -534,7 +534,7 @@ function sendToBrowser(method, params) {
 const server = new Server(
   {
     name: 'schematico-mcp-bridge',
-    version: '1.2.46'
+    version: '1.2.47'
   },
   {
     capabilities: {
