@@ -21,6 +21,13 @@ import { CrossReferenceEngine } from '../../model/CrossReferenceEngine';
 import { PartsListGenerator } from '../../reports/PartsList';
 import { TerminalDiagramGenerator } from '../../reports/TerminalDiagram';
 import { MacroManager, WindowMacro } from '../../model/MacroManager';
+import {
+  computeBmkPosition,
+  computeFunctionTextPosition,
+  computeTechnicalDataPosition,
+  computeAdditionalTextPosition,
+  CalculatedLabelPosition
+} from '../../model/LabelLayout';
 import type { CadCanvas } from '../../editor/CadCanvas';
 
 export interface CanvasStateManager {
@@ -236,15 +243,154 @@ export interface ComponentBounds {
   bottom: number;
   width: number;
   height: number;
+  body?: { left: number; top: number; right: number; bottom: number; width: number; height: number };
+  labels?: { left: number; top: number; right: number; bottom: number; width: number; height: number };
+}
+
+/**
+ * Computes bounding box of all visible labels (BMK, Function Text, Technical data, Additional text)
+ * for a placed component in world sheet coordinates (mm).
+ */
+export function computeComponentLabelBounds(
+  comp: {
+    x: number;
+    y: number;
+    rotation?: number;
+    bmk?: string;
+    functionText?: string;
+    technicalCharacteristics?: string;
+    additionalText?: string;
+    deviceTag?: string;
+    bmkPosition?: any;
+    functionTextPosition?: any;
+    technicalDataPosition?: any;
+    additionalTextPosition?: any;
+    crossRef?: string;
+    crossRefFontSize?: number;
+  },
+  sym: SymbolDefinition
+): ComponentBounds | undefined {
+  if (!sym || sym.category === 'connections') return undefined;
+
+  const mockComp = comp as PlacedComponent;
+  let bmkPos: CalculatedLabelPosition | undefined;
+  let fnPos: CalculatedLabelPosition | undefined;
+  let techPos: CalculatedLabelPosition | undefined;
+  let addPos: CalculatedLabelPosition | undefined;
+
+  try { bmkPos = computeBmkPosition(mockComp, sym); } catch {}
+  try { fnPos = computeFunctionTextPosition(mockComp, sym); } catch {}
+  try { techPos = computeTechnicalDataPosition(mockComp, sym); } catch {}
+  try { addPos = computeAdditionalTextPosition(mockComp, sym); } catch {}
+
+  const techText = comp.deviceTag
+    ? comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : '')
+    : comp.technicalCharacteristics || '';
+
+  const labelItems: Array<{ pos: CalculatedLabelPosition; text: string; isMonospace: boolean }> = [];
+
+  if (bmkPos && bmkPos.visible && comp.bmk?.trim()) {
+    labelItems.push({ pos: bmkPos, text: comp.bmk.trim(), isMonospace: true });
+  }
+  if (fnPos && fnPos.visible && comp.functionText?.trim()) {
+    labelItems.push({ pos: fnPos, text: comp.functionText.trim(), isMonospace: false });
+  }
+  if (techPos && techPos.visible && techText.trim()) {
+    labelItems.push({ pos: techPos, text: techText.trim(), isMonospace: false });
+  }
+  if (addPos && addPos.visible && comp.additionalText?.trim()) {
+    labelItems.push({ pos: addPos, text: comp.additionalText.trim(), isMonospace: false });
+  }
+
+  if (labelItems.length === 0) return undefined;
+
+  const cx = comp.x + sym.width / 2;
+  const cy = comp.y + sym.height / 2;
+  const rad = (((comp.rotation || 0) % 360) * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const item of labelItems) {
+    const { pos, text, isMonospace } = item;
+    const dx = pos.x - sym.width / 2;
+    const dy = pos.y - sym.height / 2;
+    const worldAnchorX = cx + (dx * cos - dy * sin);
+    const worldAnchorY = cy + (dx * sin + dy * cos);
+
+    const lines = text.split(/\r?\n/);
+    const maxChars = Math.max(...lines.map(l => l.length), 1);
+    const fs = pos.fontSize || 8;
+    const charWidth = isMonospace ? fs * 0.62 : fs * 0.52;
+    const textWidth = maxChars * charWidth;
+    const lineH = fs * 1.35;
+
+    let lLeft = worldAnchorX;
+    let lRight = worldAnchorX;
+
+    if (pos.anchor === 'end') {
+      lLeft = worldAnchorX - textWidth;
+      lRight = worldAnchorX;
+    } else if (pos.anchor === 'start') {
+      lLeft = worldAnchorX;
+      lRight = worldAnchorX + textWidth;
+    } else {
+      lLeft = worldAnchorX - textWidth / 2;
+      lRight = worldAnchorX + textWidth / 2;
+    }
+
+    const lTop = worldAnchorY - fs * 0.85;
+    const lBottom = worldAnchorY + (lines.length - 1) * lineH + fs * 0.3;
+
+    minX = Math.min(minX, lLeft);
+    maxX = Math.max(maxX, lRight);
+    minY = Math.min(minY, lTop);
+    maxY = Math.max(maxY, lBottom);
+  }
+
+  if (minX === Infinity) return undefined;
+
+  const left = Math.round(minX * 10) / 10;
+  const top = Math.round(minY * 10) / 10;
+  const right = Math.round(maxX * 10) / 10;
+  const bottom = Math.round(maxY * 10) / 10;
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: Math.round((right - left) * 10) / 10,
+    height: Math.round((bottom - top) * 10) / 10
+  };
 }
 
 /**
  * Calculates physical bounding box in sheet millimeters for a placed component,
- * taking into account rotation.
+ * taking into account rotation and visible labels (BMK, Function text, Technical data).
  */
 export function getComponentBounds(
-  comp: { x: number; y: number; rotation?: number },
-  sym?: { width: number; height: number }
+  comp: {
+    x: number;
+    y: number;
+    rotation?: number;
+    bmk?: string;
+    functionText?: string;
+    technicalCharacteristics?: string;
+    additionalText?: string;
+    deviceTag?: string;
+    bmkPosition?: any;
+    functionTextPosition?: any;
+    technicalDataPosition?: any;
+    additionalTextPosition?: any;
+    crossRef?: string;
+    crossRefFontSize?: number;
+  },
+  sym?: SymbolDefinition | { width: number; height: number; [key: string]: any }
 ): ComponentBounds {
   const w = sym?.width ?? 20;
   const h = sym?.height ?? 20;
@@ -253,20 +399,52 @@ export function getComponentBounds(
   const effW = isRotated90or270 ? h : w;
   const effH = isRotated90or270 ? w : h;
 
-  // In CadCanvas: translate(comp.x, comp.y) rotate(comp.rotation, sym.width / 2, sym.height / 2)
   const cx = comp.x + w / 2;
   const cy = comp.y + h / 2;
 
-  const left = Math.round((cx - effW / 2) * 10) / 10;
-  const top = Math.round((cy - effH / 2) * 10) / 10;
-  const right = Math.round((cx + effW / 2) * 10) / 10;
-  const bottom = Math.round((cy + effH / 2) * 10) / 10;
+  const bodyLeft = Math.round((cx - effW / 2) * 10) / 10;
+  const bodyTop = Math.round((cy - effH / 2) * 10) / 10;
+  const bodyRight = Math.round((cx + effW / 2) * 10) / 10;
+  const bodyBottom = Math.round((cy + effH / 2) * 10) / 10;
 
-  return { left, top, right, bottom, width: effW, height: effH };
+  const body: ComponentBounds = {
+    left: bodyLeft,
+    top: bodyTop,
+    right: bodyRight,
+    bottom: bodyBottom,
+    width: effW,
+    height: effH
+  };
+
+  let labels: ComponentBounds | undefined;
+  if (sym && (sym as SymbolDefinition).pins) {
+    try {
+      labels = computeComponentLabelBounds(comp, sym as SymbolDefinition);
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  const left = labels ? Math.min(body.left, labels.left) : body.left;
+  const top = labels ? Math.min(body.top, labels.top) : body.top;
+  const right = labels ? Math.max(body.right, labels.right) : body.right;
+  const bottom = labels ? Math.max(body.bottom, labels.bottom) : body.bottom;
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: Math.round((right - left) * 10) / 10,
+    height: Math.round((bottom - top) * 10) / 10,
+    body,
+    labels
+  };
 }
 
 /**
- * Detects whether a component collides / overlaps with any existing components on the page.
+ * Detects whether a component collides / overlaps with any existing components on the page,
+ * considering both symbol body and labels.
  */
 export function detectComponentCollisions(
   targetComp: PlacedComponent,
@@ -285,9 +463,21 @@ export function detectComponentCollisions(
     const overlapY = Math.min(targetBounds.bottom, oBounds.bottom) - Math.max(targetBounds.top, oBounds.top);
 
     if (overlapX > 3 && overlapY > 3) {
-      collisions.push(
-        `Overlap with ${other.bmk} (${otherSym?.name || other.symbolId}) at [x: ${oBounds.left}..${oBounds.right}, y: ${oBounds.top}..${oBounds.bottom}]. Recommended free X >= ${Math.round(oBounds.right + 20)} or free Y >= ${Math.round(oBounds.bottom + 25)}`
-      );
+      const tBody = targetBounds.body || targetBounds;
+      const oBody = oBounds.body || oBounds;
+      const bodyOverlapX = Math.min(tBody.right, oBody.right) - Math.max(tBody.left, oBody.left);
+      const bodyOverlapY = Math.min(tBody.bottom, oBody.bottom) - Math.max(tBody.top, oBody.top);
+      const isBodyOverlap = bodyOverlapX > 3 && bodyOverlapY > 3;
+
+      if (isBodyOverlap) {
+        collisions.push(
+          `Overlap with ${other.bmk} (${otherSym?.name || other.symbolId}) body at [x: ${oBounds.left}..${oBounds.right}, y: ${oBounds.top}..${oBounds.bottom}]. Recommended free X >= ${Math.round(oBounds.right + 20)} or free Y >= ${Math.round(oBounds.bottom + 25)}`
+        );
+      } else {
+        collisions.push(
+          `Label collision: Beschriftung von ${targetComp.bmk} überschneidet sich mit ${other.bmk} (${otherSym?.name || other.symbolId}) im Bereich [x: ${Math.round(Math.max(targetBounds.left, oBounds.left))}..${Math.round(Math.min(targetBounds.right, oBounds.right))}]. Bitte mehr horizontalen Abstand (X >= ${Math.round(oBounds.right + 30)}) halten!`
+        );
+      }
     }
   }
   return collisions;
@@ -350,6 +540,8 @@ export async function handleGetCanvasState(
       width: bounds.width,
       height: bounds.height,
       bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+      bodyBounds: bounds.body,
+      labelBounds: bounds.labels,
       rotation: comp.rotation || 0,
       pins: pinsInfo
     };
@@ -504,7 +696,12 @@ export async function handleAddComponent(
   const sheetWidth = page.plotFrame?.width || 420;
   const sheetHeight = page.plotFrame?.height || 297;
   let boundaryWarning: string | undefined;
-  if (newBounds.right > sheetWidth - 25 || newBounds.bottom > sheetHeight - 40 || newBounds.left < 20 || newBounds.top < 20) {
+
+  const leftMarginNeeded = newBounds.body && newBounds.labels ? Math.round(newBounds.body.left - newBounds.left) : 0;
+
+  if (newBounds.left < 35) {
+    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) cause labels of '${newComp.bmk}' to extend to X=${newBounds.left}mm (outside left sheet border X: 35). Labels require ~${leftMarginNeeded}mm left clearance. Recommended placement is X >= ${Math.max(80, Math.round(35 + leftMarginNeeded + 5))}mm!`;
+  } else if (newBounds.right > sheetWidth - 25 || newBounds.bottom > sheetHeight - 40 || newBounds.top < 20) {
     boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) with size ${newBounds.width}x${newBounds.height}mm exceed standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
   }
 
@@ -533,6 +730,8 @@ export async function handleAddComponent(
       width: newBounds.width,
       height: newBounds.height,
       bounds: { left: newBounds.left, top: newBounds.top, right: newBounds.right, bottom: newBounds.bottom },
+      bodyBounds: newBounds.body,
+      labelBounds: newBounds.labels,
       rotation: newComp.rotation,
       pins: sym.pins.map(p => ({ id: p.id, name: p.name, direction: p.direction }))
     }
@@ -610,6 +809,8 @@ export async function handleUpdateComponent(
       width: bounds.width,
       height: bounds.height,
       bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+      bodyBounds: bounds.body,
+      labelBounds: bounds.labels,
       rotation: comp.rotation
     }
   };
@@ -691,6 +892,8 @@ export async function handleMoveElement(
       width: bounds.width,
       height: bounds.height,
       bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+      bodyBounds: bounds.body,
+      labelBounds: bounds.labels,
       warning: collisions.length > 0 ? `⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}` : undefined
     };
   }

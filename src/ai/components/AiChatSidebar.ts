@@ -2,7 +2,15 @@
 // Native Gemini Chat Sidebar & MCP Bridge Console for Schematico (Vanilla TypeScript)
 
 import { GeminiChatClient, ChatMessage, ToolCallExecution } from '../gemini/client';
-import { getGeminiApiKey, setGeminiApiKey, hasGeminiApiKey, testGeminiApiKey } from '../GeminiConfig';
+import {
+  getGeminiApiKey,
+  setGeminiApiKey,
+  hasGeminiApiKey,
+  testGeminiApiKey,
+  getGeminiThinkingLevel,
+  setGeminiThinkingLevel,
+  GeminiThinkingLevel
+} from '../GeminiConfig';
 import { defaultBridgeClient, BridgeConnectionStatus } from '../bridge/bridgeClient';
 import { CanvasStateManager } from '../mcp-tools';
 
@@ -82,19 +90,37 @@ export class AiChatSidebar {
     }
   }
 
+  private formatThinkingLevel(level: GeminiThinkingLevel): string {
+    switch (level) {
+      case 'minimal': return 'Minimal';
+      case 'low': return 'Low';
+      case 'medium': return 'Medium';
+      case 'high': return 'High';
+      default: return 'Medium';
+    }
+  }
+
+  private updateModelTag(): void {
+    const tag = this.container.querySelector('#aiChatModelTag');
+    if (tag) {
+      tag.textContent = `Gemini 3.8 Flash (${this.formatThinkingLevel(this.geminiClient.getThinkingLevel())}) • BYOK`;
+    }
+  }
+
   private render(): void {
+    const currentThinking = this.formatThinkingLevel(this.geminiClient.getThinkingLevel());
     this.container.innerHTML = `
       <div class="ai-chat-header">
         <div class="ai-chat-title-group">
           <span class="ai-chat-icon">🪄</span>
           <div class="ai-chat-title-info">
             <span class="ai-chat-title">Schematico AI</span>
-            <span class="ai-chat-model-tag">Gemini 3.8 Flash • BYOK</span>
+            <span class="ai-chat-model-tag" id="aiChatModelTag">Gemini 3.8 Flash (${currentThinking}) • BYOK</span>
           </div>
         </div>
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
-          <button type="button" class="ai-header-btn" id="btnAiSettings" title="Gemini API-Key (BYOK) verwalten">⚙️</button>
+          <button type="button" class="ai-header-btn" id="btnAiSettings" title="Gemini API-Key & Thinking-Modus verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
         </div>
@@ -582,6 +608,7 @@ export class AiChatSidebar {
     if (existingModal) existingModal.remove();
 
     const currentKey = getGeminiApiKey();
+    const currentThinking = getGeminiThinkingLevel();
 
     const modal = document.createElement('div');
     modal.className = 'modal-backdrop';
@@ -601,13 +628,13 @@ export class AiChatSidebar {
       ">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 style="margin:0; font-size:18px; display:flex; align-items:center; gap:8px;">
-            <span>🔑</span> Gemini API-Key (BYOK)
+            <span>🔑</span> Gemini API & Thinking Einstellungen
           </h3>
           <button type="button" class="btn" id="btnModalClose" style="padding:4px 8px; font-size:14px;">✕</button>
         </div>
 
         <p style="font-size:13px; color:#a0aec0; margin-bottom:16px; line-height:1.5;">
-          Schematico verwendet das Prinzip <strong>Bring Your Own Key (BYOK)</strong>. Ihr Schlüssel wird ausschließlich lokal in Ihrem Browser gespeichert und direkt für die Kommunikation mit der Google Gemini API (Modell <code>gemini-3.8-flash</code>) verwendet.
+          Schematico verwendet das Prinzip <strong>Bring Your Own Key (BYOK)</strong>. Ihr Schlüssel wird ausschließlich lokal im Browser gespeichert und direkt für die Kommunikation mit der Google Gemini API (Modell <code>gemini-3.8-flash</code>) verwendet.
         </p>
 
         <div style="margin-bottom:16px;">
@@ -627,6 +654,25 @@ export class AiChatSidebar {
           />
         </div>
 
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
+            Thinking-Modus (Reasoning-Tiefe):
+          </label>
+          <select id="selectModalThinkingLevel" style="
+            width:100%; box-sizing:border-box; padding:10px 12px;
+            background:#2d3748; border:1px solid #4a5568; border-radius:6px;
+            color:#fff; font-size:13px; outline:none;
+          ">
+            <option value="minimal" ${currentThinking === 'minimal' ? 'selected' : ''}>Minimal (Schnellste Antworten)</option>
+            <option value="low" ${currentThinking === 'low' ? 'selected' : ''}>Niedrig (Kurze Denkzeit)</option>
+            <option value="medium" ${currentThinking === 'medium' ? 'selected' : ''}>Mittel / Medium (Empfohlen für CAD-Planung)</option>
+            <option value="high" ${currentThinking === 'high' ? 'selected' : ''}>Hoch (Maximales Reasoning)</option>
+          </select>
+          <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
+            Standard ist <strong>Medium</strong> für eine optimale Balance aus Überlegungszeit und schneller CAD-Ausführung.
+          </div>
+        </div>
+
         <div id="apiKeyTestResult" style="margin-bottom:16px; font-size:12px; min-height:20px;"></div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2d3748; padding-top:16px;">
@@ -644,6 +690,7 @@ export class AiChatSidebar {
     document.body.appendChild(modal);
 
     const input = modal.querySelector<HTMLInputElement>('#inputModalApiKey');
+    const selectThinking = modal.querySelector<HTMLSelectElement>('#selectModalThinkingLevel');
     const resultDiv = modal.querySelector<HTMLElement>('#apiKeyTestResult')!;
     const btnClose = modal.querySelector<HTMLButtonElement>('#btnModalClose')!;
     const btnTest = modal.querySelector<HTMLButtonElement>('#btnTestKey')!;
@@ -675,6 +722,12 @@ export class AiChatSidebar {
     btnSave.addEventListener('click', () => {
       const key = input?.value.trim() || '';
       setGeminiApiKey(key);
+
+      const thinking = (selectThinking?.value as GeminiThinkingLevel) || 'medium';
+      setGeminiThinkingLevel(thinking);
+      this.geminiClient.setThinkingLevel(thinking);
+      this.updateModelTag();
+
       this.renderApiKeyBanner();
       this.options.onApiKeyUpdated?.();
       modal.remove();

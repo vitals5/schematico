@@ -1,10 +1,20 @@
 // src/ai/gemini/client.ts
 // Native Gemini Chat Client with BYOK and Function Calling Loop for Schematico
 
-import { GoogleGenAI, Content, Part } from '@google/genai';
-import { getGeminiApiKey } from '../GeminiConfig';
+import { GoogleGenAI, Content, Part, ThinkingLevel } from '@google/genai';
+import { getGeminiApiKey, getGeminiThinkingLevel, GeminiThinkingLevel } from '../GeminiConfig';
 import { McpToolRegistry, defaultToolRegistry, CanvasStateManager } from '../mcp-tools';
 import { mcpToolsToGeminiFunctions } from './mapper';
+
+function toGenAiThinkingLevel(level?: GeminiThinkingLevel): ThinkingLevel {
+  switch (level) {
+    case 'minimal': return ThinkingLevel.MINIMAL;
+    case 'low': return ThinkingLevel.LOW;
+    case 'medium': return ThinkingLevel.MEDIUM;
+    case 'high': return ThinkingLevel.HIGH;
+    default: return ThinkingLevel.MEDIUM;
+  }
+}
 
 export interface ToolCallExecution {
   name: string;
@@ -23,6 +33,7 @@ export interface ChatMessage {
 
 export interface GeminiChatOptions {
   model?: string;
+  thinkingLevel?: GeminiThinkingLevel;
   systemInstruction?: string;
   toolRegistry?: McpToolRegistry;
   onToolStart?: (name: string, args: any) => void;
@@ -98,18 +109,26 @@ Electrical Standards & Physical CAD Layout Rules:
      - ALWAYS space vertical component origins by AT LEAST (symbol_height + 20 mm).
      - Example: If a 48 mm high switch is placed at Y=70, it extends to Y=118. The next device below it MUST start at Y >= 135! Placing it at Y=90 will cause direct collision and overlap!
      - In 3-phase columns, use at least 65 mm to 75 mm between component origins (e.g. Row 1: Y=50, Row 2: Y=120, Row 3: Y=185).
-  2. Column Distribution for 3-Phase Distribution & Messkonzepte (MK C3 / MK B2 / Hauseinspeisung):
-     - Because 3-phase devices are 72 mm to 120 mm wide, NEVER use narrow columns! Use 2 to 3 wide columns across the DIN A3 sheet:
-       * Column 1 (Netzanschluss & Zähler Z1): X = 50 .. 145 mm (e.g., HAK Y=50, SLS/SPD Y=120, Z1 Y=185)
-       * Column 2 (Kaskadenzweig / Wärmepumpe): X = 175 .. 260 mm (e.g., FI Y=55, LS/MSS Y=125, Verdichter Y=185)
-       * Column 3 (Haushaltsstrom & PV / Speicher): X = 285 .. 385 mm (e.g., Z2 Y=55, FI/LS Y=125, PV-Wechselrichter Y=185)
-  3. Column Distribution for 1-Phase Control Circuits (Steuerungstechnik):
-     - Path 1: X=60..85 | Path 2: X=120..145 | Path 3: X=180..205 | Path 4: X=240..265 | Path 5: X=300..325 | Path 6: X=350..375
-  4. Device Boxes ('add_device_box'):
-     - Provide at least 8..12 mm margin around all enclosed components.
+  2. Component Label Dimensions & Left Margin Clearance (CRITICAL):
+     - In Schematico, component labels (BMK, Function text, Technical data) are positioned to the LEFT of the symbol body!
+     - Labels typically require 35 mm to 60 mm of horizontal space to the left of 'comp.x'.
+     - NEVER place components at X < 80 mm! (Placing at X=55 mm pushes the labels to X < 20 mm, which collides with the left sheet border at X=35 mm and truncates text!).
+     - Standard Column 1 placement must be at X = 80..100 mm (recommended: X = 85 mm).
+     - Standard Column 2 placement must be at X = 195..220 mm (recommended: X = 205 mm).
+     - Standard Column 3 placement must be at X = 300..325 mm (recommended: X = 315 mm).
+     - This gives each column sufficient room for the symbol body (72..96 mm) AND its left-hand labels without any overlapping!
+  3. Column Distribution for 3-Phase Distribution & Messkonzepte (MK C3 / MK B2 / Hauseinspeisung):
+     - Because 3-phase devices are 72 mm to 120 mm wide, NEVER use narrow columns! Use 3 wide columns across the DIN A3 sheet:
+       * Column 1 (Netzanschluss & Zähler Z1): X = 85 mm | HAK Y=50, SLS/SPD Y=120, Z1 Y=185
+       * Column 2 (Kaskadenzweig / Wärmepumpe): X = 205 mm | FI Y=55, LS/MSS Y=125, Verdichter Y=185
+       * Column 3 (Haushaltsstrom & PV / Speicher): X = 315 mm | Z2 Y=55, FI/LS Y=125, PV-Wechselrichter Y=185
+  4. Column Distribution for 1-Phase Control Circuits (Steuerungstechnik):
+     - Path 1: X=80..95 | Path 2: X=135..155 | Path 3: X=195..215 | Path 4: X=255..275 | Path 5: X=315..335
+  5. Device Boxes ('add_device_box'):
+     - Provide at least 8..12 mm margin around all enclosed components and their labels.
      - NEVER overlap two device boxes.
-  5. Collision Feedback:
-     - 'add_component' returns 'bounds' and warns if a collision occurs. If a warning is returned, adjust subsequent positions immediately!
+  6. Collision Feedback:
+     - 'add_component' returns 'bounds' (including symbol body and labels) and warns if a collision occurs. If a warning is returned, adjust subsequent positions immediately!
 
 Direct Symbol Catalog (Use these IDs directly in 'add_component', avoid search calls):
 - Energy & Power Distribution:
@@ -154,6 +173,7 @@ export class GeminiChatClient {
   private messages: ChatMessage[] = [];
   private toolRegistry: McpToolRegistry;
   private model: string;
+  private thinkingLevel: GeminiThinkingLevel;
   private systemInstruction: string;
   private currentAbortController: AbortController | null = null;
   private isAborted: boolean = false;
@@ -161,7 +181,16 @@ export class GeminiChatClient {
   constructor(options: GeminiChatOptions = {}) {
     this.toolRegistry = options.toolRegistry || defaultToolRegistry;
     this.model = options.model || 'gemini-3.8-flash';
+    this.thinkingLevel = options.thinkingLevel || getGeminiThinkingLevel() || 'medium';
     this.systemInstruction = options.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+  }
+
+  public getThinkingLevel(): GeminiThinkingLevel {
+    return this.thinkingLevel;
+  }
+
+  public setThinkingLevel(level: GeminiThinkingLevel): void {
+    this.thinkingLevel = level;
   }
 
   public getMessages(): ChatMessage[] {
@@ -269,6 +298,9 @@ export class GeminiChatClient {
             config: {
               systemInstruction: this.systemInstruction,
               tools: [{ functionDeclarations: toolDeclarations }],
+              thinkingConfig: {
+                thinkingLevel: toGenAiThinkingLevel(this.thinkingLevel)
+              },
               abortSignal: this.currentAbortController?.signal
             }
           });

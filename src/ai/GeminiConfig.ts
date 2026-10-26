@@ -2,6 +2,33 @@
 // Configuration and persistence for Google Gemini API key
 
 const STORAGE_KEY = 'schematico_gemini_api_key';
+const THINKING_LEVEL_STORAGE_KEY = 'schematico_gemini_thinking_level';
+
+export type GeminiThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
+
+export function getGeminiThinkingLevel(): GeminiThinkingLevel {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(THINKING_LEVEL_STORAGE_KEY);
+      if (stored && ['minimal', 'low', 'medium', 'high'].includes(stored)) {
+        return stored as GeminiThinkingLevel;
+      }
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+  return 'medium';
+}
+
+export function setGeminiThinkingLevel(level: GeminiThinkingLevel): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(THINKING_LEVEL_STORAGE_KEY, level);
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+}
 
 export function getGeminiApiKey(): string {
   try {

@@ -373,7 +373,7 @@ async function runTests() {
     x: 100,
     y: 100
   }, manager);
-  if (!c1.success || !c1.component?.bounds || c1.component.width !== 96 || c1.component.height !== 48) {
+  if (!c1.success || !c1.component?.bounds || c1.component.bodyBounds?.width !== 96 || c1.component.bodyBounds?.height !== 48) {
     throw new Error(`Component bounds or dimensions missing on energy_meter_3p: ${JSON.stringify(c1)}`);
   }
 
@@ -390,10 +390,30 @@ async function runTests() {
   // Verify get_canvas_state reports bounds
   const canvasWithBounds = await registry.executeTool('get_canvas_state', {}, manager);
   const foundMeter = canvasWithBounds.components.find((c: any) => c.symbolId === 'energy_meter_3p');
-  if (!foundMeter?.bounds || foundMeter.width !== 96 || foundMeter.height !== 48) {
+  if (!foundMeter?.bounds || foundMeter.bodyBounds?.width !== 96 || foundMeter.bodyBounds?.height !== 48) {
     throw new Error(`get_canvas_state did not report bounds: ${JSON.stringify(foundMeter)}`);
   }
   console.log('✓ Test 16: Physical symbol bounding boxes & collision detection validated');
+
+  // Test 17: Label dimensions and left border clearance
+  const cLabelTest = await registry.executeTool('add_component', {
+    symbolId: 'fuse_switch_3p',
+    x: 55,
+    y: 50,
+    bmk: '-F0',
+    functionText: 'Hausanschlusskasten (HAK) NH00'
+  }, manager);
+
+  if (!cLabelTest.success || !cLabelTest.component?.labelBounds) {
+    throw new Error(`Expected labelBounds on component, got: ${JSON.stringify(cLabelTest)}`);
+  }
+  if (!cLabelTest.warning || !cLabelTest.warning.includes('outside left sheet border')) {
+    throw new Error(`Expected left border warning when placing at x=55 with long label, got warning: ${cLabelTest.warning}`);
+  }
+  if (cLabelTest.component.bounds.left >= 35) {
+    throw new Error(`Expected total bounds.left < 35 due to label, got: ${cLabelTest.component.bounds.left}`);
+  }
+  console.log('✓ Test 17: Component label dimensions and left-margin clearance validated');
 
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
