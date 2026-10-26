@@ -9,7 +9,10 @@ import {
   testGeminiApiKey,
   getGeminiThinkingLevel,
   setGeminiThinkingLevel,
-  GeminiThinkingLevel
+  getGeminiModel,
+  setGeminiModel,
+  GeminiThinkingLevel,
+  GeminiModelId
 } from '../GeminiConfig';
 import { defaultBridgeClient, BridgeConnectionStatus } from '../bridge/bridgeClient';
 import { CanvasStateManager } from '../mcp-tools';
@@ -90,6 +93,19 @@ export class AiChatSidebar {
     }
   }
 
+  public refreshConfig(): void {
+    const model = getGeminiModel();
+    this.geminiClient.setModel(model);
+    let thinking = getGeminiThinkingLevel();
+    if (model === 'gemini-4-argon' && thinking === 'minimal') {
+      thinking = 'low';
+      setGeminiThinkingLevel('low');
+    }
+    this.geminiClient.setThinkingLevel(thinking);
+    this.updateModelTag();
+    this.renderApiKeyBanner();
+  }
+
   private formatThinkingLevel(level: GeminiThinkingLevel): string {
     switch (level) {
       case 'minimal': return 'Minimal';
@@ -100,14 +116,21 @@ export class AiChatSidebar {
     }
   }
 
+  private formatModelName(model: string): string {
+    if (model === 'gemini-4-argon') return 'Gemini 4 Argon';
+    return 'Gemini 3.8 Flash';
+  }
+
   private updateModelTag(): void {
     const tag = this.container.querySelector('#aiChatModelTag');
     if (tag) {
-      tag.textContent = `Gemini 3.8 Flash (${this.formatThinkingLevel(this.geminiClient.getThinkingLevel())}) • BYOK`;
+      const modelName = this.formatModelName(this.geminiClient.getModel());
+      tag.textContent = `${modelName} (${this.formatThinkingLevel(this.geminiClient.getThinkingLevel())}) • BYOK`;
     }
   }
 
   private render(): void {
+    const currentModel = this.formatModelName(this.geminiClient.getModel());
     const currentThinking = this.formatThinkingLevel(this.geminiClient.getThinkingLevel());
     this.container.innerHTML = `
       <div class="ai-chat-header">
@@ -115,7 +138,7 @@ export class AiChatSidebar {
           <span class="ai-chat-icon">🪄</span>
           <div class="ai-chat-title-info">
             <span class="ai-chat-title">Schematico AI</span>
-            <span class="ai-chat-model-tag" id="aiChatModelTag">Gemini 3.8 Flash (${currentThinking}) • BYOK</span>
+            <span class="ai-chat-model-tag" id="aiChatModelTag" title="Klicken für Modell-, Thinking- & API-Key-Einstellungen">${currentModel} (${currentThinking}) • BYOK</span>
           </div>
         </div>
         <div class="ai-chat-header-actions">
@@ -231,11 +254,7 @@ export class AiChatSidebar {
 
     const modelTag = this.container.querySelector<HTMLElement>('#aiChatModelTag');
     modelTag?.addEventListener('click', () => {
-      const current = this.geminiClient.getThinkingLevel();
-      const next: GeminiThinkingLevel = current === 'medium' ? 'high' : current === 'high' ? 'low' : 'medium';
-      setGeminiThinkingLevel(next);
-      this.geminiClient.setThinkingLevel(next);
-      this.updateModelTag();
+      this.showApiKeyModal();
     });
 
     // Chips
@@ -645,6 +664,7 @@ export class AiChatSidebar {
     if (existingModal) existingModal.remove();
 
     const currentKey = getGeminiApiKey();
+    const currentModel = getGeminiModel();
     const currentThinking = getGeminiThinkingLevel();
 
     const modal = document.createElement('div');
@@ -665,14 +685,37 @@ export class AiChatSidebar {
       ">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 style="margin:0; font-size:18px; display:flex; align-items:center; gap:8px;">
-            <span>🔑</span> Gemini API & Thinking Einstellungen
+            <span>🔑</span> Gemini API, Modell & Thinking Einstellungen
           </h3>
           <button type="button" class="btn" id="btnModalClose" style="padding:4px 8px; font-size:14px;">✕</button>
         </div>
 
         <p style="font-size:13px; color:#a0aec0; margin-bottom:16px; line-height:1.5;">
-          Schematico verwendet das Prinzip <strong>Bring Your Own Key (BYOK)</strong>. Ihr Schlüssel wird ausschließlich lokal im Browser gespeichert und direkt für die Kommunikation mit der Google Gemini API (Modell <code>gemini-3.8-flash</code>) verwendet.
+          Schematico verwendet das Prinzip <strong>Bring Your Own Key (BYOK)</strong>. Ihr Schlüssel wird ausschließlich lokal im Browser gespeichert und direkt für die Kommunikation mit der Google Gemini API verwendet.
         </p>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
+            Gemini KI-Modell:
+          </label>
+          <select id="selectModalModel" style="
+            width:100%; box-sizing:border-box; padding:10px 12px;
+            background:#2d3748; border:1px solid #4a5568; border-radius:6px;
+            color:#fff; font-size:13px; outline:none;
+          ">
+            <option value="gemini-3.8-flash" ${currentModel === 'gemini-3.8-flash' ? 'selected' : ''}>
+              Gemini 3.8 Flash (Schnell &amp; effizient, Standard)
+            </option>
+            <option value="gemini-4-argon" ${currentModel === 'gemini-4-argon' ? 'selected' : ''}>
+              Gemini 4 Argon (Flaggschiff-Reasoning &amp; 1M Context für komplexe CAD-Pläne)
+            </option>
+          </select>
+          <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="modelHint">
+            ${currentModel === 'gemini-4-argon'
+              ? '<strong>Gemini 4 Argon:</strong> Maximales Reasoning und 1M Context für anspruchsvolle Schaltpläne, Kaskaden und normgerechte Verteilerpläne (erfordert Paid Tier API-Key).'
+              : '<strong>Gemini 3.8 Flash:</strong> Schnelle Reaktionszeiten und ausgewogenes CAD-Reasoning.'}
+          </div>
+        </div>
 
         <div style="margin-bottom:16px;">
           <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
@@ -727,11 +770,25 @@ export class AiChatSidebar {
     document.body.appendChild(modal);
 
     const input = modal.querySelector<HTMLInputElement>('#inputModalApiKey');
+    const selectModel = modal.querySelector<HTMLSelectElement>('#selectModalModel');
     const selectThinking = modal.querySelector<HTMLSelectElement>('#selectModalThinkingLevel');
+    const modelHint = modal.querySelector<HTMLElement>('#modelHint');
     const resultDiv = modal.querySelector<HTMLElement>('#apiKeyTestResult')!;
     const btnClose = modal.querySelector<HTMLButtonElement>('#btnModalClose')!;
     const btnTest = modal.querySelector<HTMLButtonElement>('#btnTestKey')!;
     const btnSave = modal.querySelector<HTMLButtonElement>('#btnSaveKey')!;
+
+    selectModel?.addEventListener('change', () => {
+      const isArgon = selectModel.value === 'gemini-4-argon';
+      if (modelHint) {
+        modelHint.innerHTML = isArgon
+          ? '<strong>Gemini 4 Argon:</strong> Maximales Reasoning und 1M Context für anspruchsvolle Schaltpläne, Kaskaden und normgerechte Verteilerpläne (erfordert Paid Tier API-Key).'
+          : '<strong>Gemini 3.8 Flash:</strong> Schnelle Reaktionszeiten und ausgewogenes CAD-Reasoning.';
+      }
+      if (isArgon && selectThinking?.value === 'minimal') {
+        selectThinking.value = 'low';
+      }
+    });
 
     btnClose.addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => {
@@ -740,14 +797,15 @@ export class AiChatSidebar {
 
     btnTest.addEventListener('click', async () => {
       const key = input?.value.trim() || '';
+      const chosenModel = selectModel?.value || currentModel;
       if (!key) {
         resultDiv.innerHTML = '<span style="color:#fc8181;">Bitte geben Sie einen API-Key ein.</span>';
         return;
       }
       btnTest.disabled = true;
-      resultDiv.innerHTML = '<span style="color:#ecc94b;">Teste Verbindung zur Gemini API...</span>';
+      resultDiv.innerHTML = `<span style="color:#ecc94b;">Teste Verbindung zur Gemini API (${chosenModel})...</span>`;
 
-      const res = await testGeminiApiKey(key);
+      const res = await testGeminiApiKey(key, chosenModel);
       btnTest.disabled = false;
       if (res.success) {
         resultDiv.innerHTML = `<span style="color:#48bb78;">✓ ${res.message}</span>`;
@@ -760,7 +818,14 @@ export class AiChatSidebar {
       const key = input?.value.trim() || '';
       setGeminiApiKey(key);
 
-      const thinking = (selectThinking?.value as GeminiThinkingLevel) || 'medium';
+      const model = (selectModel?.value as GeminiModelId) || 'gemini-3.8-flash';
+      setGeminiModel(model);
+      this.geminiClient.setModel(model);
+
+      let thinking = (selectThinking?.value as GeminiThinkingLevel) || 'medium';
+      if (model === 'gemini-4-argon' && thinking === 'minimal') {
+        thinking = 'low';
+      }
       setGeminiThinkingLevel(thinking);
       this.geminiClient.setThinkingLevel(thinking);
       this.updateModelTag();

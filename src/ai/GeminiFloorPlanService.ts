@@ -2,7 +2,7 @@
 // Service for extracting clean architectural vector floor plans from images/blueprints via Gemini API
 
 import { GoogleGenAI, Type } from '@google/genai';
-import { getGeminiApiKey } from './GeminiConfig';
+import { getGeminiApiKey, getGeminiModel } from './GeminiConfig';
 import { FloorPlanData } from '../model/types';
 import { sanitizeFloorPlanGeometry, RawAiFloorPlanResponse, SanitizeOptions, computeImageFitBounds } from './GeometrySanitizer';
 
@@ -142,7 +142,7 @@ export async function vectorizeFloorPlanWithGemini(
   options.onProgress?.('KI analysiert den Grundriss und extrahiert Vektoren...');
 
   const response = await client.models.generateContent({
-    model: 'gemini-3.8-flash',
+    model: getGeminiModel() || 'gemini-3.8-flash',
     contents: [
       {
         role: 'user',

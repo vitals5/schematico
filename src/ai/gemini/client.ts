@@ -2,11 +2,20 @@
 // Native Gemini Chat Client with BYOK and Function Calling Loop for Schematico
 
 import { GoogleGenAI, Content, Part, ThinkingLevel } from '@google/genai';
-import { getGeminiApiKey, getGeminiThinkingLevel, GeminiThinkingLevel } from '../GeminiConfig';
+import {
+  getGeminiApiKey,
+  getGeminiThinkingLevel,
+  getGeminiModel,
+  GeminiThinkingLevel,
+  GeminiModelId
+} from '../GeminiConfig';
 import { McpToolRegistry, defaultToolRegistry, CanvasStateManager } from '../mcp-tools';
 import { mcpToolsToGeminiFunctions } from './mapper';
 
-function toGenAiThinkingLevel(level?: GeminiThinkingLevel): ThinkingLevel {
+function toGenAiThinkingLevel(level?: GeminiThinkingLevel, model?: string): ThinkingLevel {
+  if (model === 'gemini-4-argon' && level === 'minimal') {
+    return ThinkingLevel.LOW;
+  }
   switch (level) {
     case 'minimal': return ThinkingLevel.MINIMAL;
     case 'low': return ThinkingLevel.LOW;
@@ -227,9 +236,17 @@ export class GeminiChatClient {
 
   constructor(options: GeminiChatOptions = {}) {
     this.toolRegistry = options.toolRegistry || defaultToolRegistry;
-    this.model = options.model || 'gemini-3.8-flash';
+    this.model = options.model || getGeminiModel() || 'gemini-3.8-flash';
     this.thinkingLevel = options.thinkingLevel || getGeminiThinkingLevel() || 'medium';
     this.systemInstruction = options.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+  }
+
+  public getModel(): string {
+    return this.model;
+  }
+
+  public setModel(model: string): void {
+    this.model = model;
   }
 
   public getThinkingLevel(): GeminiThinkingLevel {
@@ -346,7 +363,7 @@ export class GeminiChatClient {
               systemInstruction: this.systemInstruction,
               tools: [{ functionDeclarations: toolDeclarations }],
               thinkingConfig: {
-                thinkingLevel: toGenAiThinkingLevel(this.thinkingLevel)
+                thinkingLevel: toGenAiThinkingLevel(this.thinkingLevel, this.model)
               },
               abortSignal: this.currentAbortController?.signal
             }

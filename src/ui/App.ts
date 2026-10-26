@@ -1,5 +1,5 @@
 import { readAppSetting, writeAppSetting } from '../model/LegacyCompatibility';
-import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey } from '../ai/GeminiConfig';
+import { getGeminiApiKey, setGeminiApiKey, testGeminiApiKey, getGeminiModel, setGeminiModel, GeminiModelId } from '../ai/GeminiConfig';
 import { AiChatSidebar } from '../ai/components/AiChatSidebar';
 import { StatusBadge } from '../ai/components/StatusBadge';
 import { defaultBridgeClient } from '../ai/bridge/bridgeClient';
@@ -1360,6 +1360,7 @@ export class App {
     const autoLoad = isAutoLoadProjectEnabled();
     const currentLang = getUiLanguage();
     const currentGeminiKey = getGeminiApiKey();
+    const currentGeminiModel = getGeminiModel();
     modal.innerHTML = `<div class="modal-card" style="background:#232731;padding:24px;width:480px;max-width:95vw;border:1px solid #4a5568;border-radius:6px">
       <h3 style="margin-top:0;margin-bottom:16px;">${t('generalSettingsTitle')}</h3>
 
@@ -1381,6 +1382,15 @@ export class App {
         </div>
         <div id="geminiTestStatus" style="font-size:11px;margin-top:5px;display:none;"></div>
         <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('geminiApiKeyDesc')}</p>
+      </div>
+
+      <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
+        <label for="settingGeminiModel" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#e2e8f0;">${t('geminiModelLabel')}</label>
+        <select id="settingGeminiModel" class="form-input" style="width:100%;box-sizing:border-box;">
+          <option value="gemini-3.8-flash" ${currentGeminiModel === 'gemini-3.8-flash' ? 'selected' : ''}>Gemini 3.8 Flash (Standard)</option>
+          <option value="gemini-4-argon" ${currentGeminiModel === 'gemini-4-argon' ? 'selected' : ''}>Gemini 4 Argon (1M Context, Paid Tier)</option>
+        </select>
+        <p style="font-size:11px;color:#a0aec0;margin:4px 0 0 0;">${t('geminiModelDesc')}</p>
       </div>
 
       <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid #374151;">
@@ -1406,6 +1416,7 @@ export class App {
     modal.querySelector('#settingsMacroFolder')!.appendChild(createMacroFolderPanel());
 
     const keyInput = modal.querySelector('#settingGeminiApiKey') as HTMLInputElement;
+    const modelSelect = modal.querySelector('#settingGeminiModel') as HTMLSelectElement;
     const toggleBtn = modal.querySelector('#toggleGeminiKeyVisibility') as HTMLButtonElement;
     const testBtn = modal.querySelector('#testGeminiApiKey') as HTMLButtonElement;
     const testStatus = modal.querySelector('#geminiTestStatus') as HTMLDivElement;
@@ -1424,6 +1435,7 @@ export class App {
 
     testBtn?.addEventListener('click', async () => {
       const keyVal = keyInput.value.trim();
+      const chosenModel = modelSelect?.value || currentGeminiModel;
       if (!keyVal) {
         testStatus.style.display = 'block';
         testStatus.style.color = '#fc8181';
@@ -1436,7 +1448,7 @@ export class App {
       testStatus.style.color = '#cbd5e0';
       testStatus.textContent = t('geminiApiKeyTesting');
       try {
-        const res = await testGeminiApiKey(keyVal);
+        const res = await testGeminiApiKey(keyVal, chosenModel);
         testStatus.style.color = res.success ? '#68d391' : '#fc8181';
         testStatus.textContent = res.message;
       } catch (err: any) {
@@ -1456,6 +1468,13 @@ export class App {
       if (keyInput) {
         setGeminiApiKey(keyInput.value);
       }
+      if (modelSelect) {
+        const selectedModel = modelSelect.value as GeminiModelId;
+        setGeminiModel(selectedModel);
+      }
+      this.aiChatSidebar?.refreshConfig();
+      this.statusBadge?.refresh();
+
       const langChanged = selectedLang !== getUiLanguage();
       if (langChanged) {
         setUiLanguage(selectedLang);

@@ -177,6 +177,8 @@ export const translations = {
     geminiApiKeyTesting: 'Wird getestet...',
     geminiApiKeyShow: 'Anzeigen',
     geminiApiKeyHide: 'Verbergen',
+    geminiModelLabel: 'Gemini Modell',
+    geminiModelDesc: 'Gemini 4 Argon bietet stärkstes CAD-Reasoning & 1M Kontext (Paid Tier). Gemini 3.8 Flash ist schnell & ausgewogen.',
     // Floor plan & AI Vectorization
     importFloorPlanTitle: 'Grundriss importieren',
     importFloorPlanDesc: 'Wandelt Fotos, Scans oder Pläne via KI oder als Zeichenvorlage in editierbare CAD-Grundrisse um.',
@@ -1037,6 +1039,8 @@ export const translations = {
     geminiApiKeyTesting: 'Testing...',
     geminiApiKeyShow: 'Show',
     geminiApiKeyHide: 'Hide',
+    geminiModelLabel: 'Gemini Model',
+    geminiModelDesc: 'Gemini 4 Argon offers top-tier CAD reasoning & 1M context (Paid Tier). Gemini 3.8 Flash is fast & balanced.',
     // Floor plan & AI Vectorization
     importFloorPlanTitle: 'Import Floor Plan',
     importFloorPlanDesc: 'Converts photos, scans, or blueprints via AI or as a manual template into editable CAD floor plans.',
