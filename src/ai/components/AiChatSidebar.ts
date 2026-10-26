@@ -120,6 +120,7 @@ export class AiChatSidebar {
         </div>
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
+          <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Schaltung optimal über das gesamte DIN A3 Blatt verteilen (Flächenausnutzung maximieren & Überlappungen auflösen)">📐</button>
           <button type="button" class="ai-header-btn" id="btnAiSettings" title="Gemini API-Key & Thinking-Modus verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
@@ -202,6 +203,35 @@ export class AiChatSidebar {
 
     const btnSettings = this.container.querySelector('#btnAiSettings');
     btnSettings?.addEventListener('click', () => this.showApiKeyModal());
+
+    const btnDistribute = this.container.querySelector('#btnAiDistribute');
+    btnDistribute?.addEventListener('click', async () => {
+      try {
+        const { defaultToolRegistry } = await import('../mcp-tools');
+        const res = await defaultToolRegistry.executeTool('distribute_sheet_layout', {}, this.stateManager);
+        if (res?.success) {
+          this.appendModelResponse({
+            id: 'distribute_' + Date.now(),
+            role: 'model',
+            text: `📐 **Blatt-Layout optimiert:** ${res.message}`,
+            timestamp: Date.now()
+          });
+        } else {
+          this.appendErrorMessage(`Layout-Optimierung fehlgeschlagen: ${res?.error || 'Unbekannter Fehler'}`);
+        }
+      } catch (err: any) {
+        this.appendErrorMessage(`Fehler bei Layout-Optimierung: ${err?.message || err}`);
+      }
+    });
+
+    const modelTag = this.container.querySelector<HTMLElement>('#aiChatModelTag');
+    modelTag?.addEventListener('click', () => {
+      const current = this.geminiClient.getThinkingLevel();
+      const next: GeminiThinkingLevel = current === 'medium' ? 'high' : current === 'high' ? 'low' : 'medium';
+      setGeminiThinkingLevel(next);
+      this.geminiClient.setThinkingLevel(next);
+      this.updateModelTag();
+    });
 
     // Chips
     const chips = this.container.querySelectorAll<HTMLButtonElement>('.ai-chip');
@@ -547,6 +577,8 @@ export class AiChatSidebar {
         return `Stückliste (BOM) generiert (${result?.totalEntries ?? 0} Positionen)`;
       case 'get_terminal_diagram':
         return `Klemmenplan generiert (${result?.stripsCount ?? 0} Klemmleisten)`;
+      case 'distribute_sheet_layout':
+        return `Layout auf DIN A3 Vollblatt optimiert (${result?.columns ?? '…'} Spalten)`;
       case 'recalculate_cross_references':
         return `Kontaktspiegel neu berechnet`;
       case 'export_pdf':

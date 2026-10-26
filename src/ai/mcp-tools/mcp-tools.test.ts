@@ -445,6 +445,22 @@ async function runTests() {
   await registry.executeTool('add_text', { text: 'Strang 2: Wärmepumpe', x: 95, y: 200 }, manager);
   await registry.executeTool('add_text', { text: 'Strang 3: Haushalt', x: 140, y: 200 }, manager);
 
+  // Add device boxes and cross-column wire
+  await registry.executeTool('add_device_box', { bmk: '=HAK', x: 45, y: 40, width: 40, height: 90 }, manager);
+  await registry.executeTool('add_device_box', { bmk: '=WP', x: 85, y: 40, width: 40, height: 90 }, manager);
+  await registry.executeTool('add_device_box', { bmk: '=PV', x: 130, y: 40, width: 40, height: 90 }, manager);
+
+  // Cross-column wire from Z1 (Column 1) to F1 (Column 2)
+  const z1Comp = manager.getActivePage().components.find((c: any) => c.bmk === '-Z1');
+  const f1Comp = manager.getActivePage().components.find((c: any) => c.bmk === '-F1');
+  await registry.executeTool('draw_wire', {
+    fromComponentId: z1Comp.id,
+    fromPinId: '2',
+    toComponentId: f1Comp.id,
+    toPinId: '1',
+    potential: 'L1'
+  }, manager);
+
   // Before distribute: verify it's flagged as cramped
   const crampedState = await registry.executeTool('get_canvas_state', {}, manager);
   if (!crampedState.sheetUtilization?.isCramped) {
@@ -480,7 +496,25 @@ async function runTests() {
   if (!t1 || !t2 || !t3 || t1.x !== 85 || t2.x !== 205 || t3.x !== 315) {
     throw new Error(`Texts did not move with distributed columns: t1=${t1?.x}, t2=${t2?.x}, t3=${t3?.x}`);
   }
-  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 205, 315] with >80% sheet utilization');
+
+  // Verify device boxes were separated without overlapping
+  const bHak = textPage.boxes.find((b: any) => b.bmk === '=HAK');
+  const bWp = textPage.boxes.find((b: any) => b.bmk === '=WP');
+  const bPv = textPage.boxes.find((b: any) => b.bmk === '=PV');
+  if (!bHak || !bWp || !bPv) {
+    throw new Error('Device boxes missing after distribution');
+  }
+  if (bHak.x + bHak.width > bWp.x || bWp.x + bWp.width > bPv.x) {
+    throw new Error(`Device boxes overlap: HAK=${bHak.x}..${bHak.x + bHak.width}, WP=${bWp.x}..${bWp.x + bWp.width}, PV=${bPv.x}..${bPv.x + bPv.width}`);
+  }
+
+  // Verify inter-column wire was routed via duct waypoints
+  const crossWire = textPage.wires.find((w: any) => w.from.componentId === z1Comp.id && w.to.componentId === f1Comp.id);
+  if (!crossWire || !crossWire.waypoints || crossWire.waypoints.length === 0) {
+    throw new Error('Expected inter-column wire to have non-overlapping duct waypoints');
+  }
+
+  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 205, 315] with >80% sheet utilization, non-overlapping boxes, and orthogonal duct wiring');
 
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }

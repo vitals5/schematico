@@ -612,7 +612,7 @@ export async function handleGetCanvasState(
   const horizPercent = Math.min(100, Math.round((usedWidth / usableWidth) * 100));
   const vertPercent = Math.min(100, Math.round((usedHeight / usableHeight) * 100));
 
-  const isCramped = components.length >= 3 && (maxX < 220 || horizPercent < 55);
+  const isCramped = components.length >= 3 && (maxX < 280 || horizPercent < 68);
 
   let sheetWarning: string | undefined;
   if (isCramped) {
@@ -1113,6 +1113,46 @@ export async function handleDistributeSheetLayout(
     }
   }
 
+  // Pre-calculate which components belong to each box (before components are moved)
+  const boxCompsMap = new Map<string, PlacedComponent[]>();
+  if (page.boxes && page.boxes.length > 0) {
+    for (const box of page.boxes) {
+      const boxBmkClean = (box.bmk || '').replace(/^[+=]/, '').trim().toLowerCase();
+      // 1. Match by BMK, mounting location or higher-level function
+      let matched = page.components.filter(c => {
+        if (!boxBmkClean) return false;
+        const locClean = (c.mountingLocation || '').replace(/^[+=]/, '').trim().toLowerCase();
+        const hlClean = (c.higherLevelFunction || '').replace(/^[+=]/, '').trim().toLowerCase();
+        const bmkClean = (c.bmk || '').replace(/^[+=]/, '').trim().toLowerCase();
+        return locClean === boxBmkClean || hlClean === boxBmkClean || bmkClean.includes(boxBmkClean);
+      });
+
+      // 2. Geometric match: components whose origin falls within box X bounds (+/- 15mm tolerance)
+      if (matched.length === 0) {
+        matched = page.components.filter(c => {
+          return c.x >= box.x - 15 && c.x <= box.x + box.width + 15;
+        });
+      }
+
+      // 3. Proximity to old column centers
+      if (matched.length === 0 && oldColumnCenters.length > 0) {
+        let bestCol = 0;
+        let bestDist = Infinity;
+        const boxCenterX = box.x + box.width / 2;
+        for (let c = 0; c < oldColumnCenters.length; c++) {
+          const dist = Math.abs(boxCenterX - oldColumnCenters[c]);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestCol = c;
+          }
+        }
+        matched = columnGroups[bestCol] || [];
+      }
+
+      boxCompsMap.set(box.id, matched);
+    }
+  }
+
   // 3. Reposition components to target (X, Y)
   for (let colIdx = 0; colIdx < numCols; colIdx++) {
     const group = columnGroups[colIdx];
@@ -1145,46 +1185,188 @@ export async function handleDistributeSheetLayout(
       const next = group[i + 1];
       const currSym = getSymbolForComponent(curr, project);
       const currH = currSym?.height ?? 30;
-      const minNextY = curr.y + currH + 15;
+      const minNextY = curr.y + currH + 18;
       if (next.y < minNextY) {
         next.y = minNextY;
       }
     }
   }
 
-  // 4. Update column-associated texts (path titles, column headers, bottom annotations)
+  // 3b. Update Device Boxes (Gerätekästen, e.g. =HAK, =WP, =PV) to wrap cleanly around distributed components
+  if (page.boxes && page.boxes.length > 0) {
+    for (const box of page.boxes) {
+      const targetComps = boxCompsMap.get(box.id) || [];
+      if (targetComps.length > 0) {
+        let minBodyX = Infinity, maxBodyX = -Infinity;
+        let minBodyY = Infinity, maxBodyY = -Infinity;
+        for (const c of targetComps) {
+          const sym = getSymbolForComponent(c, project);
+          const w = sym?.width ?? 30;
+          const h = sym?.height ?? 30;
+          minBodyX = Math.min(minBodyX, c.x);
+          maxBodyX = Math.max(maxBodyX, c.x + w);
+          minBodyY = Math.min(minBodyY, c.y);
+          maxBodyY = Math.max(maxBodyY, c.y + h);
+        }
+        box.x = Math.max(35, Math.round(minBodyX - 8));
+        box.y = Math.max(48, Math.round(minBodyY - 8));
+        box.width = Math.round(maxBodyX - minBodyX + 16);
+        box.height = Math.round(maxBodyY - minBodyY + 16);
+      }
+    }
+
+    // Sort boxes from left to right and enforce strict non-overlapping boundary guarantees
+    page.boxes.sort((a, b) => a.x - b.x);
+    for (let i = 0; i < page.boxes.length - 1; i++) {
+      const curr = page.boxes[i];
+      const next = page.boxes[i + 1];
+      if (curr.x + curr.width >= next.x) {
+        // Enforce at least 6mm separation between adjacent boxes
+        curr.width = Math.max(20, next.x - curr.x - 6);
+      }
+    }
+  }
+
+  // 4. Update texts: eliminate overlapping titles, subtitles, and column headers
   if (page.texts && page.texts.length > 0) {
     for (const txt of page.texts) {
+      const lower = txt.text.toLowerCase();
+
+      // 1. Check if text is a main page title (e.g. Messkonzept MK C3 ..., Hauseinspeisung MK C3 ...)
+      if (
+        (lower.includes('messkonzept') || lower.includes('übersichtsplan') || lower.includes('stromlaufplan') || lower.includes('kaskaden')) &&
+        !lower.includes('strang') &&
+        !lower.includes('pfad')
+      ) {
+        txt.x = 60;
+        txt.y = 30;
+        continue;
+      }
+
+      // 2. Check if text is a subtitle / norm reference (e.g. Nach VDE-AR-N 4100 ...)
+      if (lower.includes('vde') || lower.includes('din') || lower.includes('iec') || lower.includes('norm') || lower.includes('enwg')) {
+        txt.x = 60;
+        txt.y = 38;
+        continue;
+      }
+
+      // 3. Check if text is a specific column / strang title
+      let targetColIdx = -1;
+      if (lower.includes('strang 1') || lower.includes('pfad 1') || lower.includes('spalte 1') || lower.includes('netzeinspeisung')) {
+        targetColIdx = 0;
+      } else if (lower.includes('strang 2') || lower.includes('pfad 2') || lower.includes('spalte 2') || lower.includes('wärmepumpe') || lower.includes('wp')) {
+        targetColIdx = Math.min(1, numCols - 1);
+      } else if (lower.includes('strang 3') || lower.includes('pfad 3') || lower.includes('spalte 3') || lower.includes('haushalt') || lower.includes('pv') || lower.includes('speicher')) {
+        targetColIdx = Math.min(2, numCols - 1);
+      } else if (lower.includes('strang 4') || lower.includes('pfad 4') || lower.includes('spalte 4')) {
+        targetColIdx = Math.min(3, numCols - 1);
+      }
+
+      // Proximity fallback for any remaining column-associated annotations
       let closestColIdx = -1;
       let minDistance = Infinity;
       for (let c = 0; c < oldColumnCenters.length; c++) {
         const dist = Math.abs(txt.x - oldColumnCenters[c]);
-        if (dist < minDistance && dist <= 55) {
+        if (dist < minDistance && dist <= 60) {
           minDistance = dist;
           closestColIdx = c;
         }
       }
 
-      if (closestColIdx !== -1) {
-        const deltaX = targetXs[closestColIdx] - oldColumnCenters[closestColIdx];
-        txt.x = Math.round(txt.x + deltaX);
-
-        // If text was at the bottom (path title or description), position neatly at Y=245..250
+      if (closestColIdx >= 0 && closestColIdx < targetXs.length) {
+        txt.x = targetXs[closestColIdx];
         if (txt.y >= 130) {
           txt.y = 245;
+        } else {
+          txt.y = 46;
         }
-      } else if (txt.y < 45 && txt.x < 50) {
-        txt.x = 55;
       }
     }
   }
 
-  // 5. Wires: clear intermediate zigzag waypoints if requested (default true)
-  if (args?.clearIntermediateWireWaypoints !== false) {
-    for (const w of page.wires) {
-      if (w.waypoints && w.waypoints.length > 0) {
-        w.waypoints = [];
+  // 5. Intelligent Orthogonal Wire Routing: eliminate wires crossing through switches/meters
+  for (const wire of page.wires) {
+    const fromComp = page.components.find(c => c.id === wire.from.componentId);
+    const toComp = page.components.find(c => c.id === wire.to.componentId);
+
+    if (!fromComp || !toComp) {
+      if (args?.clearIntermediateWireWaypoints !== false) {
+        wire.waypoints = [];
       }
+      continue;
+    }
+
+    const fromColIdx = columnGroups.findIndex(g => g.some(c => c.id === fromComp.id));
+    const toColIdx = columnGroups.findIndex(g => g.some(c => c.id === toComp.id));
+
+    if (fromColIdx === -1 || toColIdx === -1 || fromColIdx === toColIdx) {
+      // Intra-column wire: clean straight vertical connection without zigzag waypoints
+      wire.waypoints = [];
+      continue;
+    }
+
+    // Inter-column wire:
+    const fromSym = getSymbolForComponent(fromComp, project);
+    const toSym = getSymbolForComponent(toComp, project);
+    const fromPinDef = fromSym?.pins.find(p => p.id === wire.from.pinId);
+    const toPinDef = toSym?.pins.find(p => p.id === wire.to.pinId);
+
+    let fromPinWorld = { x: fromComp.x + (fromPinDef?.x ?? 0), y: fromComp.y + (fromPinDef?.y ?? 0) };
+    let toPinWorld = { x: toComp.x + (toPinDef?.x ?? 0), y: toComp.y + (toPinDef?.y ?? 0) };
+
+    if (fromSym && fromPinDef) {
+      try {
+        const info = AutoconnectEngine.getRotatedPinInfo(fromComp, fromPinDef, fromSym);
+        fromPinWorld = { x: info.worldX, y: info.worldY };
+      } catch { /* Fallback */ }
+    }
+    if (toSym && toPinDef) {
+      try {
+        const info = AutoconnectEngine.getRotatedPinInfo(toComp, toPinDef, toSym);
+        toPinWorld = { x: info.worldX, y: info.worldY };
+      } catch { /* Fallback */ }
+    }
+
+    // Distribute parallel conductors (L1, L2, L3, N, PE) across clean channels
+    let phaseOffset = 0;
+    const pot = (wire.potential || '').toUpperCase();
+    if (pot === 'L1') phaseOffset = -3;
+    else if (pot === 'L2') phaseOffset = -1;
+    else if (pot === 'L3') phaseOffset = 1;
+    else if (pot === 'N') phaseOffset = 3;
+    else if (pot === 'PE') phaseOffset = 5;
+
+    const minCol = Math.min(fromColIdx, toColIdx);
+    const maxCol = Math.max(fromColIdx, toColIdx);
+    const corridorX = Math.round((targetXs[minCol] + targetXs[maxCol]) / 2) + phaseOffset;
+
+    const isFromBottom = fromPinWorld.y >= 140;
+    const isToTop = toPinWorld.y <= 120;
+
+    if (isFromBottom && isToTop) {
+      // Feed from bottom of Column 1 up to top of Column 2/3:
+      // Drop down into lower duct, across to corridor, up to top duct, drop into destination
+      const ductY = Math.min(255, Math.max(fromPinWorld.y + 12, 248) + phaseOffset);
+      const topDuctY = Math.max(42, Math.min(toPinWorld.y - 12, 48) + phaseOffset);
+      wire.waypoints = [
+        { x: fromPinWorld.x, y: ductY },
+        { x: corridorX, y: ductY },
+        { x: corridorX, y: topDuctY },
+        { x: toPinWorld.x, y: topDuctY }
+      ];
+    } else if (!isFromBottom && !isToTop) {
+      const ductY = Math.min(255, Math.max(fromPinWorld.y, toPinWorld.y) + 12 + phaseOffset);
+      wire.waypoints = [
+        { x: fromPinWorld.x, y: ductY },
+        { x: toPinWorld.x, y: ductY }
+      ];
+    } else {
+      const topDuctY = Math.max(42, Math.min(fromPinWorld.y, toPinWorld.y) - 12 + phaseOffset);
+      wire.waypoints = [
+        { x: fromPinWorld.x, y: topDuctY },
+        { x: corridorX, y: topDuctY },
+        { x: toPinWorld.x, y: topDuctY }
+      ];
     }
   }
 

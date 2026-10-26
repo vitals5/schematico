@@ -151,8 +151,12 @@ Electrical Standards & Physical CAD Layout Rules:
      - Path 1: X=80..95 | Path 2: X=135..155 | Path 3: X=195..215 | Path 4: X=255..275 | Path 5: X=315..335
   5. Device Boxes ('add_device_box'):
      - Provide at least 8..12 mm margin around all enclosed components and their labels.
-     - NEVER overlap two device boxes.
-  6. Collision Feedback:
+     - NEVER overlap two device boxes. Keep boxes separated by column boundaries.
+  6. Non-Overlapping Wiring & Routing:
+     - Intra-column connections (series devices) are straight vertical lines.
+     - NEVER route cross-column wires through the middle of adjacent devices, breakers, or labels!
+     - Inter-column wires must route through empty corridors between columns and lower/upper ducts, or call 'distribute_sheet_layout' to route them automatically.
+  7. Collision Feedback:
      - 'add_component' returns 'bounds' (including symbol body and labels) and warns if a collision occurs. If a warning is returned, adjust subsequent positions immediately!
 
 Direct Symbol Catalog (Use these IDs directly in 'add_component', avoid search calls):
@@ -410,6 +414,31 @@ export class GeminiChatClient {
 
       if (iteration >= MAX_TOOL_ITERATIONS && !finalText) {
         finalText = `⚠️ **Aktionslimit erreicht:** Die Schaltung wurde bis zu Schritt ${iteration} aufgebaut. Bitte antworte kurz mit **"Fahre fort und verdrahte die Schaltung"**, damit ich die noch ausstehenden Verbindungen und Schritte fertigstelle.`;
+      }
+
+      // Automatic CAD Layout Quality & Full-Sheet Enforcement:
+      // If the page has 3 or more components and the schematic is cramped,
+      // automatically run distribute_sheet_layout to guarantee a professional full-sheet DIN A3 result!
+      try {
+        const page = stateManager.getActivePage();
+        if (page && page.components && page.components.length >= 3) {
+          const canvasState = await this.toolRegistry.executeTool('get_canvas_state', {}, stateManager);
+          if (canvasState?.sheetUtilization?.isCramped) {
+            options?.onStatusUpdate?.('📐 Optimiere CAD-Layout auf DIN A3 Vollblatt...');
+            const distRes = await this.toolRegistry.executeTool('distribute_sheet_layout', {}, stateManager);
+            if (distRes?.success) {
+              currentToolCalls.push({
+                name: 'distribute_sheet_layout',
+                args: {},
+                result: distRes,
+                status: 'done'
+              });
+              options?.onToolComplete?.('distribute_sheet_layout', {}, distRes);
+            }
+          }
+        }
+      } catch {
+        // Non-blocking quality pass
       }
 
       modelMsg.text = finalText;
