@@ -415,6 +415,73 @@ async function runTests() {
   }
   console.log('✓ Test 17: Component label dimensions and left-margin clearance validated');
 
+  // Test 18: Sheet utilization telemetry and underutilization warnings
+  const utilState = await registry.executeTool('get_canvas_state', {}, manager);
+  if (!utilState.success || !utilState.sheetUtilization) {
+    throw new Error(`Expected sheetUtilization in get_canvas_state, got: ${JSON.stringify(utilState)}`);
+  }
+  if (typeof utilState.sheetUtilization.horizontalUtilizationPercent !== 'number') {
+    throw new Error('horizontalUtilizationPercent is missing or not a number');
+  }
+  console.log('✓ Test 18: Sheet utilization telemetry verified, horiz %:', utilState.sheetUtilization.horizontalUtilizationPercent);
+
+  // Test 19: distribute_sheet_layout on cramped 3-column circuit
+  await registry.executeTool('clear_canvas', { confirm: true }, manager);
+
+  // Place a cramped MK C3 schematic in the left corner (X: 55..140, Y: 50..120)
+  await registry.executeTool('add_component', { symbolId: 'fuse_switch_3p', bmk: '-F0', x: 55, y: 50 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q0', x: 55, y: 85 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z1', x: 55, y: 120 }, manager);
+
+  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z2', x: 95, y: 50 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F1', x: 95, y: 85 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'motor_3phase', bmk: '-M1', x: 95, y: 120 }, manager);
+
+  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q2', x: 140, y: 50 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q3', x: 140, y: 85 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'terminal_pe', bmk: '-X1', x: 140, y: 120 }, manager);
+
+  await registry.executeTool('add_text', { text: 'Strang 1: Netz', x: 55, y: 200 }, manager);
+  await registry.executeTool('add_text', { text: 'Strang 2: Wärmepumpe', x: 95, y: 200 }, manager);
+  await registry.executeTool('add_text', { text: 'Strang 3: Haushalt', x: 140, y: 200 }, manager);
+
+  // Before distribute: verify it's flagged as cramped
+  const crampedState = await registry.executeTool('get_canvas_state', {}, manager);
+  if (!crampedState.sheetUtilization?.isCramped) {
+    throw new Error(`Expected cramped schematic to be flagged as isCramped=true, got: ${JSON.stringify(crampedState.sheetUtilization)}`);
+  }
+  if (!crampedState.warning || !crampedState.warning.includes('SHEET UNDERUTILIZATION')) {
+    throw new Error(`Expected sheet underutilization warning, got: ${crampedState.warning}`);
+  }
+
+  // Execute distribute_sheet_layout
+  const distRes = await registry.executeTool('distribute_sheet_layout', {}, manager);
+  if (!distRes.success || distRes.columns !== 3 || distRes.componentsMoved !== 9) {
+    throw new Error(`distribute_sheet_layout failed: ${JSON.stringify(distRes)}`);
+  }
+  if (distRes.columnPositions[0] !== 85 || distRes.columnPositions[1] !== 205 || distRes.columnPositions[2] !== 315) {
+    throw new Error(`Expected targetXs [85, 205, 315], got: ${JSON.stringify(distRes.columnPositions)}`);
+  }
+
+  // Verify full-sheet state after distribution
+  const distributedState = await registry.executeTool('get_canvas_state', {}, manager);
+  if (distributedState.sheetUtilization?.isCramped) {
+    throw new Error(`Expected circuit to no longer be cramped, got: ${JSON.stringify(distributedState.sheetUtilization)}`);
+  }
+  if (distributedState.sheetUtilization.horizontalUtilizationPercent < 80) {
+    throw new Error(`Expected horizontal utilization >= 80%, got: ${distributedState.sheetUtilization.horizontalUtilizationPercent}%`);
+  }
+
+  // Verify texts moved with the columns
+  const textPage = manager.getActivePage();
+  const t1 = textPage.texts.find((t: any) => t.text.includes('Strang 1'));
+  const t2 = textPage.texts.find((t: any) => t.text.includes('Strang 2'));
+  const t3 = textPage.texts.find((t: any) => t.text.includes('Strang 3'));
+  if (!t1 || !t2 || !t3 || t1.x !== 85 || t2.x !== 205 || t3.x !== 315) {
+    throw new Error(`Texts did not move with distributed columns: t1=${t1?.x}, t2=${t2?.x}, t3=${t3?.x}`);
+  }
+  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 205, 315] with >80% sheet utilization');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

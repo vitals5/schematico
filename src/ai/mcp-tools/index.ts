@@ -9,6 +9,7 @@ import {
   UPDATE_COMPONENT_TOOL,
   ROTATE_ELEMENT_TOOL,
   MOVE_ELEMENT_TOOL,
+  DISTRIBUTE_SHEET_LAYOUT_TOOL,
   DRAW_WIRE_TOOL,
   UPDATE_WIRE_TOOL,
   ADD_CABLE_TOOL,
@@ -46,6 +47,7 @@ import {
   handleUpdateComponent,
   handleRotateElement,
   handleMoveElement,
+  handleDistributeSheetLayout,
   handleDrawWire,
   handleUpdateWire,
   handleAddCable,
@@ -101,6 +103,7 @@ export class McpToolRegistry {
     this.register(UPDATE_COMPONENT_TOOL, handleUpdateComponent);
     this.register(ROTATE_ELEMENT_TOOL, handleRotateElement);
     this.register(MOVE_ELEMENT_TOOL, handleMoveElement);
+    this.register(DISTRIBUTE_SHEET_LAYOUT_TOOL, handleDistributeSheetLayout);
     this.register(DRAW_WIRE_TOOL, handleDrawWire);
     this.register(UPDATE_WIRE_TOOL, handleUpdateWire);
     this.register(ADD_CABLE_TOOL, handleAddCable);

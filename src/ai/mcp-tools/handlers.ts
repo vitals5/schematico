@@ -587,8 +587,60 @@ export async function handleGetCanvasState(
     end: c.end
   }));
 
+  // Calculate overall bounding box of components and sheet utilization
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const c of components) {
+    minX = Math.min(minX, c.bounds.left);
+    maxX = Math.max(maxX, c.bounds.right);
+    minY = Math.min(minY, c.bounds.top);
+    maxY = Math.max(maxY, c.bounds.bottom);
+  }
+
+  const rawWidth = page.plotFrame?.width || 420;
+  const rawHeight = page.plotFrame?.height || 297;
+  const sheetMmWidth = rawWidth <= 600 ? rawWidth : 420;
+  const sheetMmHeight = rawHeight <= 450 ? rawHeight : 297;
+  const usableWidth = sheetMmWidth - 80; // 340 mm (X: 40..380)
+  const usableHeight = sheetMmHeight - 92; // 205 mm (Y: 40..245)
+
+  const usedWidth = minX < Infinity ? Math.round((maxX - minX) * 10) / 10 : 0;
+  const usedHeight = minY < Infinity ? Math.round((maxY - minY) * 10) / 10 : 0;
+  const horizPercent = Math.min(100, Math.round((usedWidth / usableWidth) * 100));
+  const vertPercent = Math.min(100, Math.round((usedHeight / usableHeight) * 100));
+
+  const isCramped = components.length >= 3 && (maxX < 220 || horizPercent < 55);
+
+  let sheetWarning: string | undefined;
+  if (isCramped) {
+    sheetWarning = `⚠️ SHEET UNDERUTILIZATION DETECTED: Circuit occupies only ${horizPercent}% of DIN A3 width (X: ${minX}..${maxX} mm) and ${vertPercent}% of height (Y: ${minY}..${maxY} mm). The right half (X: 180..380 mm) and bottom (Y: 140..250 mm) are completely blank! Distribute columns across the full sheet: Column 1 at X=85, Column 2 at X=205, Column 3 at X=315, and rows down to Y=230, or call tool 'distribute_sheet_layout'!`;
+  }
+
+  const sheetUtilization = {
+    minX: minX < Infinity ? minX : 0,
+    maxX: maxX > -Infinity ? maxX : 0,
+    minY: minY < Infinity ? minY : 0,
+    maxY: maxY > -Infinity ? maxY : 0,
+    usedWidth,
+    usedHeight,
+    horizontalUtilizationPercent: horizPercent,
+    verticalUtilizationPercent: vertPercent,
+    isCramped,
+    recommendedColumnPositions: {
+      twoColumns: [110, 270],
+      threeColumns: [85, 205, 315],
+      fourColumns: [75, 155, 245, 335]
+    },
+    recommendedRowPositions: [55, 115, 175, 230],
+    warning: sheetWarning
+  };
+
   return {
     success: true,
+    warning: sheetWarning,
     page: {
       id: page.id,
       pageNumber: page.pageNumber,
@@ -602,6 +654,7 @@ export async function handleGetCanvasState(
         columns: page.plotFrame?.columns || 10
       }
     },
+    sheetUtilization,
     components,
     wires,
     texts,
@@ -705,14 +758,31 @@ export async function handleAddComponent(
     boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) with size ${newBounds.width}x${newBounds.height}mm exceed standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
   }
 
-  let warning: string | undefined;
-  if (boundaryWarning && collisions.length > 0) {
-    warning = `${boundaryWarning} | ⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}`;
-  } else if (boundaryWarning) {
-    warning = boundaryWarning;
-  } else if (collisions.length > 0) {
-    warning = `⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}. Move component or place next components with sufficient clearance!`;
+  // Check for cramped column spacing or sheet underutilization
+  let utilizationWarning: string | undefined;
+  if (page.components.length > 1) {
+    const otherXs = page.components.filter(c => c.id !== newComp.id).map(c => c.x);
+    const minOtherX = Math.min(...otherXs);
+    const maxOtherX = Math.max(...otherXs);
+
+    const isNewColumn = otherXs.every(ox => Math.abs(newComp.x - ox) >= 20);
+    const distanceToClosest = Math.min(...otherXs.map(ox => Math.abs(newComp.x - ox)));
+
+    if (isNewColumn && distanceToClosest < 75 && minOtherX <= 85 && newComp.x <= 165) {
+      utilizationWarning = `⚠️ CRAMPED COLUMN SPACING: Placing Column at X=${newComp.x}mm leaves only ${Math.round(distanceToClosest)}mm distance to adjacent column. On DIN A3, standard multi-branch column centers are: Col 1 at X=85mm, Col 2 at X=205mm, Col 3 at X=315mm. Distribute across full sheet to avoid label overlap!`;
+    } else if (page.components.length >= 4 && maxOtherX < 200 && newComp.x < 200) {
+      utilizationWarning = `⚠️ SHEET UNDERUTILIZATION: Circuit is compressed into the left third of DIN A3 (all X <= ${Math.max(newComp.x, maxOtherX)}mm). Spread remaining branches across X=205 and X=315, or run 'distribute_sheet_layout'!`;
+    }
   }
+
+  const warningsList: string[] = [];
+  if (boundaryWarning) warningsList.push(boundaryWarning);
+  if (collisions.length > 0) {
+    warningsList.push(`⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}`);
+  }
+  if (utilizationWarning) warningsList.push(utilizationWarning);
+
+  const warning = warningsList.length > 0 ? warningsList.join(' | ') : undefined;
 
   return {
     success: true,
@@ -927,6 +997,253 @@ export async function handleMoveElement(
   }
 
   return { success: false, error: `Element "${args.id}" not found on active page.` };
+}
+
+export async function handleDistributeSheetLayout(
+  args: {
+    pageId?: string;
+    horizontalSpread?: 'full_sheet' | 'compact' | 'center';
+    columnCoordinates?: number[];
+    clearIntermediateWireWaypoints?: boolean;
+  },
+  manager: CanvasStateManager
+): Promise<any> {
+  const project = manager.getProject();
+  const page = manager.getActivePage(args?.pageId);
+  if (!page) {
+    return { success: false, error: `Page "${args?.pageId || 'active'}" not found in project.` };
+  }
+
+  if (!page.components || page.components.length === 0) {
+    return { success: true, message: 'Keine Bauteile auf der Seite vorhanden zum Verteilen.', componentsMoved: 0 };
+  }
+
+  // 1. Cluster components into columns based on X proximity
+  const sortedByX = [...page.components].sort((a, b) => a.x - b.x);
+  const columnGroups: PlacedComponent[][] = [];
+
+  for (const comp of sortedByX) {
+    if (columnGroups.length === 0) {
+      columnGroups.push([comp]);
+    } else {
+      const lastGroup = columnGroups[columnGroups.length - 1];
+      const avgX = lastGroup.reduce((sum, c) => sum + c.x, 0) / lastGroup.length;
+      if (Math.abs(comp.x - avgX) <= 30) {
+        lastGroup.push(comp);
+      } else {
+        columnGroups.push([comp]);
+      }
+    }
+  }
+
+  const oldColumnCenters = columnGroups.map(group =>
+    Math.round(group.reduce((sum, c) => sum + c.x, 0) / group.length)
+  );
+
+  const numCols = columnGroups.length;
+  let targetXs: number[] = [];
+
+  if (args?.columnCoordinates && args.columnCoordinates.length === numCols) {
+    targetXs = [...args.columnCoordinates];
+  } else if (args?.horizontalSpread === 'compact') {
+    const startX = 85;
+    targetXs = columnGroups.map((_, i) => startX + i * 65);
+  } else {
+    // 'full_sheet' (default) or 'center'
+    if (numCols === 1) {
+      targetXs = [args?.horizontalSpread === 'center' ? 210 : 85];
+    } else if (numCols === 2) {
+      targetXs = [110, 270];
+    } else if (numCols === 3) {
+      targetXs = [85, 205, 315];
+    } else if (numCols === 4) {
+      targetXs = [75, 155, 245, 335];
+    } else if (numCols === 5) {
+      targetXs = [75, 135, 195, 255, 315];
+    } else {
+      const minX = 75;
+      const maxX = 345;
+      const step = (maxX - minX) / (numCols - 1);
+      targetXs = columnGroups.map((_, i) => Math.round(minX + i * step));
+    }
+  }
+
+  // 2. Cluster components into row levels across the sheet based on Y proximity
+  const sortedByY = [...page.components].sort((a, b) => a.y - b.y);
+  const rowGroups: PlacedComponent[][] = [];
+
+  for (const comp of sortedByY) {
+    if (rowGroups.length === 0) {
+      rowGroups.push([comp]);
+    } else {
+      const lastRow = rowGroups[rowGroups.length - 1];
+      const avgY = lastRow.reduce((sum, c) => sum + c.y, 0) / lastRow.length;
+      if (Math.abs(comp.y - avgY) <= 25) {
+        lastRow.push(comp);
+      } else {
+        rowGroups.push([comp]);
+      }
+    }
+  }
+
+  const numRows = rowGroups.length;
+  let targetYs: number[] = [];
+  if (numRows === 1) {
+    targetYs = [120];
+  } else if (numRows === 2) {
+    targetYs = [75, 185];
+  } else if (numRows === 3) {
+    targetYs = [60, 125, 195];
+  } else if (numRows === 4) {
+    targetYs = [55, 115, 175, 230];
+  } else if (numRows === 5) {
+    targetYs = [50, 95, 140, 185, 230];
+  } else {
+    const minY = 50;
+    const maxY = 230;
+    const step = (maxY - minY) / (numRows - 1);
+    targetYs = rowGroups.map((_, i) => Math.round(minY + i * step));
+  }
+
+  // Map each component to its row index
+  const compRowIndexMap = new Map<string, number>();
+  for (let r = 0; r < rowGroups.length; r++) {
+    for (const c of rowGroups[r]) {
+      compRowIndexMap.set(c.id, r);
+    }
+  }
+
+  // 3. Reposition components to target (X, Y)
+  for (let colIdx = 0; colIdx < numCols; colIdx++) {
+    const group = columnGroups[colIdx];
+    const targetX = targetXs[colIdx];
+    const colBaseOldX = Math.min(...group.map(c => c.x));
+
+    for (const comp of group) {
+      const subOffsetX = comp.x - colBaseOldX;
+      comp.x = Math.round(targetX + subOffsetX);
+
+      const rIdx = compRowIndexMap.get(comp.id);
+      if (rIdx !== undefined && targetYs[rIdx] !== undefined) {
+        comp.y = targetYs[rIdx];
+      }
+
+      // Check left/right boundary clearance taking labels into account
+      const sym = getSymbolForComponent(comp, project);
+      const bounds = getComponentBounds(comp, sym);
+      if (bounds.left < 35) {
+        comp.x += Math.round(35 - bounds.left + 5);
+      } else if (bounds.right > 390) {
+        comp.x -= Math.round(bounds.right - 390 + 5);
+      }
+    }
+
+    // Ensure vertical non-overlap within this column
+    group.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < group.length - 1; i++) {
+      const curr = group[i];
+      const next = group[i + 1];
+      const currSym = getSymbolForComponent(curr, project);
+      const currH = currSym?.height ?? 30;
+      const minNextY = curr.y + currH + 15;
+      if (next.y < minNextY) {
+        next.y = minNextY;
+      }
+    }
+  }
+
+  // 4. Update column-associated texts (path titles, column headers, bottom annotations)
+  if (page.texts && page.texts.length > 0) {
+    for (const txt of page.texts) {
+      let closestColIdx = -1;
+      let minDistance = Infinity;
+      for (let c = 0; c < oldColumnCenters.length; c++) {
+        const dist = Math.abs(txt.x - oldColumnCenters[c]);
+        if (dist < minDistance && dist <= 55) {
+          minDistance = dist;
+          closestColIdx = c;
+        }
+      }
+
+      if (closestColIdx !== -1) {
+        const deltaX = targetXs[closestColIdx] - oldColumnCenters[closestColIdx];
+        txt.x = Math.round(txt.x + deltaX);
+
+        // If text was at the bottom (path title or description), position neatly at Y=245..250
+        if (txt.y >= 130) {
+          txt.y = 245;
+        }
+      } else if (txt.y < 45 && txt.x < 50) {
+        txt.x = 55;
+      }
+    }
+  }
+
+  // 5. Wires: clear intermediate zigzag waypoints if requested (default true)
+  if (args?.clearIntermediateWireWaypoints !== false) {
+    for (const w of page.wires) {
+      if (w.waypoints && w.waypoints.length > 0) {
+        w.waypoints = [];
+      }
+    }
+  }
+
+  // 6. Recalculate autoconnects and cross-references
+  try {
+    AutoconnectEngine.updatePageAutoconnections(page);
+    CrossReferenceEngine.updateProjectCrossReferences(project);
+  } catch {
+    // Non-blocking
+  }
+
+  manager.notifyModified();
+  manager.render();
+
+  // 7. Calculate new sheet utilization metrics
+  let newMinX = Infinity;
+  let newMaxX = -Infinity;
+  let newMinY = Infinity;
+  let newMaxY = -Infinity;
+
+  for (const comp of page.components) {
+    const sym = getSymbolForComponent(comp, project);
+    const b = getComponentBounds(comp, sym);
+    newMinX = Math.min(newMinX, b.left);
+    newMaxX = Math.max(newMaxX, b.right);
+    newMinY = Math.min(newMinY, b.top);
+    newMaxY = Math.max(newMaxY, b.bottom);
+  }
+
+  const rawWidth = page.plotFrame?.width || 420;
+  const rawHeight = page.plotFrame?.height || 297;
+  const sheetMmWidth = rawWidth <= 600 ? rawWidth : 420;
+  const sheetMmHeight = rawHeight <= 450 ? rawHeight : 297;
+  const usableWidth = sheetMmWidth - 80; // 340 mm
+  const usableHeight = sheetMmHeight - 92; // 205 mm
+  const newWidth = newMinX < Infinity ? Math.round((newMaxX - newMinX) * 10) / 10 : 0;
+  const newHeight = newMinY < Infinity ? Math.round((newMaxY - newMinY) * 10) / 10 : 0;
+  const horizUtil = Math.min(100, Math.round((newWidth / usableWidth) * 100));
+  const vertUtil = Math.min(100, Math.round((newHeight / usableHeight) * 100));
+
+  return {
+    success: true,
+    columns: numCols,
+    rows: numRows,
+    componentsMoved: page.components.length,
+    columnPositions: targetXs,
+    rowPositions: targetYs,
+    sheetUtilization: {
+      minX: newMinX,
+      maxX: newMaxX,
+      minY: newMinY,
+      maxY: newMaxY,
+      width: newWidth,
+      height: newHeight,
+      horizontalUtilizationPercent: horizUtil,
+      verticalUtilizationPercent: vertUtil
+    },
+    message: `Erfolgreich ${page.components.length} Bauteile auf ${numCols} Spalten (${targetXs.join(' mm, ')} mm) über das gesamte DIN A3 Blatt verteilt. Flächenausnutzung: ${horizUtil}% horizontal, ${vertUtil}% vertikal.`
+  };
 }
 
 export async function handleDrawWire(
@@ -1427,8 +1744,8 @@ export async function handleCreatePage(
     wires: [],
     plotFrame: {
       type: 'DIN_A3_LANDSCAPE',
-      width: 1000,
-      height: 700,
+      width: project.pages[0]?.plotFrame?.width || 420,
+      height: project.pages[0]?.plotFrame?.height || 297,
       columns: 10,
       rows: ['A', 'B', 'C', 'D', 'E', 'F'],
       titleBlock: {

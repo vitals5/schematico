@@ -714,6 +714,35 @@ export const ZOOM_CANVAS_TOOL: McpToolDefinition = {
   }
 };
 
+export const DISTRIBUTE_SHEET_LAYOUT_TOOL: McpToolDefinition = {
+  name: 'distribute_sheet_layout',
+  description:
+    'Automatically analyzes and distributes all components, columns, and wires evenly across the entire DIN A3 drawing sheet (X: 75..345 mm, Y: 50..240 mm). Eliminates cramped layouts, maximizes sheet utilization, avoids label collisions, and updates autoconnections.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: {
+        type: 'string',
+        description: 'Optional ID of the page to distribute. If omitted, the currently active page is rebalanced.'
+      },
+      horizontalSpread: {
+        type: 'string',
+        enum: ['full_sheet', 'compact', 'center'],
+        description: 'Layout mode. "full_sheet" (default) spreads columns across the full DIN A3 width (X: 75..340 mm). "center" centers the layout. "compact" keeps columns closer together.'
+      },
+      columnCoordinates: {
+        type: 'array',
+        items: { type: 'number' },
+        description: 'Optional explicit X coordinates for each column (e.g. [85, 205, 315] for a 3-strang circuit). If omitted, optimal full-sheet column centers are automatically calculated.'
+      },
+      clearIntermediateWireWaypoints: {
+        type: 'boolean',
+        description: 'Whether to clear manual zigzag waypoints on moved wires so the CAD engine re-routes cleanly (default: true).'
+      }
+    }
+  }
+};
+
 // -------------------------------------------------------------
 // All Registered MCP Tools in Schematico
 // -------------------------------------------------------------
@@ -725,6 +754,7 @@ export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
   UPDATE_COMPONENT_TOOL,
   ROTATE_ELEMENT_TOOL,
   MOVE_ELEMENT_TOOL,
+  DISTRIBUTE_SHEET_LAYOUT_TOOL,
   DRAW_WIRE_TOOL,
   UPDATE_WIRE_TOOL,
   ADD_CABLE_TOOL,
