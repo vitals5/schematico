@@ -516,6 +516,55 @@ async function runTests() {
 
   console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 205, 315] with >80% sheet utilization, non-overlapping boxes, and orthogonal duct wiring');
 
+  // Test 20: distribute_sheet_layout on 4-box layout (+HAK, +ZP1, +UV-WP, +UV-HH) with stacked texts
+  await registry.executeTool('clear_canvas', { confirm: true }, manager);
+  await registry.executeTool('add_component', { symbolId: 'fuse_switch_3p', bmk: '-F0', x: 85, y: 58 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q0', x: 85, y: 120 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z1', x: 85, y: 185 }, manager);
+
+  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F1', x: 135, y: 58 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'circuit_breaker_3p', bmk: '-Q1', x: 135, y: 124 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'motor_3phase', bmk: '-M1', x: 135, y: 185 }, manager);
+
+  await registry.executeTool('add_component', { symbolId: 'energy_meter_3p', bmk: '-Z2', x: 160, y: 58 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'rcd_4p', bmk: '-F2', x: 160, y: 124 }, manager);
+  await registry.executeTool('add_component', { symbolId: 'inverter_solar', bmk: '-G1', x: 160, y: 195 }, manager);
+
+  await registry.executeTool('add_device_box', { bmk: '+HAK', x: 75, y: 45, width: 90, height: 60 }, manager);
+  await registry.executeTool('add_device_box', { bmk: '+ZP1', x: 75, y: 110, width: 100, height: 130 }, manager);
+  await registry.executeTool('add_device_box', { bmk: '+UV-WP', x: 130, y: 45, width: 90, height: 190 }, manager);
+  await registry.executeTool('add_device_box', { bmk: '+UV-HH', x: 155, y: 45, width: 90, height: 190 }, manager);
+
+  await registry.executeTool('add_text', { text: 'Messkonzept MK C3: Kaskadenmessung Wärmepumpe & Haushalt', x: 45, y: 38 }, manager);
+  await registry.executeTool('add_text', { text: 'STRANG 1: Netzeinspeisung', x: 85, y: 48 }, manager);
+  await registry.executeTool('add_text', { text: 'STRANG 2: Kaskadenzweig Wärmepumpe', x: 85, y: 48 }, manager);
+  await registry.executeTool('add_text', { text: 'STRANG 3: Haushaltsnetz & PV', x: 85, y: 48 }, manager);
+
+  const dist20Res = await registry.executeTool('distribute_sheet_layout', {}, manager);
+  if (!dist20Res.success || dist20Res.columns !== 3) {
+    throw new Error(`Test 20 failed: expected 3 columns, got ${dist20Res.columns}`);
+  }
+
+  const p20 = manager.getActivePage();
+  const txt1 = p20.texts.find((t: any) => t.text.includes('STRANG 1'));
+  const txt2 = p20.texts.find((t: any) => t.text.includes('STRANG 2'));
+  const txt3 = p20.texts.find((t: any) => t.text.includes('STRANG 3'));
+  if (!txt1 || !txt2 || !txt3 || txt1.x !== 85 || txt2.x !== 205 || txt3.x !== 315) {
+    throw new Error(`Test 20 failed: Texts not separated: txt1=${txt1?.x}, txt2=${txt2?.x}, txt3=${txt3?.x}`);
+  }
+
+  const boxHak = p20.boxes.find((b: any) => b.bmk === '+HAK');
+  const boxZp = p20.boxes.find((b: any) => b.bmk === '+ZP1');
+  const boxWp = p20.boxes.find((b: any) => b.bmk === '+UV-WP');
+  const boxHh = p20.boxes.find((b: any) => b.bmk === '+UV-HH');
+  if (!boxHak || !boxZp || !boxWp || !boxHh) {
+    throw new Error('Test 20 failed: missing boxes');
+  }
+  if (boxWp.x + boxWp.width > boxHh.x) {
+    throw new Error(`Test 20 failed: +UV-WP overlaps +UV-HH: WP=${boxWp.x}..${boxWp.x + boxWp.width}, HH=${boxHh.x}..${boxHh.x + boxHh.width}`);
+  }
+  console.log('✓ Test 20: distribute_sheet_layout separated narrow columns (25mm), resolved 4 boxes (+HAK, +ZP1, +UV-WP, +UV-HH), and distributed stacked Strang headers to X: [85, 205, 315]');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

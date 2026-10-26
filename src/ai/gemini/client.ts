@@ -146,7 +146,7 @@ Electrical Standards & Physical CAD Layout Rules:
      - Because 3-phase devices are 72 mm to 120 mm wide, NEVER use narrow columns! Use 3 wide columns across the DIN A3 sheet:
        * Column 1 (Netzanschluss & Zähler Z1): X = 85 mm | HAK Y=50, SLS/SPD Y=120, Z1 Y=185
        * Column 2 (Kaskadenzweig / Wärmepumpe): X = 205 mm | FI Y=55, LS/MSS Y=125, Verdichter Y=185
-       * Column 3 (Haushaltsstrom & PV / Speicher): X = 315 mm | Z2 Y=55, FI/LS Y=125, PV-Wechselrichter Y=185
+       * Column 3 (Haushaltsstrom & PV / Speicher): Standard devices at X = 315 mm (-Z2 Y=55, FI/LS Y=125). Wide hybrid inverter ('inverter_solar', width 120 mm) at X = 275 mm, Y = 185 mm (extends to X=395 mm cleanly)!
   4. Column Distribution for 1-Phase Control Circuits (Steuerungstechnik):
      - Path 1: X=80..95 | Path 2: X=135..155 | Path 3: X=195..215 | Path 4: X=255..275 | Path 5: X=315..335
   5. Device Boxes ('add_device_box'):
@@ -156,8 +156,9 @@ Electrical Standards & Physical CAD Layout Rules:
      - Intra-column connections (series devices) are straight vertical lines.
      - NEVER route cross-column wires through the middle of adjacent devices, breakers, or labels!
      - Inter-column wires must route through empty corridors between columns and lower/upper ducts, or call 'distribute_sheet_layout' to route them automatically.
-  7. Collision Feedback:
-     - 'add_component' returns 'bounds' (including symbol body and labels) and warns if a collision occurs. If a warning is returned, adjust subsequent positions immediately!
+  7. Workflow & Collision Management (CRITICAL):
+     - NEVER call 'move_element' in a loop across all components after placing them!
+     - If alignment, full DIN A3 sheet distribution, non-overlapping device boxes, or wire routing is needed, simply call tool 'distribute_sheet_layout'! It automatically balances all columns, vertically separates rows, adapts device boxes and routes inter-column wires cleanly without overlaps!
 
 Direct Symbol Catalog (Use these IDs directly in 'add_component', avoid search calls):
 - Energy & Power Distribution:

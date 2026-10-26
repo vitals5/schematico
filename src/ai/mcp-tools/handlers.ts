@@ -754,7 +754,7 @@ export async function handleAddComponent(
 
   if (newBounds.left < 35) {
     boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) cause labels of '${newComp.bmk}' to extend to X=${newBounds.left}mm (outside left sheet border X: 35). Labels require ~${leftMarginNeeded}mm left clearance. Recommended placement is X >= ${Math.max(80, Math.round(35 + leftMarginNeeded + 5))}mm!`;
-  } else if (newBounds.right > sheetWidth - 25 || newBounds.bottom > sheetHeight - 40 || newBounds.top < 20) {
+  } else if (newComp.x + (sym?.width ?? 30) > sheetWidth - 10 || newComp.y + (sym?.height ?? 30) > sheetHeight - 40 || newBounds.top < 20) {
     boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) with size ${newBounds.width}x${newBounds.height}mm exceed standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
   }
 
@@ -1028,7 +1028,8 @@ export async function handleDistributeSheetLayout(
     } else {
       const lastGroup = columnGroups[columnGroups.length - 1];
       const avgX = lastGroup.reduce((sum, c) => sum + c.x, 0) / lastGroup.length;
-      if (Math.abs(comp.x - avgX) <= 30) {
+      const hasSameY = lastGroup.some(c => Math.abs(c.y - comp.y) <= 30);
+      if (!hasSameY && Math.abs(comp.x - avgX) <= 20) {
         lastGroup.push(comp);
       } else {
         columnGroups.push([comp]);
@@ -1118,35 +1119,39 @@ export async function handleDistributeSheetLayout(
   if (page.boxes && page.boxes.length > 0) {
     for (const box of page.boxes) {
       const boxBmkClean = (box.bmk || '').replace(/^[+=]/, '').trim().toLowerCase();
-      // 1. Match by BMK, mounting location or higher-level function
-      let matched = page.components.filter(c => {
-        if (!boxBmkClean) return false;
-        const locClean = (c.mountingLocation || '').replace(/^[+=]/, '').trim().toLowerCase();
-        const hlClean = (c.higherLevelFunction || '').replace(/^[+=]/, '').trim().toLowerCase();
-        const bmkClean = (c.bmk || '').replace(/^[+=]/, '').trim().toLowerCase();
-        return locClean === boxBmkClean || hlClean === boxBmkClean || bmkClean.includes(boxBmkClean);
-      });
+      const boxLabelClean = (box.label || '').replace(/^[+=]/, '').trim().toLowerCase();
 
-      // 2. Geometric match: components whose origin falls within box X bounds (+/- 15mm tolerance)
-      if (matched.length === 0) {
-        matched = page.components.filter(c => {
-          return c.x >= box.x - 15 && c.x <= box.x + box.width + 15;
-        });
+      // Determine target column semantically
+      let colIdx = -1;
+      if (boxBmkClean.includes('hak') || boxBmkClean.includes('zp') || boxBmkClean.includes('netz') || boxLabelClean.includes('hak') || boxLabelClean.includes('netz') || boxLabelClean.includes('zähler')) {
+        colIdx = 0;
+      } else if (boxBmkClean.includes('wp') || boxLabelClean.includes('wp') || boxLabelClean.includes('wärmepumpe')) {
+        colIdx = Math.min(1, numCols - 1);
+      } else if (boxBmkClean.includes('hh') || boxBmkClean.includes('pv') || boxLabelClean.includes('haushalt') || boxLabelClean.includes('speicher')) {
+        colIdx = Math.min(2, numCols - 1);
       }
 
-      // 3. Proximity to old column centers
-      if (matched.length === 0 && oldColumnCenters.length > 0) {
-        let bestCol = 0;
+      if (colIdx === -1 && oldColumnCenters.length > 0) {
         let bestDist = Infinity;
         const boxCenterX = box.x + box.width / 2;
         for (let c = 0; c < oldColumnCenters.length; c++) {
           const dist = Math.abs(boxCenterX - oldColumnCenters[c]);
           if (dist < bestDist) {
             bestDist = dist;
-            bestCol = c;
+            colIdx = c;
           }
         }
-        matched = columnGroups[bestCol] || [];
+      }
+
+      let matched = columnGroups[colIdx] || [];
+
+      // If multiple boxes share this column (e.g. +HAK at top, +ZP1 below):
+      if (boxBmkClean.includes('hak')) {
+        const topComps = matched.filter(c => c.bmk.includes('F0') || c.y <= 95);
+        if (topComps.length > 0) matched = topComps;
+      } else if (boxBmkClean.includes('zp')) {
+        const botComps = matched.filter(c => !c.bmk.includes('F0') || c.y > 95);
+        if (botComps.length > 0) matched = botComps;
       }
 
       boxCompsMap.set(box.id, matched);
@@ -1173,8 +1178,8 @@ export async function handleDistributeSheetLayout(
       const bounds = getComponentBounds(comp, sym);
       if (bounds.left < 35) {
         comp.x += Math.round(35 - bounds.left + 5);
-      } else if (bounds.right > 390) {
-        comp.x -= Math.round(bounds.right - 390 + 5);
+      } else if (comp.x + (sym?.width ?? 30) > 405) {
+        comp.x = Math.round(405 - (sym?.width ?? 30));
       }
     }
 
@@ -1188,6 +1193,19 @@ export async function handleDistributeSheetLayout(
       const minNextY = curr.y + currH + 18;
       if (next.y < minNextY) {
         next.y = minNextY;
+      }
+    }
+
+    // Ensure column components fit vertically above the title block (Y <= 248)
+    const maxBottom = Math.max(...group.map(c => {
+      const s = getSymbolForComponent(c, project);
+      return c.y + (s?.height ?? 30);
+    }));
+    if (maxBottom > 248 && group.length > 1) {
+      const overflow = maxBottom - 248;
+      for (let i = 1; i < group.length; i++) {
+        const factor = i / (group.length - 1);
+        group[i].y = Math.round(group[i].y - overflow * factor);
       }
     }
   }
@@ -1220,8 +1238,9 @@ export async function handleDistributeSheetLayout(
     for (let i = 0; i < page.boxes.length - 1; i++) {
       const curr = page.boxes[i];
       const next = page.boxes[i + 1];
-      if (curr.x + curr.width >= next.x) {
-        // Enforce at least 6mm separation between adjacent boxes
+      const yOverlap = Math.min(curr.y + curr.height, next.y + next.height) - Math.max(curr.y, next.y);
+      if (yOverlap > 10 && curr.x + curr.width >= next.x) {
+        // Enforce at least 6mm separation between horizontally adjacent boxes
         curr.width = Math.max(20, next.x - curr.x - 6);
       }
     }
@@ -1260,6 +1279,18 @@ export async function handleDistributeSheetLayout(
         targetColIdx = Math.min(2, numCols - 1);
       } else if (lower.includes('strang 4') || lower.includes('pfad 4') || lower.includes('spalte 4')) {
         targetColIdx = Math.min(3, numCols - 1);
+      }
+
+      if (targetColIdx !== -1) {
+        if (targetColIdx < targetXs.length) {
+          txt.x = targetXs[targetColIdx];
+          if (txt.y >= 130) {
+            txt.y = 245;
+          } else {
+            txt.y = 46;
+          }
+        }
+        continue;
       }
 
       // Proximity fallback for any remaining column-associated annotations

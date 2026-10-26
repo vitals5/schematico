@@ -210,6 +210,11 @@ export class AiChatSidebar {
         const { defaultToolRegistry } = await import('../mcp-tools');
         const res = await defaultToolRegistry.executeTool('distribute_sheet_layout', {}, this.stateManager);
         if (res?.success) {
+          this.stateManager.notifyModified();
+          this.stateManager.render();
+          try {
+            await defaultToolRegistry.executeTool('zoom_canvas', { mode: 'fit' }, this.stateManager);
+          } catch { /* Non-blocking */ }
           this.appendModelResponse({
             id: 'distribute_' + Date.now(),
             role: 'model',
