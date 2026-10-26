@@ -128,7 +128,10 @@ export class AiChatSidebar {
         <div class="ai-chat-messages" id="aiChatMessages"></div>
         <div class="ai-chat-loading" id="aiChatLoading" style="display: none;">
           <div class="ai-loading-spinner"></div>
-          <span class="ai-loading-text" id="aiLoadingStatusText">Denke nach...</span>
+          <span class="ai-loading-text" id="aiLoadingStatusText" style="flex: 1;">Denke nach...</span>
+          <button type="button" class="ai-stop-btn" id="btnAiStop" title="Ausführung abbrechen">
+            <span style="font-size: 11px;">⏹</span> Stoppen
+          </button>
         </div>
       </div>
 
@@ -205,7 +208,27 @@ export class AiChatSidebar {
       }
     });
 
-    sendBtn?.addEventListener('click', () => this.handleSend());
+    sendBtn?.addEventListener('click', () => {
+      if (this.isGenerating) {
+        this.handleStop();
+      } else {
+        this.handleSend();
+      }
+    });
+
+    const btnStop = this.container.querySelector('#btnAiStop');
+    btnStop?.addEventListener('click', () => this.handleStop());
+
+    const bridgePill = this.container.querySelector('#aiSidebarBridgeStatus');
+    bridgePill?.addEventListener('click', () => {
+      defaultBridgeClient.connect(true);
+    });
+  }
+
+  public handleStop(): void {
+    if (!this.isGenerating) return;
+    this.setLoadingStatus('Ausführung wird abgebrochen...');
+    this.geminiClient.abort();
   }
 
   private updateBridgeBadge(): void {
@@ -214,9 +237,8 @@ export class AiChatSidebar {
 
     const status = defaultBridgeClient.getStatus();
     const isConnected = status === 'connected';
-    const isConnecting = status === 'connecting';
-    const color = isConnected ? '#48bb78' : isConnecting ? '#ecc94b' : '#fc8181';
-    const label = isConnected ? 'Bridge Active' : isConnecting ? 'Connecting...' : 'Bridge Offline';
+    const color = isConnected ? '#48bb78' : '#fc8181';
+    const label = isConnected ? 'Bridge Active' : 'Bridge Offline';
 
     el.innerHTML = `
       <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};box-shadow:0 0 5px ${color}"></span>
@@ -224,7 +246,7 @@ export class AiChatSidebar {
     `;
     el.title = isConnected
       ? 'Lokaler WebSocket MCP Server (ws://localhost:3333) ist aktiv.'
-      : 'MCP Bridge Offline. Starte: node bridge-server/index.mjs';
+      : 'MCP Bridge Offline (Klicken zum erneuten Verbinden). Server starten mit: node bridge-server/index.mjs';
   }
 
   private renderApiKeyBanner(): void {
@@ -303,8 +325,37 @@ export class AiChatSidebar {
     const input = this.container.querySelector<HTMLTextAreaElement>('#aiPromptInput');
 
     if (loading) loading.style.display = isGen ? 'flex' : 'none';
-    if (sendBtn) sendBtn.disabled = isGen;
-    if (input) input.disabled = isGen;
+
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      if (isGen) {
+        sendBtn.classList.add('ai-btn-abort');
+        sendBtn.title = 'Ausführung abbrechen (⏹)';
+        sendBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <rect x="5" y="5" width="14" height="14" rx="2" ry="2"></rect>
+          </svg>
+        `;
+      } else {
+        sendBtn.classList.remove('ai-btn-abort');
+        sendBtn.title = 'Senden (Enter)';
+        sendBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        `;
+      }
+    }
+
+    if (input) {
+      input.disabled = isGen;
+      if (isGen) {
+        input.placeholder = 'Schaltplan wird gezeichnet... (⏹ Klick zum Abbrechen)';
+      } else {
+        input.placeholder = "Schaltplan-Anweisung eingeben... (z.B. 'Füge einen Schütz K1 bei x=120, y=160 hinzu')";
+      }
+    }
 
     this.setLoadingStatus(statusText);
     this.scrollToBottom();

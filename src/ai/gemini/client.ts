@@ -129,6 +129,8 @@ export class GeminiChatClient {
   private toolRegistry: McpToolRegistry;
   private model: string;
   private systemInstruction: string;
+  private currentAbortController: AbortController | null = null;
+  private isAborted: boolean = false;
 
   constructor(options: GeminiChatOptions = {}) {
     this.toolRegistry = options.toolRegistry || defaultToolRegistry;
@@ -143,6 +145,27 @@ export class GeminiChatClient {
   public clearHistory(): void {
     this.history = [];
     this.messages = [];
+  }
+
+  /**
+   * Aborts any currently active execution loop.
+   */
+  public abort(): void {
+    this.isAborted = true;
+    if (this.currentAbortController) {
+      try {
+        this.currentAbortController.abort();
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  /**
+   * Returns true if a request is actively running.
+   */
+  public isRunning(): boolean {
+    return this.currentAbortController !== null;
   }
 
   /**
@@ -163,6 +186,9 @@ export class GeminiChatClient {
         'Kein Gemini API-Key hinterlegt. Bitte hinterlegen Sie Ihren API-Key in den Einstellungen (BYOK).'
       );
     }
+
+    this.currentAbortController = new AbortController();
+    this.isAborted = false;
 
     const ai = new GoogleGenAI({ apiKey });
 
@@ -197,83 +223,118 @@ export class GeminiChatClient {
     let iteration = 0;
     let finalText = '';
 
-    while (iteration < MAX_TOOL_ITERATIONS) {
-      iteration++;
-      options?.onStatusUpdate?.(
-        iteration === 1 ? 'Analysiere Anfrage...' : `Führe Schaltplan-Aktionen aus (Schritt ${iteration})...`
-      );
-
-      const response = await ai.models.generateContent({
-        model: this.model,
-        contents: this.history,
-        config: {
-          systemInstruction: this.systemInstruction,
-          tools: [{ functionDeclarations: toolDeclarations }]
+    try {
+      while (iteration < MAX_TOOL_ITERATIONS) {
+        if (this.isAborted || this.currentAbortController?.signal.aborted) {
+          finalText = '⏹️ **Ausführung durch Benutzer abgebrochen.** Die bisherigen Schritte wurden auf der Arbeitsfläche belassen.';
+          break;
         }
-      });
 
-      // Append model response to conversation history
-      const candidateContent = response.candidates?.[0]?.content;
-      if (candidateContent) {
-        this.history.push(candidateContent);
-      }
+        iteration++;
+        options?.onStatusUpdate?.(
+          iteration === 1 ? 'Analysiere Anfrage...' : `Führe Schaltplan-Aktionen aus (Schritt ${iteration})...`
+        );
 
-      // Check if model returned function calls
-      const functionCalls = response.functionCalls;
-      if (!functionCalls || functionCalls.length === 0) {
-        // Model provided final text
-        finalText = response.text || '';
-        break;
-      }
-
-      // Execute each function call
-      const functionResponseParts: Part[] = [];
-
-      for (const fc of functionCalls) {
-        const toolName = fc.name || 'unknown_tool';
-        const toolExecution: ToolCallExecution = {
-          name: toolName,
-          args: fc.args,
-          status: 'running'
-        };
-        currentToolCalls.push(toolExecution);
-        options?.onToolStart?.(toolName, fc.args);
-        options?.onStatusUpdate?.(`⚡ Führe Aktion aus: ${toolName}...`);
-
-        let result: any;
+        let response: any;
         try {
-          result = await this.toolRegistry.executeTool(toolName, fc.args, stateManager);
-          toolExecution.result = result;
-          toolExecution.status = result?.success === false ? 'error' : 'done';
+          response = await ai.models.generateContent({
+            model: this.model,
+            contents: this.history,
+            config: {
+              systemInstruction: this.systemInstruction,
+              tools: [{ functionDeclarations: toolDeclarations }],
+              abortSignal: this.currentAbortController?.signal
+            }
+          });
         } catch (err: any) {
-          result = { success: false, error: err?.message || String(err) };
-          toolExecution.result = result;
-          toolExecution.status = 'error';
+          if (this.isAborted || this.currentAbortController?.signal.aborted || err?.name === 'AbortError') {
+            finalText = '⏹️ **Ausführung durch Benutzer abgebrochen.** Die bisherigen Schritte wurden auf der Arbeitsfläche belassen.';
+            break;
+          }
+          throw err;
         }
 
-        options?.onToolComplete?.(toolName, fc.args, result);
+        if (this.isAborted || this.currentAbortController?.signal.aborted) {
+          finalText = '⏹️ **Ausführung durch Benutzer abgebrochen.** Die bisherigen Schritte wurden auf der Arbeitsfläche belassen.';
+          break;
+        }
 
-        functionResponseParts.push({
-          functionResponse: {
-            name: toolName,
-            response: result
+        // Append model response to conversation history
+        const candidateContent = response.candidates?.[0]?.content;
+        if (candidateContent) {
+          this.history.push(candidateContent);
+        }
+
+        // Check if model returned function calls
+        const functionCalls = response.functionCalls;
+        if (!functionCalls || functionCalls.length === 0) {
+          // Model provided final text
+          finalText = response.text || '';
+          break;
+        }
+
+        // Execute each function call
+        const functionResponseParts: Part[] = [];
+
+        for (const fc of functionCalls) {
+          if (this.isAborted || this.currentAbortController?.signal.aborted) {
+            finalText = '⏹️ **Ausführung durch Benutzer abgebrochen.** Die bisherigen Schritte wurden auf der Arbeitsfläche belassen.';
+            break;
           }
+
+          const toolName = fc.name || 'unknown_tool';
+          const toolExecution: ToolCallExecution = {
+            name: toolName,
+            args: fc.args,
+            status: 'running'
+          };
+          currentToolCalls.push(toolExecution);
+          options?.onToolStart?.(toolName, fc.args);
+          options?.onStatusUpdate?.(`⚡ Führe Aktion aus: ${toolName}...`);
+
+          let result: any;
+          try {
+            result = await this.toolRegistry.executeTool(toolName, fc.args, stateManager);
+            toolExecution.result = result;
+            toolExecution.status = result?.success === false ? 'error' : 'done';
+          } catch (err: any) {
+            result = { success: false, error: err?.message || String(err) };
+            toolExecution.result = result;
+            toolExecution.status = 'error';
+          }
+
+          options?.onToolComplete?.(toolName, fc.args, result);
+
+          functionResponseParts.push({
+            functionResponse: {
+              name: toolName,
+              response: result
+            }
+          });
+        }
+
+        if (this.isAborted || this.currentAbortController?.signal.aborted) {
+          finalText = '⏹️ **Ausführung durch Benutzer abgebrochen.** Die bisherigen Schritte wurden auf der Arbeitsfläche belassen.';
+          break;
+        }
+
+        // Push function responses as user turn
+        this.history.push({
+          role: 'user',
+          parts: functionResponseParts
         });
       }
 
-      // Push function responses as user turn
-      this.history.push({
-        role: 'user',
-        parts: functionResponseParts
-      });
-    }
+      if (iteration >= MAX_TOOL_ITERATIONS && !finalText) {
+        finalText = `⚠️ **Aktionslimit erreicht:** Die Schaltung wurde bis zu Schritt ${iteration} aufgebaut. Bitte antworte kurz mit **"Fahre fort und verdrahte die Schaltung"**, damit ich die noch ausstehenden Verbindungen und Schritte fertigstelle.`;
+      }
 
-    if (iteration >= MAX_TOOL_ITERATIONS && !finalText) {
-      finalText = `⚠️ **Aktionslimit erreicht:** Die Schaltung wurde bis zu Schritt ${iteration} aufgebaut. Bitte antworte kurz mit **"Fahre fort und verdrahte die Schaltung"**, damit ich die noch ausstehenden Verbindungen und Schritte fertigstelle.`;
+      modelMsg.text = finalText;
+      return modelMsg;
+    } finally {
+      this.currentAbortController = null;
+      this.isAborted = false;
+      options?.onStatusUpdate?.('Bereit');
     }
-
-    modelMsg.text = finalText;
-    options?.onStatusUpdate?.('Bereit');
-    return modelMsg;
   }
 }

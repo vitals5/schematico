@@ -39,6 +39,9 @@ export class StatusBadge {
       if (target.closest('.badge-key-pill') && this.options.onApiKeyClick) {
         e.stopPropagation();
         this.options.onApiKeyClick();
+      } else if (target.closest('.badge-bridge-pill')) {
+        e.stopPropagation();
+        defaultBridgeClient.connect(true);
       } else if (this.options.onClick) {
         this.options.onClick();
       }
@@ -65,17 +68,12 @@ export class StatusBadge {
 
   private render(): void {
     const isBridgeConnected = this.bridgeStatus === 'connected';
-    const isBridgeConnecting = this.bridgeStatus === 'connecting';
 
-    const bridgeDotColor = isBridgeConnected ? '#48bb78' : isBridgeConnecting ? '#ecc94b' : '#fc8181';
-    const bridgeText = isBridgeConnected
-      ? 'MCP Bridge Active'
-      : isBridgeConnecting
-      ? 'MCP Connecting...'
-      : 'MCP Offline';
+    const bridgeDotColor = isBridgeConnected ? '#48bb78' : '#fc8181';
+    const bridgeText = isBridgeConnected ? 'MCP Bridge Active' : 'MCP Offline';
     const bridgeTitle = isBridgeConnected
       ? 'Lokaler WebSocket MCP Server (ws://localhost:3333) verbunden'
-      : 'Lokaler WebSocket MCP Server offline (bridge-server starten mit: node bridge-server/index.mjs)';
+      : 'MCP Bridge Offline (Klicken zum erneuten Verbindungsversuch; Bridge starten mit: node bridge-server/index.mjs)';
 
     const keyIcon = this.hasKey ? '🔑' : '⚠️';
     const keyText = this.hasKey ? 'Gemini BYOK' : 'API-Key fehlt';

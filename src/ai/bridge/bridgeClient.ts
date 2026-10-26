@@ -20,6 +20,7 @@ export class SchematicoBridgeClient {
   private status: BridgeConnectionStatus = 'disconnected';
   private reconnectInterval: number;
   private reconnectTimer: any = null;
+  private reconnectAttempts: number = 0;
   private shouldReconnect: boolean = true;
   private toolRegistry: McpToolRegistry;
   private stateManager: CanvasStateManager | null = null;
@@ -27,11 +28,11 @@ export class SchematicoBridgeClient {
 
   constructor(options: BridgeClientOptions = {}) {
     this.url = options.url || 'ws://localhost:3333';
-    this.reconnectInterval = options.reconnectInterval || 3000;
+    this.reconnectInterval = options.reconnectInterval || 5000;
     this.toolRegistry = options.toolRegistry || defaultToolRegistry;
 
     if (options.autoConnect !== false) {
-      this.connect();
+      this.connect(false);
     }
   }
 
@@ -62,7 +63,7 @@ export class SchematicoBridgeClient {
     }
   }
 
-  public connect(): void {
+  public connect(isUserInitiated: boolean = false): void {
     if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
       return;
     }
@@ -72,13 +73,17 @@ export class SchematicoBridgeClient {
       return;
     }
 
-    this.setStatus('connecting');
+    // Only broadcast 'connecting' status if user explicitly clicked or requested it
+    if (isUserInitiated && this.status !== 'connected') {
+      this.setStatus('connecting');
+    }
     this.shouldReconnect = true;
 
     try {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
+        this.reconnectAttempts = 0;
         this.setStatus('connected');
         if (this.reconnectTimer) {
           clearTimeout(this.reconnectTimer);
@@ -103,22 +108,26 @@ export class SchematicoBridgeClient {
 
       this.ws.onclose = () => {
         this.ws = null;
-        this.setStatus('disconnected');
+        if (this.status !== 'disconnected') {
+          this.setStatus('disconnected');
+        }
         this.scheduleReconnect();
       };
 
-      this.ws.onerror = (err) => {
-        this.setStatus('error', 'WebSocket error');
-        // onclose will trigger next
+      this.ws.onerror = () => {
+        // Quietly fail; onclose handles reconnection
       };
-    } catch (err: any) {
-      this.setStatus('error', err?.message || 'Connection failed');
+    } catch {
+      if (this.status !== 'disconnected') {
+        this.setStatus('disconnected');
+      }
       this.scheduleReconnect();
     }
   }
 
   public disconnect(): void {
     this.shouldReconnect = false;
+    this.reconnectAttempts = 0;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -132,12 +141,15 @@ export class SchematicoBridgeClient {
 
   private scheduleReconnect(): void {
     if (!this.shouldReconnect || this.reconnectTimer) return;
+    this.reconnectAttempts++;
+    // Exponential backoff: 5s, 8s, 12s, 18s, 27s up to 60s max
+    const delay = Math.min(5000 * Math.pow(1.5, Math.min(this.reconnectAttempts - 1, 6)), 60000);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (this.shouldReconnect) {
-        this.connect();
+        this.connect(false); // Quiet background reconnect, avoids UI flickering
       }
-    }, this.reconnectInterval);
+    }, delay);
   }
 
   private send(data: any): void {
