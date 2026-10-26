@@ -367,6 +367,34 @@ async function runTests() {
   }
   console.log('✓ Test 15: Architectural floor plan tools (add_wall, add_wall_opening, get_floor_plan_state) succeeded');
 
+  // Test 16: Physical bounding boxes and collision detection
+  const c1 = await registry.executeTool('add_component', {
+    symbolId: 'energy_meter_3p',
+    x: 100,
+    y: 100
+  }, manager);
+  if (!c1.success || !c1.component?.bounds || c1.component.width !== 96 || c1.component.height !== 48) {
+    throw new Error(`Component bounds or dimensions missing on energy_meter_3p: ${JSON.stringify(c1)}`);
+  }
+
+  // Place colliding component right on top of c1
+  const c2Colliding = await registry.executeTool('add_component', {
+    symbolId: 'circuit_breaker_3p',
+    x: 110,
+    y: 110
+  }, manager);
+  if (!c2Colliding.success || !c2Colliding.warning || !c2Colliding.collisions || c2Colliding.collisions.length === 0) {
+    throw new Error(`Expected collision warning when placing component directly overlapping, got: ${JSON.stringify(c2Colliding)}`);
+  }
+
+  // Verify get_canvas_state reports bounds
+  const canvasWithBounds = await registry.executeTool('get_canvas_state', {}, manager);
+  const foundMeter = canvasWithBounds.components.find((c: any) => c.symbolId === 'energy_meter_3p');
+  if (!foundMeter?.bounds || foundMeter.width !== 96 || foundMeter.height !== 48) {
+    throw new Error(`get_canvas_state did not report bounds: ${JSON.stringify(foundMeter)}`);
+  }
+  console.log('✓ Test 16: Physical symbol bounding boxes & collision detection validated');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

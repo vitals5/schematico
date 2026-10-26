@@ -69,21 +69,47 @@ Available Capability Areas:
    - 'export_pdf': Trigger vector PDF generation.
    - 'zoom_canvas': Fit to screen or zoom in/out.
 
-Electrical Standards & Layout Rules:
+Electrical Standards & Physical CAD Layout Rules:
 - Standard DIN A3 landscape drawing size is strictly 420 mm wide by 297 mm high.
-- Strict Drawing Boundaries: X must be between 35 mm and 385 mm; Y must be between 35 mm and 245 mm.
-- WARNING: NEVER place any component, text, or wire at X > 390 or Y > 255! (Coordinates > 400 or > 260 fall outside the sheet or into the title block).
-- Path Distribution: Schematics are organized in vertical circuit paths/columns across the sheet:
-  * Path 1: x=60..90
-  * Path 2: x=130..160
-  * Path 3: x=200..230
-  * Path 4: x=270..300
-  * Path 5: x=340..370
-- Power rails (L1, L2, L3, +24V) are at the top (y=40..60).
-- Neutral (N) / Ground (PE) / 0V rails are at the bottom (y=220..245).
-- Protective elements (Fuses -F, Breakers -Q/-F) are placed below power rails (y=75..105).
-- Control devices (Switches -S, Pushbuttons -S, Contacts -K) are placed in the middle (y=120..160).
-- Actuators / Loads (Coils -K, Lamps -H, Motors -M) are near the bottom (y=175..215).
+- Strict Drawing Boundaries: Usable drawing area is strictly X: 35..385 mm, Y: 35..245 mm.
+  * WARNING: NEVER place any component, text, or wire at X > 390 or Y > 255! (Coordinates > 400 or > 260 fall outside the sheet or into the title block).
+  * SPREAD ACROSS THE FULL SHEET: Do NOT cram all devices into one small corner. Utilize the full width (X: 50..380) and full height (Y: 45..240) of the DIN A3 sheet.
+
+- PHYSICAL COMPONENT DIMENSIONS (CRITICAL TO PREVENT OVERLAPS):
+  In Schematico, components are physical CAD symbols with real millimeter width and height!
+  * 3-Phase Devices & Distribution Equipment (LARGE):
+    - 'energy_meter_3p' (Zähler): 96 mm wide, 48 mm high
+    - 'inverter_solar' (PV-Hybridwechselrichter & Speicher): 120 mm wide, 70 mm high
+    - 'rcd_4p' (FI-Schutzschalter 4-polig): 84 mm wide, 60 mm high
+    - 'motor_3phase' (Drehstrommotor / Wärmepumpe): 72 mm wide, 72 mm high
+    - 'fuse_switch_3p' (NH-Trenner / Hausanschlusskasten HAK): 72 mm wide, 48 mm high
+    - 'circuit_breaker_3p' (SLS-Schalter / LS-Schalter 3-polig): 72 mm wide, 48 mm high
+    - 'surge_arrester_spd' (Überspannungsableiter Typ 1+2): 64 mm wide, 52 mm high
+  * 1-Phase & Control Devices (COMPACT):
+    - 'circuit_breaker_1p' (LS-Schalter B16): 20 mm wide, 48 mm high
+    - 'fuse_1p' (Schmelzsicherung 1P): 20 mm wide, 48 mm high
+    - 'contactor_coil' (Schützspule): 24 mm wide, 32 mm high
+    - 'contact_no' / 'contact_nc' (Kontakte): 16 mm wide, 32 mm high
+    - 'pushbutton_no' / 'pilot_lamp': 20 mm wide, 30 mm high
+    - 'terminal_single' / 'terminal_pe': 8 mm wide, 16 mm high
+
+- COLUMN & VERTICAL CLEARANCE RULES:
+  1. Vertical Clearance between Series Devices:
+     - ALWAYS space vertical component origins by AT LEAST (symbol_height + 20 mm).
+     - Example: If a 48 mm high switch is placed at Y=70, it extends to Y=118. The next device below it MUST start at Y >= 135! Placing it at Y=90 will cause direct collision and overlap!
+     - In 3-phase columns, use at least 65 mm to 75 mm between component origins (e.g. Row 1: Y=50, Row 2: Y=120, Row 3: Y=185).
+  2. Column Distribution for 3-Phase Distribution & Messkonzepte (MK C3 / MK B2 / Hauseinspeisung):
+     - Because 3-phase devices are 72 mm to 120 mm wide, NEVER use narrow columns! Use 2 to 3 wide columns across the DIN A3 sheet:
+       * Column 1 (Netzanschluss & Zähler Z1): X = 50 .. 145 mm (e.g., HAK Y=50, SLS/SPD Y=120, Z1 Y=185)
+       * Column 2 (Kaskadenzweig / Wärmepumpe): X = 175 .. 260 mm (e.g., FI Y=55, LS/MSS Y=125, Verdichter Y=185)
+       * Column 3 (Haushaltsstrom & PV / Speicher): X = 285 .. 385 mm (e.g., Z2 Y=55, FI/LS Y=125, PV-Wechselrichter Y=185)
+  3. Column Distribution for 1-Phase Control Circuits (Steuerungstechnik):
+     - Path 1: X=60..85 | Path 2: X=120..145 | Path 3: X=180..205 | Path 4: X=240..265 | Path 5: X=300..325 | Path 6: X=350..375
+  4. Device Boxes ('add_device_box'):
+     - Provide at least 8..12 mm margin around all enclosed components.
+     - NEVER overlap two device boxes.
+  5. Collision Feedback:
+     - 'add_component' returns 'bounds' and warns if a collision occurs. If a warning is returned, adjust subsequent positions immediately!
 
 Direct Symbol Catalog (Use these IDs directly in 'add_component', avoid search calls):
 - Energy & Power Distribution:

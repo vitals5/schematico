@@ -229,6 +229,70 @@ function getDefaultWireColor(potential: string): string {
   return 'BK';
 }
 
+export interface ComponentBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculates physical bounding box in sheet millimeters for a placed component,
+ * taking into account rotation.
+ */
+export function getComponentBounds(
+  comp: { x: number; y: number; rotation?: number },
+  sym?: { width: number; height: number }
+): ComponentBounds {
+  const w = sym?.width ?? 20;
+  const h = sym?.height ?? 20;
+  const rot = (comp.rotation || 0) % 360;
+  const isRotated90or270 = rot === 90 || rot === 270;
+  const effW = isRotated90or270 ? h : w;
+  const effH = isRotated90or270 ? w : h;
+
+  // In CadCanvas: translate(comp.x, comp.y) rotate(comp.rotation, sym.width / 2, sym.height / 2)
+  const cx = comp.x + w / 2;
+  const cy = comp.y + h / 2;
+
+  const left = Math.round((cx - effW / 2) * 10) / 10;
+  const top = Math.round((cy - effH / 2) * 10) / 10;
+  const right = Math.round((cx + effW / 2) * 10) / 10;
+  const bottom = Math.round((cy + effH / 2) * 10) / 10;
+
+  return { left, top, right, bottom, width: effW, height: effH };
+}
+
+/**
+ * Detects whether a component collides / overlaps with any existing components on the page.
+ */
+export function detectComponentCollisions(
+  targetComp: PlacedComponent,
+  targetBounds: ComponentBounds,
+  page: Page,
+  project: Project
+): string[] {
+  const collisions: string[] = [];
+  for (const other of page.components) {
+    if (other.id === targetComp.id) continue;
+    const otherSym = getSymbolForComponent(other, project);
+    const oBounds = getComponentBounds(other, otherSym);
+
+    // Overlap test with 3mm tolerance to permit touching terminals
+    const overlapX = Math.min(targetBounds.right, oBounds.right) - Math.max(targetBounds.left, oBounds.left);
+    const overlapY = Math.min(targetBounds.bottom, oBounds.bottom) - Math.max(targetBounds.top, oBounds.top);
+
+    if (overlapX > 3 && overlapY > 3) {
+      collisions.push(
+        `Overlap with ${other.bmk} (${otherSym?.name || other.symbolId}) at [x: ${oBounds.left}..${oBounds.right}, y: ${oBounds.top}..${oBounds.bottom}]. Recommended free X >= ${Math.round(oBounds.right + 20)} or free Y >= ${Math.round(oBounds.bottom + 25)}`
+      );
+    }
+  }
+  return collisions;
+}
+
 // -------------------------------------------------------------
 // 1. Core Canvas State & Elements
 // -------------------------------------------------------------
@@ -270,6 +334,8 @@ export async function handleGetCanvasState(
       }
     }
 
+    const bounds = getComponentBounds(comp, sym);
+
     return {
       id: comp.id,
       bmk: comp.bmk,
@@ -281,6 +347,9 @@ export async function handleGetCanvasState(
       articleNumber: comp.articleNumber,
       x: comp.x,
       y: comp.y,
+      width: bounds.width,
+      height: bounds.height,
+      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
       rotation: comp.rotation || 0,
       pins: pinsInfo
     };
@@ -429,16 +498,29 @@ export async function handleAddComponent(
   manager.notifyModified();
   manager.render();
 
+  const newBounds = getComponentBounds(newComp, sym);
+  const collisions = detectComponentCollisions(newComp, newBounds, page, project);
+
   const sheetWidth = page.plotFrame?.width || 420;
   const sheetHeight = page.plotFrame?.height || 297;
   let boundaryWarning: string | undefined;
-  if (newComp.x > sheetWidth - 25 || newComp.y > sheetHeight - 40 || newComp.x < 20 || newComp.y < 20) {
-    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) are outside standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
+  if (newBounds.right > sheetWidth - 25 || newBounds.bottom > sheetHeight - 40 || newBounds.left < 20 || newBounds.top < 20) {
+    boundaryWarning = `Coordinates (${newComp.x}, ${newComp.y}) with size ${newBounds.width}x${newBounds.height}mm exceed standard drawing area on ${sheetWidth}x${sheetHeight}mm sheet. Recommended area is x: 40..${sheetWidth - 30}, y: 35..${sheetHeight - 45}.`;
+  }
+
+  let warning: string | undefined;
+  if (boundaryWarning && collisions.length > 0) {
+    warning = `${boundaryWarning} | ⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}`;
+  } else if (boundaryWarning) {
+    warning = boundaryWarning;
+  } else if (collisions.length > 0) {
+    warning = `⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}. Move component or place next components with sufficient clearance!`;
   }
 
   return {
     success: true,
-    warning: boundaryWarning,
+    warning,
+    collisions: collisions.length > 0 ? collisions : undefined,
     component: {
       id: newComp.id,
       bmk: newComp.bmk,
@@ -448,6 +530,9 @@ export async function handleAddComponent(
       technicalCharacteristics: newComp.technicalCharacteristics,
       x: newComp.x,
       y: newComp.y,
+      width: newBounds.width,
+      height: newBounds.height,
+      bounds: { left: newBounds.left, top: newBounds.top, right: newBounds.right, bottom: newBounds.bottom },
       rotation: newComp.rotation,
       pins: sym.pins.map(p => ({ id: p.id, name: p.name, direction: p.direction }))
     }
@@ -503,8 +588,16 @@ export async function handleUpdateComponent(
   manager.notifyModified();
   manager.render();
 
+  const sym = getSymbolForComponent(comp, project);
+  const bounds = getComponentBounds(comp, sym);
+  const collisions =
+    args.x !== undefined || args.y !== undefined || args.rotation !== undefined
+      ? detectComponentCollisions(comp, bounds, page, project)
+      : [];
+
   return {
     success: true,
+    warning: collisions.length > 0 ? `⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}` : undefined,
     component: {
       id: comp.id,
       bmk: comp.bmk,
@@ -514,6 +607,9 @@ export async function handleUpdateComponent(
       articleNumber: comp.articleNumber,
       x: comp.x,
       y: comp.y,
+      width: bounds.width,
+      height: bounds.height,
+      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
       rotation: comp.rotation
     }
   };
@@ -581,7 +677,22 @@ export async function handleMoveElement(
     }
     manager.notifyModified();
     manager.render();
-    return { success: true, type: 'component', id: comp.id, x: comp.x, y: comp.y };
+
+    const sym = getSymbolForComponent(comp, project);
+    const bounds = getComponentBounds(comp, sym);
+    const collisions = detectComponentCollisions(comp, bounds, page, project);
+
+    return {
+      success: true,
+      type: 'component',
+      id: comp.id,
+      x: comp.x,
+      y: comp.y,
+      width: bounds.width,
+      height: bounds.height,
+      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+      warning: collisions.length > 0 ? `⚠️ COLLISION WARNING: ${collisions.slice(0, 3).join('; ')}` : undefined
+    };
   }
 
   // 2. Text
@@ -1007,6 +1118,8 @@ export async function handleSearchSymbols(
     category: s.category,
     defaultBmkPrefix: s.defaultBmkPrefix,
     description: s.description || '',
+    width: s.width,
+    height: s.height,
     pins: s.pins.map(p => ({ id: p.id, name: p.name, direction: p.direction }))
   }));
 

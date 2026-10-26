@@ -30,7 +30,7 @@ export interface McpToolDefinition {
 export const GET_CANVAS_STATE_TOOL: McpToolDefinition = {
   name: 'get_canvas_state',
   description:
-    'Returns the current state of the active schematic page, including placed components, pins with coordinates, wires, texts, boxes, cables, and plot frame metadata.',
+    'Returns the current state of the active schematic page, including placed components (with physical dimensions, bounds, and pin coordinates), wires, texts, boxes, cables, and plot frame metadata.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -45,7 +45,7 @@ export const GET_CANVAS_STATE_TOOL: McpToolDefinition = {
 export const ADD_COMPONENT_TOOL: McpToolDefinition = {
   name: 'add_component',
   description:
-    'Places an electrical or installation component at specified (x, y) coordinates with optional rotation, BMK (device tag), and function text.',
+    'Places an electrical or installation component at specified (x, y) coordinates with optional rotation, BMK (device tag), and function text. Returns the physical symbol dimensions (width, height), bounding box, and warns if it collides with existing elements.',
   inputSchema: {
     type: 'object',
     properties: {
