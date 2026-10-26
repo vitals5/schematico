@@ -72,6 +72,7 @@ export interface LayoutIssue {
   bounds?: Rect[];
 }
 export interface LayoutReport {
+  phase?: 'input' | 'placement' | 'routing' | 'validation';
   valid: boolean;
   issues: LayoutIssue[];
   metrics: {

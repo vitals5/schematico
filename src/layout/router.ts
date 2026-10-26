@@ -1,13 +1,20 @@
-import type { LayoutSnapshot, LayoutEdge, Point, Shape } from './types';
-import { bottom, right, contains, union } from './rect';
-import { segmentHits, endpointExemption, netIds, parallelOverlap, crossing } from './validate';
+import type { LayoutSnapshot, LayoutEdge, Point, Shape } from "./types";
+import { bottom, right, contains, union } from "./rect";
+import {
+  segmentHits,
+  endpointExemption,
+  netIds,
+  parallelOverlap,
+  crossing,
+} from "./validate";
 const vectors = {
   top: { x: 0, y: -1 },
   right: { x: 1, y: 0 },
   bottom: { x: 0, y: 1 },
   left: { x: -1, y: 0 },
 };
-const same = (a: Point, b: Point) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+const same = (a: Point, b: Point) =>
+  Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
 class Heap<T> {
   private data: { cost: number; value: T }[] = [];
   push(cost: number, value: T) {
@@ -29,7 +36,11 @@ class Heap<T> {
       let i = 0;
       while (i * 2 + 1 < this.data.length) {
         let c = i * 2 + 1;
-        if (c + 1 < this.data.length && this.data[c + 1].cost < this.data[c].cost) c++;
+        if (
+          c + 1 < this.data.length &&
+          this.data[c + 1].cost < this.data[c].cost
+        )
+          c++;
         if (this.data[c].cost >= last.cost) break;
         this.data[i] = this.data[c];
         i = c;
@@ -43,17 +54,20 @@ class Heap<T> {
   }
 }
 export function routeAll(s: LayoutSnapshot): void {
-  const shapes = s.nodes.flatMap((n) => n.shapes).filter((g) => g.kind !== 'frame'),
+  const shapes = s.nodes
+      .flatMap((n) => n.shapes)
+      .filter((g) => g.kind !== "frame"),
     done: LayoutEdge[] = [],
     nets = netIds(s);
   for (const e of [...s.edges].sort((a, b) => a.id.localeCompare(b.id))) {
     const routed = route(s, e, shapes, done, nets);
     if (!routed) {
       s.issues.push({
-        type: 'route_failed',
-        severity: 'error',
+        type: "route_failed",
+        severity: "error",
         objectIds: [e.id],
-        message: 'Kein hindernisfreier Leitungsweg mit gültigen Anschlussrichtungen gefunden.',
+        message:
+          "Kein hindernisfreier Leitungsweg mit gültigen Anschlussrichtungen gefunden.",
       });
       continue;
     }
@@ -71,7 +85,9 @@ function route(
   const from = s.nodes
       .find((n) => n.id === e.from.componentId)
       ?.pins.find((p) => p.id === e.from.pinId),
-    to = s.nodes.find((n) => n.id === e.to.componentId)?.pins.find((p) => p.id === e.to.pinId);
+    to = s.nodes
+      .find((n) => n.id === e.to.componentId)
+      ?.pins.find((p) => p.id === e.to.pinId);
   if (!from || !to) return;
   if (same(from, to))
     return [
@@ -82,7 +98,10 @@ function route(
     const v = vectors[pin.direction],
       parts = s.nodes
         .find((n) => n.id === owner)!
-        .shapes.filter((g) => g.kind === 'body' || (g.kind === 'pin_label' && g.pinId === pin.id))
+        .shapes.filter(
+          (g) =>
+            g.kind === "body" || (g.kind === "pin_label" && g.pinId === pin.id),
+        )
         .map((g) => g.rect),
       body = parts.length ? union(parts) : undefined;
     let len = Math.max(2, s.grid.spacing / 2);
@@ -96,35 +115,156 @@ function route(
   };
   const a = stub(from, e.from.componentId),
     b = stub(to, e.to.componentId);
-  const clear = (p: Point, q: Point, index = -1) =>
-    contains(s.area, {
-      x: Math.min(p.x, q.x),
-      y: Math.min(p.y, q.y),
-      width: Math.abs(p.x - q.x),
-      height: Math.abs(p.y - q.y),
-    }) &&
-    !shapes.some(
-      (g) => !(index >= 0 && endpointExemption(g, e, index, 1)) && segmentHits(p, q, g.rect),
-    ) &&
-    !done.some(
-      (w) =>
-        nets.get(e.id) !== nets.get(w.id) &&
-        w.points.slice(1).some((d, i) => parallelOverlap(p, q, w.points[i], d)),
-    );
+  const rowShapes = new Map<number, Shape[]>(),
+    columnShapes = new Map<number, Shape[]>(),
+    clearCache = new Map<string, boolean>();
+  const clear = (p: Point, q: Point, index = -1): boolean => {
+    const cacheKey = p.x + "," + p.y + "|" + q.x + "," + q.y;
+    if (index < 0 && clearCache.has(cacheKey)) return clearCache.get(cacheKey)!;
+    const obstacles =
+      index >= 0
+        ? shapes
+        : Math.abs(p.y - q.y) < 1e-6
+          ? (rowShapes.get(p.y) ?? shapes)
+          : (columnShapes.get(p.x) ?? shapes);
+    const result =
+      contains(s.area, {
+        x: Math.min(p.x, q.x),
+        y: Math.min(p.y, q.y),
+        width: Math.abs(p.x - q.x),
+        height: Math.abs(p.y - q.y),
+      }) &&
+      !obstacles.some(
+        (g) =>
+          !(index >= 0 && endpointExemption(g, e, index, 1)) &&
+          segmentHits(p, q, g.rect),
+      ) &&
+      !done.some(
+        (w) =>
+          nets.get(e.id) !== nets.get(w.id) &&
+          w.points
+            .slice(1)
+            .some((d, i) => parallelOverlap(p, q, w.points[i], d)),
+      );
+    if (index < 0) {
+      clearCache.set(cacheKey, result);
+      clearCache.set(q.x + "," + q.y + "|" + p.x + "," + p.y, result);
+    }
+    return result;
+  };
   if (!clear(from, a, 0) || !clear(b, to, 1)) return;
   const xs = new Set<number>([a.x, b.x, s.area.x, right(s.area)]),
     ys = new Set<number>([a.y, b.y, s.area.y, bottom(s.area)]);
-  const step = Math.max(2, s.grid.spacing);
-  for (let x = s.area.x; x < right(s.area); x += step) xs.add(x);
-  for (let y = s.area.y; y < bottom(s.area); y += step) ys.add(y);
+  // Visibility lanes are rounded OUTWARD from obstacles. Physical pin/stub positions remain exact.
+  const step = Math.max(0.5, s.grid.spacing / 4),
+    down = (v: number) => Math.floor(v / step) * step,
+    up = (v: number) => Math.ceil(v / step) * step;
   for (const g of shapes) {
-    xs.add(g.rect.x - 1);
-    xs.add(right(g.rect) + 1);
-    ys.add(g.rect.y - 1);
-    ys.add(bottom(g.rect) + 1);
+    xs.add(down(g.rect.x - 1));
+    xs.add(up(right(g.rect) + 1));
+    ys.add(down(g.rect.y - 1));
+    ys.add(up(bottom(g.rect) + 1));
   }
-  const xx = [...xs].filter((x) => x >= s.area.x && x <= right(s.area)).sort((a, b) => a - b),
-    yy = [...ys].filter((y) => y >= s.area.y && y <= bottom(s.area)).sort((a, b) => a - b);
+  for (const wire of done)
+    for (const p of wire.points) {
+      xs.add(down(p.x - 1));
+      xs.add(up(p.x + 1));
+      ys.add(down(p.y - 1));
+      ys.add(up(p.y + 1));
+    }
+  const xx = [...xs]
+      .filter((x) => x >= s.area.x && x <= right(s.area))
+      .sort((a, b) => a - b),
+    yy = [...ys]
+      .filter((y) => y >= s.area.y && y <= bottom(s.area))
+      .sort((a, b) => a - b);
+  for (const y of yy)
+    rowShapes.set(
+      y,
+      shapes.filter((g) => g.rect.y < y && bottom(g.rect) > y),
+    );
+  for (const x of xx)
+    columnShapes.set(
+      x,
+      shapes.filter((g) => g.rect.x < x && right(g.rect) > x),
+    );
+  // Most schematic nets need at most one free corridor. Test these exact paths before graph search.
+  const fastPaths: Point[][] = [
+    [a, b],
+    [a, { x: a.x, y: b.y }, b],
+    [a, { x: b.x, y: a.y }, b],
+  ];
+  const nearest = (values: number[], a: number, b: number) =>
+    [...values]
+      .sort(
+        (x, y) =>
+          Math.abs(x - a) +
+            Math.abs(x - b) -
+            Math.abs(y - a) -
+            Math.abs(y - b) || x - y,
+      )
+      .slice(0, 12);
+  for (const y of nearest(yy, a.y, b.y))
+    fastPaths.push([a, { x: a.x, y }, { x: b.x, y }, b]);
+  for (const x of nearest(xx, a.x, b.x))
+    fastPaths.push([a, { x, y: a.y }, { x, y: b.y }, b]);
+  const options = fastPaths
+    .map(compactPath)
+    .filter((points) => {
+      if (points.length < 2) return true;
+      const first = points[1],
+        last = points.at(-2)!;
+      if (
+        (first.x - a.x) * vectors[from.direction].x +
+          (first.y - a.y) * vectors[from.direction].y <
+        -1e-6
+      )
+        return false;
+      if (
+        (b.x - last.x) * vectors[to.direction].x +
+          (b.y - last.y) * vectors[to.direction].y >
+        1e-6
+      )
+        return false;
+      return points
+        .slice(1)
+        .every(
+          (q, i) =>
+            (Math.abs(points[i].x - q.x) < 1e-6 ||
+              Math.abs(points[i].y - q.y) < 1e-6) &&
+            clear(points[i], q),
+        );
+    })
+    .map((points) => ({
+      points,
+      cost: points
+        .slice(1)
+        .reduce(
+          (n, q, i) =>
+            n +
+            Math.abs(q.x - points[i].x) +
+            Math.abs(q.y - points[i].y) +
+            8 +
+            done.reduce(
+              (sum, w) =>
+                sum +
+                w.points
+                  .slice(1)
+                  .filter((d, j) => crossing(points[i], q, w.points[j], d))
+                  .length *
+                  20,
+              0,
+            ),
+          0,
+        ),
+    }));
+  options.sort((a, b) => a.cost - b.cost);
+  if (options[0])
+    return compactPath([
+      { x: from.x, y: from.y },
+      ...options[0].points,
+      { x: to.x, y: to.y },
+    ]);
   type State = { x: number; y: number; d: number; g: number; key: string };
   const key = (x: number, y: number, d: number) => `${x},${y},${d}`,
     heap = new Heap<State>(),
@@ -135,7 +275,8 @@ function route(
     bx = xx.indexOf(b.x),
     by = yy.indexOf(b.y);
   if ([ax, ay, bx, by].some((v) => v < 0)) return;
-  const initialD = from.direction === 'left' || from.direction === 'right' ? 0 : 1;
+  const initialD =
+    from.direction === "left" || from.direction === "right" ? 0 : 1;
   const start = key(ax, ay, initialD);
   heap.push(0, { x: ax, y: ay, d: initialD, g: 0, key: start });
   best.set(start, 0);
@@ -161,18 +302,25 @@ function route(
         q = { x: xx[x], y: yy[y] };
       if (
         curr.key === start &&
-        (q.x - p.x) * vectors[from.direction].x + (q.y - p.y) * vectors[from.direction].y < -1e-6
+        (q.x - p.x) * vectors[from.direction].x +
+          (q.y - p.y) * vectors[from.direction].y <
+          -1e-6
       )
         continue;
       if (
         x === bx &&
         y === by &&
-        (q.x - p.x) * vectors[to.direction].x + (q.y - p.y) * vectors[to.direction].y > 1e-6
+        (q.x - p.x) * vectors[to.direction].x +
+          (q.y - p.y) * vectors[to.direction].y >
+          1e-6
       )
         continue;
       if (!clear(p, q)) continue;
       const crosses = done.reduce(
-          (n, w) => n + w.points.slice(1).filter((b, i) => crossing(p, q, w.points[i], b)).length,
+          (n, w) =>
+            n +
+            w.points.slice(1).filter((b, i) => crossing(p, q, w.points[i], b))
+              .length,
           0,
         ),
         g =
@@ -185,18 +333,27 @@ function route(
       if (g >= (best.get(k) ?? Infinity)) continue;
       best.set(k, g);
       prev.set(k, curr.key);
-      heap.push(g + Math.abs(q.x - b.x) + Math.abs(q.y - b.y), { x, y, d, g, key: k });
+      heap.push(g + Math.abs(q.x - b.x) + Math.abs(q.y - b.y), {
+        x,
+        y,
+        d,
+        g,
+        key: k,
+      });
     }
   }
   if (!last) return;
   const points: Point[] = [];
   for (let k: string | undefined = last; k; k = prev.get(k)) {
-    const [x, y] = k.split(',').map(Number);
+    const [x, y] = k.split(",").map(Number);
     points.push({ x: xx[x], y: yy[y] });
   }
   points.reverse();
   points.unshift({ x: from.x, y: from.y });
   points.push({ x: to.x, y: to.y });
+  return compactPath(points);
+}
+function compactPath(points: Point[]): Point[] {
   const compact: Point[] = [];
   for (const p of points) {
     if (compact.length && same(compact.at(-1)!, p)) continue;

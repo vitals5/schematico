@@ -75,7 +75,7 @@ export class ProjectHistory {
 
   private restore(s: Snapshot): Project {
     return { ...JSON.parse(s.header), pages: s.pages.map(p => JSON.parse(p.json)),
-      ...(s.library ? { symbolLibrary: JSON.parse(s.library) } : {}), activePageId: s.activePageId, modified: s.modified };
+      ...(s.library ? { symbolLibrary: JSON.parse(s.library) } : {}), activePageId: s.pages.some(p=>p.id===s.activePageId)?s.activePageId:(s.pages[0]?.id??s.activePageId), modified: s.modified };
   }
 
   private retainedBytes(): number {

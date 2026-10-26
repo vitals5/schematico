@@ -1747,6 +1747,7 @@ export class App {
         <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
           <button type="button" class="btn" id="btnTreeMovePageUp" title="${t('movePageUp')}" ${canMoveUp ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▲</button>
           <button type="button" class="btn" id="btnTreeMovePageDown" title="${t('movePageDown')}" ${canMoveDown ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2;">▼</button>
+          <button type="button" class="btn" id="btnTreeDuplicatePage" title="${t('duplicateSchematicPage')}" ${activePage?.pageType==='schematic'&&!activePage.floorPlan?'':'disabled'} style="padding:2px 7px;font-size:11px;line-height:1.2;">⧉</button>
           <button type="button" class="btn" id="btnTreeDeletePage" title="${t('deletePage')}" ${canDelete ? '' : 'disabled'} style="padding: 2px 7px; font-size: 11px; line-height: 1.2; color: var(--danger); border-color: rgba(229,62,62,0.4);">🗑️</button>
         </div>
       </div>
@@ -1791,6 +1792,11 @@ export class App {
 
     document.getElementById('btnTreeMovePageDown')?.addEventListener('click', () => {
       if (activePageId) this.movePage(activePageId, 'down');
+    });
+
+    document.getElementById('btnTreeDuplicatePage')?.addEventListener('click',async()=>{
+      if(!activePageId)return;
+      try{const {handleDuplicateSchematic}=await import('../layout/tools');await handleDuplicateSchematic({pageId:activePageId},this.createCanvasStateManager());}catch(error){alert(error instanceof Error?error.message:String(error));}
     });
 
     document.getElementById('btnTreeDeletePage')?.addEventListener('click', () => {

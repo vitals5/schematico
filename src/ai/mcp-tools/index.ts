@@ -1,3 +1,4 @@
+import {DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL, handleValidateLayout, handleOptimizeLayout, handleCreateDraft } from '../../layout/tools';
 // src/ai/mcp-tools/index.ts
 // Universal MCP Tool Registry and Execution Engine for Schematico
@@ -101,6 +102,7 @@ export class McpToolRegistry {
     this.register(VALIDATE_LAYOUT_TOOL,handleValidateLayout);
     this.register(OPTIMIZE_LAYOUT_TOOL,handleOptimizeLayout);
     this.register(CREATE_DRAFT_TOOL,handleCreateDraft);
+    this.register(DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic);
     // 1. Elements
     this.register(GET_CANVAS_STATE_TOOL, handleGetCanvasState);
     this.register(ADD_COMPONENT_TOOL, handleAddComponent);

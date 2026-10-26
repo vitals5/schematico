@@ -1,3 +1,4 @@
+import {DUPLICATE_SCHEMATIC_TOOL} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL } from '../../layout/tools';
 // src/ai/mcp-tools/definitions.ts
 // Standard MCP Tool Schema Definitions for Schematico Electrical CAD
@@ -723,6 +724,7 @@ export const DISTRIBUTE_SHEET_LAYOUT_TOOL:McpToolDefinition={
 // -------------------------------------------------------------
 
 export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
+  DUPLICATE_SCHEMATIC_TOOL,
   VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL,
   // Core Elements
   GET_CANVAS_STATE_TOOL,

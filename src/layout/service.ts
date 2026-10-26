@@ -58,7 +58,15 @@ export async function previewLayout(
   if (page.floorPlan || page.pageType !== 'schematic')
     throw new Error('Layout ist nur für Stromlaufplanseiten verfügbar.');
   const input = snapshotPage(page, target, options),
-    before = validateLayout(input),
+    before = validateLayout(
+      draft
+        ? snapshotPage(
+            project.pages.find((p) => p.id === pageId)!,
+            project,
+            options,
+          )
+        : input,
+    ),
     base = projectRevision(project),
     candidates: LayoutCandidate[] = [];
   const solutions = await computeSolutions(input),

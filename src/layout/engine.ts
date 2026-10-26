@@ -1,3 +1,5 @@
+import { rankedGroup } from './ranked';
+import { SheetPacker } from './packing';
 import type { ELK as ElkEngine } from 'elkjs/lib/elk-api';
 import type { ElkNode, ElkExtendedEdge } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot, LayoutSolution, Rect, Point, LayoutNode } from './types';
@@ -59,6 +61,7 @@ export async function solveLayouts(
         },
       ]),
     );
+    const direction = profile === 'compact' ? 'RIGHT' : 'DOWN';
     const gap = profile === 'compact' ? 6 : profile === 'readability' ? 12 : 8;
     const descendants = (id: string): typeof s.nodes => {
       const belongs = (child: string, seen = new Set<string>()): boolean => {
@@ -70,7 +73,119 @@ export async function solveLayouts(
       };
       return s.nodes.filter((n) => belongs(n.id));
     };
-    const build = (id: string, seen = new Set<string>()): ElkNode => {
+    const ids = [...nodeMap.keys(), ...frameMap.keys()].filter((id) => !parent.has(id)).sort();
+    const rootOf = (id: string): string => (parent.has(id) ? rootOf(parent.get(id)!) : id);
+    const fixedRoots = new Set(s.nodes.filter((n) => n.fixed).map((n) => rootOf(n.id)));
+    for (const f of s.frames.filter((f) => f.fixed)) fixedRoots.add(rootOf(f.id));
+    const layoutChildren = async (
+      id: string,
+      children: ElkNode[],
+      padding: { left: number; top: number; right: number; bottom: number },
+    ): Promise<ElkNode> => {
+      const portOwner = new Map(
+        children.flatMap((c) => (c.ports ?? []).map((p) => [p.id, c.id] as const)),
+      );
+      const edges: ElkExtendedEdge[] = s.edges
+        .filter((e) => {
+          const a = portOwner.get(JSON.stringify([e.from.componentId, e.from.pinId])),
+            b = portOwner.get(JSON.stringify([e.to.componentId, e.to.pinId]));
+          const fromPin = s.nodes
+              .find((n) => n.id === e.from.componentId)
+              ?.pins.find((p) => p.id === e.from.pinId),
+            toPin = s.nodes
+              .find((n) => n.id === e.to.componentId)
+              ?.pins.find((p) => p.id === e.to.pinId);
+          return a && b && a !== b && fromPin?.direction !== toPin?.direction;
+        })
+        .map((e) => ({
+          id: e.id,
+          sources: [JSON.stringify([e.from.componentId, e.from.pinId])],
+          targets: [JSON.stringify([e.to.componentId, e.to.pinId])],
+        }));
+      if (id !== 'layout-root' && edges.length && profile === 'compact') {
+        const compact = rankedGroup(id, children, s, gap, padding);
+        if (compact) return compact;
+      }
+      if (id !== 'layout-root' && !edges.length) {
+        // Independent items (e.g. interruption arrows) form a compact grid, not a tall signal chain.
+        const choices = [];
+        for (let cols = 1; cols <= children.length; cols++) {
+          const placed: ElkNode[] = [];
+          let y = padding.top,
+            width = 0;
+          for (let i = 0; i < children.length; i += cols) {
+            let x = padding.left,
+              rowHeight = 0;
+            for (const child of children.slice(i, i + cols)) {
+              placed.push({ ...child, x, y });
+              x += (child.width ?? 1) + gap;
+              rowHeight = Math.max(rowHeight, child.height ?? 1);
+            }
+            width = Math.max(width, x - gap + padding.right);
+            y += rowHeight + gap;
+          }
+          const height = y - gap + padding.bottom,
+            overflow = Math.max(0, width - s.area.width) + Math.max(0, height - s.area.height);
+          choices.push({
+            id,
+            width,
+            height,
+            children: placed,
+            score: overflow * 1e6 + width * height + Math.abs(width - height * 1.5) * 20,
+          });
+        }
+        choices.sort((a, b) => a.score - b.score || a.width - b.width);
+        return choices[0] ?? { id, width: 1, height: 1, children: [] };
+      }
+      const local: ElkNode = {
+        id,
+        children: children.map(({ children: _, ...c }) => ({
+          ...c,
+          ports: c.ports?.map((p) => {
+            const side = p.layoutOptions?.['elk.port.side'];
+            return {
+              ...p,
+              x:
+                side === 'WEST'
+                  ? 0
+                  : side === 'EAST'
+                    ? c.width
+                    : Math.max(0, Math.min(c.width ?? 0, p.x ?? 0)),
+              y:
+                side === 'NORTH'
+                  ? 0
+                  : side === 'SOUTH'
+                    ? c.height
+                    : Math.max(0, Math.min(c.height ?? 0, p.y ?? 0)),
+            };
+          }),
+        })),
+        edges,
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': direction,
+          'elk.edgeRouting': profile === 'compact' ? 'POLYLINE' : 'ORTHOGONAL',
+          'elk.layered.spacing.edgeNodeBetweenLayers': '2',
+          'elk.layered.spacing.edgeEdgeBetweenLayers': '2',
+          'elk.randomSeed': '1',
+          'elk.spacing.nodeNode': String(gap),
+          'elk.layered.spacing.nodeNodeBetweenLayers': String(gap + 6),
+          'elk.padding': `[top=${padding.top},left=${padding.left},bottom=${padding.bottom},right=${padding.right}]`,
+        },
+      };
+      const laid = await elk.layout(local);
+      return {
+        ...laid,
+        children: (laid.children ?? []).map((child) => ({
+          ...children.find((c) => c.id === child.id)!,
+          x: child.x,
+          y: child.y,
+          width: child.width,
+          height: child.height,
+        })),
+      };
+    };
+    const build = async (id: string, seen = new Set<string>()): Promise<ElkNode> => {
       if (seen.has(id)) throw new Error('Zyklische Layoutgruppe.');
       seen.add(id);
       const rigid = frameMap.get(id);
@@ -108,52 +223,39 @@ export async function solveLayouts(
             layoutOptions: { 'elk.port.side': sides[p.direction] },
           })),
         };
-      return {
-        id,
-        children: [...nodeMap.keys(), ...frameMap.keys()]
-          .filter((child) => parent.get(child) === id)
-          .sort()
-          .map((child) => build(child, new Set(seen))),
-        layoutOptions: {
-          'elk.padding': `[top=${reserves.get(id)?.top ?? 8},left=${(reserves.get(id)?.left ?? 0) + 8},bottom=8,right=8]`,
-        },
-      };
-    };
-    const ids = [...nodeMap.keys(), ...frameMap.keys()].filter((id) => !parent.has(id)).sort();
-    const rootOf = (id: string): string => (parent.has(id) ? rootOf(parent.get(id)!) : id);
-    const fixedRoots = new Set(s.nodes.filter((n) => n.fixed).map((n) => rootOf(n.id)));
-    for (const f of s.frames.filter((f) => f.fixed)) fixedRoots.add(rootOf(f.id));
-    const graph: ElkNode = {
-      id: 'layout-root',
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': 'DOWN',
-        'elk.edgeRouting': 'ORTHOGONAL',
-        'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-        'elk.randomSeed': '1',
-        'elk.spacing.nodeNode': String(gap),
-        'elk.layered.spacing.nodeNodeBetweenLayers': String(gap + 6),
-        'elk.padding': '[top=0,left=0,bottom=0,right=0]',
-      },
-      children: ids.filter((id) => !fixedRoots.has(id)).map((id) => build(id)),
-      edges: [],
-    };
-    graph.edges = s.edges
-      .filter(
-        (e) =>
-          !fixedRoots.has(rootOf(e.from.componentId)) && !fixedRoots.has(rootOf(e.to.componentId)),
-      )
-      .map(
-        (e) =>
-          ({
-            id: e.id,
-            sources: [JSON.stringify([e.from.componentId, e.from.pinId])],
-            targets: [JSON.stringify([e.to.componentId, e.to.pinId])],
-          }) as ElkExtendedEdge,
+
+      const children: ElkNode[] = [];
+      for (const child of [...nodeMap.keys(), ...frameMap.keys()]
+        .filter((child) => parent.get(child) === id)
+        .sort())
+        children.push(await build(child, new Set(seen)));
+      const result = await layoutChildren(id, children, {
+        top: reserves.get(id)?.top ?? 8,
+        left: (reserves.get(id)?.left ?? 0) + 8,
+        bottom: 8,
+        right: 8,
+      });
+      // Expose actual descendant ports as a rigid interface for the parent pass.
+      result.ports = (result.children ?? []).flatMap((child) =>
+        (child.ports ?? []).map((pin) => ({
+          ...pin,
+          x: (child.x ?? 0) + (pin.x ?? 0),
+          y: (child.y ?? 0) + (pin.y ?? 0),
+        })),
       );
+      result.layoutOptions = { 'elk.portConstraints': 'FIXED_POS' };
+      return result;
+    };
     let laid: ElkNode;
     try {
-      laid = await elk.layout(graph);
+      const children: ElkNode[] = [];
+      for (const id of ids.filter((id) => !fixedRoots.has(id))) children.push(await build(id));
+      laid = await layoutChildren('layout-root', children, {
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+      });
     } finally {
       if (factory) elk.terminateWorker();
     }
@@ -238,7 +340,16 @@ export async function solveLayouts(
       };
       for (const child of node.children ?? []) place(child, x + (child.x ?? 0), y + (child.y ?? 0));
     };
-    for (const block of laid.children ?? []) {
+    const packer = new SheetPacker(s.area, occupied, gap / 2);
+    const blocks = [...(laid.children ?? [])];
+    if (s.frames.length && profile !== 'minimal_change')
+      blocks.sort(
+        (a, b) =>
+          (profile === 'compact'
+            ? (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0)
+            : (b.height ?? 0) - (a.height ?? 0)) || a.id.localeCompare(b.id),
+      );
+    for (const block of blocks) {
       const w = (block.width ?? 1) + s.grid.spacing,
         h = (block.height ?? 1) + s.grid.spacing;
       const descendants = (id: string): LayoutNode[] => s.nodes.filter((n) => rootOf(n.id) === id);
@@ -250,37 +361,37 @@ export async function solveLayouts(
         profile === 'minimal_change'
           ? old
           : { x: s.area.x + (block.x ?? 0), y: s.area.y + (block.y ?? 0) };
-      const candidates: Point[] = [];
-      const step = Math.max(2, s.grid.spacing);
-      for (let y = s.area.y; y + h <= bottom(s.area) + 1e-6; y += step)
-        for (let x = s.area.x; x + w <= right(s.area) + 1e-6; x += step) candidates.push({ x, y });
-      candidates.sort(
-        (a, b) =>
-          Math.abs(a.x - preferred.x) +
-            Math.abs(a.y - preferred.y) -
-            Math.abs(b.x - preferred.x) -
-            Math.abs(b.y - preferred.y) ||
-          a.y - b.y ||
-          a.x - b.x,
-      );
-      const p = candidates.find(
-        (p) => !occupied.some((o) => overlaps({ ...p, width: w, height: h }, o, gap / 2)),
-      );
+      const p = packer.place(w, h, preferred, profile === 'minimal_change');
       if (!p) {
         s.issues.push({
           type: 'sheet_capacity',
           bounds: [{ x: 0, y: 0, width: w, height: h }],
           severity: 'error',
           objectIds: [block.id],
-          message: 'Gruppe passt bei unveränderten Symbol- und Schriftgrößen nicht auf das Blatt.',
+          message: `Diese Layoutvariante konnte die Gruppe (${Math.round(w)} × ${Math.round(h)} mm) nicht im Zeichenbereich (${Math.round(s.area.width)} × ${Math.round(s.area.height)} mm) unterbringen.`,
         });
         continue;
       }
       place(block, p.x + s.grid.spacing / 2, p.y + s.grid.spacing / 2);
       occupied.push({ ...p, width: w, height: h });
     }
+    if (s.issues.some((i) => i.type === 'sheet_capacity')) {
+      results.push({ profile, snapshot: s, report: failedReport(s, 'placement') });
+      continue;
+    }
+    const placement = validateLayout({ ...s, edges: [] });
+    if (!placement.valid) {
+      placement.phase = 'placement';
+      results.push({ profile, snapshot: s, report: placement });
+      continue;
+    }
     routeAll(s);
+    if (s.issues.some((i) => i.type === 'route_failed')) {
+      results.push({ profile, snapshot: s, report: failedReport(s, 'routing') });
+      continue;
+    }
     const report = validateLayout(s);
+    report.phase = 'validation';
     report.metrics.displacement = s.nodes.reduce(
       (sum, n) =>
         sum +
@@ -306,3 +417,24 @@ const score = (r: LayoutSolution) => {
     (r.profile === 'minimal_change' ? m.displacement * 2 : m.displacement * 0.1)
   );
 };
+
+function failedReport(
+  s: LayoutSnapshot,
+  phase: 'placement' | 'routing',
+): import('./types').LayoutReport {
+  return {
+    valid: false,
+    phase,
+    issues: [...s.issues],
+    metrics: {
+      bodyOverlaps: 0,
+      textOverlaps: 0,
+      wireObstacles: 0,
+      overflows: 0,
+      crossings: 0,
+      bends: 0,
+      length: 0,
+      displacement: 0,
+    },
+  };
+}

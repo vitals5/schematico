@@ -300,3 +300,35 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager) 
   manager.showLayoutPreview?.(preview, draft, {});
   return result(preview);
 }
+
+export const DUPLICATE_SCHEMATIC_TOOL: McpToolDefinition = {
+  name: 'duplicate_schematic_page',
+  description:
+    'Copy an existing schematic page exactly to a new page. Preserves all native/library symbols, positions, labels, BMKs, wires, cables, groups and images; creates new object IDs. Use when asked to reproduce/copy the current circuit on another page. This creates an additional representation, not a redesigned or newly validated installation. Does not replace devices with generic equivalents. Existing layout issues remain.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string' },
+      title: { type: 'string' },
+      pageNumber: { type: 'string' },
+    },
+  },
+};
+export async function handleDuplicateSchematic(args: any, manager: CanvasStateManager) {
+  const { project, page } = pageFor(args, manager);
+  const { duplicateSchematicPage } = await import('./duplicate');
+  const copy = duplicateSchematicPage(project, page.id, args.title, args.pageNumber);
+  Object.assign(project, copy.project);
+  manager.getCanvas?.()?.setProject(project, false);
+  manager.notifyModified();
+  manager.render();
+  return {
+    success: true,
+    copied: true,
+    page: { id: copy.page.id, pageNumber: copy.page.pageNumber, title: copy.page.title },
+    components: copy.page.components.length,
+    wires: copy.page.wires.length,
+    message:
+      'Seite mit ursprünglichen Symbolen, Anschlüssen, Beschriftungen und Positionen kopiert. Bestehende Layoutbefunde bleiben erhalten.',
+  };
+}

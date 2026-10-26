@@ -33,7 +33,9 @@
 
 The drawing assistant can propose complete circuits using library symbols, pin-to-pin connections and functional groups **without coordinates**. ELK graph placement, obstacle-aware orthogonal routing and an independent validator produce layout previews. Existing sheets or a selection can also be optimized while keeping objects fixed.
 
-Only **Übernehmen / Apply** changes the project, as one undo step. Infeasible layouts return explicit issues and a proposed group split instead of shrinking symbols or fonts. Full-sheet utilization alone is not a quality guarantee. See [layout workflow, MCP tools and limitations](docs/layout.md).
+Existing circuits can also be copied exactly to another page using `duplicate_schematic_page`, retaining their native library symbols and connections.
+
+Only **Übernehmen / Apply** changes a layout proposal, as one undo step. Infeasible layouts return explicit issues and a proposed group split instead of shrinking symbols or fonts. Full-sheet utilization alone is not a quality guarantee. See [layout workflow, MCP tools and limitations](docs/layout.md).
 
 ## About Schematico
 
