@@ -96,7 +96,7 @@ export class SchematicoBridgeClient {
           method: 'schematico/hello',
           params: {
             app: 'Schematico',
-            version: '1.2.47',
+            version: '1.2.48',
             tools: this.toolRegistry.getToolDefinitions().map(t => t.name)
           }
         });
