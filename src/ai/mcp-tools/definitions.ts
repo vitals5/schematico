@@ -581,16 +581,15 @@ export const LIST_MACROS_TOOL: McpToolDefinition = {
 
 export const PLACE_MACRO_TOOL: McpToolDefinition = {
   name: 'place_macro',
-  description: 'Places a multi-element window macro onto the active schematic page at specified (x, y) coordinates.',
+  description: 'Places a multi-element window macro (.ema) or a complete pre-engineered page macro (.ems, e.g. "macro_ems_messkonzept_mk_c3" or "macro_ems_full_feed_page") onto the schematic.',
   inputSchema: {
     type: 'object',
     properties: {
-      macroId: { type: 'string', description: 'ID of the macro to place.' },
-      macroName: { type: 'string', description: 'Fuzzy name or search keyword of the macro (e.g. "Wendeschütz", "Motor Feeder", "Supply").' },
-      x: { type: 'number', description: 'Target X coordinate.' },
-      y: { type: 'number', description: 'Target Y coordinate.' }
-    },
-    required: ['x', 'y']
+      macroId: { type: 'string', description: 'ID of the macro to place (e.g. "macro_ems_messkonzept_mk_c3", "macro_ems_full_feed_page", "macro_ema_motorabzweig_400v", "macro_ema_wendeschuetz_400v", "macro_ema_power_supply_24v").' },
+      macroName: { type: 'string', description: 'Fuzzy name or search keyword of the macro (e.g. "Messkonzept MK C3", "Wendeschütz", "Motor Feeder", "Supply").' },
+      x: { type: 'number', description: 'Target X coordinate (for window macros; default: 80; not needed for page macros).' },
+      y: { type: 'number', description: 'Target Y coordinate (for window macros; default: 60; not needed for page macros).' }
+    }
   }
 };
 

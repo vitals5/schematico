@@ -20,7 +20,7 @@ import { AutoconnectEngine, RotatedPinInfo } from '../../model/AutoconnectEngine
 import { CrossReferenceEngine } from '../../model/CrossReferenceEngine';
 import { PartsListGenerator } from '../../reports/PartsList';
 import { TerminalDiagramGenerator } from '../../reports/TerminalDiagram';
-import { MacroManager, WindowMacro } from '../../model/MacroManager';
+import { MacroManager, WindowMacro, PageMacro } from '../../model/MacroManager';
 import {
   computeBmkPosition,
   computeFunctionTextPosition,
@@ -1018,21 +1018,56 @@ export async function handleDistributeSheetLayout(
     return { success: true, message: 'Keine Bauteile auf der Seite vorhanden zum Verteilen.', componentsMoved: 0 };
   }
 
-  // 1. Cluster components into columns based on X proximity
-  const sortedByX = [...page.components].sort((a, b) => a.x - b.x);
+  // 1. Cluster components into columns
+  // Check if components form a 3-branch Messkonzept scheme (Netz, WP, Haushalt/PV):
+  const isMkScheme =
+    page.components.some(c => c.bmk.includes('F0') || c.bmk.includes('Q0') || c.bmk.includes('Z1')) &&
+    page.components.some(c => c.bmk.includes('M1') || c.functionText?.toLowerCase().includes('wärmepumpe') || c.functionText?.toLowerCase().includes('wp')) &&
+    page.components.some(c => c.bmk.includes('Z2') || c.bmk.includes('G1') || c.symbolId.includes('inverter') || c.functionText?.toLowerCase().includes('pv') || c.functionText?.toLowerCase().includes('haushalt'));
+
   const columnGroups: PlacedComponent[][] = [];
 
-  for (const comp of sortedByX) {
-    if (columnGroups.length === 0) {
-      columnGroups.push([comp]);
-    } else {
-      const lastGroup = columnGroups[columnGroups.length - 1];
-      const avgX = lastGroup.reduce((sum, c) => sum + c.x, 0) / lastGroup.length;
-      const hasSameY = lastGroup.some(c => Math.abs(c.y - comp.y) <= 30);
-      if (!hasSameY && Math.abs(comp.x - avgX) <= 20) {
-        lastGroup.push(comp);
+  if (isMkScheme) {
+    const col0: PlacedComponent[] = [];
+    const col1: PlacedComponent[] = [];
+    const col2: PlacedComponent[] = [];
+
+    for (const comp of page.components) {
+      const bmk = (comp.bmk || '').toUpperCase();
+      const fn = (comp.functionText || '').toLowerCase();
+      const sym = comp.symbolId.toLowerCase();
+
+      if (bmk.includes('F0') || bmk.includes('Q0') || bmk.includes('Z1') || bmk.includes('X0') || fn.includes('hak') || fn.includes('sls') || fn.includes('netz') || fn.includes('z1')) {
+        col0.push(comp);
+      } else if (bmk.includes('M1') || fn.includes('wärmepumpe') || fn.includes('verdichter') || fn.includes('wp') || bmk.includes('X1') || (bmk.includes('F1') && !bmk.includes('F0')) || (bmk.includes('Q1') && !bmk.includes('Q0'))) {
+        col1.push(comp);
+      } else if (bmk.includes('Z2') || bmk.includes('G1') || bmk.includes('X2') || sym.includes('inverter') || fn.includes('pv') || fn.includes('haushalt') || fn.includes('wechselrichter') || fn.includes('speicher') || bmk.includes('F2') || bmk.includes('F3') || bmk.includes('Q2') || bmk.includes('Q3')) {
+        col2.push(comp);
       } else {
+        if (comp.x < 140) col0.push(comp);
+        else if (comp.x < 260) col1.push(comp);
+        else col2.push(comp);
+      }
+    }
+
+    if (col0.length > 0) columnGroups.push(col0);
+    if (col1.length > 0) columnGroups.push(col1);
+    if (col2.length > 0) columnGroups.push(col2);
+  } else {
+    // General X-proximity clustering
+    const sortedByX = [...page.components].sort((a, b) => a.x - b.x);
+    for (const comp of sortedByX) {
+      if (columnGroups.length === 0) {
         columnGroups.push([comp]);
+      } else {
+        const lastGroup = columnGroups[columnGroups.length - 1];
+        const avgX = lastGroup.reduce((sum, c) => sum + c.x, 0) / lastGroup.length;
+        const hasSameY = lastGroup.some(c => Math.abs(c.y - comp.y) <= 30);
+        if (!hasSameY && Math.abs(comp.x - avgX) <= 35) {
+          lastGroup.push(comp);
+        } else {
+          columnGroups.push([comp]);
+        }
       }
     }
   }
@@ -1056,14 +1091,14 @@ export async function handleDistributeSheetLayout(
     } else if (numCols === 2) {
       targetXs = [110, 270];
     } else if (numCols === 3) {
-      targetXs = [85, 205, 315];
+      targetXs = [85, 215, 345];
     } else if (numCols === 4) {
       targetXs = [75, 155, 245, 335];
     } else if (numCols === 5) {
       targetXs = [75, 135, 195, 255, 315];
     } else {
       const minX = 75;
-      const maxX = 345;
+      const maxX = 355;
       const step = (maxX - minX) / (numCols - 1);
       targetXs = columnGroups.map((_, i) => Math.round(minX + i * step));
     }
@@ -1166,7 +1201,11 @@ export async function handleDistributeSheetLayout(
 
     for (const comp of group) {
       const subOffsetX = comp.x - colBaseOldX;
-      comp.x = Math.round(targetX + subOffsetX);
+      if (Math.abs(subOffsetX) < 30) {
+        comp.x = targetX;
+      } else {
+        comp.x = Math.round(targetX + subOffsetX);
+      }
 
       const rIdx = compRowIndexMap.get(comp.id);
       if (rIdx !== undefined && targetYs[rIdx] !== undefined) {
@@ -1251,29 +1290,11 @@ export async function handleDistributeSheetLayout(
     for (const txt of page.texts) {
       const lower = txt.text.toLowerCase();
 
-      // 1. Check if text is a main page title (e.g. Messkonzept MK C3 ..., Hauseinspeisung MK C3 ...)
-      if (
-        (lower.includes('messkonzept') || lower.includes('übersichtsplan') || lower.includes('stromlaufplan') || lower.includes('kaskaden')) &&
-        !lower.includes('strang') &&
-        !lower.includes('pfad')
-      ) {
-        txt.x = 60;
-        txt.y = 30;
-        continue;
-      }
-
-      // 2. Check if text is a subtitle / norm reference (e.g. Nach VDE-AR-N 4100 ...)
-      if (lower.includes('vde') || lower.includes('din') || lower.includes('iec') || lower.includes('norm') || lower.includes('enwg')) {
-        txt.x = 60;
-        txt.y = 38;
-        continue;
-      }
-
-      // 3. Check if text is a specific column / strang title
+      // 1. Check if text is a specific column / strang title FIRST to prevent collision with page titles
       let targetColIdx = -1;
       if (lower.includes('strang 1') || lower.includes('pfad 1') || lower.includes('spalte 1') || lower.includes('netzeinspeisung')) {
         targetColIdx = 0;
-      } else if (lower.includes('strang 2') || lower.includes('pfad 2') || lower.includes('spalte 2') || lower.includes('wärmepumpe') || lower.includes('wp')) {
+      } else if (lower.includes('strang 2') || lower.includes('pfad 2') || lower.includes('spalte 2') || lower.includes('wärmepumpe') || lower.includes('kaskadenzweig') || lower.includes('kaskadenmessung wp') || (lower.includes('wp') && !lower.includes('mk'))) {
         targetColIdx = Math.min(1, numCols - 1);
       } else if (lower.includes('strang 3') || lower.includes('pfad 3') || lower.includes('spalte 3') || lower.includes('haushalt') || lower.includes('pv') || lower.includes('speicher')) {
         targetColIdx = Math.min(2, numCols - 1);
@@ -1285,11 +1306,32 @@ export async function handleDistributeSheetLayout(
         if (targetColIdx < targetXs.length) {
           txt.x = targetXs[targetColIdx];
           if (txt.y >= 130) {
-            txt.y = 245;
+            txt.y = 250;
           } else {
             txt.y = 46;
           }
         }
+        continue;
+      }
+
+      // 2. Check if text is a subtitle / norm reference or billing formula
+      if (lower.includes('vde') || lower.includes('din') || lower.includes('iec') || lower.includes('enwg') || lower.includes('abrechnung') || lower.includes('berechnung') || lower.includes('formel') || lower.includes('differenz')) {
+        if (lower.includes('abrechnung') || lower.includes('berechnung') || lower.includes('formel') || lower.includes('differenz')) {
+          txt.x = 55;
+          txt.y = 254;
+        } else {
+          txt.x = 55;
+          txt.y = 36;
+        }
+        continue;
+      }
+
+      // 3. Check if text is a main page title (e.g. Messkonzept MK C3 ..., Hauseinspeisung MK C3 ...)
+      if (
+        lower.includes('messkonzept') || lower.includes('übersichtsplan') || lower.includes('stromlaufplan') || lower.includes('hauseinspeisung') || lower.includes('kaskaden')
+      ) {
+        txt.x = 55;
+        txt.y = 28;
         continue;
       }
 
@@ -1307,7 +1349,7 @@ export async function handleDistributeSheetLayout(
       if (closestColIdx >= 0 && closestColIdx < targetXs.length) {
         txt.x = targetXs[closestColIdx];
         if (txt.y >= 130) {
-          txt.y = 245;
+          txt.y = 250;
         } else {
           txt.y = 46;
         }
@@ -2273,7 +2315,7 @@ export async function handleListMacros(
 }
 
 export async function handlePlaceMacro(
-  args: { macroId?: string; macroName?: string; x: number; y: number },
+  args: { macroId?: string; macroName?: string; x?: number; y?: number },
   manager: CanvasStateManager
 ): Promise<any> {
   const project = manager.getProject();
@@ -2295,16 +2337,77 @@ export async function handlePlaceMacro(
     };
   }
 
-  if (found.type !== 'ema') {
-    return { success: false, error: `Macro "${found.name}" is a page macro, not a window macro.` };
+  // Handle Page Macro (.ems)
+  if (found.type === 'ems') {
+    const pageMacro = found as PageMacro;
+    const isCurrentPageEmpty =
+      page.components.length === 0 &&
+      page.wires.length === 0 &&
+      (!page.boxes || page.boxes.length === 0);
+
+    const instantiated = MacroManager.instantiatePageMacro(pageMacro, project);
+
+    if (isCurrentPageEmpty) {
+      page.title = instantiated.title || pageMacro.name;
+      page.higherLevel = instantiated.higherLevel || page.higherLevel;
+      page.location = instantiated.location || page.location;
+      page.components = instantiated.components;
+      page.wires = instantiated.wires;
+      page.texts = instantiated.texts || [];
+      page.boxes = instantiated.boxes || [];
+      page.images = instantiated.images || [];
+      page.cables = instantiated.cables || [];
+      if (instantiated.plotFrame) {
+        page.plotFrame = instantiated.plotFrame;
+      }
+      manager.notifyModified();
+      manager.render();
+      try {
+        const canvas = manager.getCanvas?.();
+        canvas?.fitToScreen?.();
+      } catch { /* Non-blocking */ }
+      return {
+        success: true,
+        macroType: 'page',
+        macroName: found.name,
+        pageId: page.id,
+        pageNumber: page.pageNumber,
+        placedComponents: page.components.length,
+        wiresCount: page.wires.length,
+        message: `Seitenmakro "${found.name}" wurde erfolgreich auf die aktive Seite angewendet (Vollblatt DIN A3).`
+      };
+    } else {
+      project.pages.push(instantiated);
+      project.activePageId = instantiated.id;
+      manager.switchPage?.(instantiated.id);
+      manager.notifyModified();
+      manager.render();
+      try {
+        const canvas = manager.getCanvas?.();
+        canvas?.fitToScreen?.();
+      } catch { /* Non-blocking */ }
+      return {
+        success: true,
+        macroType: 'page',
+        macroName: found.name,
+        pageId: instantiated.id,
+        pageNumber: instantiated.pageNumber,
+        placedComponents: instantiated.components.length,
+        wiresCount: instantiated.wires.length,
+        message: `Seitenmakro "${found.name}" wurde auf einer neuen Seite (${instantiated.pageNumber}: ${instantiated.title}) platziert.`
+      };
+    }
   }
 
+  // Handle Window Macro (.ema)
+  const placeX = args.x ?? 80;
+  const placeY = args.y ?? 60;
   const canvas = manager.getCanvas?.();
   if (canvas) {
-    const placed = canvas.placeMacroAt(args.x, args.y, found as WindowMacro);
+    const placed = canvas.placeMacroAt(placeX, placeY, found as WindowMacro);
     return { success: true, placedComponents: placed.length, macroName: found.name };
   } else {
-    const placed = MacroManager.instantiateWindowMacro(found as WindowMacro, args.x, args.y, page.components, project);
+    const placed = MacroManager.instantiateWindowMacro(found as WindowMacro, placeX, placeY, page.components, project);
     manager.notifyModified();
     manager.render();
     return { success: true, placedComponents: placed.components.length, macroName: found.name };

@@ -475,8 +475,8 @@ async function runTests() {
   if (!distRes.success || distRes.columns !== 3 || distRes.componentsMoved !== 9) {
     throw new Error(`distribute_sheet_layout failed: ${JSON.stringify(distRes)}`);
   }
-  if (distRes.columnPositions[0] !== 85 || distRes.columnPositions[1] !== 205 || distRes.columnPositions[2] !== 315) {
-    throw new Error(`Expected targetXs [85, 205, 315], got: ${JSON.stringify(distRes.columnPositions)}`);
+  if (distRes.columnPositions[0] !== 85 || distRes.columnPositions[1] !== 215 || distRes.columnPositions[2] !== 345) {
+    throw new Error(`Expected targetXs [85, 215, 345], got: ${JSON.stringify(distRes.columnPositions)}`);
   }
 
   // Verify full-sheet state after distribution
@@ -493,7 +493,7 @@ async function runTests() {
   const t1 = textPage.texts.find((t: any) => t.text.includes('Strang 1'));
   const t2 = textPage.texts.find((t: any) => t.text.includes('Strang 2'));
   const t3 = textPage.texts.find((t: any) => t.text.includes('Strang 3'));
-  if (!t1 || !t2 || !t3 || t1.x !== 85 || t2.x !== 205 || t3.x !== 315) {
+  if (!t1 || !t2 || !t3 || t1.x !== 85 || t2.x !== 215 || t3.x !== 345) {
     throw new Error(`Texts did not move with distributed columns: t1=${t1?.x}, t2=${t2?.x}, t3=${t3?.x}`);
   }
 
@@ -514,7 +514,7 @@ async function runTests() {
     throw new Error('Expected inter-column wire to have non-overlapping duct waypoints');
   }
 
-  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 205, 315] with >80% sheet utilization, non-overlapping boxes, and orthogonal duct wiring');
+  console.log('✓ Test 19: distribute_sheet_layout redistributed 3-strang circuit to X: [85, 215, 345] with >80% sheet utilization, non-overlapping boxes, and orthogonal duct wiring');
 
   // Test 20: distribute_sheet_layout on 4-box layout (+HAK, +ZP1, +UV-WP, +UV-HH) with stacked texts
   await registry.executeTool('clear_canvas', { confirm: true }, manager);
@@ -549,7 +549,7 @@ async function runTests() {
   const txt1 = p20.texts.find((t: any) => t.text.includes('STRANG 1'));
   const txt2 = p20.texts.find((t: any) => t.text.includes('STRANG 2'));
   const txt3 = p20.texts.find((t: any) => t.text.includes('STRANG 3'));
-  if (!txt1 || !txt2 || !txt3 || txt1.x !== 85 || txt2.x !== 205 || txt3.x !== 315) {
+  if (!txt1 || !txt2 || !txt3 || txt1.x !== 85 || txt2.x !== 215 || txt3.x !== 345) {
     throw new Error(`Test 20 failed: Texts not separated: txt1=${txt1?.x}, txt2=${txt2?.x}, txt3=${txt3?.x}`);
   }
 
@@ -563,7 +563,28 @@ async function runTests() {
   if (boxWp.x + boxWp.width > boxHh.x) {
     throw new Error(`Test 20 failed: +UV-WP overlaps +UV-HH: WP=${boxWp.x}..${boxWp.x + boxWp.width}, HH=${boxHh.x}..${boxHh.x + boxHh.width}`);
   }
-  console.log('✓ Test 20: distribute_sheet_layout separated narrow columns (25mm), resolved 4 boxes (+HAK, +ZP1, +UV-WP, +UV-HH), and distributed stacked Strang headers to X: [85, 205, 315]');
+  console.log('✓ Test 20: distribute_sheet_layout separated narrow columns (25mm), resolved 4 boxes (+HAK, +ZP1, +UV-WP, +UV-HH), and distributed stacked Strang headers to X: [85, 215, 345]');
+
+  // Test 21: place_macro with Page Macro (macro_ems_messkonzept_mk_c3)
+  await registry.executeTool('clear_canvas', { confirm: true }, manager);
+  const macroRes = await registry.executeTool('place_macro', { macroId: 'macro_ems_messkonzept_mk_c3' }, manager);
+  if (!macroRes.success || macroRes.macroType !== 'page') {
+    throw new Error(`Test 21 failed: place_macro with PageMacro returned: ${JSON.stringify(macroRes)}`);
+  }
+  const macroPage = manager.getActivePage();
+  if (macroPage.components.length !== 12) {
+    throw new Error(`Test 21 failed: expected 12 components in MK C3 macro page, got ${macroPage.components.length}`);
+  }
+  if (!macroPage.boxes || macroPage.boxes.length !== 4) {
+    throw new Error(`Test 21 failed: expected 4 device boxes in MK C3 macro page, got ${macroPage.boxes?.length}`);
+  }
+  if (!macroPage.texts || macroPage.texts.length < 6) {
+    throw new Error(`Test 21 failed: expected >= 6 texts in MK C3 macro page, got ${macroPage.texts?.length}`);
+  }
+  if (!macroPage.wires || macroPage.wires.length < 18) {
+    throw new Error(`Test 21 failed: expected >= 18 wires in MK C3 macro page, got ${macroPage.wires?.length}`);
+  }
+  console.log('✓ Test 21: place_macro successfully instantiated Page Macro "macro_ems_messkonzept_mk_c3" with 12 components, 4 device boxes, 6 texts, and 21 wires across full DIN A3 sheet');
 
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }

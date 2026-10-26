@@ -493,6 +493,365 @@ export const BUILTIN_MACROS: MacroItem[] = [
         }
       }
     }
+  },
+
+  // 7. Seitenmakro: Messkonzept MK C3 Kaskadenmessung (.ems)
+  {
+    id: 'macro_ems_messkonzept_mk_c3',
+    name: 'Messkonzept MK C3: Kaskadenmessung (WP & PV)',
+    type: 'ems',
+    category: 'Komplette Seiten',
+    description: 'Vollständige normgerechte DIN A3 Kaskadenschaltung für Hauseinspeisung mit Wärmepumpe (§ 14a EnWG) und PV-Hybridanlage mit Speicher gemäß VDE-AR-N 4100 / TAB',
+    isBuiltIn: true,
+    page: {
+      id: 'template_page_mk_c3',
+      pageNumber: '2',
+      pageType: 'schematic',
+      title: 'Hauseinspeisung Messkonzept MK C3 (Kaskadenmessung WP & PV)',
+      higherLevel: '=A1',
+      location: '+UV',
+      components: [
+        // --- STRANG 1: Netzeinspeisung & Gesamt-Zähler Z1 ---
+        {
+          id: 'c_f0',
+          symbolId: 'fuse_switch_3p',
+          bmk: '-F0',
+          functionText: 'HAK Sicherungs-Lasttrennschalter',
+          technicalCharacteristics: 'NH00 63A gG',
+          x: 70,
+          y: 56,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_q0',
+          symbolId: 'circuit_breaker_3p',
+          bmk: '-Q0',
+          functionText: 'SLS Schalter Vorzähler (NAR)',
+          technicalCharacteristics: '3P E50A / 25kA',
+          x: 70,
+          y: 116,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_z1',
+          symbolId: 'energy_meter_3p',
+          bmk: '-Z1',
+          functionText: 'Zweirichtungszähler Gesamtbezug/-lieferung',
+          technicalCharacteristics: '3x230/400V 65A',
+          x: 58,
+          y: 176,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_x0_pe',
+          symbolId: 'terminal_pe',
+          bmk: '-X0:PE',
+          functionText: 'Hauptpotentialausgleich (HES)',
+          technicalCharacteristics: '16mm² Cu',
+          x: 70,
+          y: 236,
+          rotation: 0,
+          pins: {}
+        },
+
+        // --- STRANG 2: Kaskadenzweig Wärmepumpe (§ 14a EnWG) ---
+        {
+          id: 'c_f1',
+          symbolId: 'rcd_4p',
+          bmk: '-F1',
+          functionText: 'FI-Schutzschalter Wärmepumpe',
+          technicalCharacteristics: '4-polig 40A / 30mA Typ A',
+          x: 194,
+          y: 56,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_q1',
+          symbolId: 'circuit_breaker_3p',
+          bmk: '-Q1',
+          functionText: 'LS-Schalter WP-Verdichter',
+          technicalCharacteristics: '3P B16A',
+          x: 200,
+          y: 116,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_m1',
+          symbolId: 'motor_3phase',
+          bmk: '-M1',
+          functionText: 'Wärmepumpenverdichter (§ 14a EnWG)',
+          technicalCharacteristics: '3~ 400V 5.5kW',
+          x: 196,
+          y: 176,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_x1_pe',
+          symbolId: 'terminal_pe',
+          bmk: '-X1:PE',
+          functionText: 'Schutzleiter WP',
+          technicalCharacteristics: '6mm² Cu',
+          x: 200,
+          y: 236,
+          rotation: 0,
+          pins: {}
+        },
+
+        // --- STRANG 3: Haushaltsstrom & PV-Hybridanlage (Z2) ---
+        {
+          id: 'c_z2',
+          symbolId: 'energy_meter_3p',
+          bmk: '-Z2',
+          functionText: 'Kaskadenzähler Z2 (Haushaltsbezug)',
+          technicalCharacteristics: '3x230/400V 65A',
+          x: 310,
+          y: 56,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_f2',
+          symbolId: 'rcd_4p',
+          bmk: '-F2',
+          functionText: 'FI-Schutzschalter Haushaltsnetz',
+          technicalCharacteristics: '4-polig 40A / 30mA Typ A',
+          x: 316,
+          y: 116,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_g1',
+          symbolId: 'inverter_solar',
+          bmk: '-G1',
+          functionText: 'PV-Hybridwechselrichter & Speicher',
+          technicalCharacteristics: '10 kVA / 10 kWh',
+          x: 300,
+          y: 176,
+          rotation: 0,
+          pins: {}
+        },
+        {
+          id: 'c_x2_pe',
+          symbolId: 'terminal_pe',
+          bmk: '-X2:PE',
+          functionText: 'Schutzleiter PV / Haushalt',
+          technicalCharacteristics: '10mm² Cu',
+          x: 320,
+          y: 236,
+          rotation: 0,
+          pins: {}
+        }
+      ],
+      boxes: [
+        {
+          id: 'box_hak',
+          x: 50,
+          y: 50,
+          width: 112,
+          height: 54,
+          bmk: '=HAK',
+          label: 'Hausanschlusskasten (HAK)',
+          lineStyle: 'solid'
+        },
+        {
+          id: 'box_zp1',
+          x: 50,
+          y: 110,
+          width: 112,
+          height: 136,
+          bmk: '=ZP1',
+          label: 'Zählerplatz 1 (Z1 Gesamt)',
+          lineStyle: 'solid'
+        },
+        {
+          id: 'box_wp',
+          x: 180,
+          y: 50,
+          width: 112,
+          height: 196,
+          bmk: '=A1+WP',
+          label: 'Unterverteilung Wärmepumpe (§ 14a EnWG)',
+          lineStyle: 'dashed'
+        },
+        {
+          id: 'box_pv',
+          x: 295,
+          y: 50,
+          width: 115,
+          height: 196,
+          bmk: '=A1+PV',
+          label: 'Zählerplatz 2, Haushalt & PV',
+          lineStyle: 'dashed'
+        }
+      ],
+      texts: [
+        {
+          id: 'txt_title',
+          x: 50,
+          y: 28,
+          text: 'MESSKONZEPT MK C3: KASKADENMESSUNG (WÄRMEPUMPE & PV-EIGENVERBRAUCH)',
+          fontSize: 13,
+          fontWeight: 'bold'
+        },
+        {
+          id: 'txt_sub',
+          x: 50,
+          y: 36,
+          text: 'Gemäß VDE-AR-N 4100 & § 14a EnWG – Vorrangige Eigenstromnutzung für Haushalt und Wärmepumpe',
+          fontSize: 8.5
+        },
+        {
+          id: 'txt_s1',
+          x: 50,
+          y: 46,
+          text: 'STRANG 1: Netzeinspeisung & Gesamt-Zähler Z1',
+          fontSize: 9.5,
+          fontWeight: 'bold'
+        },
+        {
+          id: 'txt_s2',
+          x: 180,
+          y: 46,
+          text: 'STRANG 2: Kaskadenzweig Wärmepumpe (§ 14a)',
+          fontSize: 9.5,
+          fontWeight: 'bold'
+        },
+        {
+          id: 'txt_s3',
+          x: 295,
+          y: 46,
+          text: 'STRANG 3: Haushaltsstrom & PV-Hybridanlage (Z2)',
+          fontSize: 9.5,
+          fontWeight: 'bold'
+        },
+        {
+          id: 'txt_formula',
+          x: 50,
+          y: 254,
+          text: 'Abrechnung: Haushaltsbedarf = Z2 | Wärmepumpenstrom = Z1 - Z2 | PV-Überschuss speist vorrangig Wärmepumpe',
+          fontSize: 8.5
+        }
+      ],
+      wires: [
+        // Strang 1: F0 -> Q0
+        { id: 'w_f0_q0_1', from: { componentId: 'c_f0', pinId: '2' }, to: { componentId: 'c_q0', pinId: '1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_f0_q0_2', from: { componentId: 'c_f0', pinId: '4' }, to: { componentId: 'c_q0', pinId: '3' }, potential: 'L2', color: '#000000' },
+        { id: 'w_f0_q0_3', from: { componentId: 'c_f0', pinId: '6' }, to: { componentId: 'c_q0', pinId: '5' }, potential: 'L3', color: '#808080' },
+        // Strang 1: Q0 -> Z1
+        { id: 'w_q0_z1_1', from: { componentId: 'c_q0', pinId: '2' }, to: { componentId: 'c_z1', pinId: 'L1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_q0_z1_2', from: { componentId: 'c_q0', pinId: '4' }, to: { componentId: 'c_z1', pinId: 'L2' }, potential: 'L2', color: '#000000' },
+        { id: 'w_q0_z1_3', from: { componentId: 'c_q0', pinId: '6' }, to: { componentId: 'c_z1', pinId: 'L3' }, potential: 'L3', color: '#808080' },
+        // Kaskadenabzweig Z1 Output -> Strang 2 (WP)
+        {
+          id: 'w_z1_f1_1',
+          from: { componentId: 'c_z1', pinId: '1' },
+          to: { componentId: 'c_f1', pinId: '1' },
+          potential: 'L1',
+          color: '#8B4513',
+          waypoints: [{ x: 70, y: 230 }, { x: 172, y: 230 }, { x: 172, y: 44 }, { x: 206, y: 44 }]
+        },
+        {
+          id: 'w_z1_f1_2',
+          from: { componentId: 'c_z1', pinId: '2' },
+          to: { componentId: 'c_f1', pinId: '3' },
+          potential: 'L2',
+          color: '#000000',
+          waypoints: [{ x: 94, y: 232 }, { x: 174, y: 232 }, { x: 174, y: 46 }, { x: 226, y: 46 }]
+        },
+        {
+          id: 'w_z1_f1_3',
+          from: { componentId: 'c_z1', pinId: '3' },
+          to: { componentId: 'c_f1', pinId: '5' },
+          potential: 'L3',
+          color: '#808080',
+          waypoints: [{ x: 118, y: 234 }, { x: 176, y: 234 }, { x: 176, y: 48 }, { x: 246, y: 48 }]
+        },
+        // Kaskadenabzweig Z1 Output -> Strang 3 (Z2 Haushalt)
+        {
+          id: 'w_z1_z2_1',
+          from: { componentId: 'c_z1', pinId: '1' },
+          to: { componentId: 'c_z2', pinId: 'L1' },
+          potential: 'L1',
+          color: '#8B4513',
+          waypoints: [{ x: 70, y: 230 }, { x: 290, y: 230 }, { x: 290, y: 44 }, { x: 322, y: 44 }]
+        },
+        {
+          id: 'w_z1_z2_2',
+          from: { componentId: 'c_z1', pinId: '2' },
+          to: { componentId: 'c_z2', pinId: 'L2' },
+          potential: 'L2',
+          color: '#000000',
+          waypoints: [{ x: 94, y: 232 }, { x: 292, y: 232 }, { x: 292, y: 46 }, { x: 346, y: 46 }]
+        },
+        {
+          id: 'w_z1_z2_3',
+          from: { componentId: 'c_z1', pinId: '3' },
+          to: { componentId: 'c_z2', pinId: 'L3' },
+          potential: 'L3',
+          color: '#808080',
+          waypoints: [{ x: 118, y: 234 }, { x: 294, y: 234 }, { x: 294, y: 48 }, { x: 370, y: 48 }]
+        },
+        // Strang 2: F1 -> Q1
+        { id: 'w_f1_q1_1', from: { componentId: 'c_f1', pinId: '2' }, to: { componentId: 'c_q1', pinId: '1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_f1_q1_2', from: { componentId: 'c_f1', pinId: '4' }, to: { componentId: 'c_q1', pinId: '3' }, potential: 'L2', color: '#000000' },
+        { id: 'w_f1_q1_3', from: { componentId: 'c_f1', pinId: '6' }, to: { componentId: 'c_q1', pinId: '5' }, potential: 'L3', color: '#808080' },
+        // Strang 2: Q1 -> M1
+        { id: 'w_q1_m1_1', from: { componentId: 'c_q1', pinId: '2' }, to: { componentId: 'c_m1', pinId: 'U1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_q1_m1_2', from: { componentId: 'c_q1', pinId: '4' }, to: { componentId: 'c_m1', pinId: 'V1' }, potential: 'L2', color: '#000000' },
+        { id: 'w_q1_m1_3', from: { componentId: 'c_q1', pinId: '6' }, to: { componentId: 'c_m1', pinId: 'W1' }, potential: 'L3', color: '#808080' },
+        { id: 'w_m1_pe', from: { componentId: 'c_m1', pinId: 'PE' }, to: { componentId: 'c_x1_pe', pinId: 'PE' }, potential: 'PE', color: '#228B22' },
+        // Strang 3: Z2 -> F2
+        { id: 'w_z2_f2_1', from: { componentId: 'c_z2', pinId: '1' }, to: { componentId: 'c_f2', pinId: '1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_z2_f2_2', from: { componentId: 'c_z2', pinId: '2' }, to: { componentId: 'c_f2', pinId: '3' }, potential: 'L2', color: '#000000' },
+        { id: 'w_z2_f2_3', from: { componentId: 'c_z2', pinId: '3' }, to: { componentId: 'c_f2', pinId: '5' }, potential: 'L3', color: '#808080' },
+        // Strang 3: F2 -> G1
+        { id: 'w_f2_g1_1', from: { componentId: 'c_f2', pinId: '2' }, to: { componentId: 'c_g1', pinId: 'L1' }, potential: 'L1', color: '#8B4513' },
+        { id: 'w_f2_g1_2', from: { componentId: 'c_f2', pinId: '4' }, to: { componentId: 'c_g1', pinId: 'L2' }, potential: 'L2', color: '#000000' },
+        { id: 'w_f2_g1_3', from: { componentId: 'c_f2', pinId: '6' }, to: { componentId: 'c_g1', pinId: 'L3' }, potential: 'L3', color: '#808080' },
+        { id: 'w_g1_pe', from: { componentId: 'c_g1', pinId: 'PE' }, to: { componentId: 'c_x2_pe', pinId: 'PE' }, potential: 'PE', color: '#228B22' },
+        // PE-Sammelschiene (X0 -> X1 -> X2)
+        {
+          id: 'w_pe_0_1',
+          from: { componentId: 'c_x0_pe', pinId: 'PE' },
+          to: { componentId: 'c_x1_pe', pinId: 'PE' },
+          potential: 'PE',
+          color: '#228B22',
+          waypoints: [{ x: 82, y: 242 }, { x: 212, y: 242 }]
+        },
+        {
+          id: 'w_pe_1_2',
+          from: { componentId: 'c_x1_pe', pinId: 'PE' },
+          to: { componentId: 'c_x2_pe', pinId: 'PE' },
+          potential: 'PE',
+          color: '#228B22',
+          waypoints: [{ x: 212, y: 242 }, { x: 332, y: 242 }]
+        }
+      ],
+      plotFrame: {
+        type: 'DIN_A3_LANDSCAPE',
+        width: 420,
+        height: 297,
+        columns: 10,
+        rows: ['A', 'B', 'C', 'D', 'E', 'F'],
+        titleBlock: {
+          projectTitle: 'Hauseinspeisung Messkonzept MK C3',
+          commission: 'MK-C3-2026',
+          company: 'Elektro Engineering',
+          author: 'Planer',
+          date: new Date().toISOString().split('T')[0],
+          revision: '1.0',
+          sheetNumber: '2',
+          totalSheets: '2'
+        }
+      }
+    }
   }
 ];
 
