@@ -407,12 +407,25 @@ export class AiChatSidebar {
         const bmk = result?.component?.bmk || args?.bmk || 'Bauteil';
         const sym = result?.component?.symbolName || args?.symbolName || args?.symbolId || '';
         return `Platziert: <strong>${bmk}</strong> (${sym}) bei (${args?.x}, ${args?.y})`;
+      case 'update_component':
+        return `Aktualisiert: Bauteil <strong>${args?.id}</strong>${args?.bmk ? ` (${args.bmk})` : ''}`;
+      case 'rotate_element':
+        return `Gedreht: <strong>${args?.id}</strong> (${result?.rotation ?? 90}°)`;
+      case 'move_element':
+        return `Verschoben: <strong>${args?.id}</strong>`;
       case 'draw_wire':
         const pot = args?.potential || 'L1';
         if (args?.fromComponentId && args?.toComponentId) {
           return `Verdrahtet: <strong>${pot}</strong> von ${args.fromComponentId} nach ${args.toComponentId}`;
         }
         return `Verbindung gezogen: <strong>${pot}</strong>`;
+      case 'update_wire':
+        return `Leitung aktualisiert: <strong>${args?.id}</strong> (${args?.potential || ''})`;
+      case 'add_cable':
+        const cableBmk = result?.cable?.bmk || args?.bmk || '-W1';
+        return `Kabel definiert: <strong>${cableBmk}</strong> (${args?.cableType || 'Kabel'})`;
+      case 'list_cables':
+        return `Kabel aufgelistet (${result?.total ?? 0} Kabel)`;
       case 'delete_element':
         return `Gelöscht: Element <strong>${args?.id}</strong>`;
       case 'clear_canvas':
@@ -421,6 +434,48 @@ export class AiChatSidebar {
         return `Schaltplan-Status analysiert (${result?.stats?.totalComponents ?? '…'} Bauteile)`;
       case 'search_symbols':
         return `Symbolkatalog durchsucht: "${args?.query}" (${result?.returned || 0} Treffer)`;
+      case 'get_project_info':
+        return `Projektdaten abgefragt: "${result?.project?.name || ''}"`;
+      case 'update_project_info':
+        return `Projektdaten aktualisiert: "${args?.name || ''}"`;
+      case 'list_pages':
+        return `Seiten aufgelistet (${result?.total ?? 0} Seiten)`;
+      case 'create_page':
+        return `Neue Seite erstellt: <strong>${result?.page?.title || args?.title || 'Seite'}</strong>`;
+      case 'switch_page':
+        return `Zur Seite gewechselt: <strong>${result?.activePage?.title || args?.pageNumber || args?.pageId}</strong>`;
+      case 'delete_page':
+        return `Seite gelöscht: <strong>${args?.pageId}</strong>`;
+      case 'update_page_info':
+        return `Seitendaten aktualisiert: <strong>${args?.title || ''}</strong>`;
+      case 'add_text':
+        return `Text platziert: "${(args?.text || '').slice(0, 24)}..." bei (${args?.x}, ${args?.y})`;
+      case 'update_text':
+        return `Text aktualisiert: "${(args?.text || '').slice(0, 24)}..."`;
+      case 'add_device_box':
+        return `Gerätekasten platziert: <strong>${args?.bmk || args?.label || 'Kasten'}</strong>`;
+      case 'update_device_box':
+        return `Gerätekasten aktualisiert: <strong>${args?.id}</strong>`;
+      case 'list_macros':
+        return `Makros aufgelistet (${result?.total ?? 0} Makros)`;
+      case 'place_macro':
+        return `Makro platziert: <strong>${result?.macroName || args?.macroName || 'Makro'}</strong> bei (${args?.x}, ${args?.y})`;
+      case 'add_wall':
+        return `Wand gezeichnet von (${args?.startX}, ${args?.startY}) nach (${args?.endX}, ${args?.endY})`;
+      case 'add_wall_opening':
+        return `Wandöffnung platziert (${args?.kind}) bei (${args?.x}, ${args?.y})`;
+      case 'get_floor_plan_state':
+        return `Grundriss-Daten analysiert`;
+      case 'get_parts_list':
+        return `Stückliste (BOM) generiert (${result?.totalEntries ?? 0} Positionen)`;
+      case 'get_terminal_diagram':
+        return `Klemmenplan generiert (${result?.stripsCount ?? 0} Klemmleisten)`;
+      case 'recalculate_cross_references':
+        return `Kontaktspiegel neu berechnet`;
+      case 'export_pdf':
+        return `PDF-Export generiert`;
+      case 'zoom_canvas':
+        return `Zoom angepasst: ${args?.action}`;
       default:
         return `Aktion: ${name}`;
     }

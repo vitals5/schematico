@@ -23,10 +23,14 @@ export interface McpToolDefinition {
   inputSchema: McpToolInputSchema;
 }
 
+// -------------------------------------------------------------
+// 1. Core Canvas State & Management Tools
+// -------------------------------------------------------------
+
 export const GET_CANVAS_STATE_TOOL: McpToolDefinition = {
   name: 'get_canvas_state',
   description:
-    'Returns the current state of the active schematic page, including placed components, pins, coordinates, wires, and plot frame metadata.',
+    'Returns the current state of the active schematic page, including placed components, pins with coordinates, wires, texts, boxes, cables, and plot frame metadata.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -76,9 +80,131 @@ export const ADD_COMPONENT_TOOL: McpToolDefinition = {
       functionText: {
         type: 'string',
         description: 'Optional functional description (e.g. "Hauptschütz", "Steuersicherung 230V", "Ein-Taster").'
+      },
+      technicalCharacteristics: {
+        type: 'string',
+        description: 'Optional technical data (e.g. "4.0kW 400V 8.5A", "230V 16A").'
+      },
+      manufacturer: {
+        type: 'string',
+        description: 'Optional manufacturer (e.g. "Siemens", "Eaton", "Schneider Electric", "Phoenix Contact").'
+      },
+      articleNumber: {
+        type: 'string',
+        description: 'Optional order / article number (e.g. "3RT2026-1BB40").'
       }
     },
     required: ['x', 'y']
+  }
+};
+
+export const UPDATE_COMPONENT_TOOL: McpToolDefinition = {
+  name: 'update_component',
+  description:
+    'Updates properties of an existing placed component (BMK, function text, technical characteristics, manufacturer, position, rotation, etc.).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Unique ID of the placed component to update.'
+      },
+      bmk: {
+        type: 'string',
+        description: 'New device tag / BMK (e.g. "-K2", "-Q1").'
+      },
+      functionText: {
+        type: 'string',
+        description: 'New functional description text.'
+      },
+      technicalCharacteristics: {
+        type: 'string',
+        description: 'New technical data (e.g. "7.5kW 400V").'
+      },
+      manufacturer: {
+        type: 'string',
+        description: 'New manufacturer.'
+      },
+      articleNumber: {
+        type: 'string',
+        description: 'New article / part number.'
+      },
+      mountingLocation: {
+        type: 'string',
+        description: 'Mounting location (e.g. "+S1", "+UV").'
+      },
+      higherLevelFunction: {
+        type: 'string',
+        description: 'Higher level designation (e.g. "=A1").'
+      },
+      x: {
+        type: 'number',
+        description: 'New X position coordinate.'
+      },
+      y: {
+        type: 'number',
+        description: 'New Y position coordinate.'
+      },
+      rotation: {
+        type: 'number',
+        enum: [0, 90, 180, 270],
+        description: 'New rotation angle in degrees.'
+      }
+    },
+    required: ['id']
+  }
+};
+
+export const ROTATE_ELEMENT_TOOL: McpToolDefinition = {
+  name: 'rotate_element',
+  description:
+    'Rotates an element (component, text, cable, or box) by specified delta angle (default 90 degrees clockwise).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the element to rotate.'
+      },
+      angle: {
+        type: 'number',
+        enum: [90, 180, 270, -90],
+        description: 'Rotation angle delta in degrees (default: 90).'
+      }
+    },
+    required: ['id']
+  }
+};
+
+export const MOVE_ELEMENT_TOOL: McpToolDefinition = {
+  name: 'move_element',
+  description:
+    'Moves an element (component, text, cable, or box) either by a relative offset (dx, dy) or to an absolute coordinate (x, y).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'ID of the element to move.'
+      },
+      dx: {
+        type: 'number',
+        description: 'Relative horizontal displacement in drawing units.'
+      },
+      dy: {
+        type: 'number',
+        description: 'Relative vertical displacement in drawing units.'
+      },
+      x: {
+        type: 'number',
+        description: 'Absolute target X position.'
+      },
+      y: {
+        type: 'number',
+        description: 'Absolute target Y position.'
+      }
+    },
+    required: ['id']
   }
 };
 
@@ -132,20 +258,87 @@ export const DRAW_WIRE_TOOL: McpToolDefinition = {
       crossSection: {
         type: 'string',
         description: 'Conductor cross-section (e.g. "1.5mm²", "2.5mm²", "0.75mm²"). Default is "1.5mm²".'
+      },
+      wireNumber: {
+        type: 'string',
+        description: 'Optional wire number tag (e.g. "101", "102").'
       }
+    }
+  }
+};
+
+export const UPDATE_WIRE_TOOL: McpToolDefinition = {
+  name: 'update_wire',
+  description: 'Updates properties of an existing wire (potential, color, cross-section, wire number).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: {
+        type: 'string',
+        description: 'Unique ID of the wire to update.'
+      },
+      potential: {
+        type: 'string',
+        description: 'New potential designation (e.g. "L2", "N", "PE", "+24V", "0V").'
+      },
+      color: {
+        type: 'string',
+        description: 'New wire color code (e.g. "BU", "BK", "GNYE", "DB").'
+      },
+      crossSection: {
+        type: 'string',
+        description: 'New wire cross-section (e.g. "2.5mm²", "4mm²").'
+      },
+      wireNumber: {
+        type: 'string',
+        description: 'New wire number (e.g. "105").'
+      }
+    },
+    required: ['id']
+  }
+};
+
+export const ADD_CABLE_TOOL: McpToolDefinition = {
+  name: 'add_cable',
+  description:
+    'Defines a multi-core cable (e.g. NYM-J 5x2.5, ÖLFLEX 4G1.5) cutting across wires on the schematic sheet.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      startX: { type: 'number', description: 'Starting X position of the cable line.' },
+      startY: { type: 'number', description: 'Starting Y position of the cable line.' },
+      endX: { type: 'number', description: 'Ending X position of the cable line.' },
+      endY: { type: 'number', description: 'Ending Y position of the cable line.' },
+      bmk: { type: 'string', description: 'Cable BMK (e.g. "-W1", "-W2"). Defaults to next available -W tag.' },
+      cableType: { type: 'string', description: 'Cable designation (e.g. "NYM-J 3x1.5", "ÖLFLEX CLASSIC 110 5G2.5").' },
+      crossSection: { type: 'string', description: 'Conductor cross-section (e.g. "1.5mm²", "2.5mm²"). Default: "1.5mm²".' },
+      coreCount: { type: 'number', description: 'Number of cores (e.g. 3, 5). Default: 3.' },
+      description: { type: 'string', description: 'Optional cable description / function text.' }
+    },
+    required: ['startX', 'startY', 'endX', 'endY']
+  }
+};
+
+export const LIST_CABLES_TOOL: McpToolDefinition = {
+  name: 'list_cables',
+  description: 'Lists all cable definitions on the active schematic page or across the project.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', description: 'Optional page ID to filter by. Defaults to active page.' }
     }
   }
 };
 
 export const DELETE_ELEMENT_TOOL: McpToolDefinition = {
   name: 'delete_element',
-  description: 'Removes a component or wire by ID from the active schematic page.',
+  description: 'Removes a component, wire, text, box, or cable by ID from the active schematic page.',
   inputSchema: {
     type: 'object',
     properties: {
       id: {
         type: 'string',
-        description: 'Unique ID of the component or wire to delete.'
+        description: 'Unique ID of the element to delete.'
       }
     },
     required: ['id']
@@ -154,7 +347,7 @@ export const DELETE_ELEMENT_TOOL: McpToolDefinition = {
 
 export const CLEAR_CANVAS_TOOL: McpToolDefinition = {
   name: 'clear_canvas',
-  description: 'Clears all components and wires from the active schematic page.',
+  description: 'Clears all components, wires, texts, and boxes from the active schematic page.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -190,11 +383,384 @@ export const SEARCH_SYMBOLS_TOOL: McpToolDefinition = {
   }
 };
 
+// -------------------------------------------------------------
+// 2. Project & Page Management Tools
+// -------------------------------------------------------------
+
+export const GET_PROJECT_INFO_TOOL: McpToolDefinition = {
+  name: 'get_project_info',
+  description: 'Returns high-level project metadata, active page ID, and overview of all pages in the project.',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  }
+};
+
+export const UPDATE_PROJECT_INFO_TOOL: McpToolDefinition = {
+  name: 'update_project_info',
+  description: 'Updates project metadata (name/title, description, author, company).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'Project name / title.' },
+      description: { type: 'string', description: 'Project description.' },
+      author: { type: 'string', description: 'Author / engineer name.' },
+      company: { type: 'string', description: 'Company / organization name.' }
+    }
+  }
+};
+
+export const LIST_PAGES_TOOL: McpToolDefinition = {
+  name: 'list_pages',
+  description: 'Lists all pages in the project with IDs, sheet numbers, types, titles, and element counts.',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  }
+};
+
+export const CREATE_PAGE_TOOL: McpToolDefinition = {
+  name: 'create_page',
+  description: 'Creates a new page in the project (schematic, cover, installation, terminal_diagram, or parts_list).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageType: {
+        type: 'string',
+        enum: ['schematic', 'cover', 'installation', 'terminal_diagram', 'parts_list', 'overview'],
+        description: 'Type of the page (default: "schematic").'
+      },
+      title: { type: 'string', description: 'Page title (e.g. "Hauptstromkreis Antrieb 1", "Steuerspannung 24V DC").' },
+      pageNumber: { type: 'string', description: 'Sheet number (e.g. "2", "3.1"). Automatically assigned if omitted.' },
+      higherLevel: { type: 'string', description: 'Higher level function (e.g. "=A1"). Defaults to project setting.' },
+      location: { type: 'string', description: 'Mounting location (e.g. "+S1"). Defaults to project setting.' }
+    }
+  }
+};
+
+export const SWITCH_PAGE_TOOL: McpToolDefinition = {
+  name: 'switch_page',
+  description: 'Switches the active drawing canvas to a different page by pageId or pageNumber.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', description: 'ID of the page to activate.' },
+      pageNumber: { type: 'string', description: 'Sheet number of the page to activate (alternative to pageId).' }
+    }
+  }
+};
+
+export const DELETE_PAGE_TOOL: McpToolDefinition = {
+  name: 'delete_page',
+  description: 'Deletes a page from the project by its pageId (cannot delete the only remaining page).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', description: 'ID of the page to delete.' }
+    },
+    required: ['pageId']
+  }
+};
+
+export const UPDATE_PAGE_INFO_TOOL: McpToolDefinition = {
+  name: 'update_page_info',
+  description: 'Updates page title, sheet number, higher level (=A1), location (+S1), or title block fields.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', description: 'ID of the page to update (defaults to active page).' },
+      title: { type: 'string', description: 'New page title.' },
+      pageNumber: { type: 'string', description: 'New sheet number.' },
+      higherLevel: { type: 'string', description: 'New higher level function (=Anlage).' },
+      location: { type: 'string', description: 'New location (+Ort).' },
+      commission: { type: 'string', description: 'Order / Commission number in title block.' },
+      author: { type: 'string', description: 'Author name in title block.' },
+      date: { type: 'string', description: 'Date in title block (YYYY-MM-DD).' },
+      revision: { type: 'string', description: 'Revision index.' }
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 3. Text & Device Box Annotations
+// -------------------------------------------------------------
+
+export const ADD_TEXT_TOOL: McpToolDefinition = {
+  name: 'add_text',
+  description: 'Places a free text or note on the schematic sheet.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      text: { type: 'string', description: 'Text content (supports multiline).' },
+      x: { type: 'number', description: 'X coordinate.' },
+      y: { type: 'number', description: 'Y coordinate.' },
+      fontSize: { type: 'number', description: 'Font size in px (default: 12).' },
+      fontColor: { type: 'string', description: 'Text color hex (default: "#edf2f7").' },
+      fontWeight: { type: 'string', enum: ['normal', 'bold'], description: 'Font weight.' },
+      align: { type: 'string', enum: ['start', 'center', 'end'], description: 'Text alignment.' },
+      rotation: { type: 'number', enum: [0, 90, 180, 270], description: 'Text rotation angle.' }
+    },
+    required: ['text', 'x', 'y']
+  }
+};
+
+export const UPDATE_TEXT_TOOL: McpToolDefinition = {
+  name: 'update_text',
+  description: 'Updates an existing text element on the active page.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'ID of the text element to update.' },
+      text: { type: 'string', description: 'New text content.' },
+      x: { type: 'number', description: 'New X coordinate.' },
+      y: { type: 'number', description: 'New Y coordinate.' },
+      fontSize: { type: 'number', description: 'New font size in px.' },
+      fontColor: { type: 'string', description: 'New font color hex.' },
+      fontWeight: { type: 'string', enum: ['normal', 'bold'], description: 'New font weight.' },
+      rotation: { type: 'number', enum: [0, 90, 180, 270], description: 'New rotation angle.' }
+    },
+    required: ['id']
+  }
+};
+
+export const ADD_DEVICE_BOX_TOOL: McpToolDefinition = {
+  name: 'add_device_box',
+  description: 'Adds a device box / black box boundary around functional units (e.g. PLC, frequency drive, module).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      x: { type: 'number', description: 'Top-left X coordinate.' },
+      y: { type: 'number', description: 'Top-left Y coordinate.' },
+      width: { type: 'number', description: 'Box width.' },
+      height: { type: 'number', description: 'Box height.' },
+      bmk: { type: 'string', description: 'Device tag / BMK (e.g. "-U1", "-A2").' },
+      label: { type: 'string', description: 'Box label text (e.g. "Frequenzumrichter G120").' },
+      description: { type: 'string', description: 'Sub-label or description.' },
+      lineStyle: { type: 'string', enum: ['solid', 'dashed'], description: 'Line style (default: "dashed").' },
+      color: { type: 'string', description: 'Border color hex (default: "#63b3ed").' }
+    },
+    required: ['x', 'y', 'width', 'height']
+  }
+};
+
+export const UPDATE_DEVICE_BOX_TOOL: McpToolDefinition = {
+  name: 'update_device_box',
+  description: 'Updates an existing device box (dimensions, BMK, label, line style).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'ID of the device box to update.' },
+      x: { type: 'number', description: 'New top-left X coordinate.' },
+      y: { type: 'number', description: 'New top-left Y coordinate.' },
+      width: { type: 'number', description: 'New width.' },
+      height: { type: 'number', description: 'New height.' },
+      bmk: { type: 'string', description: 'New BMK.' },
+      label: { type: 'string', description: 'New label text.' },
+      description: { type: 'string', description: 'New description text.' },
+      lineStyle: { type: 'string', enum: ['solid', 'dashed'], description: 'New line style.' }
+    },
+    required: ['id']
+  }
+};
+
+// -------------------------------------------------------------
+// 4. Macro System
+// -------------------------------------------------------------
+
+export const LIST_MACROS_TOOL: McpToolDefinition = {
+  name: 'list_macros',
+  description: 'Lists all available macros in the library (built-in IEC assemblies, motor starters, supply units, user macros).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      category: { type: 'string', description: 'Optional category filter.' },
+      type: { type: 'string', enum: ['window', 'page', 'all'], description: 'Filter by macro type (default: "all").' }
+    }
+  }
+};
+
+export const PLACE_MACRO_TOOL: McpToolDefinition = {
+  name: 'place_macro',
+  description: 'Places a multi-element window macro onto the active schematic page at specified (x, y) coordinates.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      macroId: { type: 'string', description: 'ID of the macro to place.' },
+      macroName: { type: 'string', description: 'Fuzzy name or search keyword of the macro (e.g. "Wendeschütz", "Motor Feeder", "Supply").' },
+      x: { type: 'number', description: 'Target X coordinate.' },
+      y: { type: 'number', description: 'Target Y coordinate.' }
+    },
+    required: ['x', 'y']
+  }
+};
+
+// -------------------------------------------------------------
+// 5. Architectural Installation Plan (Floor Plan)
+// -------------------------------------------------------------
+
+export const ADD_WALL_TOOL: McpToolDefinition = {
+  name: 'add_wall',
+  description: 'Adds a wall segment to an installation floor plan page.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      startX: { type: 'number', description: 'Starting X coordinate.' },
+      startY: { type: 'number', description: 'Starting Y coordinate.' },
+      endX: { type: 'number', description: 'Ending X coordinate.' },
+      endY: { type: 'number', description: 'Ending Y coordinate.' },
+      thickness: { type: 'number', description: 'Wall thickness in drawing units / mm (default: 24).' },
+      isExterior: { type: 'boolean', description: 'Whether this is an exterior wall (default: false).' }
+    },
+    required: ['startX', 'startY', 'endX', 'endY']
+  }
+};
+
+export const ADD_WALL_OPENING_TOOL: McpToolDefinition = {
+  name: 'add_wall_opening',
+  description: 'Adds an architectural opening (door, window, opening, garage door) to a floor plan wall.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      kind: {
+        type: 'string',
+        enum: ['door', 'window', 'opening', 'garage_door'],
+        description: 'Type of opening.'
+      },
+      x: { type: 'number', description: 'Center X coordinate.' },
+      y: { type: 'number', description: 'Center Y coordinate.' },
+      width: { type: 'number', description: 'Opening width in units / mm (default: 90).' },
+      orientation: { type: 'string', enum: ['horizontal', 'vertical'], description: 'Orientation along wall.' },
+      wallId: { type: 'string', description: 'Optional ID of the wall segment.' }
+    },
+    required: ['kind', 'x', 'y']
+  }
+};
+
+export const GET_FLOOR_PLAN_STATE_TOOL: McpToolDefinition = {
+  name: 'get_floor_plan_state',
+  description: 'Returns the floor plan data (walls, openings, rooms, installation circuits, scale calibration) of the page.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      pageId: { type: 'string', description: 'Optional page ID. Defaults to active page.' }
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 6. Reports, Diagnostics & Exports
+// -------------------------------------------------------------
+
+export const GET_PARTS_LIST_TOOL: McpToolDefinition = {
+  name: 'get_parts_list',
+  description: 'Generates and returns the complete Bill of Materials (Stückliste) for the project, grouped by article number and manufacturer.',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  }
+};
+
+export const GET_TERMINAL_DIAGRAM_TOOL: McpToolDefinition = {
+  name: 'get_terminal_diagram',
+  description: 'Generates and returns the terminal strip diagram (Klemmenplan) with internal and external connection targets.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      terminalStripBmk: {
+        type: 'string',
+        description: 'Optional terminal strip BMK (e.g. "-X1", "-X2") to filter results. If omitted, all terminal strips are returned.'
+      }
+    }
+  }
+};
+
+export const RECALCULATE_CROSS_REFERENCES_TOOL: McpToolDefinition = {
+  name: 'recalculate_cross_references',
+  description: 'Recalculates all contact cross-references (Kontaktspiegel) and interruption points across the entire project.',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  }
+};
+
+export const EXPORT_PDF_TOOL: McpToolDefinition = {
+  name: 'export_pdf',
+  description: 'Exports the schematic project or active page as a vector PDF document.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      mode: {
+        type: 'string',
+        enum: ['all', 'active'],
+        description: 'Export all pages or only the active page (default: "active").'
+      }
+    }
+  }
+};
+
+export const ZOOM_CANVAS_TOOL: McpToolDefinition = {
+  name: 'zoom_canvas',
+  description: 'Adjusts the canvas viewport zoom (fit to screen, zoom in, zoom out, reset 100%).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['fit', 'in', 'out', 'reset'],
+        description: 'Viewport zoom action.'
+      }
+    },
+    required: ['action']
+  }
+};
+
+// -------------------------------------------------------------
+// All Registered MCP Tools in Schematico
+// -------------------------------------------------------------
+
 export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
+  // Core Elements
   GET_CANVAS_STATE_TOOL,
   ADD_COMPONENT_TOOL,
+  UPDATE_COMPONENT_TOOL,
+  ROTATE_ELEMENT_TOOL,
+  MOVE_ELEMENT_TOOL,
   DRAW_WIRE_TOOL,
+  UPDATE_WIRE_TOOL,
+  ADD_CABLE_TOOL,
+  LIST_CABLES_TOOL,
   DELETE_ELEMENT_TOOL,
   CLEAR_CANVAS_TOOL,
-  SEARCH_SYMBOLS_TOOL
+  SEARCH_SYMBOLS_TOOL,
+
+  // Text & Annotations
+  ADD_TEXT_TOOL,
+  UPDATE_TEXT_TOOL,
+  ADD_DEVICE_BOX_TOOL,
+  UPDATE_DEVICE_BOX_TOOL,
+
+  // Project & Page Management
+  GET_PROJECT_INFO_TOOL,
+  UPDATE_PROJECT_INFO_TOOL,
+  LIST_PAGES_TOOL,
+  CREATE_PAGE_TOOL,
+  SWITCH_PAGE_TOOL,
+  DELETE_PAGE_TOOL,
+  UPDATE_PAGE_INFO_TOOL,
+
+  // Macros
+  LIST_MACROS_TOOL,
+  PLACE_MACRO_TOOL,
+
+  // Architectural Floor Plan
+  ADD_WALL_TOOL,
+  ADD_WALL_OPENING_TOOL,
+  GET_FLOOR_PLAN_STATE_TOOL,
+
+  // Reports & View
+  GET_PARTS_LIST_TOOL,
+  GET_TERMINAL_DIAGRAM_TOOL,
+  RECALCULATE_CROSS_REFERENCES_TOOL,
+  EXPORT_PDF_TOOL,
+  ZOOM_CANVAS_TOOL
 ];

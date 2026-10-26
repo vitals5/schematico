@@ -5103,6 +5103,15 @@ export class App {
         return this.project.pages.find(p => p.id === this.project.activePageId) || this.project.pages[0];
       },
       getCanvas: () => this.canvas,
+      switchPage: (pageId: string) => {
+        this.project.activePageId = pageId;
+        this.canvas?.setPage(pageId);
+        this.updateTotalSheets();
+        this.updateUI();
+      },
+      deletePage: (pageId: string) => {
+        this.deletePage(pageId);
+      },
       notifyModified: () => {
         this.notifyChange();
       },

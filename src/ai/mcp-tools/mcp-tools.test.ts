@@ -56,7 +56,19 @@ function createMockProject(): { project: Project; manager: any } {
         const found = project.pages.find(p => p.id === pageId);
         if (found) return found;
       }
-      return project.pages[0];
+      return project.pages.find(p => p.id === project.activePageId) || project.pages[0];
+    },
+    switchPage: (pageId: string) => {
+      project.activePageId = pageId;
+    },
+    deletePage: (pageId: string) => {
+      const idx = project.pages.findIndex(p => p.id === pageId);
+      if (idx !== -1) {
+        project.pages.splice(idx, 1);
+        if (project.activePageId === pageId && project.pages.length > 0) {
+          project.activePageId = project.pages[0].id;
+        }
+      }
     },
     notifyModified: () => {
       modifiedCount++;
@@ -177,6 +189,183 @@ async function runTests() {
     throw new Error('Expected unknown tool to fail gracefully');
   }
   console.log('✓ Test 9: Unknown tool gracefully rejected with available tools list');
+
+  // Test 10: Component modifications (update_component, rotate_element, move_element)
+  const addComp = await registry.executeTool('add_component', {
+    symbolId: 'motor_3p',
+    x: 100,
+    y: 100,
+    bmk: '-M1',
+    functionText: 'Hauptantrieb'
+  }, manager);
+  if (!addComp.success || !addComp.component) {
+    throw new Error('Failed to add motor component');
+  }
+
+  const updateComp = await registry.executeTool('update_component', {
+    id: addComp.component.id,
+    bmk: '-M99',
+    functionText: 'Lüftermotor',
+    technicalCharacteristics: '15kW 400V'
+  }, manager);
+  if (!updateComp.success || updateComp.component.bmk !== '-M99' || updateComp.component.technicalCharacteristics !== '15kW 400V') {
+    throw new Error('update_component failed to update fields');
+  }
+
+  const rotateComp = await registry.executeTool('rotate_element', {
+    id: addComp.component.id,
+    rotation: 90
+  }, manager);
+  if (!rotateComp.success || rotateComp.rotation !== 90) {
+    throw new Error('rotate_element failed to update rotation');
+  }
+
+  const moveComp = await registry.executeTool('move_element', {
+    id: addComp.component.id,
+    dx: 20,
+    dy: 30
+  }, manager);
+  if (!moveComp.success || moveComp.x !== 120 || moveComp.y !== 130) {
+    throw new Error(`move_element failed: expected (120, 130), got (${moveComp.x}, ${moveComp.y})`);
+  }
+  console.log('✓ Test 10: update_component, rotate_element, and move_element succeeded');
+
+  // Test 11: Text & Device Box operations
+  const addTextRes = await registry.executeTool('add_text', {
+    text: 'Steuerungsbereich Anlage 1',
+    x: 50,
+    y: 50,
+    fontSize: 14,
+    color: '#0055ff'
+  }, manager);
+  if (!addTextRes.success || !addTextRes.textElement) {
+    throw new Error('add_text failed');
+  }
+
+  const updateTextRes = await registry.executeTool('update_text', {
+    id: addTextRes.textElement.id,
+    text: 'Steuerungsbereich Anlage 2'
+  }, manager);
+  if (!updateTextRes.success || updateTextRes.textElement.text !== 'Steuerungsbereich Anlage 2') {
+    throw new Error('update_text failed');
+  }
+
+  const addBoxRes = await registry.executeTool('add_device_box', {
+    label: '=A1+S1-U1',
+    x: 40,
+    y: 40,
+    width: 200,
+    height: 120,
+    lineStyle: 'dashed'
+  }, manager);
+  if (!addBoxRes.success || !addBoxRes.deviceBox) {
+    throw new Error('add_device_box failed');
+  }
+
+  const updateBoxRes = await registry.executeTool('update_device_box', {
+    id: addBoxRes.deviceBox.id,
+    label: '=A1+S1-U2'
+  }, manager);
+  if (!updateBoxRes.success || updateBoxRes.deviceBox.label !== '=A1+S1-U2') {
+    throw new Error('update_device_box failed');
+  }
+  console.log('✓ Test 11: add_text, update_text, add_device_box, update_device_box succeeded');
+
+  // Test 12: Cable definitions and listing
+  const addCableRes = await registry.executeTool('add_cable', {
+    bmk: '-W1',
+    cableType: 'ÖLFLEX CLASSIC 110',
+    coreCount: 5,
+    crossSection: '1.5mm²',
+    voltage: '300/500V'
+  }, manager);
+  if (!addCableRes.success || !addCableRes.cable) {
+    throw new Error('add_cable failed');
+  }
+
+  const listCablesRes = await registry.executeTool('list_cables', {}, manager);
+  if (!listCablesRes.success || listCablesRes.total !== 1 || listCablesRes.cables[0].bmk !== '-W1') {
+    throw new Error('list_cables failed to list added cable');
+  }
+  console.log('✓ Test 12: add_cable and list_cables succeeded');
+
+  // Test 13: Project & Page lifecycle
+  const projInfoRes = await registry.executeTool('get_project_info', {}, manager);
+  if (!projInfoRes.success || projInfoRes.project.name !== 'Test Project') {
+    throw new Error('get_project_info failed');
+  }
+
+  const updateProjRes = await registry.executeTool('update_project_info', {
+    name: 'Modernized Schematico Plant',
+    company: 'Schematico Automation'
+  }, manager);
+  if (!updateProjRes.success || project.name !== 'Modernized Schematico Plant') {
+    throw new Error('update_project_info failed');
+  }
+
+  const createPageRes = await registry.executeTool('create_page', {
+    pageNumber: '2',
+    title: 'Leistungsteil 400V',
+    higherLevel: '=A1',
+    location: '+S1'
+  }, manager);
+  if (!createPageRes.success || project.pages.length !== 2) {
+    throw new Error('create_page failed to append new sheet');
+  }
+
+  const listPagesRes = await registry.executeTool('list_pages', {}, manager);
+  if (!listPagesRes.success || listPagesRes.pages.length !== 2) {
+    throw new Error('list_pages failed');
+  }
+
+  const switchPageRes = await registry.executeTool('switch_page', {
+    pageId: createPageRes.page.id
+  }, manager);
+  if (!switchPageRes.success || project.activePageId !== createPageRes.page.id) {
+    throw new Error('switch_page failed');
+  }
+  console.log('✓ Test 13: Project info and page lifecycle operations succeeded');
+
+  // Test 14: Reports generation
+  const partsListRes = await registry.executeTool('get_parts_list', {}, manager);
+  if (!partsListRes.success || !Array.isArray(partsListRes.items)) {
+    throw new Error('get_parts_list failed');
+  }
+
+  const termReportRes = await registry.executeTool('get_terminal_diagram', {}, manager);
+  if (!termReportRes.success || !Array.isArray(termReportRes.strips)) {
+    throw new Error('get_terminal_diagram failed');
+  }
+  console.log('✓ Test 14: get_parts_list and get_terminal_diagram reports generated successfully');
+
+  // Test 15: Floor plan architectural operations
+  const wallRes = await registry.executeTool('add_wall', {
+    startX: 0,
+    startY: 0,
+    endX: 5000,
+    endY: 0,
+    thickness: 240
+  }, manager);
+  if (!wallRes.success || !wallRes.wall) {
+    throw new Error('add_wall failed');
+  }
+
+  const openingRes = await registry.executeTool('add_wall_opening', {
+    kind: 'door',
+    x: 1500,
+    y: 0,
+    width: 900,
+    wallId: wallRes.wall.id
+  }, manager);
+  if (!openingRes.success || !openingRes.opening) {
+    throw new Error('add_wall_opening failed');
+  }
+
+  const fpStateRes = await registry.executeTool('get_floor_plan_state', {}, manager);
+  if (!fpStateRes.success || fpStateRes.walls.length !== 1 || fpStateRes.openings.length !== 1) {
+    throw new Error('get_floor_plan_state failed');
+  }
+  console.log('✓ Test 15: Architectural floor plan tools (add_wall, add_wall_opening, get_floor_plan_state) succeeded');
 
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
