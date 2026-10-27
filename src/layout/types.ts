@@ -88,6 +88,7 @@ export interface LayoutReport {
   };
 }
 export interface LayoutConstraints {
+  protectedComponentIds?: string[];
   fixedFrameIds?: string[];
   lockedIds?: string[];
   containerMembers?: Record<string, string[]>;

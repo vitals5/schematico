@@ -148,6 +148,7 @@ export async function previewLayout(
     next.connectionMode = 'explicit';
     next.layoutConstraints = {
       ...next.layoutConstraints,
+      protectedComponentIds: next.components.map(c => c.id),
       lockedIds: options.lockedIds ?? next.layoutConstraints?.lockedIds,
       containerMembers: Object.fromEntries(
         input.frames

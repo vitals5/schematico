@@ -1,3 +1,4 @@
+import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import assert from "node:assert/strict";
 import { pvDraft } from "./testing/pvDraft";
 import { fixture, add } from "./testing/fixture";
@@ -19,6 +20,8 @@ assert.equal(draft.pages[0].components.length, 24);
 assert.equal(JSON.stringify(project), original);
 applyLayout(project, preview.candidates[0], draft);
 assert.equal(topology(project), net);
+AutoconnectEngine.updatePageAutoconnections(project.pages[0]);
+assert.equal(topology(project), net, 'Refreshing a checked layout must not introduce electrical connections');
 assert(preview.candidates.every((c) => c.report.valid));
 const tiny = clone(draft);
 tiny.pages[0].plotFrame.width = 100;

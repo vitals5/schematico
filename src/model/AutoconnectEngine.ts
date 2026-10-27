@@ -146,8 +146,12 @@ export class AutoconnectEngine {
   public static updatePageAutoconnections(page: Page): void {
     // Native native CAD pages already own an explicit connection graph, including bundles.
     if (page.importedDrawing) return;
-    const manualWires = page.wires.filter(w => !w.isAutoconnect);
-    const existingAutoWires = page.wires.filter(w => w.isAutoconnect);
+    // Layout-managed endpoints own a checked explicit graph. Alignment must never add nets.
+    const protectedIds = new Set(page.connectionMode === 'explicit' && page.layoutConstraints
+      ? (page.layoutConstraints.protectedComponentIds ??= page.components.map(c => c.id)) : []);
+    const preserve = (w: Wire) => !w.isAutoconnect || protectedIds.has(w.from.componentId) && protectedIds.has(w.to.componentId);
+    const manualWires = page.wires.filter(preserve);
+    const existingAutoWires = page.wires.filter(w => !preserve(w));
 
     // Existing manual wire map for fast lookup: key = minComp:pin|maxComp:pin
     const manualWireSet = new Set<string>();
@@ -163,6 +167,7 @@ export class AutoconnectEngine {
     const newAutoWires: Wire[] = [];
 
     for (const pair of pairs) {
+      if (protectedIds.has(pair.pin1.componentId) && protectedIds.has(pair.pin2.componentId)) continue;
       // Preserve the imported graph while allowing normal new placements to autoconnect.
       if (importedIds.has(pair.pin1.componentId) && importedIds.has(pair.pin2.componentId)) continue;
       const key1 = `${pair.pin1.componentId}:${pair.pin1.pinId}|${pair.pin2.componentId}:${pair.pin2.pinId}`;

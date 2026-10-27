@@ -292,3 +292,11 @@ const diffPairs = AutoconnectEngine.findAutoconnectPairs([halfTermTop, halfTermB
 assert(diffPairs.length === 0, `Pins on different raster columns (4px apart) do NOT false-connect (got ${diffPairs.length})`);
 
 console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY! 100% COMPATIBLE AUTOCONNECTING & HALBRASTER SUPPORT!');
+
+const layoutPage = JSON.parse(JSON.stringify(page)) as Page;
+layoutPage.connectionMode = 'explicit';
+layoutPage.layoutConstraints = {};
+const graphBefore = JSON.stringify(layoutPage.wires);
+AutoconnectEngine.updatePageAutoconnections(layoutPage);
+assert(JSON.stringify(layoutPage.wires) === graphBefore, 'A checked explicit layout keeps its exact existing graph, including saved auto wires');
+assert(layoutPage.layoutConstraints.protectedComponentIds?.length === layoutPage.components.length, 'Legacy layout endpoints are protected before geometric autoconnect');
