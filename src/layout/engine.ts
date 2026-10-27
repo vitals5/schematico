@@ -1,4 +1,5 @@
 import { rankedGroup } from './ranked';
+import { structuredGroup, designPenalty } from './structured';
 import { SheetPacker } from './packing';
 import type { ELK as ElkEngine } from 'elkjs/lib/elk-api';
 import type { ElkNode, ElkExtendedEdge } from 'elkjs/lib/elk-api';
@@ -24,7 +25,7 @@ export async function solveLayouts(
       (m) => () => new m.default(),
     ));
   const results: LayoutSolution[] = [];
-  for (const profile of ['readability', 'compact', 'minimal_change', 'lanes'] as const) {
+  for (const profile of ['readability', 'compact', 'minimal_change', 'lanes', 'structured'] as const) {
     const s = clone(source);
     if (s.issues.some((i) => i.severity === 'error')) {
       results.push({ profile, snapshot: s, report: validateLayout(s) });
@@ -85,7 +86,7 @@ export async function solveLayouts(
       ]),
     );
     const direction = profile === 'compact' ? 'RIGHT' : 'DOWN';
-    const gap = profile === 'lanes' ? 4 : profile === 'compact' ? 6 : profile === 'readability' ? 12 : 8;
+    const gap = profile === 'structured' ? 6 : profile === 'lanes' ? 4 : profile === 'compact' ? 6 : profile === 'readability' ? 12 : 8;
     const descendants = (id: string): typeof s.nodes => {
       const belongs = (child: string, seen = new Set<string>()): boolean => {
         if (child === id) return true;
@@ -145,6 +146,11 @@ export async function solveLayouts(
           sources: [JSON.stringify([e.from.componentId, e.from.pinId])],
           targets: [JSON.stringify([e.to.componentId, e.to.pinId])],
         }));
+      if (profile === 'structured') {
+        const structured = structuredGroup(id, children, s, gap, padding);
+        if (structured && (structured.width ?? 0) <= widthBudget &&
+            (structured.height ?? 0) <= heightBudget) return structured;
+      }
       if (edges.length && (profile === 'lanes' || id !== 'layout-root' && profile === 'compact')) {
         const compact = rankedGroup(id, children, s, gap, padding, profile === 'lanes');
         if (
@@ -460,7 +466,22 @@ export async function solveLayouts(
       results.push({ profile, snapshot: s, report: placement });
       continue;
     }
-    routeAll(s, profile === 'lanes');
+    // Routing order affects corridor availability. Compare bounded deterministic
+    // alternatives instead of letting arbitrary wire IDs decide the final geometry.
+    const strategies = s.nodes.length <= 80 && s.edges.length <= 120
+      ? ['forward', 'reverse', 'bundles'] as const
+      : [profile === 'structured' ? 'bundles' : profile === 'lanes' ? 'reverse' : 'forward'] as const;
+    const routed = strategies.map(strategy => {
+      const snapshot = clone(s);
+      routeAll(snapshot, strategy === 'reverse', strategy === 'bundles');
+      const report = validateLayout(snapshot);
+      return { snapshot, report };
+    });
+    routed.sort((a,b) => Number(b.report.valid)-Number(a.report.valid) ||
+      (a.report.metrics.crossings-b.report.metrics.crossings)*100 +
+      (a.report.metrics.bends-b.report.metrics.bends)*8 +
+      a.report.metrics.length-b.report.metrics.length);
+    Object.assign(s, routed[0].snapshot);
     if (s.issues.some((i) => i.type === 'route_failed')) {
       results.push({
         profile,
@@ -490,6 +511,7 @@ export async function solveLayouts(
 const score = (r: LayoutSolution) => {
   const m = r.report.metrics;
   return (
+    designPenalty(r.snapshot) +
     m.crossings * 100 +
     m.bends * 8 +
     m.length +

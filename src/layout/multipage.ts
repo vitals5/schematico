@@ -1,3 +1,4 @@
+import { designPenalty } from './structured';
 import type { Project, Page, Wire, PlacedComponent } from '../model/types';
 import { getSymbolById, getSymbolForComponent } from '../model/symbols';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -479,7 +480,8 @@ export async function multiPageCandidate(
       report,
       multiPage: multi,
     };
-    const cost = report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800;
+    const geometryCost = multi.pages.reduce((sum,page)=>sum+designPenalty(snapshotPage(page,copy)),0);
+    const cost = geometryCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800;
     if (cost < bestCost) { best = candidate; bestCost = cost; }
     if (report.metrics.crossings <= 30 || count >= 4) break;
   }

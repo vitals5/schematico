@@ -77,7 +77,7 @@ export function pinStub(
   return { x: pin.x + v.x * len, y: pin.y + v.y * len };
 }
 type ReservedStub = { edgeId: string; p: Point; q: Point };
-export function routeAll(s: LayoutSnapshot, reverse = false): void {
+export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false): void {
   const shapes = s.nodes
       .flatMap((n) => n.shapes)
       .filter((g) => g.kind !== 'frame'),
@@ -93,8 +93,17 @@ export function routeAll(s: LayoutSnapshot, reverse = false): void {
         : [];
     }),
   );
-  for (const e of [...s.edges].sort((a, b) => a.id.localeCompare(b.id) * (reverse ? -1 : 1))) {
-    const routed = route(s, e, shapes, done, nets, reserved);
+  const bundleKey = (e: LayoutEdge) => JSON.stringify([e.from.componentId,e.to.componentId].sort());
+  const pinOrder = (e: LayoutEdge) => {
+    const first=[e.from,e.to].sort((a,b)=>a.componentId.localeCompare(b.componentId))[0];
+    const pin=s.nodes.find(n=>n.id===first.componentId)?.pins.find(p=>p.id===first.pinId);
+    return pin ? (pin.direction==='top'||pin.direction==='bottom'?pin.x:pin.y) : 0;
+  };
+  const ordered=[...s.edges].sort((a,b)=> bundles
+    ? bundleKey(a).localeCompare(bundleKey(b)) || pinOrder(a)-pinOrder(b) || a.id.localeCompare(b.id)
+    : a.id.localeCompare(b.id) * (reverse ? -1 : 1));
+  for (const e of ordered) {
+    const routed = route(s, e, shapes, done, nets, reserved, bundles);
     if (!routed) {
       s.issues.push({
         type: 'route_failed',
@@ -116,6 +125,7 @@ function route(
   done: LayoutEdge[],
   nets: Map<string, string>,
   reserved: ReservedStub[],
+  bundles = false,
 ): Point[] | undefined {
   const from = s.nodes
       .find((n) => n.id === e.from.componentId)
@@ -216,6 +226,18 @@ function route(
     [a, { x: a.x, y: b.y }, b],
     [a, { x: b.x, y: a.y }, b],
   ];
+  // Reuse the shape of a previously routed conductor when both physical port
+  // offsets match. The normal obstacle/net checks still apply to every segment.
+  if (bundles) for (const previous of done) {
+    const forward=previous.from.componentId===e.from.componentId&&previous.to.componentId===e.to.componentId;
+    const backward=previous.to.componentId===e.from.componentId&&previous.from.componentId===e.to.componentId;
+    if(!forward&&!backward)continue;
+    const points=forward?previous.points:[...previous.points].reverse();
+    const first=points[0],last=points.at(-1)!;
+    const dx=from.x-first.x,dy=from.y-first.y;
+    if(Math.abs(to.x-last.x-dx)>1e-6||Math.abs(to.y-last.y-dy)>1e-6)continue;
+    if(points.length>=4)fastPaths.unshift([a,...points.slice(1,-1).map(p=>({x:p.x+dx,y:p.y+dy})),b]);
+  }
   const nearest = (values: number[], a: number, b: number) =>
     [...values]
       .sort(

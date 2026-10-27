@@ -29,6 +29,7 @@ export interface LayoutPin extends Point {
   direction: Direction;
 }
 export interface LayoutNode {
+  handover?: boolean;
   joinedPins?: string[][];
   insertion?: Point;
   id: string;
@@ -98,7 +99,7 @@ export interface LayoutOptions extends LayoutConstraints {
   selectedIds?: string[];
 }
 export interface LayoutSolution {
-  profile: 'readability' | 'compact' | 'minimal_change' | 'lanes';
+  profile: 'readability' | 'compact' | 'minimal_change' | 'lanes' | 'structured';
   snapshot: LayoutSnapshot;
   report: LayoutReport;
 }

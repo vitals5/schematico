@@ -53,3 +53,12 @@ ELK dient der Graphanordnung; ein eigener orthogonaler Router berücksichtigt Hi
 ## Strompfad-Variante
 
 Die zusätzliche Variante **Strompfade** ordnet Bauteile anhand ihrer elektrischen Nachbarn statt ausschließlich nach Objekt-ID und richtet verbundene Anschlüsse über mehrere Reihen auf gemeinsamen Achsen aus. Bestehende kompakte Varianten bleiben erhalten. Bei mehreren gültigen Varianten können sie in der Vorschau verglichen werden; Kreuzungen, Knicke und Leitungslänge bleiben messbar. Eine gültige Kollisionsprüfung allein bedeutet weiterhin keine optimale Lesbarkeit.
+
+
+## Geordnete Strompfade
+
+Die zusätzliche Variante **Geordnete Strompfade** richtet Geräte auf gemeinsamen Symbolkörper-Ebenen aus. Dabei bleibt Platz für vorhandene Beschriftungen. Verbundene Anschlussachsen werden in beiden Richtungen ausgeglichen; mehrpolige Anschlussreihen folgen den tatsächlichen Anschlusspositionen statt der alphabetischen Objekt-ID. Seitliche Abbruchstellen erhalten eigene Übergabespalten, sofern diese innerhalb des Blattes unterzubringen sind. Bei beidseitig anschließbaren Abbruchstellen entscheidet der tatsächlich verwendete Anschluss.
+
+Für gleich aufgebaute mehrpolige Verbindungen versucht der Router, einen bereits gefundenen Leitungsverlauf parallel zu übertragen. Jede Ader durchläuft weiterhin die Hindernis- und Netzprüfung. Ein Leitungsbündel erzeugt keine elektrische Verbindung zwischen seinen Adern. Bei Seiten mit höchstens 80 Layoutobjekten und 120 Leitungen werden drei feste Routing-Reihenfolgen verglichen. Größere Seiten verwenden eine Reihenfolge pro Platzierungsvariante, um den Aufwand zu begrenzen.
+
+Neben Kreuzungen, Knicken und Leitungslängen bewertet die Auswahl nun auch versetzte Anschlussachsen und ungleichmäßige Achsversätze paralleler Verbindungen. Die bisherigen Varianten bleiben als Alternativen erhalten. Eine neue Stilvariante wird nicht allein wegen ihres Namens bevorzugt. Die Regeln leiten keine Stromflussrichtung oder elektrotechnische Funktion aus räumlichen Anschlussrichtungen ab. Bestehende Blattreihenfolgen und elektrische Verbindungen werden dadurch nicht umgedeutet.

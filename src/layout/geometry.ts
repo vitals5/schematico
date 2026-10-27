@@ -386,6 +386,7 @@ export function snapshotPage(
     snapshot.nodes.push({
       id: comp.id,
       kind: 'component',
+      handover: isInterruptionSymbol(sym),
       joinedPins:
         ['corners', 'tees', 'interruptions'].includes(connectionFamily(sym)) ||
         sym.id === 'terminal_single' ||
