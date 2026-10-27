@@ -85,7 +85,7 @@ export async function solveLayouts(
       ]),
     );
     const direction = profile === 'compact' ? 'RIGHT' : 'DOWN';
-    const gap = profile === 'compact' ? 6 : profile === 'readability' ? 12 : 8;
+    const gap = profile === 'lanes' ? 4 : profile === 'compact' ? 6 : profile === 'readability' ? 12 : 8;
     const descendants = (id: string): typeof s.nodes => {
       const belongs = (child: string, seen = new Set<string>()): boolean => {
         if (child === id) return true;
@@ -460,7 +460,7 @@ export async function solveLayouts(
       results.push({ profile, snapshot: s, report: placement });
       continue;
     }
-    routeAll(s);
+    routeAll(s, profile === 'lanes');
     if (s.issues.some((i) => i.type === 'route_failed')) {
       results.push({
         profile,

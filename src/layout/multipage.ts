@@ -387,6 +387,8 @@ export async function multiPageCandidate(
     source.importedDrawing
   )
     return;
+  let best: LayoutCandidate | undefined;
+  let bestCost = Infinity;
   const failedInputs = new Set<string>();
   const blocks = partitionBlocks(source);
   if (blocks.length < 2) return;
@@ -468,7 +470,7 @@ export async function multiPageCandidate(
     ) as (keyof typeof report.metrics)[])
       report.metrics[k] = reports.reduce((n, r) => n + r.metrics[k], 0);
     report.issues = reports.flatMap((r) => r.issues);
-    return {
+    const candidate: LayoutCandidate = {
       id: 'layout-multipage',
       base: projectRevision(project),
       pageId,
@@ -477,7 +479,11 @@ export async function multiPageCandidate(
       report,
       multiPage: multi,
     };
+    const cost = report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800;
+    if (cost < bestCost) { best = candidate; bestCost = cost; }
+    if (report.metrics.crossings <= 30 || count >= 4) break;
   }
+  return best;
 }
 export function applyMultiPage(
   project: Project,
