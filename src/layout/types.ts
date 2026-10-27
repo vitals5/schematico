@@ -29,6 +29,7 @@ export interface LayoutPin extends Point {
   direction: Direction;
 }
 export interface LayoutNode {
+  joinedPins?: string[][];
   insertion?: Point;
   id: string;
   kind: 'component' | 'text' | 'image' | 'cable';
@@ -87,10 +88,12 @@ export interface LayoutReport {
   };
 }
 export interface LayoutConstraints {
+  fixedFrameIds?: string[];
   lockedIds?: string[];
   containerMembers?: Record<string, string[]>;
 }
 export interface LayoutOptions extends LayoutConstraints {
+  multiPage?: boolean;
   selectedIds?: string[];
 }
 export interface LayoutSolution {
@@ -99,6 +102,7 @@ export interface LayoutSolution {
   report: LayoutReport;
 }
 export interface LayoutCandidate {
+  multiPage?: import('./multipage').MultiPageLayout;
   id: string;
   base: string;
   pageId: string;

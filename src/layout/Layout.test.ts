@@ -51,7 +51,7 @@ assert.deepEqual(
 const full = fixture();
 for (let i = 0; i < 30; i++) add(full, 'M' + i, 'motor_3phase');
 const original = JSON.stringify(full);
-const overflow = await previewLayout(full, 'p');
+const overflow = await previewLayout(full, 'p', { multiPage: false });
 assert.equal(overflow.status, 'layout_invalid');
 assert(overflow.splitSuggestion);
 assert.equal(JSON.stringify(full), original);

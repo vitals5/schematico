@@ -1,3 +1,4 @@
+import { geometryFromSymbol } from '../model/DeviceBoxElement';
 import { nextDeviceTag } from '../model/DeviceTag';
 import type { CanvasStateManager } from '../ai/mcp-tools/handlers';
 import type { McpToolDefinition } from '../ai/mcp-tools/definitions';
@@ -121,6 +122,8 @@ function result(preview: LayoutPreview) {
     requiresUserApply: true,
     before: preview.before.metrics,
     candidates: preview.candidates.map((c) => ({
+      pages: c.multiPage?.pages.map(p => ({ id: p.id, pageNumber: p.pageNumber, title: p.title })),
+      crossSheetConnections: c.multiPage?.links.length,
       id: c.id,
       profile: c.profile,
       metrics: c.report.metrics,
@@ -238,6 +241,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
       c: PlacedComponent = {
         id,
         symbolId: sym.id,
+        ...(sym.deviceBox ? { deviceBox: geometryFromSymbol(sym) } : {}),
         bmk: item.bmk?.trim() || nextDeviceTag(draft, sym.defaultBmkPrefix || '-K'),
         higherLevelFunction: page.higherLevel,
         mountingLocation: page.location,

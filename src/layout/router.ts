@@ -1,12 +1,12 @@
-import type { LayoutSnapshot, LayoutEdge, Point, Shape } from "./types";
-import { bottom, right, contains, union } from "./rect";
+import type { LayoutSnapshot, LayoutEdge, Point, Shape } from './types';
+import { bottom, right, contains, union } from './rect';
 import {
   segmentHits,
   endpointExemption,
   netIds,
   parallelOverlap,
   crossing,
-} from "./validate";
+} from './validate';
 const vectors = {
   top: { x: 0, y: -1 },
   right: { x: 1, y: 0 },
@@ -53,21 +53,55 @@ class Heap<T> {
     return this.data.length;
   }
 }
+export function pinStub(
+  s: LayoutSnapshot,
+  pin: NonNullable<LayoutSnapshot['nodes'][number]['pins'][number]>,
+  owner: string,
+): Point {
+  const v = vectors[pin.direction],
+    parts = s.nodes
+      .find((n) => n.id === owner)!
+      .shapes.filter(
+        (g) =>
+          g.kind === 'body' || (g.kind === 'pin_label' && g.pinId === pin.id),
+      )
+      .map((g) => g.rect),
+    body = parts.length ? union(parts) : undefined;
+  let len = Math.max(2, s.grid.spacing / 2);
+  if (body) {
+    if (v.x > 0) len = Math.max(len, right(body) - pin.x + 2);
+    if (v.x < 0) len = Math.max(len, pin.x - body.x + 2);
+    if (v.y > 0) len = Math.max(len, bottom(body) - pin.y + 2);
+    if (v.y < 0) len = Math.max(len, pin.y - body.y + 2);
+  }
+  return { x: pin.x + v.x * len, y: pin.y + v.y * len };
+}
+type ReservedStub = { edgeId: string; p: Point; q: Point };
 export function routeAll(s: LayoutSnapshot): void {
   const shapes = s.nodes
       .flatMap((n) => n.shapes)
-      .filter((g) => g.kind !== "frame"),
+      .filter((g) => g.kind !== 'frame'),
     done: LayoutEdge[] = [],
     nets = netIds(s);
+  const reserved: ReservedStub[] = s.edges.flatMap((e) =>
+    [e.from, e.to].flatMap((endpoint) => {
+      const pin = s.nodes
+        .find((n) => n.id === endpoint.componentId)
+        ?.pins.find((p) => p.id === endpoint.pinId);
+      return pin
+        ? [{ edgeId: e.id, p: pin, q: pinStub(s, pin, endpoint.componentId) }]
+        : [];
+    }),
+  );
   for (const e of [...s.edges].sort((a, b) => a.id.localeCompare(b.id))) {
-    const routed = route(s, e, shapes, done, nets);
+    const routed = route(s, e, shapes, done, nets, reserved);
     if (!routed) {
       s.issues.push({
-        type: "route_failed",
-        severity: "error",
+        type: 'route_failed',
+        severity: 'error',
         objectIds: [e.id],
         message:
-          "Kein hindernisfreier Leitungsweg mit gültigen Anschlussrichtungen gefunden.",
+          'Kein hindernisfreier Leitungsweg mit gültigen Anschlussrichtungen gefunden.',
       });
       continue;
     }
@@ -81,6 +115,7 @@ function route(
   shapes: Shape[],
   done: LayoutEdge[],
   nets: Map<string, string>,
+  reserved: ReservedStub[],
 ): Point[] | undefined {
   const from = s.nodes
       .find((n) => n.id === e.from.componentId)
@@ -94,32 +129,13 @@ function route(
       { x: from.x, y: from.y },
       { x: to.x, y: to.y },
     ];
-  const stub = (pin: typeof from, owner: string) => {
-    const v = vectors[pin.direction],
-      parts = s.nodes
-        .find((n) => n.id === owner)!
-        .shapes.filter(
-          (g) =>
-            g.kind === "body" || (g.kind === "pin_label" && g.pinId === pin.id),
-        )
-        .map((g) => g.rect),
-      body = parts.length ? union(parts) : undefined;
-    let len = Math.max(2, s.grid.spacing / 2);
-    if (body) {
-      if (v.x > 0) len = Math.max(len, right(body) - pin.x + 2);
-      if (v.x < 0) len = Math.max(len, pin.x - body.x + 2);
-      if (v.y > 0) len = Math.max(len, bottom(body) - pin.y + 2);
-      if (v.y < 0) len = Math.max(len, pin.y - body.y + 2);
-    }
-    return { x: pin.x + v.x * len, y: pin.y + v.y * len };
-  };
-  const a = stub(from, e.from.componentId),
-    b = stub(to, e.to.componentId);
+  const a = pinStub(s, from, e.from.componentId),
+    b = pinStub(s, to, e.to.componentId);
   const rowShapes = new Map<number, Shape[]>(),
     columnShapes = new Map<number, Shape[]>(),
     clearCache = new Map<string, boolean>();
   const clear = (p: Point, q: Point, index = -1): boolean => {
-    const cacheKey = p.x + "," + p.y + "|" + q.x + "," + q.y;
+    const cacheKey = p.x + ',' + p.y + '|' + q.x + ',' + q.y;
     if (index < 0 && clearCache.has(cacheKey)) return clearCache.get(cacheKey)!;
     const obstacles =
       index >= 0
@@ -139,6 +155,12 @@ function route(
           !(index >= 0 && endpointExemption(g, e, index, 1)) &&
           segmentHits(p, q, g.rect),
       ) &&
+      !reserved.some(
+        (r) =>
+          r.edgeId !== e.id &&
+          nets.get(r.edgeId) !== nets.get(e.id) &&
+          parallelOverlap(p, q, r.p, r.q),
+      ) &&
       !done.some(
         (w) =>
           nets.get(e.id) !== nets.get(w.id) &&
@@ -148,7 +170,7 @@ function route(
       );
     if (index < 0) {
       clearCache.set(cacheKey, result);
-      clearCache.set(q.x + "," + q.y + "|" + p.x + "," + p.y, result);
+      clearCache.set(q.x + ',' + q.y + '|' + p.x + ',' + p.y, result);
     }
     return result;
   };
@@ -276,7 +298,7 @@ function route(
     by = yy.indexOf(b.y);
   if ([ax, ay, bx, by].some((v) => v < 0)) return;
   const initialD =
-    from.direction === "left" || from.direction === "right" ? 0 : 1;
+    from.direction === 'left' || from.direction === 'right' ? 0 : 1;
   const start = key(ax, ay, initialD);
   heap.push(0, { x: ax, y: ay, d: initialD, g: 0, key: start });
   best.set(start, 0);
@@ -345,7 +367,7 @@ function route(
   if (!last) return;
   const points: Point[] = [];
   for (let k: string | undefined = last; k; k = prev.get(k)) {
-    const [x, y] = k.split(",").map(Number);
+    const [x, y] = k.split(',').map(Number);
     points.push({ x: xx[x], y: yy[y] });
   }
   points.reverse();

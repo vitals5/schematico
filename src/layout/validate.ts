@@ -1,7 +1,15 @@
-import type { LayoutSnapshot, LayoutReport, Point, Rect, Shape, LayoutEdge } from './types';
+import type {
+  LayoutSnapshot,
+  LayoutReport,
+  Point,
+  Rect,
+  Shape,
+  LayoutEdge,
+} from './types';
 import { overlaps, contains, right, bottom } from './rect';
 const eps = 1e-6;
-export const axis = (a: Point, b: Point) => Math.abs(a.x - b.x) < eps || Math.abs(a.y - b.y) < eps;
+export const axis = (a: Point, b: Point) =>
+  Math.abs(a.x - b.x) < eps || Math.abs(a.y - b.y) < eps;
 export function segmentHits(a: Point, b: Point, r: Rect): boolean {
   if (Math.abs(a.x - b.x) < eps)
     return (
@@ -25,11 +33,15 @@ export function endpointExemption(
   index: number,
   last: number,
 ): boolean {
-  const endpoints = [...(index === 0 ? [edge.from] : []), ...(index === last ? [edge.to] : [])];
+  const endpoints = [
+    ...(index === 0 ? [edge.from] : []),
+    ...(index === last ? [edge.to] : []),
+  ];
   return endpoints.some(
     (endpoint) =>
       shape.owner === endpoint.componentId &&
-      (shape.kind === 'body' || (shape.kind === 'pin_label' && shape.pinId === endpoint.pinId)),
+      (shape.kind === 'body' ||
+        (shape.kind === 'pin_label' && shape.pinId === endpoint.pinId)),
   );
 }
 export function netIds(snapshot: LayoutSnapshot): Map<string, string> {
@@ -45,7 +57,16 @@ export function netIds(snapshot: LayoutSnapshot): Map<string, string> {
     parent.set(s, r);
     return r;
   };
-  const key = (e: LayoutEdge['from']) => JSON.stringify([e.componentId, e.pinId]);
+  const key = (e: LayoutEdge['from']) =>
+    JSON.stringify([e.componentId, e.pinId]);
+  for (const node of snapshot.nodes)
+    for (const pins of node.joinedPins ?? []) {
+      for (const pin of pins.slice(1))
+        parent.set(
+          root(JSON.stringify([node.id, pin])),
+          root(JSON.stringify([node.id, pins[0]])),
+        );
+    }
   for (const e of snapshot.edges) {
     const a = root(key(e.from)),
       b = root(key(e.to));
@@ -53,7 +74,12 @@ export function netIds(snapshot: LayoutSnapshot): Map<string, string> {
   }
   return new Map(snapshot.edges.map((e) => [e.id, root(key(e.from))]));
 }
-export function parallelOverlap(a: Point, b: Point, c: Point, d: Point): boolean {
+export function parallelOverlap(
+  a: Point,
+  b: Point,
+  c: Point,
+  d: Point,
+): boolean {
   return (
     (Math.abs(a.x - b.x) < eps &&
       Math.abs(c.x - d.x) < eps &&
@@ -77,7 +103,8 @@ export function crossing(a: Point, b: Point, c: Point, d: Point): boolean {
       c.y > Math.min(a.y, b.y) + eps &&
       c.y < Math.max(a.y, b.y) - eps
     );
-  if (Math.abs(a.y - b.y) < eps && Math.abs(c.x - d.x) < eps) return crossing(c, d, a, b);
+  if (Math.abs(a.y - b.y) < eps && Math.abs(c.x - d.x) < eps)
+    return crossing(c, d, a, b);
   return false;
 }
 export function validateLayout(s: LayoutSnapshot): LayoutReport {
@@ -92,9 +119,16 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
       length: 0,
       displacement: 0,
     };
-  const shapes = [...s.nodes.flatMap((n) => n.shapes), ...s.frames.flatMap((f) => f.shapes ?? [])];
+  const shapes = [
+    ...s.nodes.flatMap((n) => n.shapes),
+    ...s.frames.flatMap((f) => f.shapes ?? []),
+  ];
   for (const n of s.nodes) {
-    if (!Object.values(n.rect).every(Number.isFinite) || n.rect.width < 0 || n.rect.height < 0)
+    if (
+      !Object.values(n.rect).every(Number.isFinite) ||
+      n.rect.width < 0 ||
+      n.rect.height < 0
+    )
       issues.push({
         type: 'invalid_geometry',
         severity: 'error',
@@ -140,7 +174,11 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
           : 'Objektkörper überlagern sich.',
       });
     }
-  const member = (frameId: string, id: string, seen = new Set<string>()): boolean => {
+  const member = (
+    frameId: string,
+    id: string,
+    seen = new Set<string>(),
+  ): boolean => {
     if (seen.has(frameId)) return false;
     seen.add(frameId);
     return (
@@ -181,7 +219,10 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
       } else if (
         overlaps(f.rect, n.rect) &&
         !s.frames.some(
-          (other) => other.id !== f.id && member(other.id, f.id) && member(other.id, n.id),
+          (other) =>
+            other.id !== f.id &&
+            member(other.id, f.id) &&
+            member(other.id, n.id),
         )
       )
         issues.push({
@@ -197,7 +238,11 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
       const a = s.frames[i],
         b = s.frames[j];
       if (a.kind === 'group' || b.kind === 'group') continue;
-      if (overlaps(a.rect, b.rect) && !member(a.id, b.id) && !member(b.id, a.id))
+      if (
+        overlaps(a.rect, b.rect) &&
+        !member(a.id, b.id) &&
+        !member(b.id, a.id)
+      )
         issues.push({
           type: 'frame_overlap',
           severity: 'error',
@@ -222,7 +267,9 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
       [e.from, e.points[0], e.points[1]],
       [e.to, e.points.at(-1), e.points.at(-2)],
     ] as const) {
-      const pin = s.nodes.find((n) => n.id === ep.componentId)?.pins.find((p) => p.id === ep.pinId);
+      const pin = s.nodes
+        .find((n) => n.id === ep.componentId)
+        ?.pins.find((p) => p.id === ep.pinId);
       if (
         !pin ||
         !a ||
@@ -230,7 +277,9 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
         Math.abs(pin.x - a.x) > eps ||
         Math.abs(pin.y - a.y) > eps ||
         (!contact &&
-          (b.x - a.x) * dirs[pin.direction].x + (b.y - a.y) * dirs[pin.direction].y <= eps)
+          (b.x - a.x) * dirs[pin.direction].x +
+            (b.y - a.y) * dirs[pin.direction].y <=
+            eps)
       )
         issues.push({
           type: 'pin_direction',
@@ -277,7 +326,8 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
             severity: 'error',
             objectIds: [e.id, shape.owner],
             bounds: [shape.rect],
-            message: 'Leitung verläuft durch ein Objekt oder eine Beschriftung.',
+            message:
+              'Leitung verläuft durch ein Objekt oder eine Beschriftung.',
           });
         }
     }
@@ -290,17 +340,29 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
         for (let y = 1; y < b.points.length; y++) {
           if (
             nets.get(a.id) !== nets.get(b.id) &&
-            parallelOverlap(a.points[x - 1], a.points[x], b.points[y - 1], b.points[y])
+            parallelOverlap(
+              a.points[x - 1],
+              a.points[x],
+              b.points[y - 1],
+              b.points[y],
+            )
           )
             issues.push({
               type: 'net_overlap',
               severity: 'error',
               objectIds: [a.id, b.id],
-              message: 'Verschiedene Netze teilen sich einen Leitungsabschnitt.',
+              message:
+                'Verschiedene Netze teilen sich einen Leitungsabschnitt.',
             });
-          if (crossing(a.points[x - 1], a.points[x], b.points[y - 1], b.points[y]))
+          if (
+            crossing(a.points[x - 1], a.points[x], b.points[y - 1], b.points[y])
+          )
             metrics.crossings++;
         }
     }
-  return { valid: !issues.some((i) => i.severity === 'error'), issues, metrics };
+  return {
+    valid: !issues.some((i) => i.severity === 'error'),
+    issues,
+    metrics,
+  };
 }

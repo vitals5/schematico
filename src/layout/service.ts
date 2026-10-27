@@ -1,3 +1,4 @@
+import { applyMultiPage } from './multipage';
 import { suggestSplit } from './split';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import type { Project, Page } from '../model/types';
@@ -14,12 +15,16 @@ import {
   type LayoutCandidate,
   type LayoutSnapshot,
 } from './types';
-export async function computeSolutions(snapshot: LayoutSnapshot): Promise<LayoutSolution[]> {
+export async function computeSolutions(
+  snapshot: LayoutSnapshot,
+): Promise<LayoutSolution[]> {
   if (typeof Worker === 'undefined') {
     const { solveLayouts } = await import('./engine');
     return solveLayouts(snapshot);
   }
-  const worker = new Worker(new URL('./LayoutWorker.ts', import.meta.url), { type: 'module' });
+  const worker = new Worker(new URL('./LayoutWorker.ts', import.meta.url), {
+    type: 'module',
+  });
   return new Promise((resolve, reject) => {
     const finish = (solutions?: LayoutSolution[], error?: string) => {
       clearTimeout(timer);
@@ -37,7 +42,8 @@ export async function computeSolutions(snapshot: LayoutSnapshot): Promise<Layout
     );
     worker.onmessage = (e) => finish(e.data.solutions, e.data.error);
     worker.onerror = () => finish(undefined, 'Layout-Worker fehlgeschlagen.');
-    worker.onmessageerror = () => finish(undefined, 'Layoutdaten konnten nicht übertragen werden.');
+    worker.onmessageerror = () =>
+      finish(undefined, 'Layoutdaten konnten nicht übertragen werden.');
     try {
       worker.postMessage(snapshot);
     } catch (e) {
@@ -59,6 +65,19 @@ export async function previewLayout(
   if (!page) throw new Error('Seite nicht gefunden.');
   if (page.floorPlan || page.pageType !== 'schematic')
     throw new Error('Layout ist nur für Stromlaufplanseiten verfügbar.');
+  // No spatial containment can be inferred from a coordinate-free draft. Keep the library
+  // frames at their original size unless the caller supplied explicit container membership.
+  if (
+    !Object.keys(options.containerMembers ?? page.layoutConstraints?.containerMembers ?? {}).length &&
+    page.components.length &&
+    page.components.every((c) => c.x === 0 && c.y === 0)
+  ) {
+    const fixedFrameIds = page.components
+      .filter((c) => c.deviceBox)
+      .map((c) => c.id);
+    if (fixedFrameIds.length)
+      page.layoutConstraints = { ...page.layoutConstraints, fixedFrameIds };
+  }
   const input = snapshotPage(page, target, options),
     before = validateLayout(
       draft
@@ -121,7 +140,9 @@ export async function previewLayout(
     }
     for (const edge of solution.snapshot.edges) {
       const wire = next.wires.find((w) => w.id === edge.id)!;
-      wire.waypoints = edge.points.slice(1, -1).map((p) => ({ x: p.x * u, y: p.y * u }));
+      wire.waypoints = edge.points
+        .slice(1, -1)
+        .map((p) => ({ x: p.x * u, y: p.y * u }));
       wire.isAutoconnect = false;
     }
     next.connectionMode = 'explicit';
@@ -129,7 +150,9 @@ export async function previewLayout(
       ...next.layoutConstraints,
       lockedIds: options.lockedIds ?? next.layoutConstraints?.lockedIds,
       containerMembers: Object.fromEntries(
-        input.frames.filter((f) => f.kind !== 'group').map((f) => [f.id, f.members]),
+        input.frames
+          .filter((f) => f.kind !== 'group')
+          .map((f) => [f.id, f.members]),
       ),
     };
     const copy = clone(target);
@@ -156,6 +179,15 @@ export async function previewLayout(
         profile: solution.profile,
       });
   }
+  if (
+    !candidates.length &&
+    options.multiPage !== false &&
+    !input.issues.some((i) => i.severity === 'error')
+  ) {
+    const { multiPageCandidate } = await import('./multipage');
+    const multi = await multiPageCandidate(project, target, pageId, options);
+    if (multi) candidates.push(multi);
+  }
   const issues = candidates.length
     ? []
     : rejections.length
@@ -167,13 +199,25 @@ export async function previewLayout(
     before,
     candidates,
     issues,
-    ...(!candidates.length ? { splitSuggestion: suggestSplit(input, solutions) } : {}),
+    ...(!candidates.length
+      ? { splitSuggestion: suggestSplit(input, solutions) }
+      : {}),
   };
 }
 /** Only called by the user's preview confirmation; never exposed as an automatic AI mutation. */
-export function applyLayout(project: Project, candidate: LayoutCandidate, draft?: Project): void {
+export function applyLayout(
+  project: Project,
+  candidate: LayoutCandidate,
+  draft?: Project,
+): void {
   if (candidate.base !== projectRevision(project))
-    throw new Error('Das Projekt wurde seit der Vorschau verändert. Layout neu berechnen.');
+    throw new Error(
+      'Das Projekt wurde seit der Vorschau verändert. Layout neu berechnen.',
+    );
+  if (candidate.multiPage) {
+    applyMultiPage(project, candidate, draft);
+    return;
+  }
   const target = draft ?? project,
     copy = clone(target),
     index = copy.pages.findIndex((p) => p.id === candidate.pageId);
@@ -182,6 +226,8 @@ export function applyLayout(project: Project, candidate: LayoutCandidate, draft?
   CrossReferenceEngine.updateProjectCrossReferences(copy);
   const report = validateLayout(snapshotPage(copy.pages[index], copy));
   if (!report.valid || topology(copy) !== topology(target))
-    throw new Error('Layoutprüfung fehlgeschlagen; es wurden keine Änderungen übernommen.');
+    throw new Error(
+      'Layoutprüfung fehlgeschlagen; es wurden keine Änderungen übernommen.',
+    );
   Object.assign(project, copy);
 }

@@ -14,6 +14,16 @@ Die Prüfung berücksichtigt Symbolkörper, sichtbare Texte, gedrehte Anschlüss
 
 Automatisch berechnete Querverweise werden bereits vor der Platzierung und Leitungsführung vermessen. Importierte Geräteunterteile ohne gesicherte Haupt-/Nebenfunktionszuordnung werden bei einer zusätzlichen generischen Darstellung nicht als separate Verweisziele interpretiert; vorhandene Quellverweise bleiben erhalten.
 
+## Automatischer Mehrseitenvorschlag
+
+Scheitert die Anordnung auf einem Blatt, berechnet die Vorschau automatisch Aufteilungen auf bis zu zwölf Blätter. Funktionale und native Gruppen werden nicht auseinandergerissen. Die Aufteilung berücksichtigt vorhandene Verbindungen, um Blattwechsel zu vermeiden. Jede Variante wird pro Blatt platziert, geroutet und geprüft; eine reine Flächenschätzung genügt nicht.
+
+Bei koordinatenfreien Entwürfen werden aus überlappenden Nullpositionen keine Kastenzugehörigkeiten abgeleitet. Ohne ausdrückliche Inhaltszuordnung bleiben die Bibliotheksrahmen in ihrer ursprünglichen Größe innerhalb ihrer Gruppen erhalten.
+
+Für jede über die Blattgrenze führende Leitung entsteht ein eindeutiges Abbruchstellenpaar mit gegenseitigem Querverweis. Potential und ursprüngliche Anschlusszuordnung bleiben als logische Verbindung erhalten. Die Vorschau zeigt die Blattanzahl, Verweispaare und eine Blattauswahl. Erst **Übernehmen** legt alle Blätter gemeinsam an; **Rückgängig** nimmt die gesamte Aufteilung zurück.
+
+Die automatische Aufteilung gilt für vollständige Stromlaufplanseiten aus Bauteilen, Leitungen und Gruppen. Bei fixierten Objekten, Teilauswahl oder zusätzlichen freien Grafiken, Texten, Kästen und Kabeldefinitionen bleibt die bisherige Einblattprüfung aktiv. Eine Gruppe, die allein nicht passt oder nicht korrekt geroutet werden kann, wird nicht stillschweigend zerlegt. Auch dann bleibt das Projekt unverändert.
+
 ## Fehlgeschlagene Vorschläge
 
 Wenn eine Gruppe nicht platziert werden kann, endet die Platzierungsprüfung an dieser Stelle. Nicht platzierte Entwurfsobjekte werden nicht anschließend als vermeintliche Routing- oder Kollisionsfehler ausgewertet. Die Vorschau zeigt bei einem fehlgeschlagenen Entwurf den unveränderten Blattbestand. **Entwurf exportieren** speichert das vollständige Projekt einschließlich des noch nicht übernommenen Entwurfs, der Layoutoptionen und der Meldungen lokal als JSON für eine reproduzierbare Diagnose.

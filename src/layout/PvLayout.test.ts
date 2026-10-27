@@ -23,7 +23,7 @@ assert(preview.candidates.every((c) => c.report.valid));
 const tiny = clone(draft);
 tiny.pages[0].plotFrame.width = 100;
 tiny.pages[0].plotFrame.height = 100;
-const failed = await previewLayout(tiny, "p");
+const failed = await previewLayout(tiny, "p", { multiPage: false });
 assert.equal(failed.status, "layout_invalid");
 assert(failed.issues.some((i) => i.type === "sheet_capacity"));
 assert(

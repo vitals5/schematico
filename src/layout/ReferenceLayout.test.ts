@@ -1,3 +1,4 @@
+import { getSymbolForComponent } from '../model/symbols';
 import assert from 'node:assert/strict';
 import { fixture, add } from './testing/fixture';
 import { previewLayout, applyLayout } from './service';
@@ -41,3 +42,10 @@ assert.equal(noRoom.status, 'layout_invalid');
 assert(noRoom.issues.some(i => i.type === 'sheet_capacity'), 'Oversized generated references must be detected before placement, not introduced in final validation');
 assert(!noRoom.issues.some(i => i.type === 'sheet_overflow' || i.type === 'wire_obstacle'));
 console.log('✓ Mixed native/generic references preserve source data; generated labels exist before layout and survive apply');
+
+const symbolParts = JSON.parse(original);
+symbolParts.symbolLibrary = [{ ...clone(getSymbolForComponent(generator, symbolParts)!), id: 'native-part-fixture', importedGraphics: [], source: { library: 'SPECIAL', number: 17, variant: 0 } }];
+for (const c of symbolParts.pages[1].components) { delete c.source; c.symbolId = 'native-part-fixture'; }
+CrossReferenceEngine.updateProjectCrossReferences(symbolParts);
+assert.equal(symbolParts.pages[0].components[0].crossRef, undefined);
+assert(symbolParts.pages[1].components.every((c: any)=>c.crossRef==='/source.1'), 'Reused native library parts retain their semantics without placement provenance');

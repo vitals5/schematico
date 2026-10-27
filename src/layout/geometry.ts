@@ -1,7 +1,13 @@
+import { pinStub } from './router';
 import { componentInsertionPoint } from '../model/SymbolGeometry';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
-import type { Page, Project, PlacedComponent, SymbolDefinition } from '../model/types';
+import type {
+  Page,
+  Project,
+  PlacedComponent,
+  SymbolDefinition,
+} from '../model/types';
 import { getDrawingUnitsPerMm, getSymbolForComponent } from '../model/symbols';
 import {
   computeBmkPosition,
@@ -12,13 +18,24 @@ import {
   computePinLabelPosition,
   type CalculatedLabelPosition,
 } from '../model/LabelLayout';
-import { interruptionLabelPosition, isInterruptionSymbol } from '../model/ConnectionSymbols';
+import {
+  interruptionLabelPosition,
+  isInterruptionSymbol,
+  connectionFamily,
+} from '../model/ConnectionSymbols';
 import { splitCrossReferenceLines } from '../model/CrossReferenceNavigation';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { defaultPlotFrame } from '../model/PlotFrame';
 import { wirePolyline, wirePinDirection } from '../model/WireRouting';
 import { gridForPage } from '../model/DrawingGrid';
-import type { LayoutSnapshot, LayoutOptions, Shape, Rect, Point, LayoutFrame } from './types';
+import type {
+  LayoutSnapshot,
+  LayoutOptions,
+  Shape,
+  Rect,
+  Point,
+  LayoutFrame,
+} from './types';
 import { right, bottom, contains, overlaps, union, translate } from './rect';
 export { right, bottom, contains, overlaps, union, translate } from './rect';
 const rotate = (p: Point, a: number, c: Point = { x: 0, y: 0 }): Point => {
@@ -36,7 +53,8 @@ const rectPoints = (r: Rect) => [
   { x: right(r), y: bottom(r) },
   { x: r.x, y: bottom(r) },
 ];
-const envelope = (ps: Point[]): Rect => union(ps.map((p) => ({ ...p, width: 0, height: 0 })));
+const envelope = (ps: Point[]): Rect =>
+  union(ps.map((p) => ({ ...p, width: 0, height: 0 })));
 let measureSvg: SVGSVGElement | undefined;
 /** Actual SVG glyph metrics in browsers, conservative deterministic metrics for headless API use. */
 export function textRect(
@@ -52,11 +70,17 @@ export function textRect(
     top = -size * 0.9,
     height = size * 1.2;
   if (typeof document !== 'undefined') {
-    measureSvg ??= document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    measureSvg ??= document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg',
+    );
     measureSvg.style.cssText =
       'position:fixed;left:-100000px;top:0;visibility:hidden;overflow:visible';
     document.body.appendChild(measureSvg);
-    const el = document.createElementNS(measureSvg.namespaceURI, 'text') as SVGTextElement;
+    const el = document.createElementNS(
+      measureSvg.namespaceURI,
+      'text',
+    ) as SVGTextElement;
     el.setAttribute('font-size', String(size));
     el.setAttribute('font-family', font);
     el.setAttribute('font-weight', weight);
@@ -89,7 +113,12 @@ export function textRect(
       ),
     );
   return {
-    x: anchor === 'end' ? -width : anchor === 'middle' || anchor === 'center' ? -width / 2 : 0,
+    x:
+      anchor === 'end'
+        ? -width
+        : anchor === 'middle' || anchor === 'center'
+          ? -width / 2
+          : 0,
     y: top,
     width,
     height: height + (lines.length - 1) * size * lineHeight,
@@ -110,7 +139,12 @@ export function componentShapes(
     rectPoints({ x: 0, y: 0, width: sym.width, height: sym.height }).map(world),
   );
   const shapes: Shape[] = [
-    { id: comp.id + ':body', owner: comp.id, kind: comp.deviceBox ? 'frame' : 'body', rect: body },
+    {
+      id: comp.id + ':body',
+      owner: comp.id,
+      kind: comp.deviceBox ? 'frame' : 'body',
+      rect: body,
+    },
   ];
   const label = (
     key: string,
@@ -166,7 +200,9 @@ export function componentShapes(
     label('function', comp.functionText, fn, 'sans-serif', fn.fontWeight);
     label(
       'technical',
-      [comp.deviceTag, comp.technicalCharacteristics].filter(Boolean).join(' · '),
+      [comp.deviceTag, comp.technicalCharacteristics]
+        .filter(Boolean)
+        .join(' · '),
       computeTechnicalDataPosition(comp, sym),
       'sans-serif',
     );
@@ -174,7 +210,10 @@ export function componentShapes(
     label('bmk', comp.bmk, bmk, 'monospace', 'bold');
     label(
       'terminal',
-      comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1',
+      comp.deviceTag ||
+        comp.technicalCharacteristics ||
+        comp.functionText ||
+        '1',
       {
         ...fn,
         x: sym.width + 2,
@@ -195,7 +234,9 @@ export function componentShapes(
       {
         ...fn,
         ...(arrow ?? { x: -4, y: sym.height / 2 + 3, anchor: 'end' as const }),
-        fontSize: sym.source ? fn.fontSize : (comp.functionTextPosition?.fontSize ?? 8.5),
+        fontSize: sym.source
+          ? fn.fontSize
+          : (comp.functionTextPosition?.fontSize ?? 8.5),
         visible: comp.functionTextPosition?.visible !== false,
       },
       sym.source ? 'sans-serif' : 'monospace',
@@ -234,7 +275,8 @@ export function usableArea(page: Page, project: Project): Rect {
   const u = getDrawingUnitsPerMm(project),
     w = page.plotFrame.width / u,
     h = page.plotFrame.height / u;
-  const template = project.plotFrameTemplate ?? defaultPlotFrame(project.language);
+  const template =
+    project.plotFrameTemplate ?? defaultPlotFrame(project.language);
   // The renderer fits the physical template to the actual page dimensions.
   const sx = w / template.width,
     sy = h / template.height;
@@ -266,7 +308,10 @@ export function snapshotPage(
     nodes: [],
     frames: [],
     edges: [],
-    grid: { spacing: grid.spacing / u, origin: { x: grid.origin.x / u, y: grid.origin.y / u } },
+    grid: {
+      spacing: grid.spacing / u,
+      origin: { x: grid.origin.x / u, y: grid.origin.y / u },
+    },
     issues: [],
   };
   if (typeof document === 'undefined')
@@ -282,7 +327,8 @@ export function snapshotPage(
       type: 'flattened_drawing',
       severity: 'error',
       objectIds: [page.id],
-      message: 'Flache Altzeichnung kann nicht verlustfrei automatisch angeordnet werden.',
+      message:
+        'Flache Altzeichnung kann nicht verlustfrei automatisch angeordnet werden.',
     });
   const ids = new Set<string>();
   const unique = (id: string) => {
@@ -317,7 +363,7 @@ export function snapshotPage(
     }
     const shapes = componentShapes(comp, sym, project),
       rect = union(shapes.map((s) => s.rect));
-    if (comp.deviceBox) {
+    if (comp.deviceBox && !saved.fixedFrameIds?.includes(comp.id)) {
       snapshot.frames.push({
         id: comp.id,
         kind: 'component',
@@ -330,11 +376,22 @@ export function snapshotPage(
     }
     const pins = sym.pins.map((pin) => {
       const p = AutoconnectEngine.getRotatedPinInfo(comp, pin, sym);
-      return { id: pin.id, x: p.worldX / u, y: p.worldY / u, direction: p.direction };
+      return {
+        id: pin.id,
+        x: p.worldX / u,
+        y: p.worldY / u,
+        direction: p.direction,
+      };
     });
     snapshot.nodes.push({
       id: comp.id,
       kind: 'component',
+      joinedPins:
+        ['corners', 'tees', 'interruptions'].includes(connectionFamily(sym)) ||
+        sym.id === 'terminal_single' ||
+        sym.id === 'cross_junction'
+          ? [pins.map((p) => p.id)]
+          : undefined,
       insertion: {
         x: componentInsertionPoint(comp, sym).x / u,
         y: componentInsertionPoint(comp, sym).y / u,
@@ -346,10 +403,27 @@ export function snapshotPage(
       fixed: locked.has(comp.id) || (!!selected && !selected.has(comp.id)),
     });
   }
+  // Reserve the mandatory port escape corridor before packing near the sheet boundary.
+  for (const node of snapshot.nodes) {
+    node.rect = union([
+      node.rect,
+      ...node.pins.map((pin) => ({
+        ...pinStub(snapshot, pin, node.id),
+        width: 0,
+        height: 0,
+      })),
+    ]);
+  }
   for (const t of page.texts ?? []) {
     unique(t.id);
     const size = t.fontSize ?? 10,
-      r = textRect(t.text, size, t.fontFamily ?? 'sans-serif', t.align ?? 'start', t.fontWeight),
+      r = textRect(
+        t.text,
+        size,
+        t.fontFamily ?? 'sans-serif',
+        t.align ?? 'start',
+        t.fontWeight,
+      ),
       rect = envelope(
         rectPoints(r).map((p) => {
           const q = rotate(p, t.rotation ?? 0);
@@ -417,7 +491,9 @@ export function snapshotPage(
       b = { x: cable.end.x / u, y: cable.end.y / u },
       shapes: Shape[] = cableDrawing(cable, page, project)
         .filter((g) => g.kind === 'text')
-        .map((g) => drawingText(cable.id, g as Extract<typeof g, { kind: 'text' }>));
+        .map((g) =>
+          drawingText(cable.id, g as Extract<typeof g, { kind: 'text' }>),
+        );
     const rect = union([envelope([a, b]), ...shapes.map((s) => s.rect)]);
     snapshot.nodes.push({
       id: cable.id,
@@ -436,10 +512,17 @@ export function snapshotPage(
       kind: 'box',
       members: [],
       fixed: locked.has(box.id),
-      rect: { x: box.x / u, y: box.y / u, width: box.width / u, height: box.height / u },
+      rect: {
+        x: box.x / u,
+        y: box.y / u,
+        width: box.width / u,
+        height: box.height / u,
+      },
       shapes: boxDrawing(box)
         .filter((g) => g.kind === 'text')
-        .map((g) => drawingText(box.id, g as Extract<typeof g, { kind: 'text' }>)),
+        .map((g) =>
+          drawingText(box.id, g as Extract<typeof g, { kind: 'text' }>),
+        ),
     });
   }
   const constraints = options.containerMembers ?? saved.containerMembers ?? {};
@@ -463,11 +546,19 @@ export function snapshotPage(
   }
   for (const node of snapshot.nodes) {
     const parents = snapshot.frames.filter((f) => f.members.includes(node.id));
+    const configured = parents.filter(
+      (f) => f.kind !== 'group' && constraints[f.id]?.includes(node.id),
+    );
     const explicit = parents.filter((f) => f.kind === 'group'),
-      candidates = explicit.length ? explicit : parents;
+      candidates = configured.length
+        ? configured
+        : explicit.length
+          ? explicit
+          : parents;
     candidates.sort(
       (a, b) =>
-        a.rect.width * a.rect.height - b.rect.width * b.rect.height || a.id.localeCompare(b.id),
+        a.rect.width * a.rect.height - b.rect.width * b.rect.height ||
+        a.id.localeCompare(b.id),
     );
     if (
       candidates.length > 1 &&
@@ -526,7 +617,8 @@ export function snapshotPage(
               changed = true;
             }
     }
-    for (const n of snapshot.nodes) if (selected.has(n.id) && !locked.has(n.id)) n.fixed = false;
+    for (const n of snapshot.nodes)
+      if (selected.has(n.id) && !locked.has(n.id)) n.fixed = false;
   }
   for (const f of snapshot.frames) {
     const ds = descendants(f.id),
@@ -539,7 +631,10 @@ export function snapshotPage(
       for (const n of nodes) n.fixed = true;
   }
   for (const n of snapshot.nodes)
-    if (n.kind === 'component' && page.components.find((c) => c.id === n.id)?.rotation! % 90 !== 0)
+    if (
+      n.kind === 'component' &&
+      page.components.find((c) => c.id === n.id)?.rotation! % 90 !== 0
+    )
       snapshot.issues.push({
         type: 'unsupported_rotation',
         severity: 'error',
@@ -549,9 +644,11 @@ export function snapshotPage(
   for (const f of snapshot.frames.filter((f) => f.kind !== 'group'))
     for (const child of snapshot.frames)
       if (
+        constraints[f.id] === undefined &&
         child.id !== f.id &&
         contains(f.rect, child.rect) &&
-        f.rect.width * f.rect.height > child.rect.width * child.rect.height + 1 &&
+        f.rect.width * f.rect.height >
+          child.rect.width * child.rect.height + 1 &&
         !child.members.includes(f.id) &&
         !f.members.includes(child.id)
       )

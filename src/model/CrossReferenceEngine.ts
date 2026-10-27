@@ -125,7 +125,10 @@ export class CrossReferenceEngine {
         // Multiple native CAD placements can be pins/parts of one device, not contact pairs.
         // Retain explicit source references until main/aux semantics are established.
         // Adding a generic representation must not turn native pins/graphics into dozens of references.
-        const nativeParts = items.filter(i => i.comp.source?.format === 'NATIVE_CAD');
+        const nativeParts = items.filter(i => {
+          const symbol = getSymbolForComponent(i.comp, project);
+          return i.comp.source?.format === 'NATIVE_CAD' || !!(symbol?.source && symbol.importedGraphics);
+        });
         const interruptionGroup = items.every(i => {
           const symbol = getSymbolForComponent(i.comp, project);
           return symbol && isInterruptionSymbol(symbol);
