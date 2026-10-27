@@ -97,7 +97,7 @@ export interface LayoutOptions extends LayoutConstraints {
   selectedIds?: string[];
 }
 export interface LayoutSolution {
-  profile: 'readability' | 'compact' | 'minimal_change';
+  profile: 'readability' | 'compact' | 'minimal_change' | 'lanes';
   snapshot: LayoutSnapshot;
   report: LayoutReport;
 }

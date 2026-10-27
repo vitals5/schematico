@@ -24,7 +24,7 @@ export async function solveLayouts(
       (m) => () => new m.default(),
     ));
   const results: LayoutSolution[] = [];
-  for (const profile of ['readability', 'compact', 'minimal_change'] as const) {
+  for (const profile of ['readability', 'compact', 'minimal_change', 'lanes'] as const) {
     const s = clone(source);
     if (s.issues.some((i) => i.severity === 'error')) {
       results.push({ profile, snapshot: s, report: validateLayout(s) });
@@ -145,8 +145,8 @@ export async function solveLayouts(
           sources: [JSON.stringify([e.from.componentId, e.from.pinId])],
           targets: [JSON.stringify([e.to.componentId, e.to.pinId])],
         }));
-      if (id !== 'layout-root' && edges.length && profile === 'compact') {
-        const compact = rankedGroup(id, children, s, gap, padding);
+      if (edges.length && (profile === 'lanes' || id !== 'layout-root' && profile === 'compact')) {
+        const compact = rankedGroup(id, children, s, gap, padding, profile === 'lanes');
         if (
           compact &&
           (compact.width ?? 0) <= widthBudget &&
@@ -409,7 +409,7 @@ export async function solveLayouts(
     };
     const packer = new SheetPacker(s.area, occupied, gap / 2);
     const blocks = [...(laid.children ?? [])];
-    if (s.frames.length && profile !== 'minimal_change')
+    if (s.frames.length && profile === 'compact')
       blocks.sort(
         (a, b) =>
           (profile === 'compact'
@@ -432,7 +432,7 @@ export async function solveLayouts(
         profile === 'minimal_change'
           ? old
           : { x: s.area.x + (block.x ?? 0), y: s.area.y + (block.y ?? 0) };
-      const p = packer.place(w, h, preferred, profile === 'minimal_change');
+      const p = packer.place(w, h, preferred, profile !== 'compact');
       if (!p) {
         s.issues.push({
           type: 'sheet_capacity',
