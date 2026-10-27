@@ -50,7 +50,7 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuEditTrigger',t('menuEdit'),
           opt('menuUndo',t('menuUndo'),t('keyCtrlZ'))+opt('menuRedo',t('menuRedo'),t('keyCtrlY'))+separator+
           opt('menuCut',t('menuCut'),t('keyCtrlX'))+opt('menuCopy',t('menuCopy'),t('keyCtrlC'))+opt('menuPaste',t('menuPaste'),t('keyCtrlV'))+opt('menuDuplicate',t('menuDuplicate'),t('keyCtrlD'))+separator+
-          opt('menuRotate',t('menuRotate'),t('keyR'))+opt('menuDelete',t('menuDelete'),t('keyDel'))+separator+
+          opt('menuCleanupConnections',t('menuCleanupConnections'))+opt('menuRotate',t('menuRotate'),t('keyR'))+opt('menuDelete',t('menuDelete'),t('keyDel'))+separator+
           opt('menuGroup',t('menuGroup'),t('keyCtrlG'))+opt('menuUngroup',t('menuUngroup'),t('keyCtrlShiftG')),'menu-item')}
         ${menu('menuInsertTrigger',t('menuInsert'),
           opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertText',t('menuInsertText'),'T')+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+

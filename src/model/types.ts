@@ -230,6 +230,7 @@ export interface Wire {
   lineWidth?: number;           // drawing units, including imported layer defaults
   waypoints?: { x: number; y: number }[];
   isAutoconnect?: boolean;
+  routingMode?: 'auto' | 'manual'; // Explicitly edited bends survive subsequent device moves.
 }
 
 export interface CableDefinition {

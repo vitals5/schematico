@@ -145,3 +145,14 @@ export function orthogonalWirePoints(from: Point, to: Point, waypoints: readonly
     points.at(-2), anchors[i + 1] && aligned(anchors[i], anchors[i + 1]) ? anchors[i + 1] : undefined).slice(1));
   return points;
 }
+
+/** Move an orthogonal segment; endpoint pins stay fixed and acquire doglegs if needed. */
+export function moveWireSegment(points: readonly Point[], segment: number, coordinate: number): Point[] {
+  if(segment<0||segment>=points.length-1||!Number.isFinite(coordinate))return points.map(p=>({...p}));
+  const result=points.map(p=>({...p}));
+  const horizontal=Math.abs(result[segment].y-result[segment+1].y)<epsilon;
+  const axis=horizontal?'y':'x';
+  const a={...result[segment],[axis]:coordinate},b={...result[segment+1],[axis]:coordinate};
+  result.splice(segment,2,...(segment===0?[result[0],a]:[a]),...(segment===points.length-2?[b,result.at(-1)!]:[b]));
+  return compact(result);
+}

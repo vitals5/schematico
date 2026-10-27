@@ -1204,6 +1204,7 @@ export class App {
     bindMenuOpt('menuRotate', () => this.canvas.rotateSelected());
     bindMenuOpt('menuGroup', () => this.canvas.groupSelected());
     bindMenuOpt('menuUngroup', () => this.canvas.ungroupSelected());
+    bindMenuOpt('menuCleanupConnections', () => this.canvas.cleanupPageConnections());
     bindMenuOpt('menuDelete', () => this.canvas.deleteSelected());
 
     // Ansicht

@@ -118,6 +118,25 @@ export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false): v
     done.push(e);
   }
 }
+/** Reroute selected edges against the exact, unchanged geometry of every other edge.
+ * Failed routes retain their original path and remain obstacles for subsequent edges. */
+export function routeSelected(s: LayoutSnapshot, ids: ReadonlySet<string>, clearance: number): string[] {
+  const shapes=s.nodes.flatMap(n=>n.shapes).filter(g=>g.kind!=='frame');
+  const nets=netIds(s), done=[...s.edges];
+  const reserved: ReservedStub[]=s.edges.flatMap(e=>[e.from,e.to].flatMap(endpoint=>{
+    const pin=s.nodes.find(n=>n.id===endpoint.componentId)?.pins.find(p=>p.id===endpoint.pinId);
+    return pin?[{edgeId:e.id,p:pin,q:pinStub(s,pin,endpoint.componentId)}]:[];
+  }));
+  const failed:string[]=[];
+  for(const e of s.edges.filter(e=>ids.has(e.id)).sort((a,b)=>a.id.localeCompare(b.id))){
+    done.splice(done.indexOf(e),1);
+    const points=route(s,e,shapes,done,nets,reserved,true,clearance);
+    if(points)e.points=points;else failed.push(e.id);
+    done.push(e);
+  }
+  return failed;
+}
+
 function route(
   s: LayoutSnapshot,
   e: LayoutEdge,
@@ -126,6 +145,7 @@ function route(
   nets: Map<string, string>,
   reserved: ReservedStub[],
   bundles = false,
+  clearance = 0,
 ): Point[] | undefined {
   const from = s.nodes
       .find((n) => n.id === e.from.componentId)
@@ -144,6 +164,15 @@ function route(
   const rowShapes = new Map<number, Shape[]>(),
     columnShapes = new Map<number, Shape[]>(),
     clearCache = new Map<string, boolean>();
+  const tooClose = (p: Point,q: Point,a: Point,b: Point) => {
+    if(parallelOverlap(p,q,a,b))return true;
+    if(clearance<=0)return false;
+    if(Math.abs(p.y-q.y)<1e-6&&Math.abs(a.y-b.y)<1e-6)
+      return Math.abs(p.y-a.y)<clearance-1e-6&&Math.min(Math.max(p.x,q.x),Math.max(a.x,b.x))-Math.max(Math.min(p.x,q.x),Math.min(a.x,b.x))>1e-6;
+    if(Math.abs(p.x-q.x)<1e-6&&Math.abs(a.x-b.x)<1e-6)
+      return Math.abs(p.x-a.x)<clearance-1e-6&&Math.min(Math.max(p.y,q.y),Math.max(a.y,b.y))-Math.max(Math.min(p.y,q.y),Math.min(a.y,b.y))>1e-6;
+    return false;
+  };
   const clear = (p: Point, q: Point, index = -1): boolean => {
     const cacheKey = p.x + ',' + p.y + '|' + q.x + ',' + q.y;
     if (index < 0 && clearCache.has(cacheKey)) return clearCache.get(cacheKey)!;
@@ -169,14 +198,14 @@ function route(
         (r) =>
           r.edgeId !== e.id &&
           nets.get(r.edgeId) !== nets.get(e.id) &&
-          parallelOverlap(p, q, r.p, r.q),
+          (index>=0?parallelOverlap(p,q,r.p,r.q):tooClose(p,q,r.p,r.q)),
       ) &&
       !done.some(
         (w) =>
           nets.get(e.id) !== nets.get(w.id) &&
           w.points
             .slice(1)
-            .some((d, i) => parallelOverlap(p, q, w.points[i], d)),
+            .some((d, i) => (index>=0?parallelOverlap(p,q,w.points[i],d):tooClose(p,q,w.points[i],d))),
       );
     if (index < 0) {
       clearCache.set(cacheKey, result);
@@ -188,21 +217,21 @@ function route(
   const xs = new Set<number>([a.x, b.x, s.area.x, right(s.area)]),
     ys = new Set<number>([a.y, b.y, s.area.y, bottom(s.area)]);
   // Visibility lanes are rounded OUTWARD from obstacles. Physical pin/stub positions remain exact.
-  const step = Math.max(0.5, s.grid.spacing / 4),
-    down = (v: number) => Math.floor(v / step) * step,
-    up = (v: number) => Math.ceil(v / step) * step;
+  const step = clearance>0 ? s.grid.spacing : Math.max(0.5, s.grid.spacing / 4),
+    down = (v: number, origin=0) => origin+Math.floor((v-origin) / step) * step,
+    up = (v: number, origin=0) => origin+Math.ceil((v-origin) / step) * step;
   for (const g of shapes) {
-    xs.add(down(g.rect.x - 1));
-    xs.add(up(right(g.rect) + 1));
-    ys.add(down(g.rect.y - 1));
-    ys.add(up(bottom(g.rect) + 1));
+    xs.add(down(g.rect.x - 1, clearance?s.grid.origin.x:0));
+    xs.add(up(right(g.rect) + 1, clearance?s.grid.origin.x:0));
+    ys.add(down(g.rect.y - 1, clearance?s.grid.origin.y:0));
+    ys.add(up(bottom(g.rect) + 1, clearance?s.grid.origin.y:0));
   }
   for (const wire of done)
     for (const p of wire.points) {
-      xs.add(down(p.x - 1));
-      xs.add(up(p.x + 1));
-      ys.add(down(p.y - 1));
-      ys.add(up(p.y + 1));
+      xs.add(down(p.x - Math.max(1,clearance),clearance?s.grid.origin.x:0));
+      xs.add(up(p.x + Math.max(1,clearance),clearance?s.grid.origin.x:0));
+      ys.add(down(p.y - Math.max(1,clearance),clearance?s.grid.origin.y:0));
+      ys.add(up(p.y + Math.max(1,clearance),clearance?s.grid.origin.y:0));
     }
   const xx = [...xs]
       .filter((x) => x >= s.area.x && x <= right(s.area))

@@ -12,7 +12,8 @@ import { cableSvg, cableCrossings } from '../model/CableDefinition';
 import { interruptionLabelPosition, isInterruptionSymbol } from '../model/ConnectionSymbols';
 import { labelTransform } from '../model/LabelLayout';
 import { plotFrameSvg } from '../model/PlotFrame';
-import { wirePolyline, wirePinDirection } from '../model/WireRouting';
+import { cleanupConnections } from '../model/WireCleanup';
+import { wirePolyline, wirePinDirection, moveWireSegment } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
 import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, PageText, WallSegment, WallOpening } from '../model/types';
@@ -134,6 +135,9 @@ export class CadCanvas {
   private lastMousePress: { componentId: string; time: number } | null = null;
 
   // Wiring State
+  private wireSegmentDrag?: { wire:Wire; segment:number; points:{x:number;y:number}[]; original:Wire['waypoints']; mode:Wire['routingMode']; moved:boolean };
+  private lastWireRouteTime=0;
+  private wireRoutePreview?: {key:string;waypoints:Wire['waypoints']};
   private wireStart: { componentId: string; pinId: string } | null = null;
   private wallDraft: { start: { x: number; y: number }; end: { x: number; y: number } } | null = null;
   private currentMousePos: { x: number; y: number } = { x: 0, y: 0 };
@@ -205,6 +209,7 @@ export class CadCanvas {
 
   public setProject(project: Project, recompute = true): void {
     this.isDraggingComponent = false; this.isPanning = false; this.touchMode = 'none';
+    this.wireSegmentDrag=undefined;
     this.wireStart = null; this.lastMousePress = null; this.hoveredPin = null;
     this.activeSymbolToPlace = null; this.activeMacroToPlace = null; this.mode = 'select';
     this.referenceMarker = undefined;this.boxDraft=undefined;this.boxResize=undefined;
@@ -454,6 +459,7 @@ export class CadCanvas {
         }
       }
       if (changed) {
+        this.rerouteMovedComponents(sel.componentIds);
         if (this.autoconnectEnabled) {
           AutoconnectEngine.updatePageAutoconnections(this.activePage);
         }
@@ -487,6 +493,7 @@ export class CadCanvas {
       const s = this.getComponentScale(comp);
       if (symbol && insertion) Object.assign(comp, positionAtInsertionPoint(insertion, symbol, comp.rotation, s));
       AutoconnectEngine.clearSuppressedForComponent(this.activePage, comp.id);
+      this.rerouteMovedComponents([comp.id]);
       if (this.autoconnectEnabled) {
         AutoconnectEngine.updatePageAutoconnections(this.activePage);
       }
@@ -1000,6 +1007,7 @@ export class CadCanvas {
           this.rotateSelected();
         }
       } else if (e.key === 'Escape') {
+        if(this.wireSegmentDrag){const d=this.wireSegmentDrag;d.wire.waypoints=d.original;d.wire.routingMode=d.mode;this.wireSegmentDrag=undefined;}
         if(this.selectionDrag)translateSelection(this.activePage,this.selectionDrag.snapshot,0,0);
         this.selectionDrag=undefined;this.selectionWindow=undefined;this.setElementSelection(emptySelection());
         this.cancelBoxInteraction();this.mode = 'select';this.activeImageToPlace=undefined;this.activeOpeningKindToPlace=null;this.wallDraft=null;
@@ -1066,9 +1074,9 @@ export class CadCanvas {
     const targetText=target?.closest?.('[data-text-id]')?.getAttribute('data-text-id'),targetWire=!targetBox&&!targetCable&&!targetImage&&!targetComp?this.findWireAt(world.x,world.y,true):null;
     const key=targetBox?'boxIds':targetCable?'cableIds':targetImage?'imageIds':targetText?'textIds':targetComp?'componentIds':'wireIds';
     const id=targetText??(targetBox??targetCable??targetImage??targetComp??targetWire)?.id;
-    if(id&&this.multipleSelection?.[key]?.includes(id)){this.showContextMenu(clientX,clientY,null,null);return;}
+    if(id&&this.multipleSelection?.[key]?.includes(id)){this.showContextMenu(clientX,clientY,null,targetWire);return;}
     if(targetText){this.setElementSelection({...emptySelection(),textIds:[targetText]});this.showContextMenu(clientX,clientY,null,null);return;}
-    if(id){const hit={...emptySelection(),[key]:[id]};if(selectedRootGroups(this.activePage,hit).length){if(!this.getElementSelection()[key]?.includes(id))this.setElementSelection(hit);this.showContextMenu(clientX,clientY,null,null);return;}}
+    if(id){const hit={...emptySelection(),[key]:[id]};if(selectedRootGroups(this.activePage,hit).length){if(!this.getElementSelection()[key]?.includes(id))this.setElementSelection(hit);this.showContextMenu(clientX,clientY,null,targetWire);return;}}
     const box=this.boxFromEvent(mockEv);
     if(box){if(!this.multipleSelection?.boxIds?.includes(box.id))this.setElementSelection({componentIds:[],cableIds:[],boxIds:[box.id]});this.showContextMenu(clientX,clientY,null,null);return;}
     this.selectedBoxId=null;
@@ -1077,7 +1085,8 @@ export class CadCanvas {
     this.selectedImageId=null;this.selectedBoxId=null;
     if(this.multipleSelection && (comp && this.multipleSelection.componentIds.includes(comp.id) || targetCable && this.multipleSelection.cableIds.includes(targetCable.id))){this.showContextMenu(clientX,clientY,null,null);return;}
     this.clearMultipleSelection();
-    const wire = this.findWireAt(world.x, world.y, true);
+    const hitWireId=target?.closest?.('.wire')?.id;
+    const wire = this.activePage.wires.find(w=>w.id===hitWireId) ?? this.findWireAt(world.x, world.y, true);
 
     if (comp) {
       this.selectedComponentId = comp.id;
@@ -1180,7 +1189,8 @@ export class CadCanvas {
       `;
     } else if (wire) {
       items += `
-        <div class="ctx-header">Verbindung: <strong>${wire.potential}</strong></div>
+        <div class="ctx-header">Verbindung: <strong>${escapeSvg(wire.potential)}</strong></div>
+        ${!wire.isAutoconnect?'<div class="ctx-item" data-action="cleanup-wire">Verbindung aufräumen</div>':''}
         ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div><div class="ctx-sep"></div>' : ''}
         <div class="ctx-item" data-action="delete">🗑️ Verbindung löschen <span class="ctx-key">Entf</span></div>
       `;
@@ -1197,6 +1207,8 @@ export class CadCanvas {
       `;
     }
 
+    if(wire&&!wire.isAutoconnect&&!items.includes('data-action="cleanup-wire"'))items+='<div class="ctx-item" data-action="cleanup-wire">Diese Verbindung aufräumen</div>';
+    if(this.activePage.pageType==='schematic'&&!this.activePage.floorPlan)items+='<div class="ctx-sep"></div><div class="ctx-item" data-action="cleanup-page">Alle Verbindungen auf dieser Seite aufräumen</div>';
     if(this.canGroupSelection())items+='<div class="ctx-item" data-action="group">Gruppieren <span class="ctx-key">Strg+G</span></div>';
     if(this.canUngroupSelection())items+='<div class="ctx-item" data-action="ungroup">Gruppierung auflösen <span class="ctx-key">Strg+Umschalt+G</span></div>';
     menu.innerHTML = items;
@@ -1219,6 +1231,8 @@ export class CadCanvas {
       el.addEventListener('click', (e) => {
         const action = (e.currentTarget as HTMLElement).dataset.action;
         closeMenu();
+        if(action==='cleanup-wire'){this.cleanupPageConnections(wire?.id);return;}
+        if(action==='cleanup-page'){this.cleanupPageConnections();return;}
         if(action==='text-edit'){this.callbacks.onOpenSelectionProperties?.();return;}
         if(action==='jump-ref-target' && comp){
           const refTargets = this.getComponentReferenceTargets(comp);
@@ -1353,6 +1367,40 @@ export class CadCanvas {
     return newComp;
   }
 
+  public cleanupPageConnections(wireId?: string): void {
+    const result=cleanupConnections(this.activePage,this.project,wireId?[wireId]:undefined);
+    if(result.changed.length)this.notifyModified();
+    this.render();
+    if(result.failed.length)window.alert(`${result.failed.length} Verbindung(en) konnten bei unveränderten Geräten und Anschlüssen nicht mit ausreichendem Abstand geführt werden. Ihre bisherigen Wege bleiben erhalten.`);
+  }
+
+  private rerouteMovedComponents(ids: readonly string[]): void {
+    const moved=new Set(ids);
+    const wires=this.activePage.wires.filter(w=>!w.isAutoconnect&&w.routingMode!=='manual'&&(moved.has(w.from.componentId)||moved.has(w.to.componentId)));
+    if(wires.length)cleanupConnections(this.activePage,this.project,wires.map(w=>w.id));
+  }
+
+  private startWireSegmentDrag(event: {target:EventTarget|null}): boolean {
+    if(this.mode!=='select')return false;
+    const handle=(event.target as Element)?.closest?.('[data-wire-segment]');
+    if(!handle)return false;
+    const wire=this.activePage.wires.find(w=>w.id===handle.getAttribute('data-wire-id'));
+    if(!wire||wire.isAutoconnect)return false;
+    this.wireSegmentDrag={wire,segment:Number(handle.getAttribute('data-wire-segment')),points:this.wirePoints(wire),original:wire.waypoints?.map(p=>({...p})),mode:wire.routingMode,moved:false};
+    return true;
+  }
+
+  private moveWireSegmentDrag(world:{x:number;y:number}): void {
+    const drag=this.wireSegmentDrag!;
+    const a=drag.points[drag.segment],b=drag.points[drag.segment+1];
+    const horizontal=Math.abs(a.y-b.y)<1e-6;
+    const coordinate=horizontal?this.snap(world.y,false,'y'):this.snap(world.x,false,'x');
+    drag.moved ||= Math.abs(coordinate-(horizontal?a.y:a.x))>1e-6;
+    if(!drag.moved)return;
+    drag.wire.waypoints=moveWireSegment(drag.points,drag.segment,coordinate).slice(1,-1);
+    drag.wire.routingMode='manual';this.render();
+  }
+
   private handlePinClick(clickedPin: { componentId: string; pinId: string }): void {
     if (this.mode === 'wire' || this.wireStart !== null) {
       if (!this.wireStart) {
@@ -1370,6 +1418,7 @@ export class CadCanvas {
           ...(this.activePage.grid ? { lineWidth: this.activePage.grid.spacing / 16 } : {})
         };
         this.activePage.wires.push(wire);
+        cleanupConnections(this.activePage,this.project,[wire.id]);
         this.wireStart = null;
         this.notifyModified();
       }
@@ -1397,6 +1446,7 @@ export class CadCanvas {
     this.referenceMarker = undefined;
 
     const world = this.screenToWorld(e.clientX, e.clientY);
+    if(this.startWireSegmentDrag(e)){e.preventDefault();return;}
 
     // Ctrl + Click (or Cmd + Click) on any symbol jumps directly to its cross-reference counterpart!
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && this.mode === 'select') {
@@ -1609,7 +1659,7 @@ export class CadCanvas {
       this.selectedComponentId = null;
       this.callbacks.onSelectWire(clickedWire);
       this.callbacks.onSelectComponent(null);
-      this.updateSelectionClasses();
+      this.render();
       if(this.mode==='select')this.beginSelectionWindow(e,world);
       return;
     }
@@ -1637,6 +1687,7 @@ export class CadCanvas {
 
     const world = this.screenToWorld(e.clientX, e.clientY);
     this.currentMousePos = world;
+    if(this.wireSegmentDrag){this.moveWireSegmentDrag(world);return;}
 
     if(this.elementBoxResize){this.resizeElementBox(world);return;}
     if(this.boxResize){this.resizeBox(world);return;}
@@ -1797,6 +1848,7 @@ export class CadCanvas {
   }
 
   private onMouseUp(): void {
+    if(this.wireSegmentDrag){const drag=this.wireSegmentDrag;this.wireSegmentDrag=undefined;if(drag.moved)this.notifyModified();this.render();return;}
     if (this.mode === 'pan') {
       this.isPanning = false;
       this.svg.style.cursor = 'grab';
@@ -1813,6 +1865,7 @@ export class CadCanvas {
       const moved=this.selectionDrag.dx!==0||this.selectionDrag.dy!==0;this.selectionDrag=undefined;
       if(moved){
         this.lastMousePress=null;
+        this.rerouteMovedComponents(this.getElementSelection().componentIds);
         for(const id of this.getElementSelection().componentIds)AutoconnectEngine.clearSuppressedForComponent(this.activePage,id);
         if(this.autoconnectEnabled && this.getElementSelection().componentIds.length)AutoconnectEngine.updatePageAutoconnections(this.activePage);
         if (this.selectedTextId) {
@@ -1845,6 +1898,7 @@ export class CadCanvas {
     if (this.isDraggingComponent) {
       this.isDraggingComponent = false;
       if (this.selectedComponentId) {
+        this.rerouteMovedComponents([this.selectedComponentId]);
         AutoconnectEngine.clearSuppressedForComponent(this.activePage, this.selectedComponentId);
       }
       if (this.autoconnectEnabled) {
@@ -1895,6 +1949,7 @@ export class CadCanvas {
       const targetEl = e.target as Element;
       if (this.referenceFromEvent(e)) return;
       this.referenceMarker = undefined;
+      if(this.startWireSegmentDrag(e)){e.preventDefault();return;}
       const world = this.screenToWorld(touch.clientX, touch.clientY);
 
       if (this.mode === 'pan') {
@@ -2111,7 +2166,7 @@ export class CadCanvas {
         this.callbacks.onSelectComponent(null);
         this.callbacks.onSelectWall?.(null);
         this.callbacks.onSelectOpening?.(null);
-        this.updateSelectionClasses();
+        this.render();
         return;
       }
 
@@ -2134,6 +2189,7 @@ export class CadCanvas {
   }
 
   private onTouchMove(e: TouchEvent): void {
+    if(this.wireSegmentDrag&&e.touches.length===1){e.preventDefault();const t=e.touches[0];this.moveWireSegmentDrag(this.screenToWorld(t.clientX,t.clientY));return;}
     this.lastTouchTime = Date.now();
     if (this.selectionWindow && e.touches.length === 1) {
       e.preventDefault();
@@ -2353,6 +2409,7 @@ export class CadCanvas {
       return;
     }
     this.hideMagnifier();
+    if(this.wireSegmentDrag){if(e.type==='touchcancel'){const d=this.wireSegmentDrag;d.wire.waypoints=d.original;d.wire.routingMode=d.mode;this.wireSegmentDrag=undefined;this.render();}else if(e.touches.length===0)this.onMouseUp();return;}
     if(e.type==='touchcancel' && (this.boxDraft||this.boxResize||this.elementBoxResize)){this.cancelBoxInteraction();this.render();return;}
     if((this.cableDrag || this.selectionDrag || this.boxDraft || this.boxResize || this.elementBoxResize) && e.touches.length===0)this.onMouseUp();
     if (this.touchMode === 'pinch' && e.touches.length < 2) {
@@ -2368,6 +2425,7 @@ export class CadCanvas {
       this.isDraggingComponent = false;
       this.touchMode = 'none';
       if (this.selectedComponentId) {
+        this.rerouteMovedComponents([this.selectedComponentId]);
         AutoconnectEngine.clearSuppressedForComponent(this.activePage, this.selectedComponentId);
       }
       if (this.autoconnectEnabled) {
@@ -2418,6 +2476,7 @@ export class CadCanvas {
   }
 
   private updateConnectedWiresFast(componentId: string): void {
+    if(performance.now()-this.lastWireRouteTime>120){this.lastWireRouteTime=performance.now();this.rerouteMovedComponents([componentId]);}
     const component = this.activePage.components.find(c => c.id === componentId);
     const symbol = component && getSymbolForComponent(component, this.project);
     const movingGlyph = component && symbol && isConnectionGraphic(component, symbol);
@@ -2746,6 +2805,7 @@ export class CadCanvas {
     if (selectionCount(sel) > 0) {
       const snapshot = captureSelectionMove(this.activePage, sel);
       translateSelection(this.activePage, snapshot, dx, dy);
+      this.rerouteMovedComponents(sel.componentIds);
       for (const id of sel.componentIds) {
         AutoconnectEngine.clearSuppressedForComponent(this.activePage, id);
       }
@@ -3519,6 +3579,7 @@ export class CadCanvas {
         <g id="${wire.id}" class="wire ${isSelected ? 'selected' : ''}" style="cursor: pointer;">
           <path data-wire-role="hit" d="${pathData}" fill="none" stroke="transparent" stroke-width="12"/>
           <path data-wire-role="ink" d="${ink}" fill="none" stroke="${isSelected ? '#63b3ed' : this.getWireColor(wire.potential, wire.color)}" stroke-width="${isSelected ? Math.max(width, 2.5) : width}"/>
+          ${isSelected&&!wire.isAutoconnect?points.slice(1).map((p,i)=>`<circle data-wire-segment="${i}" data-wire-id="${escapeSvg(wire.id)}" cx="${(p.x+points[i].x)/2}" cy="${(p.y+points[i].y)/2}" r="${5/this.scale}" fill="#0f172a" stroke="#63b3ed" stroke-width="${1.5/this.scale}" style="cursor:${Math.abs(p.y-points[i].y)<1e-6?'ns-resize':'ew-resize'}"><title>Leitungsabschnitt verschieben</title></circle>`).join(''):''}
         </g>
       `;
     }).join('');
@@ -3574,7 +3635,20 @@ export class CadCanvas {
 
     const targetPin = this.hoveredPin && this.getPinCoordinates(this.hoveredPin.componentId, this.hoveredPin.pinId);
     const target = targetPin || { x: this.snap(this.currentMousePos.x), y: this.snap(this.currentMousePos.y, false, 'y') };
-    const points = wirePolyline(startCoord, target, [], undefined, undefined, false, gridForPage(this.activePage, this.gridSize));
+    let waypoints:Wire['waypoints']=[];
+    if(targetPin&&this.hoveredPin){
+      const key=JSON.stringify([this.activePage.id,this.wireStart,this.hoveredPin,startCoord,target,this.activePage.wires.map(w=>[w.id,w.waypoints])]);
+      if(this.wireRoutePreview?.key!==key){
+        let previewId='__wire_preview__';while(this.activePage.wires.some(w=>w.id===previewId))previewId+='_';
+        const preview:Wire={id:previewId,from:this.wireStart,to:this.hoveredPin,potential:'L1'};
+        const temporary={...this.activePage,wires:[...this.activePage.wires,preview]};
+        cleanupConnections(temporary,this.project,[preview.id]);
+        this.wireRoutePreview={key,waypoints:preview.waypoints};
+      }
+      waypoints=this.wireRoutePreview.waypoints;
+    }
+    const points = wirePolyline(startCoord, target, waypoints, wirePinDirection(this.activePage,this.project,this.wireStart),
+      this.hoveredPin?wirePinDirection(this.activePage,this.project,this.hoveredPin):undefined, false, gridForPage(this.activePage, this.gridSize));
     const pathData = points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
 
     return `
