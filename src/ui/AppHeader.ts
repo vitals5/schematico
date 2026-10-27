@@ -66,7 +66,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
         ${menu('menuAiTrigger','AI & MCP',
           opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+
-          opt('menuAiSettings','Gemini API-Key (BYOK)...')+separator+
+          opt('menuAiSettings','KI-Anbieter & Modell (BYOK)...')+separator+
           opt('menuAiClear','Chatverlauf leeren'),'menu-item')}
         ${menu('menuHelpTrigger',t('menuHelp'),opt('menuShortcuts',t('menuShortcuts'))+opt('menuMobile',t('menuMobile'))+separator+opt('menuAbout',t('menuAbout')),'menu-item')}
       </div>

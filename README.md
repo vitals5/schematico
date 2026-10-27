@@ -29,6 +29,12 @@
 
 ---
 
+## AI providers and models
+
+Open **AI & MCP → KI-Anbieter & Modell (BYOK)** or the assistant's gear button. Select **OpenRouter**, enter your own API key, click **Modelle aktualisieren**, choose a model and save. The searchable list comes from OpenRouter's API and includes models advertising tool support; it is cached locally and can be refreshed at any time. Google Gemini remains available as an alternative.
+
+Keys, provider choice and model selection are stored locally in the browser or desktop profile, outside project files. Requests and the required drawing context go directly to the chosen provider. Model availability, pricing and usage limits depend on your OpenRouter account and the underlying provider. The connection test checks the key without generating a paid completion; an actual CAD request also requires an available model with tool support. Floor plan recognition additionally requires image support.
+
 ## Checked schematic layout
 
 The drawing assistant can propose complete circuits using library symbols, pin-to-pin connections and functional groups **without coordinates**. ELK graph placement, obstacle-aware orthogonal routing and an independent validator produce layout previews. Existing sheets or a selection can also be optimized while keeping objects fixed.

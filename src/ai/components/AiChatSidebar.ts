@@ -1,19 +1,10 @@
+import { getAiProvider, getAiModel, hasAiApiKey } from '../ProviderConfig';
+import { showProviderSettings } from './ProviderSettings';
 // src/ai/components/AiChatSidebar.ts
 // Native Gemini Chat Sidebar & MCP Bridge Console for Schematico (Vanilla TypeScript)
 
 import { GeminiChatClient, ChatMessage, ToolCallExecution } from '../gemini/client';
-import {
-  getGeminiApiKey,
-  setGeminiApiKey,
-  hasGeminiApiKey,
-  testGeminiApiKey,
-  getGeminiThinkingLevel,
-  setGeminiThinkingLevel,
-  getGeminiModel,
-  setGeminiModel,
-  GeminiThinkingLevel,
-  GeminiModelId
-} from '../GeminiConfig';
+import { getGeminiThinkingLevel, setGeminiThinkingLevel, type GeminiThinkingLevel } from '../GeminiConfig';
 import { defaultBridgeClient, BridgeConnectionStatus } from '../bridge/bridgeClient';
 import { CanvasStateManager } from '../mcp-tools';
 
@@ -24,6 +15,7 @@ export interface AiChatSidebarOptions {
 }
 
 export class AiChatSidebar {
+  private provider = getAiProvider();
   private container: HTMLElement;
   private stateManager: CanvasStateManager;
   private geminiClient: GeminiChatClient;
@@ -59,7 +51,7 @@ export class AiChatSidebar {
     this.isOpenState = true;
     this.container.style.display = 'flex';
     this.container.classList.add('open');
-    this.renderApiKeyBanner();
+    this.refreshConfig();
     const input = this.container.querySelector<HTMLTextAreaElement>('#aiPromptInput');
     if (input) {
       setTimeout(() => input.focus(), 100);
@@ -94,7 +86,9 @@ export class AiChatSidebar {
   }
 
   public refreshConfig(): void {
-    const model = getGeminiModel();
+    const model = getAiModel();
+    if (model !== this.geminiClient.getModel() || this.provider !== getAiProvider()) { this.geminiClient.abort(); this.geminiClient.clearHistory(); }
+    this.provider = getAiProvider();
     this.geminiClient.setModel(model);
     let thinking = getGeminiThinkingLevel();
     if (model === 'gemini-4-argon' && thinking === 'minimal') {
@@ -117,6 +111,7 @@ export class AiChatSidebar {
   }
 
   private formatModelName(model: string): string {
+    if (getAiProvider() === 'openrouter') return 'OpenRouter · ' + (model || 'Modell auswählen');
     if (model === 'gemini-4-argon') return 'Gemini 4 Argon';
     return 'Gemini 3.8 Flash';
   }
@@ -125,7 +120,7 @@ export class AiChatSidebar {
     const tag = this.container.querySelector('#aiChatModelTag');
     if (tag) {
       const modelName = this.formatModelName(this.geminiClient.getModel());
-      tag.textContent = `${modelName} (${this.formatThinkingLevel(this.geminiClient.getThinkingLevel())}) • BYOK`;
+      tag.textContent = getAiProvider() === 'openrouter' ? `${modelName} • BYOK` : `${modelName} (${this.formatThinkingLevel(this.geminiClient.getThinkingLevel())}) • BYOK`;
     }
   }
 
@@ -138,13 +133,13 @@ export class AiChatSidebar {
           <span class="ai-chat-icon">🪄</span>
           <div class="ai-chat-title-info">
             <span class="ai-chat-title">Schematico AI</span>
-            <span class="ai-chat-model-tag" id="aiChatModelTag" title="Klicken für Modell-, Thinking- & API-Key-Einstellungen">${currentModel} (${currentThinking}) • BYOK</span>
+            <span class="ai-chat-model-tag" id="aiChatModelTag" title="Klicken für Modell-, Thinking- & API-Key-Einstellungen">${this.escapeHtml(currentModel)}${getAiProvider() === 'gemini' ? ` (${currentThinking})` : ''} • BYOK</span>
           </div>
         </div>
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
           <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Geprüfte Layoutvorschau berechnen; Änderungen erst nach Übernehmen">📐</button>
-          <button type="button" class="ai-header-btn" id="btnAiSettings" title="Gemini API-Key & Thinking-Modus verwalten">⚙️</button>
+          <button type="button" class="ai-header-btn" id="btnAiSettings" title="KI-Anbieter, API-Schlüssel und Modell verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
         </div>
@@ -331,11 +326,11 @@ export class AiChatSidebar {
     const banner = this.container.querySelector<HTMLElement>('#aiApiKeyBanner');
     if (!banner) return;
 
-    if (!hasGeminiApiKey()) {
+    if (!hasAiApiKey()) {
       banner.style.display = 'block';
       banner.innerHTML = `
         <div class="ai-banner-content">
-          <span>⚠️ <strong>Gemini API-Key fehlt.</strong> Hinterlegen Sie Ihren Google AI Studio API-Key (BYOK), um CAD-Aktionen auszuführen.</span>
+          <span>⚠️ <strong>API-Schlüssel fehlt.</strong> Hinterlegen Sie den Schlüssel des gewählten KI-Anbieters (BYOK), um CAD-Aktionen auszuführen.</span>
           <button type="button" class="btn btn-primary btn-sm" id="btnBannerSetKey">Key hinterlegen</button>
         </div>
       `;
@@ -357,7 +352,7 @@ export class AiChatSidebar {
     const prompt = input.value.trim();
     if (!prompt) return;
 
-    if (!hasGeminiApiKey()) {
+    if (!hasAiApiKey()) {
       this.showApiKeyModal();
       return;
     }
@@ -390,7 +385,7 @@ export class AiChatSidebar {
 
       this.appendModelResponse(response);
     } catch (err: any) {
-      this.appendErrorMessage(err?.message || 'Fehler bei der Kommunikation mit der Gemini API.');
+      this.appendErrorMessage(err?.message || 'Fehler bei der Kommunikation mit der KI-API.');
     } finally {
       this.setGenerating(false);
     }
@@ -658,179 +653,7 @@ export class AiChatSidebar {
    * Opens the API Key configuration modal for Gemini BYOK.
    */
   public showApiKeyModal(): void {
-    const existingModal = document.getElementById('aiApiKeyModal');
-    if (existingModal) existingModal.remove();
-
-    const currentKey = getGeminiApiKey();
-    const currentModel = getGeminiModel();
-    const currentThinking = getGeminiThinkingLevel();
-
-    const modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
-    modal.id = 'aiApiKeyModal';
-    modal.style.cssText = `
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 10000;
-    `;
-
-    modal.innerHTML = `
-      <div class="modal-dialog" style="
-        background: #1a202c; border: 1px solid #4a5568; border-radius: 8px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.8); width: 92%; max-width: 520px;
-        color: #e2e8f0; padding: 24px; font-family: system-ui, sans-serif;
-      ">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0; font-size:18px; display:flex; align-items:center; gap:8px;">
-            <span>🔑</span> Gemini API, Modell & Thinking Einstellungen
-          </h3>
-          <button type="button" class="btn" id="btnModalClose" style="padding:4px 8px; font-size:14px;">✕</button>
-        </div>
-
-        <p style="font-size:13px; color:#a0aec0; margin-bottom:16px; line-height:1.5;">
-          Schematico verwendet das Prinzip <strong>Bring Your Own Key (BYOK)</strong>. Ihr Schlüssel wird ausschließlich lokal im Browser gespeichert und direkt für die Kommunikation mit der Google Gemini API verwendet.
-        </p>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
-            Gemini KI-Modell:
-          </label>
-          <select id="selectModalModel" style="
-            width:100%; box-sizing:border-box; padding:10px 12px;
-            background:#2d3748; border:1px solid #4a5568; border-radius:6px;
-            color:#fff; font-size:13px; outline:none;
-          ">
-            <option value="gemini-3.8-flash" ${currentModel === 'gemini-3.8-flash' ? 'selected' : ''}>
-              Gemini 3.8 Flash (Schnell &amp; effizient, Standard)
-            </option>
-            <option value="gemini-4-argon" ${currentModel === 'gemini-4-argon' ? 'selected' : ''}>
-              Gemini 4 Argon (Flaggschiff-Reasoning &amp; 1M Context für komplexe CAD-Pläne)
-            </option>
-          </select>
-          <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="modelHint">
-            ${currentModel === 'gemini-4-argon'
-              ? '<strong>Gemini 4 Argon:</strong> Maximales Reasoning und 1M Context für anspruchsvolle Schaltpläne, Kaskaden und normgerechte Verteilerpläne (erfordert Paid Tier API-Key).'
-              : '<strong>Gemini 3.8 Flash:</strong> Schnelle Reaktionszeiten und ausgewogenes CAD-Reasoning.'}
-          </div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
-            Google Gemini API-Key:
-          </label>
-          <input
-            type="password"
-            id="inputModalApiKey"
-            value="${this.escapeHtml(currentKey)}"
-            placeholder="AIzaSy..."
-            style="
-              width:100%; box-sizing:border-box; padding:10px 12px;
-              background:#2d3748; border:1px solid #4a5568; border-radius:6px;
-              color:#fff; font-family:monospace; font-size:13px;
-            "
-          />
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:#cbd5e0;">
-            Thinking-Modus (Reasoning-Tiefe):
-          </label>
-          <select id="selectModalThinkingLevel" style="
-            width:100%; box-sizing:border-box; padding:10px 12px;
-            background:#2d3748; border:1px solid #4a5568; border-radius:6px;
-            color:#fff; font-size:13px; outline:none;
-          ">
-            <option value="minimal" ${currentThinking === 'minimal' ? 'selected' : ''}>Minimal (Schnellste Antworten)</option>
-            <option value="low" ${currentThinking === 'low' ? 'selected' : ''}>Niedrig (Kurze Denkzeit)</option>
-            <option value="medium" ${currentThinking === 'medium' ? 'selected' : ''}>Mittel / Medium (Empfohlen für CAD-Planung)</option>
-            <option value="high" ${currentThinking === 'high' ? 'selected' : ''}>Hoch (Maximales Reasoning)</option>
-          </select>
-          <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
-            Standard ist <strong>Medium</strong> für eine optimale Balance aus Überlegungszeit und schneller CAD-Ausführung.
-          </div>
-        </div>
-
-        <div id="apiKeyTestResult" style="margin-bottom:16px; font-size:12px; min-height:20px;"></div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2d3748; padding-top:16px;">
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="font-size:12px; color:#63b3ed; text-decoration:none;">
-            Kostenlosen API-Key bei Google AI Studio erstellen ↗
-          </a>
-          <div style="display:flex; gap:8px;">
-            <button type="button" class="btn" id="btnTestKey">Verbindung testen</button>
-            <button type="button" class="btn btn-primary" id="btnSaveKey">Speichern</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const input = modal.querySelector<HTMLInputElement>('#inputModalApiKey');
-    const selectModel = modal.querySelector<HTMLSelectElement>('#selectModalModel');
-    const selectThinking = modal.querySelector<HTMLSelectElement>('#selectModalThinkingLevel');
-    const modelHint = modal.querySelector<HTMLElement>('#modelHint');
-    const resultDiv = modal.querySelector<HTMLElement>('#apiKeyTestResult')!;
-    const btnClose = modal.querySelector<HTMLButtonElement>('#btnModalClose')!;
-    const btnTest = modal.querySelector<HTMLButtonElement>('#btnTestKey')!;
-    const btnSave = modal.querySelector<HTMLButtonElement>('#btnSaveKey')!;
-
-    selectModel?.addEventListener('change', () => {
-      const isArgon = selectModel.value === 'gemini-4-argon';
-      if (modelHint) {
-        modelHint.innerHTML = isArgon
-          ? '<strong>Gemini 4 Argon:</strong> Maximales Reasoning und 1M Context für anspruchsvolle Schaltpläne, Kaskaden und normgerechte Verteilerpläne (erfordert Paid Tier API-Key).'
-          : '<strong>Gemini 3.8 Flash:</strong> Schnelle Reaktionszeiten und ausgewogenes CAD-Reasoning.';
-      }
-      if (isArgon && selectThinking?.value === 'minimal') {
-        selectThinking.value = 'low';
-      }
-    });
-
-    btnClose.addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    btnTest.addEventListener('click', async () => {
-      const key = input?.value.trim() || '';
-      const chosenModel = selectModel?.value || currentModel;
-      if (!key) {
-        resultDiv.innerHTML = '<span style="color:#fc8181;">Bitte geben Sie einen API-Key ein.</span>';
-        return;
-      }
-      btnTest.disabled = true;
-      resultDiv.innerHTML = `<span style="color:#ecc94b;">Teste Verbindung zur Gemini API (${chosenModel})...</span>`;
-
-      const res = await testGeminiApiKey(key, chosenModel);
-      btnTest.disabled = false;
-      if (res.success) {
-        resultDiv.innerHTML = `<span style="color:#48bb78;">✓ ${res.message}</span>`;
-      } else {
-        resultDiv.innerHTML = `<span style="color:#fc8181;">✗ ${res.message}</span>`;
-      }
-    });
-
-    btnSave.addEventListener('click', () => {
-      const key = input?.value.trim() || '';
-      setGeminiApiKey(key);
-
-      const model = (selectModel?.value as GeminiModelId) || 'gemini-3.8-flash';
-      setGeminiModel(model);
-      this.geminiClient.setModel(model);
-
-      let thinking = (selectThinking?.value as GeminiThinkingLevel) || 'medium';
-      if (model === 'gemini-4-argon' && thinking === 'minimal') {
-        thinking = 'low';
-      }
-      setGeminiThinkingLevel(thinking);
-      this.geminiClient.setThinkingLevel(thinking);
-      this.updateModelTag();
-
-      this.renderApiKeyBanner();
-      this.options.onApiKeyUpdated?.();
-      modal.remove();
-    });
+    if (this.isGenerating) return;
+    showProviderSettings(() => { this.refreshConfig(); this.options.onApiKeyUpdated?.(); });
   }
 }

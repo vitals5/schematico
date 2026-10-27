@@ -1,7 +1,7 @@
 // src/ai/components/StatusBadge.ts
 // Connection Status Badge for Local MCP Bridge and Gemini BYOK API Key
 
-import { hasGeminiApiKey } from '../GeminiConfig';
+import { hasAiApiKey, getAiProvider } from '../ProviderConfig';
 import { BridgeConnectionStatus, defaultBridgeClient } from '../bridge/bridgeClient';
 
 export interface StatusBadgeOptions {
@@ -27,7 +27,7 @@ export class StatusBadge {
   }
 
   private init(): void {
-    this.hasKey = hasGeminiApiKey();
+    this.hasKey = hasAiApiKey();
 
     this.unsubscribeBridge = defaultBridgeClient.onStatusChange((status) => {
       this.bridgeStatus = status;
@@ -51,7 +51,7 @@ export class StatusBadge {
   }
 
   public refresh(): void {
-    this.hasKey = hasGeminiApiKey();
+    this.hasKey = hasAiApiKey();
     this.bridgeStatus = defaultBridgeClient.getStatus();
     this.render();
   }
@@ -76,7 +76,7 @@ export class StatusBadge {
       : 'MCP Bridge Offline (Klicken zum erneuten Verbindungsversuch; Bridge starten mit: node bridge-server/index.mjs)';
 
     const keyIcon = this.hasKey ? '🔑' : '⚠️';
-    const keyText = this.hasKey ? 'Gemini BYOK' : 'API-Key fehlt';
+    const keyText = this.hasKey ? (getAiProvider() === 'openrouter' ? 'OpenRouter BYOK' : 'Gemini BYOK') : 'API-Key fehlt';
     const keyColor = this.hasKey ? '#90cdf4' : '#f6ad55';
 
     this.element.innerHTML = `
@@ -105,7 +105,7 @@ export class StatusBadge {
         <span>${bridgeText}</span>
       </div>
 
-      <div class="ai-status-pill badge-key-pill" title="${this.hasKey ? 'Gemini API-Key ist konfiguriert (Klick zum Ändern)' : 'Kein Gemini API-Key hinterlegt (Klick zum Hinterlegen)'}" style="
+      <div class="ai-status-pill badge-key-pill" title="${this.hasKey ? 'KI API-Key ist konfiguriert (Klick zum Ändern)' : 'Kein KI API-Key hinterlegt (Klick zum Hinterlegen)'}" style="
         display: inline-flex;
         align-items: center;
         gap: 5px;

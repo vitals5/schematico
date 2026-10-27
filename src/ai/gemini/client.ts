@@ -1,3 +1,5 @@
+import { getAiProvider, getAiModel, getOpenRouterKey } from '../ProviderConfig';
+import { routerChat } from '../openrouter/api';
 import { checkedCompletion, layoutActions } from '../../layout/chatStatus';
 // src/ai/gemini/client.ts
 // Native Gemini Chat Client with BYOK and Function Calling Loop for Schematico
@@ -73,7 +75,7 @@ export class GeminiChatClient {
 
   constructor(options: GeminiChatOptions = {}) {
     this.toolRegistry = options.toolRegistry || defaultToolRegistry;
-    this.model = options.model || getGeminiModel() || 'gemini-3.8-flash';
+    this.model = options.model ?? getAiModel();
     this.thinkingLevel = options.thinkingLevel || getGeminiThinkingLevel() || 'medium';
     this.systemInstruction = options.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
   }
@@ -136,17 +138,18 @@ export class GeminiChatClient {
       onStatusUpdate?: (status: string) => void;
     }
   ): Promise<ChatMessage> {
-    const apiKey = getGeminiApiKey();
+    const provider = getAiProvider();
+    const apiKey = provider === 'openrouter' ? getOpenRouterKey() : getGeminiApiKey();
     if (!apiKey) {
       throw new Error(
-        'Kein Gemini API-Key hinterlegt. Bitte hinterlegen Sie Ihren API-Key in den Einstellungen (BYOK).'
+        'Kein API-Key für den ausgewählten KI-Anbieter hinterlegt. Bitte hinterlegen Sie Ihren API-Key in den Einstellungen (BYOK).'
       );
     }
 
     this.currentAbortController = new AbortController();
     this.isAborted = false;
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = provider === 'gemini' ? new GoogleGenAI({ apiKey }) : null;
 
     // Record user message
     const userMsg: ChatMessage = {
@@ -193,7 +196,9 @@ export class GeminiChatClient {
 
         let response: any;
         try {
-          response = await ai.models.generateContent({
+          response = provider === 'openrouter'
+            ? await routerChat(apiKey, this.model, this.history, this.systemInstruction, this.toolRegistry.getToolDefinitions(), this.currentAbortController?.signal)
+            : await ai!.models.generateContent({
             model: this.model,
             contents: this.history,
             config: {

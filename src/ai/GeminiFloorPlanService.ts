@@ -1,3 +1,5 @@
+import { getAiProvider, getOpenRouterKey, getOpenRouterModel } from './ProviderConfig';
+import { routerRequest, cachedModels } from './openrouter/api';
 // src/ai/GeminiFloorPlanService.ts
 // Service for extracting clean architectural vector floor plans from images/blueprints via Gemini API
 
@@ -117,9 +119,11 @@ export async function vectorizeFloorPlanWithGemini(
   imageDataUrl: string,
   options: VectorizeFloorPlanOptions = {}
 ): Promise<FloorPlanData> {
-  const apiKey = (options.apiKey || getGeminiApiKey()).trim();
+  const isRouter = getAiProvider() === 'openrouter';
+  const apiKey = (options.apiKey || (isRouter ? getOpenRouterKey() : getGeminiApiKey())).trim();
+  if (isRouter && !cachedModels().find(m => m.id === getOpenRouterModel())?.vision) throw new Error('Bitte ein OpenRouter-Modell mit Bildunterstützung auswählen und die Modellliste aktualisieren.');
   if (!apiKey) {
-    throw new Error('Kein Google Gemini API-Schlüssel hinterlegt. Bitte in den Allgemeinen Einstellungen eintragen.');
+    throw new Error('Kein KI API-Schlüssel hinterlegt. Bitte in den Allgemeinen Einstellungen eintragen.');
   }
 
   // Parse Data URL: data:image/png;base64,....
@@ -131,9 +135,9 @@ export async function vectorizeFloorPlanWithGemini(
   const mimeType = match[1];
   const base64Data = match[2];
 
-  options.onProgress?.('Verbindung zu Google Gemini 3.8 Flash wird aufgebaut...');
+  options.onProgress?.('Verbindung zum KI-Anbieter wird aufgebaut...');
 
-  const client = new GoogleGenAI({ apiKey });
+  const client = isRouter ? null : new GoogleGenAI({ apiKey });
 
   const userPrompt = options.userPromptHint
     ? `Analysiere diesen Grundriss sorgfältig. Extrahiere ALLE Außen- und Innenwände (einschließlich Garage, Speisekammer, WC, Windfang, HWR), alle Türen, Fenster und Räume als Vektorgeometrie. Hinweis des Nutzers: ${options.userPromptHint}`
@@ -141,7 +145,7 @@ export async function vectorizeFloorPlanWithGemini(
 
   options.onProgress?.('KI analysiert den Grundriss und extrahiert Vektoren...');
 
-  const response = await client.models.generateContent({
+  const response = isRouter ? await routerRequest('/chat/completions', apiKey, { model: getOpenRouterModel(), messages: [{ role: 'system', content: SYSTEM_INSTRUCTION + '\nReturn JSON only, matching this schema: ' + JSON.stringify(FLOORPLAN_RESPONSE_SCHEMA) }, { role: 'user', content: [{ type: 'text', text: userPrompt }, { type: 'image_url', image_url: { url: imageDataUrl } }] }], temperature: 0.1 }).then(result => ({ text: result.choices?.[0]?.message?.content })) : await client!.models.generateContent({
     model: getGeminiModel() || 'gemini-3.8-flash',
     contents: [
       {
@@ -168,14 +172,14 @@ export async function vectorizeFloorPlanWithGemini(
   });
 
   if (!response.text) {
-    throw new Error('Keine Antwort von der Gemini API erhalten.');
+    throw new Error('Keine Antwort von der KI-API erhalten.');
   }
 
   options.onProgress?.('Vektorgeometrie wird bereinigt und ausgerichtet...');
 
   let rawOutput: RawAiFloorPlanResponse;
   try {
-    rawOutput = JSON.parse(response.text) as RawAiFloorPlanResponse;
+    rawOutput = JSON.parse(response.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) as RawAiFloorPlanResponse;
   } catch (err) {
     throw new Error(`Ungültige JSON-Antwort von der KI: ${response.text.slice(0, 100)}...`);
   }

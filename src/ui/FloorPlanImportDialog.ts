@@ -2,7 +2,7 @@
 // Modal dialog for importing architectural blueprints and photos with Gemini AI vectorization
 
 import { Page, Project, FloorPlanData } from '../model/types';
-import { hasGeminiApiKey, getGeminiApiKey } from '../ai/GeminiConfig';
+import { hasAiApiKey } from '../ai/ProviderConfig';
 import { vectorizeFloorPlanWithGemini } from '../ai/GeminiFloorPlanService';
 import { floorPlanToSvg } from '../model/FloorPlanRenderer';
 import { t, getUiLanguage } from '../i18n';
@@ -36,7 +36,7 @@ export class FloorPlanImportDialog {
     modal.className = 'modal-backdrop';
     modal.style.cssText = 'position:fixed;inset:0;padding:12px;z-index:2100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);';
 
-    const hasKey = hasGeminiApiKey();
+    const hasKey = hasAiApiKey();
     const defaultPageNum = String(this.project.pages.length + 1);
 
     modal.innerHTML = `
@@ -66,8 +66,8 @@ export class FloorPlanImportDialog {
               <div style="background:#2d3748;border:1px solid #4a5568;padding:10px 14px;border-radius:4px;font-size:12px;color:#edf2f7;">
                 <div style="font-weight:600;color:#f6ad55;margin-bottom:4px;">💡 ${t('fpApiKeyMissing')}</div>
                 ${getUiLanguage() === 'de'
-                  ? 'Du kannst das Foto/den Plan dennoch direkt als Zeichenvorlage importieren und Wände manuell zeichnen. Für automatische KI-Erkennung trage einen Gemini-Schlüssel ein.'
-                  : 'You can still import the photo/blueprint directly as a drawing template and draw walls manually. For automatic AI detection, enter a Gemini API key.'}
+                  ? 'Du kannst das Foto/den Plan dennoch direkt als Zeichenvorlage importieren und Wände manuell zeichnen. Für automatische KI-Erkennung trage einen KI-API-Schlüssel ein.'
+                  : 'You can still import the photo/blueprint directly as a drawing template and draw walls manually. For automatic AI detection, enter an AI API key.'}
                 <button type="button" id="fpi-open-settings" class="btn" style="margin-top:6px;display:inline-block;font-size:11px;padding:3px 8px;background:#3182ce;color:#fff;border:none;border-radius:3px;cursor:pointer;">${t('fpOpenSettingsBtn')}</button>
               </div>
             ` : ''}
