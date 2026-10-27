@@ -52,8 +52,10 @@ export async function previewLayout(
   draft?: Project,
 ): Promise<LayoutPreview> {
   if (typeof document !== 'undefined') await document.fonts.ready;
-  const target = draft ?? project,
-    page = target.pages.find((p) => p.id === pageId);
+  const target = clone(draft ?? project);
+  // Generated labels must exist before placement/routing, not appear only in final validation.
+  CrossReferenceEngine.updateProjectCrossReferences(target);
+  const page = target.pages.find((p) => p.id === pageId);
   if (!page) throw new Error('Seite nicht gefunden.');
   if (page.floorPlan || page.pageType !== 'schematic')
     throw new Error('Layout ist nur für Stromlaufplanseiten verfügbar.');

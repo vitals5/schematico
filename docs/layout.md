@@ -12,6 +12,8 @@ Objekte oder Gruppen lassen sich in der Vorschau fixieren. **Nur aktuelle Auswah
 
 Die Prüfung berücksichtigt Symbolkörper, sichtbare Texte, gedrehte Anschlüsse, Gruppen, Hindernisse und den tatsächlichen Zeichenbereich oberhalb des Schriftfeldes. Symbole und Schriftgrößen werden nicht verkleinert. Anschlussgraph und elektrische Eigenschaften bleiben erhalten. Automatische Verbindungen werden bei Übernahme explizite Leitungen, damit eine spätere geometrische Autoconnect-Neuberechnung sie nicht entfernt.
 
+Automatisch berechnete Querverweise werden bereits vor der Platzierung und Leitungsführung vermessen. Importierte Geräteunterteile ohne gesicherte Haupt-/Nebenfunktionszuordnung werden bei einer zusätzlichen generischen Darstellung nicht als separate Verweisziele interpretiert; vorhandene Quellverweise bleiben erhalten.
+
 ## Fehlgeschlagene Vorschläge
 
 Wenn eine Gruppe nicht platziert werden kann, endet die Platzierungsprüfung an dieser Stelle. Nicht platzierte Entwurfsobjekte werden nicht anschließend als vermeintliche Routing- oder Kollisionsfehler ausgewertet. Die Vorschau zeigt bei einem fehlgeschlagenen Entwurf den unveränderten Blattbestand. **Entwurf exportieren** speichert das vollständige Projekt einschließlich des noch nicht übernommenen Entwurfs, der Layoutoptionen und der Meldungen lokal als JSON für eine reproduzierbare Diagnose.

@@ -124,7 +124,13 @@ export class CrossReferenceEngine {
       } else if (items.length > 1) {
         // Multiple native CAD placements can be pins/parts of one device, not contact pairs.
         // Retain explicit source references until main/aux semantics are established.
-        if (items.every(i => i.comp.source?.format === 'NATIVE_CAD')) continue;
+        // Adding a generic representation must not turn native pins/graphics into dozens of references.
+        const nativeParts = items.filter(i => i.comp.source?.format === 'NATIVE_CAD');
+        const interruptionGroup = items.every(i => {
+          const symbol = getSymbolForComponent(i.comp, project);
+          return symbol && isInterruptionSymbol(symbol);
+        });
+        if (nativeParts.length && (nativeParts.length === items.length || !interruptionGroup)) continue;
         // Pairs / multiple components with same BMK without explicit master
         // Terminals in the same strip do not cross-reference each other
         const isTerminalGroup = items.every(i => {
