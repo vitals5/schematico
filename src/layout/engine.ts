@@ -18,6 +18,7 @@ const sides = { top: 'NORTH', bottom: 'SOUTH', left: 'WEST', right: 'EAST' };
 export async function solveLayouts(
   source: LayoutSnapshot,
   factory?: () => ElkEngine,
+  onProgress?: (solutions:LayoutSolution[])=>void,
 ): Promise<LayoutSolution[]> {
   const create: () => ElkEngine =
     factory ??
@@ -25,14 +26,15 @@ export async function solveLayouts(
       (m) => () => new m.default(),
     ));
   const results: LayoutSolution[] = [];
+  const record=(solution:LayoutSolution)=>{results.push(solution);onProgress?.([...results].sort(compareSolutions));};
   for (const profile of ['readability', 'compact', 'minimal_change', 'lanes', 'structured'] as const) {
     const s = clone(source);
     if (s.issues.some((i) => i.severity === 'error')) {
-      results.push({ profile, snapshot: s, report: validateLayout(s) });
+      record({ profile, snapshot: s, report: validateLayout(s) });
       break;
     }
-    const elk = create(),
-      nodeMap = new Map(s.nodes.map((n) => [n.id, n])),
+    let elk:ElkEngine|undefined;
+    const nodeMap = new Map(s.nodes.map((n) => [n.id, n])),
       frameMap = new Map(s.frames.map((f) => [f.id, f]));
     const parent = new Map<string, string>();
     for (const n of s.nodes) if (n.parent) parent.set(n.id, n.parent);
@@ -232,6 +234,7 @@ export async function solveLayouts(
           'elk.padding': `[top=${padding.top},left=${padding.left},bottom=${padding.bottom},right=${padding.right}]`,
         },
       };
+      elk ??= create();
       const laid = await elk.layout(local);
       return {
         ...laid,
@@ -320,7 +323,7 @@ export async function solveLayouts(
         right: 0,
       });
     } finally {
-      if (factory) elk.terminateWorker();
+      if (factory) elk?.terminateWorker();
     }
     const original = new Map(s.nodes.map((n) => [n.id, clone(n)])),
       occupied: Rect[] = s.nodes
@@ -453,7 +456,7 @@ export async function solveLayouts(
       occupied.push({ ...p, width: w, height: h });
     }
     if (s.issues.some((i) => i.type === 'sheet_capacity')) {
-      results.push({
+      record({
         profile,
         snapshot: s,
         report: failedReport(s, 'placement'),
@@ -463,7 +466,7 @@ export async function solveLayouts(
     const placement = validateLayout({ ...s, edges: [] });
     if (!placement.valid) {
       placement.phase = 'placement';
-      results.push({ profile, snapshot: s, report: placement });
+      record({ profile, snapshot: s, report: placement });
       continue;
     }
     // Routing order affects corridor availability. Compare bounded deterministic
@@ -483,7 +486,7 @@ export async function solveLayouts(
       a.report.metrics.length-b.report.metrics.length);
     Object.assign(s, routed[0].snapshot);
     if (s.issues.some((i) => i.type === 'route_failed')) {
-      results.push({
+      record({
         profile,
         snapshot: s,
         report: failedReport(s, 'routing'),
@@ -499,15 +502,11 @@ export async function solveLayouts(
         Math.abs(n.origin.y - original.get(n.id)!.origin.y),
       0,
     );
-    results.push({ profile, snapshot: s, report });
+    record({ profile, snapshot: s, report });
   }
-  return results.sort(
-    (a, b) =>
-      Number(b.report.valid) - Number(a.report.valid) ||
-      score(a) - score(b) ||
-      a.profile.localeCompare(b.profile),
-  );
+  return results.sort(compareSolutions);
 }
+const compareSolutions=(a:LayoutSolution,b:LayoutSolution)=>Number(b.report.valid)-Number(a.report.valid)||score(a)-score(b)||a.profile.localeCompare(b.profile);
 const score = (r: LayoutSolution) => {
   const m = r.report.metrics;
   return (

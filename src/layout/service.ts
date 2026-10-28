@@ -1,3 +1,4 @@
+import { runLayoutWorker } from './WorkerClient';
 import { applyMultiPage } from './multipage';
 import { suggestSplit } from './split';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
@@ -25,31 +26,7 @@ export async function computeSolutions(
   const worker = new Worker(new URL('./LayoutWorker.ts', import.meta.url), {
     type: 'module',
   });
-  return new Promise((resolve, reject) => {
-    const finish = (solutions?: LayoutSolution[], error?: string) => {
-      clearTimeout(timer);
-      worker.terminate();
-      if (solutions) resolve(solutions);
-      else reject(new Error(error));
-    };
-    const timer = setTimeout(
-      () =>
-        finish(
-          undefined,
-          'Layout-Zeitlimit von 15 Sekunden überschritten. Es wurden keine Änderungen übernommen.',
-        ),
-      15000,
-    );
-    worker.onmessage = (e) => finish(e.data.solutions, e.data.error);
-    worker.onerror = () => finish(undefined, 'Layout-Worker fehlgeschlagen.');
-    worker.onmessageerror = () =>
-      finish(undefined, 'Layoutdaten konnten nicht übertragen werden.');
-    try {
-      worker.postMessage(snapshot);
-    } catch (e) {
-      finish(undefined, String(e));
-    }
-  });
+  return runLayoutWorker(worker, snapshot);
 }
 export async function previewLayout(
   project: Project,
@@ -161,6 +138,7 @@ export async function previewLayout(
     copy.pages[copy.pages.findIndex((p) => p.id === pageId)] = next;
     CrossReferenceEngine.updateProjectCrossReferences(copy);
     const report = validateLayout(snapshotPage(next, copy, options));
+    report.issues.push(...solution.report.issues.filter(i=>i.type==='layout_timeout'&&i.severity==='warning'));
     report.metrics.displacement = solution.report.metrics.displacement;
     if (topology(copy) !== topology(target))
       report.issues.push({

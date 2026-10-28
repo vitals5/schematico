@@ -173,6 +173,23 @@ function route(
       return Math.abs(p.x-a.x)<clearance-1e-6&&Math.min(Math.max(p.y,q.y),Math.max(a.y,b.y))-Math.max(Math.min(p.y,q.y),Math.min(a.y,b.y))>1e-6;
     return false;
   };
+  // Each routed edge sees immutable obstacles. Index parallel blockers and crossings
+  // by corridor instead of repeatedly scanning/allocating every wire segment in A*.
+  type Segment = {p:Point;q:Point};
+  const existing:Segment[]=done.flatMap(w=>w.points.slice(1).map((q,i)=>({p:w.points[i],q})));
+  const foreign:Segment[]=[
+    ...reserved.filter(r=>r.edgeId!==e.id&&nets.get(r.edgeId)!==nets.get(e.id)).map(r=>({p:r.p,q:r.q})),
+    ...done.filter(w=>nets.get(w.id)!==nets.get(e.id)).flatMap(w=>w.points.slice(1).map((q,i)=>({p:w.points[i],q}))),
+  ];
+  const horizontal=(s:Segment)=>Math.abs(s.p.y-s.q.y)<1e-6;
+  const horizontalForeign=foreign.filter(horizontal),verticalForeign=foreign.filter(s=>!horizontal(s));
+  const horizontalExisting=existing.filter(horizontal),verticalExisting=existing.filter(s=>!horizontal(s));
+  const rowBlockers=new Map<number,Segment[]>(),columnBlockers=new Map<number,Segment[]>();
+  const rowCrossings=new Map<number,Segment[]>(),columnCrossings=new Map<number,Segment[]>();
+  const crossingCount=(p:Point,q:Point)=>{
+    const list=Math.abs(p.y-q.y)<1e-6?rowCrossings.get(p.y)??verticalExisting:columnCrossings.get(p.x)??horizontalExisting;
+    let count=0;for(const s of list)if(crossing(p,q,s.p,s.q))count++;return count;
+  };
   const clear = (p: Point, q: Point, index = -1): boolean => {
     const cacheKey = p.x + ',' + p.y + '|' + q.x + ',' + q.y;
     if (index < 0 && clearCache.has(cacheKey)) return clearCache.get(cacheKey)!;
@@ -194,19 +211,8 @@ function route(
           !(index >= 0 && endpointExemption(g, e, index, 1)) &&
           segmentHits(p, q, g.rect),
       ) &&
-      !reserved.some(
-        (r) =>
-          r.edgeId !== e.id &&
-          nets.get(r.edgeId) !== nets.get(e.id) &&
-          (index>=0?parallelOverlap(p,q,r.p,r.q):tooClose(p,q,r.p,r.q)),
-      ) &&
-      !done.some(
-        (w) =>
-          nets.get(e.id) !== nets.get(w.id) &&
-          w.points
-            .slice(1)
-            .some((d, i) => (index>=0?parallelOverlap(p,q,w.points[i],d):tooClose(p,q,w.points[i],d))),
-      );
+      !(index>=0?foreign:(Math.abs(p.y-q.y)<1e-6?rowBlockers.get(p.y)??horizontalForeign:columnBlockers.get(p.x)??verticalForeign))
+        .some(s=>index>=0?parallelOverlap(p,q,s.p,s.q):tooClose(p,q,s.p,s.q));
     if (index < 0) {
       clearCache.set(cacheKey, result);
       clearCache.set(q.x + ',' + q.y + '|' + p.x + ',' + p.y, result);
@@ -249,6 +255,15 @@ function route(
       x,
       shapes.filter((g) => g.rect.x < x && right(g.rect) > x),
     );
+  const distance=Math.max(clearance,1e-6);
+  for(const y of yy){
+    rowBlockers.set(y,horizontalForeign.filter(s=>Math.abs(s.p.y-y)<distance));
+    rowCrossings.set(y,verticalExisting.filter(s=>y>Math.min(s.p.y,s.q.y)&&y<Math.max(s.p.y,s.q.y)));
+  }
+  for(const x of xx){
+    columnBlockers.set(x,verticalForeign.filter(s=>Math.abs(s.p.x-x)<distance));
+    columnCrossings.set(x,horizontalExisting.filter(s=>x>Math.min(s.p.x,s.q.x)&&x<Math.max(s.p.x,s.q.x)));
+  }
   // Most schematic nets need at most one free corridor. Test these exact paths before graph search.
   const fastPaths: Point[][] = [
     [a, b],
@@ -318,16 +333,7 @@ function route(
             Math.abs(q.x - points[i].x) +
             Math.abs(q.y - points[i].y) +
             8 +
-            done.reduce(
-              (sum, w) =>
-                sum +
-                w.points
-                  .slice(1)
-                  .filter((d, j) => crossing(points[i], q, w.points[j], d))
-                  .length *
-                  20,
-              0,
-            ),
+            crossingCount(points[i],q)*20,
           0,
         ),
     }));
@@ -389,13 +395,7 @@ function route(
       )
         continue;
       if (!clear(p, q)) continue;
-      const crosses = done.reduce(
-          (n, w) =>
-            n +
-            w.points.slice(1).filter((b, i) => crossing(p, q, w.points[i], b))
-              .length,
-          0,
-        ),
+      const crosses = crossingCount(p,q),
         g =
           curr.g +
           Math.abs(q.x - p.x) +

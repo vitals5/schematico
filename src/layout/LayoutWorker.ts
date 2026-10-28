@@ -7,6 +7,7 @@ self.onmessage = async (event: MessageEvent<LayoutSnapshot>) => {
     const solutions = await solveLayouts(
       event.data,
       () => new ELK({ workerFactory: () => new ElkWorker() }),
+      progress => self.postMessage({progress}),
     );
     self.postMessage({ solutions });
   } catch (e) {
