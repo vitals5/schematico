@@ -1,3 +1,4 @@
+import { rememberDiagnostic, sanitizeDiagnostic } from '../Diagnostics';
 import {DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL, handleValidateLayout, handleOptimizeLayout, handleCreateDraft } from '../../layout/tools';
 // src/ai/mcp-tools/index.ts
@@ -171,24 +172,25 @@ export class McpToolRegistry {
     args: any,
     manager: CanvasStateManager
   ): Promise<any> {
-    const entry = this.tools.get(name);
-    if (!entry) {
-      const available = Array.from(this.tools.keys()).join(', ');
-      return {
-        success: false,
-        error: `Tool "${name}" is not registered. Available tools: ${available}`
-      };
-    }
-
+    const started=Date.now();
+    let stage='tool_lookup';
+    const failure=(error:any,result?:any)=>{
+      let project:unknown;
+      try{project=manager.getProject();}catch{/* Missing state is part of the failure. */}
+      const diagnosticId=rememberDiagnostic({tool:name,stage:error?.diagnosticStage??stage,error,args,result,project,durationMs:Date.now()-started});
+      return {...result,success:false,error:sanitizeDiagnostic(error?.message??result?.error??result?.message??'Aktion fehlgeschlagen.'),diagnosticId};
+    };
     try {
+      const entry = this.tools.get(name);
+      if(!entry)return failure(new Error(`Tool "${name}" is not registered. Available tools: ${Array.from(this.tools.keys()).join(', ')}`));
+      stage='tool_arguments';
       const parsedArgs = typeof args === 'string' ? JSON.parse(args) : (args || {});
+      stage='tool_execution';
       const result = await entry.handler(parsedArgs, manager);
+      if(result?.success===false){stage=result.status==='layout_invalid'?'layout_validation':'tool_execution';return failure(undefined,result);}
       return result;
     } catch (err: any) {
-      return {
-        success: false,
-        error: `Execution of tool "${name}" failed: ${err?.message || String(err)}`
-      };
+      return failure(err);
     }
   }
 }

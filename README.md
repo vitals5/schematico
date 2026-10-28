@@ -35,6 +35,8 @@ Open **AI & MCP → KI-Anbieter & Modell (BYOK)** or the assistant's gear button
 
 Keys, provider choice and model selection are stored locally in the browser or desktop profile, outside project files. Requests and the required drawing context go directly to the chosen provider. Model availability, pricing and usage limits depend on your OpenRouter account and the underlying provider. The connection test checks the key without generating a paid completion; an actual CAD request also requires an available model with tool support. Floor plan recognition additionally requires image support.
 
+Failed assistant actions now provide **Fehlerdetails anzeigen**, **Kurzbericht kopieren**, and **Fehlerbericht herunterladen**. The JSON report includes the failed arguments, project snapshot, model, app version and error phase for reproduction. Credentials are redacted; project and prompt data remain in the file. See [AI error reports](docs/ai-diagnostics.md).
+
 ## Checked schematic layout
 
 The drawing assistant can propose complete circuits using library symbols, pin-to-pin connections and functional groups **without coordinates**. ELK graph placement, obstacle-aware orthogonal routing and an independent validator produce layout previews. Existing sheets or a selection can also be optimized while keeping objects fixed.

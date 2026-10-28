@@ -298,11 +298,18 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   return draft;
 }
 export async function handleCreateDraft(args: any, manager: CanvasStateManager) {
-  const { project, page } = pageFor(args, manager),
-    draft = buildDraft(project, page.id, args),
-    preview = await previewLayout(project, page.id, {}, draft);
-  manager.showLayoutPreview?.(preview, draft, {});
-  return result(preview);
+  let phase='draft_validation';
+  try {
+    const {project,page}=pageFor(args,manager),draft=buildDraft(project,page.id,args);
+    phase='layout_computation';
+    const preview=await previewLayout(project,page.id,{},draft);
+    phase='preview_presentation';
+    manager.showLayoutPreview?.(preview,draft,{});
+    return result(preview);
+  } catch(error){
+    const err=error instanceof Error?error:new Error(String(error));
+    Object.assign(err,{diagnosticStage:phase});throw err;
+  }
 }
 
 export const DUPLICATE_SCHEMATIC_TOOL: McpToolDefinition = {

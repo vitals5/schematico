@@ -1,3 +1,4 @@
+import { getDiagnostic, clearDiagnostics, diagnosticSummary, sanitizeDiagnostic } from '../Diagnostics';
 import { getAiProvider, getAiModel, hasAiApiKey } from '../ProviderConfig';
 import { showProviderSettings } from './ProviderSettings';
 // src/ai/components/AiChatSidebar.ts
@@ -213,6 +214,7 @@ export class AiChatSidebar {
     const btnClear = this.container.querySelector('#btnAiClearHistory');
     btnClear?.addEventListener('click', () => {
       this.geminiClient.clearHistory();
+      clearDiagnostics();
       const messagesContainer = this.container.querySelector('#aiChatMessages');
       if (messagesContainer) messagesContainer.innerHTML = '';
       const welcome = this.container.querySelector<HTMLElement>('#aiChatWelcome');
@@ -385,7 +387,8 @@ export class AiChatSidebar {
 
       this.appendModelResponse(response);
     } catch (err: any) {
-      this.appendErrorMessage(err?.message || 'Fehler bei der Kommunikation mit der KI-API.');
+      this.appendErrorMessage(sanitizeDiagnostic(err?.message || 'Fehler bei der Kommunikation mit der KI-API.'));
+      if(err?.diagnosticId){const list=this.container.querySelector<HTMLElement>('#aiChatMessages');if(list)this.appendDiagnostic(list,err.diagnosticId);}
     } finally {
       this.setGenerating(false);
     }
@@ -509,7 +512,7 @@ export class AiChatSidebar {
     const list = this.container.querySelector<HTMLElement>('#aiChatMessages');
     if (!list) return;
 
-    const badges = list.querySelectorAll<HTMLElement>(`.ai-tool-badge[data-tool-name="${toolName}"]`);
+    const badges = [...list.querySelectorAll<HTMLElement>('.ai-tool-badge')].filter(b=>b.dataset.toolName===toolName);
     const badge = badges[badges.length - 1];
     if (!badge) return;
 
@@ -522,7 +525,28 @@ export class AiChatSidebar {
       <span class="ai-tool-icon">${icon}</span>
       <span class="ai-tool-text">${label}</span>
     `;
+    if(isError&&result?.diagnosticId){badge.style.flexWrap='wrap';this.appendDiagnostic(badge,result.diagnosticId);}
     this.scrollToBottom();
+  }
+
+  private appendDiagnostic(parent:HTMLElement,id:string): void {
+    const report=getDiagnostic(id);if(!report)return;
+    const box=document.createElement('div');box.className='ai-diagnostic';
+    box.style.cssText='flex-basis:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #9b5353;border-radius:6px;max-width:100%;overflow:hidden';
+    const details=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent='Fehlerdetails anzeigen';summary.style.cursor='pointer';
+    const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:260px;overflow:auto;user-select:text';
+    pre.textContent=diagnosticSummary(report);details.append(summary,pre);
+    const download=document.createElement('button');download.className='btn btn-sm';download.textContent='Fehlerbericht herunterladen';download.type='button';
+    download.addEventListener('click',()=>{
+      const data=getDiagnostic(id);if(!data){download.textContent='Bericht nicht mehr verfügbar';download.disabled=true;return;}
+      const blob=new Blob([JSON.stringify(sanitizeDiagnostic(data),null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='schematico-ki-fehler-'+id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+    const copy=document.createElement('button');copy.className='btn btn-sm';copy.textContent='Kurzbericht kopieren';copy.type='button';
+    copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(pre.textContent??'');copy.textContent='Kopiert';}catch{copy.textContent='Bitte Fehlertext oben markieren';details.open=true;}});
+    const hint=document.createElement('small');hint.textContent='Die Datei enthält Projekt- und Entwurfsdaten. Vor dem Teilen prüfen. API-Schlüssel werden entfernt.';hint.style.cssText='display:block;margin-top:6px;line-height:1.4';
+    box.append(details,download,copy,hint);parent.append(box);
   }
 
   private formatToolBadgeText(name: string, args: any, result?: any): string {
@@ -603,7 +627,7 @@ export class AiChatSidebar {
       case 'zoom_canvas':
         return `Zoom angepasst: ${args?.action}`;
       default:
-        return `Aktion: ${name}`;
+        return `Aktion: ${this.escapeHtml(name)}`;
     }
   }
 

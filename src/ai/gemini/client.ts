@@ -1,3 +1,4 @@
+import { rememberDiagnostic, enrichDiagnostic } from '../Diagnostics';
 import { getAiProvider, getAiModel, getOpenRouterKey } from '../ProviderConfig';
 import { routerChat } from '../openrouter/api';
 import { checkedCompletion, layoutActions } from '../../layout/chatStatus';
@@ -267,6 +268,7 @@ export class GeminiChatClient {
             toolExecution.status = 'error';
           }
 
+          if(result?.diagnosticId)enrichDiagnostic(result.diagnosticId,{prompt,provider,model:this.model,recentCalls:currentToolCalls.slice(-10)});
           options?.onToolComplete?.(toolName, fc.args, result);
 
           functionResponseParts.push({
@@ -308,6 +310,12 @@ export class GeminiChatClient {
       // Layout proposals require explicit user acceptance; never mutate geometry as an implicit post-pass.
       modelMsg.text = finalText;
       return modelMsg;
+    } catch(error){
+      const err=error instanceof Error?error:new Error(String(error));
+      let diagnosticProject:unknown;try{diagnosticProject=stateManager.getProject();}catch{}
+      const diagnosticId=rememberDiagnostic({tool:(error as any)?.toolName??'ai_request',stage:(error as any)?.diagnosticStage??'provider_request',
+        error,args:(error as any)?.toolArguments,project:diagnosticProject,prompt,recentCalls:currentToolCalls.slice(-10),provider,model:this.model});
+      Object.assign(err,{diagnosticId});throw err;
     } finally {
       this.currentAbortController = null;
       this.isAborted = false;

@@ -160,10 +160,11 @@ export async function routerChat(
         name: c.function.name,
         args: JSON.parse(c.function.arguments || '{}'),
       };
-    } catch {
-      throw new Error(
-        'Das Modell lieferte ungültige Werkzeugargumente. Bitte erneut versuchen.',
-      );
+    } catch (error) {
+      throw Object.assign(new Error('Das Modell lieferte ungültige Werkzeugargumente. Bitte erneut versuchen.'),{
+        diagnosticStage:'tool_arguments',toolName:c.function.name,toolArguments:c.function.arguments,
+        parseError:error instanceof Error?error.message:String(error),
+      });
     }
   });
   return {
