@@ -1,6 +1,6 @@
 {
   "name": "schematico",
-  "version": "1.2.61",
+  "version": "1.2.62",
   "type": "module",
   "main": "electron/main.cjs",
   "description": "Schematico – editierbare Stromlaufpläne für Windows und Web",
