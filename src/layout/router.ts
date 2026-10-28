@@ -77,7 +77,7 @@ export function pinStub(
   return { x: pin.x + v.x * len, y: pin.y + v.y * len };
 }
 type ReservedStub = { edgeId: string; p: Point; q: Point };
-export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false): void {
+export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false, clearance = 0): void {
   const shapes = s.nodes
       .flatMap((n) => n.shapes)
       .filter((g) => g.kind !== 'frame'),
@@ -103,7 +103,7 @@ export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false): v
     ? bundleKey(a).localeCompare(bundleKey(b)) || pinOrder(a)-pinOrder(b) || a.id.localeCompare(b.id)
     : a.id.localeCompare(b.id) * (reverse ? -1 : 1));
   for (const e of ordered) {
-    const routed = route(s, e, shapes, done, nets, reserved, bundles);
+    const routed = route(s, e, shapes, done, nets, reserved, bundles, clearance);
     if (!routed) {
       s.issues.push({
         type: 'route_failed',

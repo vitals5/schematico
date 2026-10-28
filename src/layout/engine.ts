@@ -473,7 +473,7 @@ export async function solveLayouts(
       : [profile === 'structured' ? 'bundles' : profile === 'lanes' ? 'reverse' : 'forward'] as const;
     const routed = strategies.map(strategy => {
       const snapshot = clone(s);
-      routeAll(snapshot, strategy === 'reverse', strategy === 'bundles');
+      routeAll(snapshot, strategy === 'reverse', strategy === 'bundles', Math.max(2, snapshot.grid.spacing));
       const report = validateLayout(snapshot);
       return { snapshot, report };
     });

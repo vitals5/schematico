@@ -85,3 +85,20 @@ const previewOriginal=JSON.stringify(drawing);
 assert.match(canvas.renderInteractiveWire(),/<path/);
 assert.equal(JSON.stringify(drawing),previewOriginal,'Hovering over a target must not change the project');
 console.log('✓ Live routing preview is isolated from stored connections');
+
+// Layout proposals must clean routes too, even when every device is locked.
+const {previewLayout}=await import('../layout/service');
+const proposalSource=clone(original),proposalBefore=JSON.stringify(proposalSource);
+const proposal=await previewLayout(proposalSource,'p',{multiPage:false,lockedIds:proposalSource.pages[0].components.map(c=>c.id)});
+assert.equal(proposal.status,'preview_ready');
+assert.equal(JSON.stringify(proposalSource),proposalBefore);
+for(const candidate of proposal.candidates){
+  const s=snapshotPage(candidate.page,{...proposalSource,pages:[candidate.page]});
+  assert(candidate.page.wires.every(w=>w.routingMode==='auto'));
+  for(const [i,a] of s.edges[0].points.slice(1).entries())for(const [j,b] of s.edges[1].points.slice(1).entries()){
+    const p=s.edges[0].points[i],q=s.edges[1].points[j];
+    if(Math.abs(a.y-p.y)<1e-6&&Math.abs(b.y-q.y)<1e-6&&Math.min(Math.max(a.x,p.x),Math.max(b.x,q.x))>Math.max(Math.min(a.x,p.x),Math.min(b.x,q.x))+1e-6)
+      assert(Math.abs(a.y-b.y)>=4-1e-6,'Every proposal keeps parallel conductors one full grid apart');
+  }
+}
+console.log('✓ Every layout variant cleans connections with locked devices and leaves the source unchanged');

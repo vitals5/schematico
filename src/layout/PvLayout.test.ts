@@ -1,3 +1,4 @@
+import { auditMultiPage } from './multipage';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import assert from "node:assert/strict";
 import { pvDraft } from "./testing/pvDraft";
@@ -19,9 +20,11 @@ assert.equal(
 assert.equal(draft.pages[0].components.length, 24);
 assert.equal(JSON.stringify(project), original);
 applyLayout(project, preview.candidates[0], draft);
-assert.equal(topology(project), net);
-AutoconnectEngine.updatePageAutoconnections(project.pages[0]);
-assert.equal(topology(project), net, 'Refreshing a checked layout must not introduce electrical connections');
+if(preview.candidates[0].multiPage) auditMultiPage(draft, 'p', preview.candidates[0].multiPage);
+else assert.equal(topology(project), net);
+const checkedNet=topology(project);
+for(const page of project.pages)AutoconnectEngine.updatePageAutoconnections(page);
+assert.equal(topology(project), checkedNet, 'Refreshing a checked layout must not introduce electrical connections');
 assert(preview.candidates.every((c) => c.report.valid));
 const tiny = clone(draft);
 tiny.pages[0].plotFrame.width = 100;

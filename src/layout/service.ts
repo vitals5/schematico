@@ -144,6 +144,7 @@ export async function previewLayout(
         .slice(1, -1)
         .map((p) => ({ x: p.x * u, y: p.y * u }));
       wire.isAutoconnect = false;
+      wire.routingMode = 'auto';
     }
     next.connectionMode = 'explicit';
     next.layoutConstraints = {

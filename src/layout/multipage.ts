@@ -302,7 +302,7 @@ export function auditMultiPage(
     throw new Error('Verbindung doppelt aufgeteilt.');
   const endpoint = (p: Wire['from']) => JSON.stringify(p);
   const attributes = (w: Wire) => {
-    const { id, from, to, waypoints, isAutoconnect, ...rest } = w;
+    const { id, from, to, waypoints, isAutoconnect, routingMode, ...rest } = w;
     return JSON.stringify(rest);
   };
   const same = (a: Wire, b: Wire) =>

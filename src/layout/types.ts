@@ -148,7 +148,7 @@ export const topology = (p: Project) =>
         source: c.source,
         pins: Object.entries(c.pins).map(([id, p]) => [id, p.customLabel]),
       })),
-      wires: page.wires.map(({ waypoints, isAutoconnect, ...w }) => w),
+      wires: page.wires.map(({ waypoints, isAutoconnect, routingMode, ...w }) => w),
       groups: page.groups,
       cables: page.cables?.map(({ start, end, ...c }) => c),
     })),
