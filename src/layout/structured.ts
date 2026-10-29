@@ -42,7 +42,7 @@ function axisStructuredGroup(id: string, children: ElkNode[], snapshot: LayoutSn
         const rect = <T extends { x: number; y: number; width: number; height: number }>(r: T): T => ({ ...point(r), width: r.height, height: r.width });
         const transpose = (c: ElkNode): ElkNode => ({ ...point(c), width: c.height, height: c.width, ports: c.ports?.map(p => ({ ...point(p), width: p.height, height: p.width })), children: c.children?.map(transpose) });
         const directions = { left: 'top', right: 'bottom', top: 'left', bottom: 'right' } as const;
-        const transposed = { ...snapshot, junctionSpaces: snapshot.junctionSpaces?.map(s => ({ ...s, width: s.height, height: s.width, orderX: s.orderY, orderY: s.orderX })), nodes: snapshot.nodes.map(n => ({ ...n, rect: rect(n.rect), pins: n.pins.map(p => ({ ...point(p), direction: directions[p.direction] })), shapes: n.shapes.map(s => ({ ...s, rect: rect(s.rect) })) })) };
+        const transposed = { ...snapshot, junctionSpaces: snapshot.junctionSpaces?.map(s => ({ ...s, width: s.height, height: s.width, orderX: s.orderY, orderY: s.orderX, apartX: s.apartY, apartY: s.apartX })), nodes: snapshot.nodes.map(n => ({ ...n, rect: rect(n.rect), pins: n.pins.map(p => ({ ...point(p), direction: directions[p.direction] })), shapes: n.shapes.map(s => ({ ...s, rect: rect(s.rect) })) })) };
         const result = verticalStructuredGroup(id, children.map(transpose), transposed, gap, { left: padding.top, top: padding.left, right: padding.bottom, bottom: padding.right });
         return result && transpose(result);
     }
@@ -82,13 +82,13 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
         const a = JSON.stringify([e.from.componentId, e.from.pinId]);
         const b = JSON.stringify([e.to.componentId, e.to.pinId]);
         const ac = owner.get(a), bc = owner.get(b);
-        return ac && bc && ac !== bc ? [{ a, b, ac, bc, net: nets.get(e.id)! }] : [];
+        return ac && bc && ac !== bc ? [{ a, b, ac, bc, net: nets.get(e.id)!, alignAxis: e.alignAxis !== false }] : [];
     });
     // Same-side connections join parallel branches; they do not define a shared
     // device axis when those branches contain different numbers of serial devices.
     const axial = connections.filter(e => {
         const a = pins.get(e.a)?.direction, b = pins.get(e.b)?.direction;
-        return a === 'bottom' && b === 'top' || a === 'top' && b === 'bottom';
+        return e.alignAxis && (a === 'bottom' && b === 'top' || a === 'top' && b === 'bottom');
     });
     // Project desired x coordinates onto non-overlapping intervals with isotonic regression.
     // Unlike a left-to-right clamp, this can move an entire row back towards its port axes.
@@ -155,7 +155,12 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
         const from = owner.get(a), to = owner.get(b);
         return from && to && from !== to ? [[from, to] as [string, string]] : [];
     }));
-    alignSerialLanes([...rows.values()], axial, gap, padding.left, columnOrder);
+    const separatedOrder = (snapshot.junctionSpaces ?? []).flatMap(s => (s.apartX ?? []).flatMap(([a, b]) => {
+        const from = owner.get(a), to = owner.get(b);
+        return from && to && from !== to ? [[from, to] as [string, string]] : [];
+    }));
+    const aligned = alignSerialLanes([...rows.values()], axial, gap, padding.left, columnOrder, separatedOrder);
+    if (separatedOrder.length && !aligned) return;
     // Remove transverse drift of whole connected circuits, retaining every port-axis
     // relationship and the label clearance to independent neighbours in the same row.
     const unseen = new Set(nodes.map(c => c.id));

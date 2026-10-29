@@ -39,11 +39,28 @@ export function junctionPlacement(children: ElkNode[], source: LayoutSnapshot, g
         });
         if (contacts.length < 2 || original.filter(e => helper.members.has(e.from.componentId) !== helper.members.has(e.to.componentId)).length !== contacts.length) return;
         const unique = [...new Map(contacts.map(c => [c.other, c])).values()].sort((a, b) => a.other.localeCompare(b.other));
-        const start = unique.find(c => c.own === helper.through[0]), end = unique.find(c => c.own === helper.through[1]);
-        if (!start || !end || pins.get(start.other)!.direction !== opposite[pins.get(end.other)!.direction]) return;
+        const head = unique.find(c => c.own === helper.through[0]), tail = unique.find(c => c.own === helper.through[1]);
+        if (!head && !tail) return;
+        const open = !head || !tail;
+        const anchor = head ?? tail!;
+        if (open && pins.get(anchor.other)!.direction !== opposite[pins.get(anchor.own)!.direction]) return;
+        const side = unique.filter(c => c !== anchor && pins.get(c.other)!.direction === opposite[pins.get(anchor.other)!.direction])
+            .sort((a, b) => {
+                const ap = helper.ports!.find(p => p.id === a.own)!, bp = helper.ports!.find(p => p.id === b.own)!;
+                return (head ? -1 : 1) * (helper.vertical ? ap.y! - bp.y! : ap.x! - bp.x!) || a.other.localeCompare(b.other);
+            });
+        const start = head ?? side[0], end = tail ?? side[0];
+        if (!start || !end || start === end || pins.get(start.other)!.direction !== opposite[pins.get(end.other)!.direction]) return;
         const through = [start, end];
-        edges.push({ id: 'virtual-' + helper.id + '-through', from: through[0].endpoint, to: through[1].endpoint, potential: '', points: [] });
+        edges.push({ id: 'virtual-' + helper.id + '-through', from: through[0].endpoint, to: through[1].endpoint, potential: '', points: [], alignAxis: !open });
         const orderX: [string, string][] = [], orderY: [string, string][] = [];
+        const apartX: [string, string][] = [], apartY: [string, string][] = [];
+        if (open) for (const contact of unique.filter(c => c !== anchor)) {
+            const direction = pins.get(contact.own)!.direction;
+            if (helper.vertical && (direction === 'left' || direction === 'right')) apartX.push(direction === 'right' ? [anchor.other, contact.other] : [contact.other, anchor.other]);
+            else if (!helper.vertical && (direction === 'top' || direction === 'bottom')) apartY.push(direction === 'bottom' ? [anchor.other, contact.other] : [contact.other, anchor.other]);
+            else return;
+        }
         for (const contact of unique.filter(c => !through.includes(c))) {
             const peer = through.find(c => pins.get(c.other)!.direction === pins.get(contact.other)!.direction);
             if (!peer) return;
@@ -63,7 +80,7 @@ export function junctionPlacement(children: ElkNode[], source: LayoutSnapshot, g
             if (!helper.vertical && (direction === 'top' || direction === 'bottom') && Math.abs(ap.x! - bp.x!) > 1e-6)
                 orderY.push((direction === 'top' ? ap.x! < bp.x! : ap.x! > bp.x!) ? [a.other, b.other] : [b.other, a.other]);
         }
-        reservations.push({ pins: unique.map(c => c.other), width: helper.width ?? 1, height: helper.height ?? 1, orderX, orderY });
+        reservations.push({ pins: unique.map(c => c.other), width: helper.width ?? 1, height: helper.height ?? 1, orderX, orderY, apartX, apartY });
         neighbours.set(helper.id, contacts);
     }
     const layout = plan(core, { ...source, edges, junctionSpaces: reservations });
@@ -87,7 +104,8 @@ export function junctionPlacement(children: ElkNode[], source: LayoutSnapshot, g
         const upper = Math.min(...after.map(c => vertical ? c.node.y! : c.node.x!)) - gap - (vertical ? helper.height! : helper.width!);
         if (upper < lower - 1e-6) return;
         // Prefer a facing downstream port, then the upstream axis; no symbol rotation.
-        const aligned = [...after, ...before].map(c => vertical ? c.x - (c.own.x ?? 0) : c.y - (c.own.y ?? 0));
+        const aligned = [...after, ...before].sort((a, b) => Number(pins.get(a.own.id)!.direction !== opposite[a.direction]) - Number(pins.get(b.own.id)!.direction !== opposite[b.direction]))
+            .map(c => vertical ? c.x - (c.own.x ?? 0) : c.y - (c.own.y ?? 0));
         const candidates = aligned.map(axis => ({ ...helper, x: vertical ? Math.max(padding.left, axis) : (lower + upper) / 2, y: vertical ? (lower + upper) / 2 : Math.max(padding.top, axis) }));
         const fits = (c: ElkNode) => !occupied.some(n => c.x! < n.x! + n.width! + gap && c.x! + c.width! + gap > n.x! && c.y! < n.y! + n.height! + gap && c.y! + c.height! + gap > n.y!);
         const candidate = candidates.find(fits);

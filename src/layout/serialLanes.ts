@@ -4,7 +4,7 @@ interface AxialConnection { a: string; b: string; ac: string; bc: string }
 
 /** Align unambiguous serial chains exactly after local row optimisation. Operates
  * only on temporary layout nodes; first appearance establishes the column order. */
-export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection[], gap: number, left: number, preferredOrder: [string, string][] = []): boolean {
+export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection[], gap: number, left: number, preferredOrder: [string, string][] = [], separatedOrder: [string, string][] = []): boolean {
     const nodes = rows.flat(), byId = new Map(nodes.map(n => [n.id, n]));
     const level = new Map(rows.flatMap((row, i) => row.map(n => [n.id, i] as const)));
     const outgoing = new Map<string, Set<string>>(), incoming = new Map<string, Set<string>>();
@@ -31,7 +31,7 @@ export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection
         links.get(p.from)!.push({ id: p.to, delta: p.deltas[0] });
         links.get(p.to)!.push({ id: p.from, delta: -p.deltas[0] });
     }
-    if (!links.size) return false;
+    if (!links.size && !preferredOrder.length && !separatedOrder.length) return false;
     const laneOf = new Map<string, string>(), offset = new Map<string, number>();
     const lanes = new Map<string, ElkNode[]>();
     for (const seed of [...nodes].sort((a, b) => a.id.localeCompare(b.id))) {
@@ -52,9 +52,10 @@ export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection
         const lane = laneOf.get(n.id)!;
         if (!column.has(lane)) column.set(lane, column.size);
     }
-    if (preferredOrder.length) {
+    const hints = [...preferredOrder, ...separatedOrder];
+    if (hints.length) {
         const next = new Map<string, Set<string>>(), indegree = new Map([...column.keys()].map(id => [id, 0]));
-        for (const [a, b] of preferredOrder) {
+        for (const [a, b] of hints) {
             const from = laneOf.get(a), to = laneOf.get(b);
             if (!from || !to || from === to) continue;
             if (!next.has(from)) next.set(from, new Set());
@@ -82,6 +83,16 @@ export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection
             if (!edges.has(to)) degree.set(to, degree.get(to)! + 1);
             edges.set(to, Math.max(edges.get(to) ?? -Infinity, offset.get(a.id)! + (a.width ?? 1) + gap - offset.get(b.id)!));
         }
+    }
+    // Open rails need a real side corridor even when their attached devices
+    // occupy different levels. Reserve full envelopes, including visible labels.
+    for (const [a, b] of separatedOrder) {
+        const first = byId.get(a), second = byId.get(b), from = laneOf.get(a), to = laneOf.get(b);
+        if (!first || !second || !from || !to || from === to) return false;
+        if (!constraints.has(from)) constraints.set(from, new Map());
+        const edges = constraints.get(from)!;
+        if (!edges.has(to)) degree.set(to, degree.get(to)! + 1);
+        edges.set(to, Math.max(edges.get(to) ?? -Infinity, offset.get(a)! + (first.width ?? 1) + gap - offset.get(b)!));
     }
     const queue = [...degree].filter(([, d]) => !d).map(([id]) => id).sort(), order: string[] = [];
     while (queue.length) {

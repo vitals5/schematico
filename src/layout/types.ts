@@ -52,6 +52,8 @@ export interface LayoutFrame {
   shapes?: Shape[];
 }
 export interface LayoutEdge {
+  /** Temporary planning edge may define levels without imposing a shared axis. */
+  alignAxis?: boolean;
   id: string;
   from: { componentId: string; pinId: string };
   to: { componentId: string; pinId: string };
@@ -60,7 +62,7 @@ export interface LayoutEdge {
 }
 export interface LayoutSnapshot {
   /** Temporary planning reservations; never persisted as project connections. */
-  junctionSpaces?: { pins: string[]; width: number; height: number; orderX?: [string, string][]; orderY?: [string, string][] }[];
+  junctionSpaces?: { pins: string[]; width: number; height: number; orderX?: [string, string][]; orderY?: [string, string][]; apartX?: [string, string][]; apartY?: [string, string][] }[];
   pageId: string;
   area: Rect;
   nodes: LayoutNode[];
