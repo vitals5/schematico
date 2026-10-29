@@ -150,6 +150,14 @@ Die Reihenfolge beider ursprünglichen Stationsketten bleibt verbindlich. Widers
 
 Regressionstests prüfen drei Gerätespalten zwischen zwei Schienen mit unterschiedlichen Beschriftungsbreiten, beide Achsen, umgekehrte Eingabereihenfolge und Leitungsrichtungen, widersprüchliche Stationsreihenfolgen, unveränderte Topologie und Rückgängig. Die Tests messen auch Kreuzungen und Knicke der endgültigen Originalleitungen.
 
+### Außenkorridore für lange Rückführungen
+
+Lange Verbindungen zwischen gleichgerichteten Anschlüssen erhalten eine zusätzliche geometrische Routingpräferenz. Liegt mindestens ein weiteres tatsächlich verbundenes Gerät zwischen ihren Anschlussebenen, berücksichtigt der Router zwei Außenkorridore des zusammenhängenden Schaltungsbereichs. Dessen gemessene Geräte- und Beschriftungsbereiche bestimmen die Grenzen. Kurze Verbindungen, gegenüberliegende Anschlüsse und nur räumlich benachbarte, unverbundene Geräte lösen diese Präferenz nicht aus. Die Erkennung ist keine Aussage über Stromrichtung oder elektrische Funktion.
+
+Die Außenbahnen folgen dem Raster. Lange parallele Abschnitte innerhalb der Schaltungsfläche erhalten zusätzliche Wegkosten; Länge, Knicke und Kreuzungen bleiben weitere Kriterien. Hindernisse, Blattgrenzen, echte Netze, Leiterabstände und Anschlussrichtungen bleiben verbindlich. Ein äußerer Weg ist daher keine Pflicht: Bei blockierten oder ungünstigen Außenbahnen kann ein zulässiger innerer Weg gewinnen. Die Präferenz gilt für automatische Layoutwege und die gemeinsame Routingfunktion beim manuellen Aufräumen. Sie fügt weder Leitungen noch elektrische Verbindungen hinzu und verändert keine Gerätepositionen.
+
+Tests prüfen beide Achsen und gespeicherten Leitungsrichtungen, gesperrte Außenkorridore mit innerer Ausweichroute, unveränderte Endpunkte sowie die Abgrenzung kurzer, gegenüberliegender und unverbundener Fälle.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

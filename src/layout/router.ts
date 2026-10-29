@@ -1,5 +1,6 @@
 import type { LayoutSnapshot, LayoutEdge, Point, Shape } from './types';
 import { bottom, right, contains, union } from './rect';
+import { returnCorridor } from './returnCorridor';
 import { fanoutPreferences } from './channels';
 import {
   segmentHits,
@@ -163,6 +164,7 @@ function route(
       { x: from.x, y: from.y },
       { x: to.x, y: to.y },
     ];
+  const returnHint = returnCorridor(s, e, from, to, clearance);
   const a = pinStub(s, from, e.from.componentId),
     b = pinStub(s, to, e.to.componentId);
   const rowShapes = new Map<number, Shape[]>(),
@@ -226,6 +228,7 @@ function route(
   if (!clear(from, a, 0) || !clear(b, to, 1)) return;
   const xs = new Set<number>([a.x, b.x, s.area.x, right(s.area)]),
     ys = new Set<number>([a.y, b.y, s.area.y, bottom(s.area)]);
+  if (returnHint) for (const lane of returnHint.lanes) (returnHint.vertical ? xs : ys).add(lane);
   // Visibility lanes are rounded OUTWARD from obstacles. Physical pin/stub positions remain exact.
   const step = clearance>0 ? s.grid.spacing : Math.max(0.5, s.grid.spacing / 4),
     down = (v: number, origin=0) => origin+Math.floor((v-origin) / step) * step,
@@ -300,6 +303,9 @@ function route(
     fastPaths.push([a, { x: a.x, y }, { x: b.x, y }, b]);
   for (const x of nearest(xx, a.x, b.x))
     fastPaths.push([a, { x, y: a.y }, { x, y: b.y }, b]);
+  if (returnHint) for (const lane of returnHint.lanes) fastPaths.push(returnHint.vertical
+    ? [a, { x: lane, y: a.y }, { x: lane, y: b.y }, b]
+    : [a, { x: a.x, y: lane }, { x: b.x, y: lane }, b]);
   const options = fastPaths
     .map(compactPath)
     .filter((points) => {
@@ -347,7 +353,7 @@ function route(
             Math.abs(q.x - complete[i].x) +
             Math.abs(q.y - complete[i].y) +
             8 +
-            crossingCount(complete[i],q)*20,
+            crossingCount(complete[i],q)*20 + (returnHint?.penalty(complete[i], q) ?? 0),
           0,
         ),
     }; });
@@ -415,7 +421,7 @@ function route(
           Math.abs(q.x - p.x) +
           Math.abs(q.y - p.y) +
           (curr.d === d ? 0 : 8) +
-          crosses * 20,
+          crosses * 20 + (returnHint?.penalty(p, q) ?? 0),
         k = key(x, y, d);
       if (g >= (best.get(k) ?? Infinity)) continue;
       best.set(k, g);
