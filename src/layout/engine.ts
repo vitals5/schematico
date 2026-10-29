@@ -349,6 +349,11 @@ export async function solveLayouts(
       }
     };
     const place = (node: ElkNode, x: number, y: number) => {
+      if (node === laid) {
+        for (const child of node.children ?? [])
+          place(child, x + (child.x ?? 0), y + (child.y ?? 0));
+        return;
+      }
       const rigid = frameMap.get(node.id);
       if (rigid?.rigid) {
         const nodes = descendants(node.id),
@@ -417,7 +422,11 @@ export async function solveLayouts(
         place(child, x + (child.x ?? 0), y + (child.y ?? 0));
     };
     const packer = new SheetPacker(s.area, occupied, gap / 2);
-    const blocks = [...(laid.children ?? [])];
+    // Preserve the structured circuit's relative axes and reserved routing gaps.
+    // Packing its devices independently destroys the preceding global arrangement.
+    // Other profiles retain independent packing as bounded alternatives.
+    const blocks = profile === 'structured' && laid.children?.length
+      ? [laid] : [...(laid.children ?? [])];
     if (s.frames.length && profile === 'compact')
       blocks.sort(
         (a, b) =>

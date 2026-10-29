@@ -78,6 +78,16 @@ Die Variante **Geordnete Strompfade** unterstützt nun auch überwiegend horizon
 
 Die Referenz ist keine automatisch ausführbare Bemessungsvorschrift. Aus ihr werden keine Schutzorgane, Leiterquerschnitte, Verriegelungen oder Betriebszustände selbstständig ergänzt. Die Tests sichern Darstellung und Modellerhaltung ab, keine allgemeine Normkonformität oder vollständige Unterstützung sämtlicher Handbuchschaltungen.
 
+### Leitungsraum und geordnete Abgänge
+
+Bei **Geordneten Strompfaden** reserviert die Platzierung zwischen Geräteebenen zusätzlichen Platz für seitlich versetzte Leiter. Überlappende Knickbereiche unabhängiger Netze benötigen getrennte Bahnen. Räumlich getrennte Bereiche können Bahnen wiederverwenden; Zweige desselben tatsächlichen Netzes dürfen gemeinsame Abschnitte verwenden. Gleiche Potentialtexte allein verbinden keine Netze. Bei Auffächerungen und Zusammenführungen wird zusätzlich die notwendige Staffelung der Knicke berücksichtigt. Die Abschätzung ersetzt keine anschließende Routingprüfung.
+
+Die strukturierte Variante wird als zusammenhängende Anordnung auf das Blatt gepackt. Dadurch bleiben berechnete Geräteachsen und Leitungsräume auch ohne ausdrückliche Funktionsgruppe erhalten. Fixierte Objekte bleiben Hindernisse; andere Layoutvarianten behalten ihre bisherige Einzelpackung als Alternative. Wenn der zusammenhängende Bereich nicht passt, gilt diese Variante als gescheitert und die vorhandene Varianten- und Mehrblattsuche entscheidet weiter.
+
+Der Router erkennt gleichgerichtete, geordnete Anschlussbänke mit mindestens drei Leitern. Bei der entsprechenden Routingalternative bearbeitet er äußere Abgänge zuerst und bevorzugt bei ansonsten gleichwertigen Wegen Knicke nahe der schmaleren Anschlussbank. Das gilt auch horizontal und bei umgekehrt gespeicherten Leitungsendpunkten. Absichtlich vertauschte Anschlussreihenfolgen werden nicht als geordnete Bank behandelt oder korrigiert. Die Wegkosten zählen die vollständige Leitung einschließlich ihrer Anschlussstummel, damit gleichwertige Wege dieselbe Knickbewertung erhalten.
+
+Ein Regressionstest mit acht getrennten Abgängen, sichtbaren Beschriftungen und einem fixierten Nachbargerät prüft die gesamte Vorschau und Übernahme. Zusätzliche Geometrietests decken beide Achsen und Richtungen, unveränderte Netze, fehlenden Leitungsraum und deterministische Ergebnisse ab. Diese Regeln garantieren keine kreuzungsfreie Lösung für beliebige Schaltungen; Hindernisse, Abstände und Anschlussrichtungen bleiben harte Bedingungen.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

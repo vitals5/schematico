@@ -1,6 +1,8 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
 import { rankedGroup } from './ranked';
+import { channelGap, type ChannelSpan } from './channels';
+import { netIds } from './validate';
 type Padding = {
     left: number;
     right: number;
@@ -67,11 +69,13 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
     const rows = new Map<number, ElkNode[]>();
     for (const c of nodes)
         rows.set(c.y!, [...(rows.get(c.y!) ?? []), c]);
-    const connections = snapshot.edges.flatMap(e => {
+    const edges = snapshot.edges.map((e, i) => ({ ...e, id: e.id ?? 'channel-' + i }));
+    const nets = netIds({ ...snapshot, edges });
+    const connections = edges.flatMap(e => {
         const a = JSON.stringify([e.from.componentId, e.from.pinId]);
         const b = JSON.stringify([e.to.componentId, e.to.pinId]);
         const ac = owner.get(a), bc = owner.get(b);
-        return ac && bc && ac !== bc ? [{ a, b, ac, bc }] : [];
+        return ac && bc && ac !== bc ? [{ a, b, ac, bc, net: nets.get(e.id)! }] : [];
     });
     // Project desired x coordinates onto non-overlapping intervals with isotonic regression.
     // Unlike a left-to-right clamp, this can move an entire row back towards its port axes.
@@ -158,9 +162,25 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
             for (const c of members)
                 c.x! -= shift;
     }
+    // Reserve transverse routing space before fixing the distance between levels.
+    // A fixed device gap is insufficient for several independent fan-out bends.
+    const levels = [...rows.values()];
+    const levelOf = new Map(levels.flatMap((row, i) => row.map(c => [c.id, i] as const)));
+    const spans = levels.map(() => [] as ChannelSpan[]);
+    for (const e of connections) {
+        const a = byId.get(e.ac), b = byId.get(e.bc);
+        const ar = levelOf.get(e.ac), br = levelOf.get(e.bc);
+        if (!a || !b || ar === undefined || br === undefined || ar === br) continue;
+        const ap = a.ports?.find(p => p.id === e.a), bp = b.ports?.find(p => p.id === e.b);
+        const ad = pins.get(e.a)?.direction, bd = pins.get(e.b)?.direction;
+        if (!ap || !bp || !(ar < br && ad === 'bottom' && bd === 'top' || br < ar && bd === 'bottom' && ad === 'top')) continue;
+        const upper = ar < br ? a : b, lower = ar < br ? b : a;
+        const up = ar < br ? ap : bp, down = ar < br ? bp : ap;
+        spans[Math.min(ar, br)].push({ start: upper.x! + (up.x ?? 0), end: lower.x! + (down.x ?? 0), net: e.net, bank: upper.id, destinationBank: lower.id });
+    }
     // Equal body baselines, regardless of text height above an individual symbol.
     let y = padding.top;
-    for (const row of rows.values()) {
+    for (const [index, row] of levels.entries()) {
         const bodyOffset = (c: ElkNode) => {
             const n = snapshot.nodes.find(n => n.id === c.id);
             const bodies = n?.shapes.filter(s => s.kind === 'body');
@@ -169,7 +189,8 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
         const baseline = Math.max(...row.map(bodyOffset));
         for (const c of row)
             c.y = y + baseline - bodyOffset(c);
-        y = Math.max(...row.map(c => c.y! + (c.height ?? 1))) + gap;
+        y = Math.max(...row.map(c => c.y! + (c.height ?? 1))) +
+            (index === levels.length - 1 ? gap : channelGap(spans[index], snapshot.grid?.spacing ?? 2, gap));
     }
     let width = Math.max(...nodes.map(c => c.x! + (c.width ?? 1))) + padding.right;
     let height = y - gap + padding.bottom;

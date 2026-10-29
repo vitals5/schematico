@@ -1,5 +1,6 @@
 import type { LayoutSnapshot, LayoutEdge, Point, Shape } from './types';
 import { bottom, right, contains, union } from './rect';
+import { fanoutPreferences } from './channels';
 import {
   segmentHits,
   endpointExemption,
@@ -94,16 +95,18 @@ export function routeAll(s: LayoutSnapshot, reverse = false, bundles = false, cl
     }),
   );
   const bundleKey = (e: LayoutEdge) => JSON.stringify([e.from.componentId,e.to.componentId].sort());
+  const fanouts: ReturnType<typeof fanoutPreferences> = bundles ? fanoutPreferences(s) : new Map();
   const pinOrder = (e: LayoutEdge) => {
     const first=[e.from,e.to].sort((a,b)=>a.componentId.localeCompare(b.componentId))[0];
     const pin=s.nodes.find(n=>n.id===first.componentId)?.pins.find(p=>p.id===first.pinId);
     return pin ? (pin.direction==='top'||pin.direction==='bottom'?pin.x:pin.y) : 0;
   };
   const ordered=[...s.edges].sort((a,b)=> bundles
-    ? bundleKey(a).localeCompare(bundleKey(b)) || pinOrder(a)-pinOrder(b) || a.id.localeCompare(b.id)
+    ? (fanouts.has(a.id) ? 'fanout:' + fanouts.get(a.id)!.group : 'pair:' + bundleKey(a)).localeCompare(fanouts.has(b.id) ? 'fanout:' + fanouts.get(b.id)!.group : 'pair:' + bundleKey(b)) ||
+      (fanouts.has(a.id) && fanouts.has(b.id) ? fanouts.get(b.id)!.reach - fanouts.get(a.id)!.reach : pinOrder(a)-pinOrder(b)) || a.id.localeCompare(b.id)
     : a.id.localeCompare(b.id) * (reverse ? -1 : 1));
   for (const e of ordered) {
-    const routed = route(s, e, shapes, done, nets, reserved, bundles, clearance);
+    const routed = route(s, e, shapes, done, nets, reserved, bundles, clearance, fanouts.get(e.id));
     if (!routed) {
       s.issues.push({
         type: 'route_failed',
@@ -146,6 +149,7 @@ function route(
   reserved: ReservedStub[],
   bundles = false,
   clearance = 0,
+  fanout?: { origin: Point; vertical: boolean },
 ): Point[] | undefined {
   const from = s.nodes
       .find((n) => n.id === e.from.componentId)
@@ -323,21 +327,31 @@ function route(
             clear(points[i], q),
         );
     })
-    .map((points) => ({
+    .map((points) => {
+      // Count bends on the complete wire, including its mandatory endpoint stubs.
+      // Counting only the middle path incorrectly rewards bends at the far stub
+      // over an equally simple bend inside a free routing channel.
+      const complete = compactPath([from, ...points, to]);
+      return {
       points,
-      cost: points
+      bendDistance: fanout ? points.slice(1).reduce((sum, q, i) => {
+        const p = points[i];
+        return sum + (fanout.vertical ? Math.abs(p.x - q.x) > 1e-6 ? Math.abs(p.y - fanout.origin.y) : 0
+            : Math.abs(p.y - q.y) > 1e-6 ? Math.abs(p.x - fanout.origin.x) : 0);
+      }, 0) : 0,
+      cost: complete
         .slice(1)
         .reduce(
           (n, q, i) =>
             n +
-            Math.abs(q.x - points[i].x) +
-            Math.abs(q.y - points[i].y) +
+            Math.abs(q.x - complete[i].x) +
+            Math.abs(q.y - complete[i].y) +
             8 +
-            crossingCount(points[i],q)*20,
+            crossingCount(complete[i],q)*20,
           0,
         ),
-    }));
-  options.sort((a, b) => a.cost - b.cost);
+    }; });
+  options.sort((a, b) => a.cost - b.cost || a.bendDistance - b.bendDistance);
   if (options[0])
     return compactPath([
       { x: from.x, y: from.y },
