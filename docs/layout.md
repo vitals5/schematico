@@ -104,6 +104,14 @@ Für diese Ketten gelten gemeinsame Spaltenpositionen über alle Geräteebenen. 
 
 Diese Ausrichtung kann mehr Breite benötigen als eine versetzte Anordnung. Die bestehenden Blattgrenzen, alternativen Varianten und die Mehrblattprüfung bleiben daher maßgebend. Symbole und Schriftgrößen werden nicht verkleinert. Tests decken unterschiedlich lange Ketten und Beschriftungen, Abstände jeder Ebene, physische Anschlussreihenfolge, beide Achsen, unveränderte Eingabedaten und inkompatible mehrpolige Geometrien ab. Ein Bibliothekstest mit drei Abgängen und insgesamt 13 Geräten prüft zusätzlich die geroutete Vorschau und die Erhaltung aller elektrischen Endpunkte bei der Übernahme.
 
+### Verzweigungen aus tatsächlichen Netzen erkennen
+
+Gemeinsame Geräteebenen werden anhand elektrisch verbundener Anschlüsse ermittelt. Die Verbindung zwischen zwei parallelen Eingängen kann direkt gespeichert sein oder sternförmig über einen vorgelagerten Ausgang verlaufen. Beide Darstellungen liefern denselben Wunsch nach einer gemeinsamen Eingangsebene. Explizit bekannte interne Anschlussbrücken (`joinedPins`) gehen in diese Auswertung ein. Verschiedene Anschlüsse eines gewöhnlichen Geräts und gleiche Potentialtexte werden dagegen nicht automatisch elektrisch verbunden.
+
+Die Ausrichtung bleibt eine weiche Vorgabe: Serielle Reihenfolgen und die vorhandene Zyklusprüfung haben Vorrang. Innerhalb eines Netzes werden verträgliche Teilgruppen gebildet, damit eine unvereinbare Verbindung nicht sämtliche übrigen Ausrichtungswünsche blockiert. Die Auswertung verändert keine Leitungsendpunkte, ergänzt keine Brücken und ersetzt den gespeicherten Leitungsbaum nicht. Die reale Leitungsführung wird anschließend für die ursprünglichen Verbindungen berechnet und geprüft.
+
+Tests decken direkte und sternförmige Verzweigungen, unterschiedliche Rückverbindungen, ausdrücklich gebrückte und getrennte Anschlüsse, beide Layoutachsen und umgekehrt gespeicherte Leitungsrichtungen ab. Zusätzliche Bibliothekstests prüfen gemeinsame Kontaktebenen, kollisionsfreie Leitungsführung und die Erhaltung aller ursprünglichen Endpunkte. Diese Regeln garantieren keine pixelgleichen Koordinaten verschiedener Verdrahtungsdarstellungen; Leitungsräume, zusätzliche Verbindungssymbole und Textmaße werden weiterhin anhand des jeweiligen Bestands berücksichtigt.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

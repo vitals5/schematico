@@ -1,5 +1,6 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
+import { netIds } from './validate';
 /** Bounded alternative for functional groups: serial bottom/top paths become ranks;
  * parallel entries share a rank where compatible with serial order. All edges are routed afterwards. */
 export function rankedGroup(
@@ -47,12 +48,26 @@ export function rankedGroup(
   // Sharing a net at the top/bottom is a preferred common level, not a hard
   // equality. A short bypass can span a longer serial branch. Forcing both ends
   // level would collapse that branch and introduce an artificial cycle.
-  const parallel = edges.filter(e => e.ad === e.bd && (e.ad === 'top' || e.ad === 'bottom'))
-    .sort((a, b) => Number(a.ad === 'bottom') - Number(b.ad === 'bottom') ||
-      JSON.stringify([a.a, a.b].sort()).localeCompare(JSON.stringify([b.a, b.b].sort())));
-  for (const e of parallel) {
-    const a = root(e.a), b = root(e.b);
-    if (a === b) continue;
+  // Use actual nets rather than the arbitrary edge tree used to store a branch.
+  // Private edge keys also support snapshots without persistent wire IDs.
+  const wiring = snapshot.edges.map((e, i) => ({ ...e, id: String(i) }));
+  const nets = netIds({ ...snapshot, edges: wiring });
+  const pins = new Map(snapshot.nodes.flatMap(n => n.pins.map(p => [JSON.stringify([n.id, p.id]), p] as const)));
+  const groups = new Map<string, { direction: 'top' | 'bottom'; members: Set<string> }>();
+  for (const e of wiring) for (const endpoint of [e.from, e.to]) {
+    const key = JSON.stringify([endpoint.componentId, endpoint.pinId]);
+    const owner = owners.get(key), direction = pins.get(key)?.direction;
+    if (!owner || direction !== 'top' && direction !== 'bottom') continue;
+    const net = JSON.stringify([nets.get(e.id), direction]);
+    const group = groups.get(net) ?? { direction, members: new Set<string>() };
+    group.members.add(owner); groups.set(net, group);
+  }
+  const parallel = [...groups.values()].map(g => ({ direction: g.direction, members: [...g.members].sort() }))
+    .filter(g => g.members.length > 1)
+    .sort((a, b) => Number(a.direction === 'bottom') - Number(b.direction === 'bottom') || JSON.stringify(a.members).localeCompare(JSON.stringify(b.members)));
+  const tryAlign = (first: string, second: string): boolean => {
+    const a = root(first), b = root(second);
+    if (a === b) return true;
     const adjacency = new Map<string, Set<string>>();
     for (const arc of serial) {
       const from = root(arc.from), to = root(arc.to);
@@ -70,7 +85,14 @@ export function rankedGroup(
       }
       return false;
     };
-    if (!reachable(a, b) && !reachable(b, a)) parent.set(a, b);
+    if (reachable(a, b) || reachable(b, a)) return false;
+    parent.set(a, b);
+    return true;
+  };
+  for (const group of parallel) {
+    const representatives: string[] = [];
+    for (const member of group.members)
+      if (!representatives.some(other => tryAlign(member, other))) representatives.push(member);
   }
   const arcs = new Map<string, Set<string>>(),
     degree = new Map([...new Set(children.map((c) => root(c.id)))].map((id) => [id, 0]));
