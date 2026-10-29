@@ -88,6 +88,14 @@ Der Router erkennt gleichgerichtete, geordnete Anschlussbänke mit mindestens dr
 
 Ein Regressionstest mit acht getrennten Abgängen, sichtbaren Beschriftungen und einem fixierten Nachbargerät prüft die gesamte Vorschau und Übernahme. Zusätzliche Geometrietests decken beide Achsen und Richtungen, unveränderte Netze, fehlenden Leitungsraum und deterministische Ergebnisse ab. Diese Regeln garantieren keine kreuzungsfreie Lösung für beliebige Schaltungen; Hindernisse, Abstände und Anschlussrichtungen bleiben harte Bedingungen.
 
+### Parallele Zweige unterschiedlicher Länge
+
+Parallele Zweige müssen nicht gleich viele Geräte enthalten. Die Rang-Anordnung behandelt gemeinsame Eingangs- und Ausgangsebenen deshalb als Ausrichtungswünsche. Vor jeder Zusammenfassung prüft sie, ob die bereits bekannten seriellen Pfade dadurch einen Widerspruch erhalten würden. Gemeinsame Eingangsebenen werden zuerst berücksichtigt. Eine unvereinbare Ausgangsausrichtung wird ausgelassen; die Verbindung selbst bleibt bestehen und wird über den benötigten Ebenenabstand geführt. Echte gerichtete Zyklen bleiben ein Grund, diese Rang-Variante zu verwerfen und andere Varianten zu prüfen.
+
+Gleichgerichtete seitliche Anschlüsse erzwingen keine gemeinsame vertikale Ebene. Die Achsausrichtung serieller Geräte berücksichtigt nur die gegenüberliegenden Anschlüsse entlang der Hauptachse. Rückverbindungen zwischen parallelen Zweigen ziehen einen längeren seriellen Pfad dadurch nicht in eine Zickzacklinie. Bei überwiegend horizontalen Schaltungen gelten dieselben Regeln in der vertauschten Layoutachse.
+
+Die Regressionstests umfassen parallele Pfade mit einem, zwei und vier seriellen Geräten, unterschiedlich große Beschriftungsbereiche, beide Achsen, vertauschte Eingabereihenfolge, echte Zyklen und seitliche Verbindungen. Ein vollständiger Bibliothekstest prüft zusätzlich sichtbare Querverweise, Leitungsführung, unveränderte elektrische Daten, isolierte Vorschau und Rückgängig. Die Layoutberechnung fügt keine Kontakte oder Verriegelungen hinzu und bewertet nicht deren elektrotechnische Eignung.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

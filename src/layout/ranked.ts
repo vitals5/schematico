@@ -1,7 +1,7 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
-/** Bounded alternative for functional groups: serial bottom/top paths become ranks,
- * same-side branches share a rank. All electrical edges are still routed afterwards. */
+/** Bounded alternative for functional groups: serial bottom/top paths become ranks;
+ * parallel entries share a rank where compatible with serial order. All edges are routed afterwards. */
 export function rankedGroup(
   id: string,
   children: ElkNode[],
@@ -41,23 +41,41 @@ export function rankedGroup(
         ]
       : [];
   });
-  for (const e of edges)
-    if (e.ad === e.bd) {
-      const a = root(e.a),
-        b = root(e.b);
-      if (a !== b) parent.set(a, b);
+  const serial = edges.flatMap(e => e.ad === 'bottom' && e.bd === 'top'
+    ? [{ from: e.a, to: e.b }]
+    : e.ad === 'top' && e.bd === 'bottom' ? [{ from: e.b, to: e.a }] : []);
+  // Sharing a net at the top/bottom is a preferred common level, not a hard
+  // equality. A short bypass can span a longer serial branch. Forcing both ends
+  // level would collapse that branch and introduce an artificial cycle.
+  const parallel = edges.filter(e => e.ad === e.bd && (e.ad === 'top' || e.ad === 'bottom'))
+    .sort((a, b) => Number(a.ad === 'bottom') - Number(b.ad === 'bottom') ||
+      JSON.stringify([a.a, a.b].sort()).localeCompare(JSON.stringify([b.a, b.b].sort())));
+  for (const e of parallel) {
+    const a = root(e.a), b = root(e.b);
+    if (a === b) continue;
+    const adjacency = new Map<string, Set<string>>();
+    for (const arc of serial) {
+      const from = root(arc.from), to = root(arc.to);
+      if (!adjacency.has(from)) adjacency.set(from, new Set());
+      adjacency.get(from)!.add(to);
     }
+    const reachable = (from: string, to: string): boolean => {
+      const queue = [from], seen = new Set<string>();
+      while (queue.length) {
+        const node = queue.pop()!;
+        if (node === to) return true;
+        if (seen.has(node)) continue;
+        seen.add(node);
+        queue.push(...(adjacency.get(node) ?? []));
+      }
+      return false;
+    };
+    if (!reachable(a, b) && !reachable(b, a)) parent.set(a, b);
+  }
   const arcs = new Map<string, Set<string>>(),
     degree = new Map([...new Set(children.map((c) => root(c.id)))].map((id) => [id, 0]));
-  for (const e of edges) {
-    let a: string, b: string;
-    if (e.ad === 'bottom' && e.bd === 'top') {
-      a = root(e.a);
-      b = root(e.b);
-    } else if (e.ad === 'top' && e.bd === 'bottom') {
-      a = root(e.b);
-      b = root(e.a);
-    } else continue;
+  for (const e of serial) {
+    const a = root(e.from), b = root(e.to);
     if (a === b) return;
     if (!arcs.get(a)?.has(b)) {
       if (!arcs.has(a)) arcs.set(a, new Set());

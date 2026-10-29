@@ -77,6 +77,12 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
         const ac = owner.get(a), bc = owner.get(b);
         return ac && bc && ac !== bc ? [{ a, b, ac, bc, net: nets.get(e.id)! }] : [];
     });
+    // Same-side connections join parallel branches; they do not define a shared
+    // device axis when those branches contain different numbers of serial devices.
+    const axial = connections.filter(e => {
+        const a = pins.get(e.a)?.direction, b = pins.get(e.b)?.direction;
+        return a === 'bottom' && b === 'top' || a === 'top' && b === 'bottom';
+    });
     // Project desired x coordinates onto non-overlapping intervals with isotonic regression.
     // Unlike a left-to-right clamp, this can move an entire row back towards its port axes.
     for (let pass = 0; pass < 12; pass++) {
@@ -85,7 +91,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
             ordered.reverse();
         for (const row of ordered) {
             const desiredAxis = (c: ElkNode) => {
-                const targets = connections.flatMap(e => {
+                const targets = axial.flatMap(e => {
                     const own = e.ac === c.id ? e.a : e.bc === c.id ? e.b : undefined;
                     const other = byId.get(e.ac === c.id ? e.bc : e.ac);
                     if (!own || !other || row.includes(other) || other.y! >= c.y!)
@@ -108,7 +114,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
             }[] = [];
             for (const [i, c] of row.entries()) {
                 offsets.push(offset);
-                const targets = connections.flatMap(e => {
+                const targets = axial.flatMap(e => {
                     const own = e.ac === c.id ? e.a : e.bc === c.id ? e.b : undefined;
                     const otherId = e.ac === c.id ? e.bc : e.ac;
                     const other = byId.get(otherId);
