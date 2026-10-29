@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import type { PlacedComponent } from '../model/types';
 import { fixture, add } from './testing/fixture';
 import { previewLayout, applyLayout } from './service';
 import { snapshotPage } from './geometry';
@@ -57,6 +58,19 @@ const candidate = preview.candidates[0];
 assert(candidate.multiPage);
 assert.equal(candidate.multiPage.pages.length, 3);
 assert.equal(candidate.multiPage.links.length, 2);
+assert.equal(candidate.report.metrics.bends, 0, 'Vertical sheet transitions follow the original device axes without side detours');
+for (const link of candidate.multiPage.links) {
+  const devices: PlacedComponent[] = candidate.multiPage.pages.flatMap(p => p.components);
+  assert.equal(devices.find(c => c.id === link.fromArrowId)!.symbolId, 'potential_arrow_down');
+  assert.equal(devices.find(c => c.id === link.toArrowId)!.symbolId, 'potential_arrow_up');
+}
+for (const change of ['symbol', 'rotation']) {
+  const altered = clone(candidate);
+  const arrow = altered.multiPage!.pages.flatMap(p => p.components).find(c => c.id === altered.multiPage!.links[0].fromArrowId)!;
+  if (change === 'symbol') arrow.symbolId = 'potential_arrow_right'; else arrow.rotation = 180;
+  assert.throws(() => applyLayout(project, altered), /Abbruchstelle verändert/);
+  assert.equal(JSON.stringify(project), before);
+}
 assert.equal(JSON.stringify(project), before);
 const tampered = clone(candidate);
 tampered.multiPage!.pages[0].wires[0].potential = 'wrong';

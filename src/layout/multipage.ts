@@ -1,3 +1,4 @@
+import { handoverSymbol } from './handoverSymbol';
 import { coherentBlocks, partitionBins } from './coherentBlocks';
 import { designPenalty } from './structured';
 import type { Project, Page, Wire, PlacedComponent } from '../model/types';
@@ -123,10 +124,10 @@ function buildPages(
     page: Page,
     id: string,
     name: string,
-    right: boolean,
+    symbolId: string,
   ): PlacedComponent => {
     const symbol = getSymbolById(
-      right ? 'potential_arrow_right' : 'potential_arrow_left',
+      symbolId,
       project,
     )!;
     const c: PlacedComponent = {
@@ -154,8 +155,8 @@ function buildPages(
     const name = `MP${token}.${links.length + 1}`,
       fromArrowId = fresh(`layout-arrow-${source.id}-${wire.id}-from`),
       toArrowId = fresh(`layout-arrow-${source.id}-${wire.id}-to`);
-    addArrow(a, fromArrowId, name, true);
-    addArrow(b, toArrowId, name, false);
+    addArrow(a, fromArrowId, name, handoverSymbol(project, source, wire.from, 'right'));
+    addArrow(b, toArrowId, name, handoverSymbol(project, source, wire.to, 'left'));
     a.wires.push({
       ...clone(wire),
       to: { componentId: fromArrowId, pinId: '1' },
@@ -335,13 +336,14 @@ export function auditMultiPage(
     )
       throw new Error('Anschlüsse der Blattverbindung verändert.');
     for (const [id, symbol] of [
-      [link.fromArrowId, 'potential_arrow_right'],
-      [link.toArrowId, 'potential_arrow_left'],
+      [link.fromArrowId, handoverSymbol(project, source, w.from, 'right')],
+      [link.toArrowId, handoverSymbol(project, source, w.to, 'left')],
     ]) {
       const c = components.find((x) => x.id === id);
       if (
         !c ||
         c.symbolId !== symbol ||
+        c.rotation !== 0 ||
         c.bmk !== link.name ||
         c.functionText !== link.name
       )

@@ -174,6 +174,14 @@ Diese Strompfadblöcke sind eine Präferenz für die Zuordnung, keine neue Proje
 
 Ein Test mit zwei unabhängigen breiten Geräteketten prüft einen gültigen Zweiblattvorschlag ohne Trennung innerhalb der Ketten und ohne zusätzliche Abbruchstellen. Weitere Tests sichern gemeinsame Einspeisungen, ausdrückliche Gruppen, fixierte und mehrpolige Geräte sowie umgekehrt gespeicherte Leitungsrichtungen ab. Die bestehende Mehrblattprüfung kontrolliert die Originalgeräte, Originalanschlüsse, Leitungen, Verweispaare und Rückgängig; zu große Einzelketten behalten ihren feineren Ausweichweg.
 
+### Anschlussgerechte Abbruchstellen an Blattübergängen
+
+Neue Abbruchstellen eines Mehrblattvorschlags folgen der tatsächlichen Anschlussrichtung des jeweils ursprünglichen Geräts einschließlich seiner gespeicherten Drehung. Ein unterer Anschluss erhält beispielsweise eine nach unten gerichtete Abbruchstelle mit gegenüberliegendem Anschluss; ein oberer Anschluss eine nach oben gerichtete. Seitliche Anschlüsse werden entsprechend behandelt. Beide Seiten werden unabhängig bestimmt: Die gespeicherte Reihenfolge `from/to` ist keine angenommene Stromrichtung. Bestehende Gerätesymbole, deren Drehungen und ursprüngliche elektrische Endpunkte bleiben unverändert.
+
+Die Prüfung vor der Übernahme erwartet die aus dem Originalanschluss abgeleiteten Bibliothekssymbole, unveränderte Verweisnamen und ungedrehte neue Abbruchstellen. Manipulierte Symbolvarianten oder Drehungen werden zurückgewiesen. Die vorhandene paarweise Querverweisnavigation und die logischen Verbindungen bleiben erhalten. Tatsächliche Leitungswege werden anschließend wie bisher auf Anschlussrichtungen, Hindernisse und Blattgrenzen geprüft; die passende Symbolrichtung garantiert allein noch keinen geraden Leitungsweg.
+
+Tests decken beide Anschlüsse eines Geräts bei 0°, 90°, 180° und 270° sowie eine vollständig berechnete Dreiblattaufteilung ab. Letztere erhält zwei navigierbare Verweispaare ohne zusätzliche Leitungsknicke; Symbol- und Drehungsmanipulationen werden vor der Projektänderung abgelehnt. Rückgängig und Wiederholen bleiben abgesichert.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.
