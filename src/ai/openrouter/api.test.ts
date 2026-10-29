@@ -118,6 +118,20 @@ try {
   assert.equal(message.text, 'Bestand analysiert.');
   assert.equal(executed, 1);
   assert(!client.isRunning());
+  let repairTurn = 0;
+  globalThis.fetch = async () => {
+    repairTurn++;
+    if (repairTurn === 3) return Response.json({ choices: [{ message: { content: 'Korrektur ausgeführt.' } }] });
+    return Response.json({ choices: [{ message: { role: 'assistant', content: null, tool_calls: repairTurn === 1
+      ? [{ id: 'valid-but-discarded', type: 'function', function: { name: 'test_inspect', arguments: '{}' } },
+         { id: 'truncated', type: 'function', function: { name: 'test_inspect', arguments: '{"components":[]' } }]
+      : [{ id: 'corrected-once', type: 'function', function: { name: 'test_inspect', arguments: '{}' } }] } }] });
+  };
+  const repairedClient = new GeminiChatClient({ toolRegistry: registry });
+  const repaired = await repairedClient.sendMessage('Analysiere erneut', {} as any);
+  assert.equal(repaired.text, 'Korrektur ausgeführt.');
+  assert.equal(executed, 2, 'Discarded calls never execute; only the corrected call executes once');
+
   globalThis.fetch = async () =>
     Response.json({
       choices: [
@@ -138,7 +152,7 @@ try {
     routerChat('test-secret', 'vendor/tool', [], '', [], undefined),
     /ungültige Werkzeugargumente/,
   );
-  assert.equal(executed, 1);
+  assert.equal(executed, 2);
   globalThis.fetch = async (_url, init) => {
     const body = JSON.parse(String(init?.body));
     assert.equal(body.messages[1].content[1].type, 'image_url');

@@ -19,6 +19,7 @@ export interface AiDiagnostic {
     stack?: string;
     status?: number;
     parseError?: string;
+    argumentAttempts?: { tool: string; args: unknown; parseError: string; finishReason?: string; nativeFinishReason?: string }[];
   };
   args?: unknown;
   result?: unknown;
@@ -72,7 +73,7 @@ export function rememberDiagnostic(input: {
     schema: 'schematico-ai-diagnostic', schemaVersion: 1, id, createdAt: new Date().toISOString(), appVersion: version,
     provider: input.provider ?? getAiProvider(), model: input.model ?? getAiModel(),
     tool: input.tool, stage: input.stage, durationMs: input.durationMs,
-    error: { name: error?.name ?? 'ToolError', message: error?.message ?? (input.result && ((input.result as any).error ?? (input.result as any).message)) ?? 'Aktion fehlgeschlagen.', stack: error?.stack, status: error?.status, parseError: error?.parseError },
+    error: { name: error?.name ?? 'ToolError', message: error?.message ?? (input.result && ((input.result as any).error ?? (input.result as any).message)) ?? 'Aktion fehlgeschlagen.', stack: error?.stack, status: error?.status, parseError: error?.parseError, argumentAttempts: error?.argumentAttempts },
     args: input.args, result: input.result, project: input.project, prompt: input.prompt, recentCalls: input.recentCalls,
   });
   reports.set(id, report);
@@ -95,5 +96,5 @@ export function clearDiagnostics(): void { reports.clear(); }
 export function diagnosticSummary(report: AiDiagnostic): string {
   const result = report.result as any;
   const brief = result ? { status: result.status, message: result.message, issueCount: result.issues?.length, issues: result.issues?.slice(0, 12) } : undefined;
-  return `${report.appVersion} · ${report.provider} / ${report.model}\nAktion: ${report.tool}\nPhase: ${report.stage}\nZeitpunkt: ${report.createdAt}\nFehler: ${report.error.message}` + (report.error.parseError ? '\nJSON: ' + report.error.parseError : '') + (brief ? '\n\nErgebnis (Auszug):\n' + JSON.stringify(brief, null, 2) : '');
+  return `${report.appVersion} · ${report.provider} / ${report.model}\nAktion: ${report.tool}\nPhase: ${report.stage}\nZeitpunkt: ${report.createdAt}\nFehler: ${report.error.message}` + (report.error.parseError ? '\nJSON: ' + report.error.parseError : '') + (report.error.argumentAttempts?.length ? '\nAntwortende: ' + report.error.argumentAttempts.map(a => a.finishReason ?? 'nicht gemeldet').join(' → ') + '\nAutomatische Korrekturversuche: ' + Math.max(0, report.error.argumentAttempts.length - 1) : '') + (brief ? '\n\nErgebnis (Auszug):\n' + JSON.stringify(brief, null, 2) : '');
 }

@@ -130,48 +130,53 @@ export async function routerChat(
     throw new Error(
       'Bitte ein OpenRouter-Modell in den KI-Einstellungen auswählen.',
     );
-  const response = await routerRequest(
-    '/chat/completions',
-    key,
-    {
-      model,
-      messages: routerMessages(history, instruction),
-      tools: tools.map((t) => ({
-        type: 'function',
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.inputSchema,
-        },
-      })),
-      tool_choice: 'auto',
-      provider: { require_parameters: true },
-    },
-    signal,
-  );
-  const message = response.choices?.[0]?.message;
-  if (!message || (!message.content && !message.tool_calls?.length))
-    throw new Error('OpenRouter hat keine verwendbare Antwort geliefert.');
-  const calls = (message.tool_calls ?? []).map((c: any) => {
-    if (!c.id || !c.function?.name)
+  const messages = routerMessages(history, instruction);
+  const attempts: { tool: string; args: unknown; parseError: string; finishReason?: string; nativeFinishReason?: string }[] = [];
+  // No call from a malformed batch is released to the executor. Ask the model
+  // once to regenerate the complete batch rather than inventing missing JSON.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    signal?.throwIfAborted();
+    const response = await routerRequest('/chat/completions', key, {
+      model, messages,
+      tools: tools.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
+      tool_choice: 'auto', provider: { require_parameters: true },
+    }, signal);
+    const choice = response.choices?.[0], message = choice?.message;
+    if (!message || (!message.content && !message.tool_calls?.length))
+      throw new Error('OpenRouter hat keine verwendbare Antwort geliefert.');
+    if (!Array.isArray(message.tool_calls ?? []) || (message.tool_calls ?? []).some((c: any) => !c.id || !c.function?.name))
       throw new Error('Ungültiger OpenRouter-Werkzeugaufruf.');
     try {
-      return {
-        name: c.function.name,
-        args: JSON.parse(c.function.arguments || '{}'),
-      };
-    } catch (error) {
-      throw Object.assign(new Error('Das Modell lieferte ungültige Werkzeugargumente. Bitte erneut versuchen.'),{
-        diagnosticStage:'tool_arguments',toolName:c.function.name,toolArguments:c.function.arguments,
-        parseError:error instanceof Error?error.message:String(error),
+      if (attempt && !message.tool_calls?.length) throw Object.assign(new Error('Das Modell hat keinen korrigierten Werkzeugaufruf geliefert.'), {
+        diagnosticStage: 'tool_arguments', toolName: attempts[0].tool, parseError: 'Korrekturantwort enthält keinen Werkzeugaufruf.',
       });
+      const calls = (message.tool_calls ?? []).map((c: any) => {
+        if (!c.id || !c.function?.name) throw new Error('Ungültiger OpenRouter-Werkzeugaufruf.');
+        try {
+          if (choice.finish_reason === 'length') throw new Error('Die Modellantwort wurde am Ausgabelimit abgeschnitten.');
+          const args = JSON.parse(c.function.arguments || '{}');
+          if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Werkzeugargumente müssen ein JSON-Objekt sein.');
+          return { name: c.function.name, args };
+        } catch (error) {
+          throw Object.assign(new Error('Das Modell lieferte ungültige Werkzeugargumente. Auch der Korrekturversuch war nicht erfolgreich.'), {
+            diagnosticStage: 'tool_arguments', toolName: c.function.name, toolArguments: c.function.arguments,
+            parseError: error instanceof Error ? error.message : String(error),
+          });
+        }
+      });
+      return { text: message.content ?? '', functionCalls: calls,
+        candidates: [{ content: { role: 'model', parts: [], openRouterMessage: message } }] };
+    } catch (error: any) {
+      if (error?.diagnosticStage !== 'tool_arguments') throw error;
+      attempts.push({ tool: error.toolName, args: error.toolArguments, parseError: error.parseError,
+        finishReason: choice.finish_reason, nativeFinishReason: choice.native_finish_reason });
+      if (attempt === 1) throw Object.assign(error, { argumentAttempts: attempts });
+      messages.push(message);
+      for (const c of message.tool_calls) messages.push({ role: 'tool', tool_call_id: c.id,
+        content: JSON.stringify({ success: false, error: 'Dieser Aufruf wurde nicht ausgeführt. Der gesamte Aufrufblock enthält ungültiges oder abgeschnittenes JSON.',
+          parseError: error.parseError }) });
+      messages.push({ role: 'user', content: 'Der vorherige Aufrufblock wurde vollständig verworfen; keine dieser Aktionen wurde ausgeführt. Wiederhole die vollständig ursprünglich angeforderten Werkzeugaufrufe mit vollständigen, gültigen JSON-Objekten gemäß dem Werkzeugschema. Ergänze alle erforderlichen Verbindungen und Felder. Keine verkürzte Ersatzschaltung und keine bloße Erfolgsmeldung. Verwende kompakte JSON-Schreibweise.' });
     }
-  });
-  return {
-    text: message.content ?? '',
-    functionCalls: calls,
-    candidates: [
-      { content: { role: 'model', parts: [], openRouterMessage: message } },
-    ],
-  };
+  }
+  throw new Error('Werkzeugkorrektur fehlgeschlagen.');
 }
