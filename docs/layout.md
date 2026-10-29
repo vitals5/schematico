@@ -166,6 +166,14 @@ Der gemeinsame Abstand berücksichtigt die vollständigen Symbol- und Beschriftu
 
 Tests decken unterschiedliche Beschriftungsbreiten, beide Hauptachsen, umgekehrte Eingabereihenfolgen und Leitungsrichtungen, gleiche Achsabstände sowie geroutete Bibliothekssymbole mit erhaltenen Querverweisen ab. Ausschlussfälle prüfen getrennte Netze, fixierte und mehrpolige Geräte, zu kurze Zweige, Nachbarhindernisse und das Ausbleiben teilweiser Verschiebungen. Vorschau, elektrische Topologie und Rückgängig bleiben abgesichert.
 
+### Strompfade bei der Blattaufteilung zusammenhalten
+
+Die Mehrblattsuche versucht zunächst, eindeutige serielle Geräteketten gemeinsam auf einem Blatt unterzubringen. Erkannt werden Geräte mit genau zwei gegenüberliegenden Anschlüssen, wenn entlang der Anschlussrichtung genau ein Nachfolger und genau ein Vorgänger bestehen. Gemeinsame Einspeisungen und Rückleiter verschmelzen dadurch nicht sämtliche parallelen Abgänge zu einem großen Block. Vorhandene ausdrückliche Gruppen bleiben weiterhin unteilbar. BMK und Potentialtexte sind keine Grundlage dieser Zusammenfassung.
+
+Diese Strompfadblöcke sind eine Präferenz für die Zuordnung, keine neue Projektgruppe. Für jede untersuchte Blattzahl wird bei geeigneten Ketten zunächst eine zusammenhängende Zuordnung berechnet und vollständig platziert, geroutet und geprüft. Scheitert sie, bleibt die bisherige feinere Zuordnung aus den ursprünglichen Gruppen verfügbar. Zu große Ketten verhindern damit keine notwendige Aufteilung. Die Variantenbewertung berücksichtigt zusätzlich die Anzahl benötigter Blattverbindungen. Es handelt sich weiterhin um eine begrenzte heuristische Suche, nicht um eine Garantie der minimalen Blattzahl.
+
+Ein Test mit zwei unabhängigen breiten Geräteketten prüft einen gültigen Zweiblattvorschlag ohne Trennung innerhalb der Ketten und ohne zusätzliche Abbruchstellen. Weitere Tests sichern gemeinsame Einspeisungen, ausdrückliche Gruppen, fixierte und mehrpolige Geräte sowie umgekehrt gespeicherte Leitungsrichtungen ab. Die bestehende Mehrblattprüfung kontrolliert die Originalgeräte, Originalanschlüsse, Leitungen, Verweispaare und Rückgängig; zu große Einzelketten behalten ihren feineren Ausweichweg.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

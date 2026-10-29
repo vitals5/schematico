@@ -1,3 +1,4 @@
+import { coherentBlocks, partitionBins } from './coherentBlocks';
 import { designPenalty } from './structured';
 import type { Project, Page, Wire, PlacedComponent } from '../model/types';
 import { getSymbolById, getSymbolForComponent } from '../model/symbols';
@@ -393,29 +394,15 @@ export async function multiPageCandidate(
   const failedInputs = new Set<string>();
   const blocks = partitionBlocks(source);
   if (blocks.length < 2) return;
-  for (const count of Array.from(
-    { length: Math.min(12, blocks.length) - 1 },
-    (_, i) => i + 2,
-  )) {
-    const bins: string[][] = Array.from({ length: count }, () => []);
-    for (const [index, block] of blocks.entries()) {
-      if (index < count) {
-        bins[index].push(...block);
-        continue;
-      }
-      const affinity = (bin: string[]) =>
-        source.wires.filter(
-          (w) =>
-            (block.includes(w.from.componentId) &&
-              bin.includes(w.to.componentId)) ||
-            (block.includes(w.to.componentId) &&
-              bin.includes(w.from.componentId)),
-        ).length;
-      const bin = [...bins].sort(
-        (a, b) => affinity(b) - affinity(a) || a.length - b.length,
-      )[0];
-      bin.push(...block);
-    }
+  const geometry = snapshotPage(source, target, options);
+  const coherent = coherentBlocks(blocks, geometry);
+  const attempts = Array.from({ length: Math.min(12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
+    const ordinary = partitionBins(blocks, count, geometry);
+    const preferred = coherent.length >= count ? partitionBins(coherent, count, geometry) : undefined;
+    return preferred && JSON.stringify(preferred) !== JSON.stringify(ordinary)
+      ? [{ count, bins: preferred }, { count, bins: ordinary }] : [{ count, bins: ordinary }];
+  });
+  for (const { count, bins } of attempts) {
     const multi = buildPages(
       target,
       source,
@@ -481,7 +468,7 @@ export async function multiPageCandidate(
       multiPage: multi,
     };
     const geometryCost = multi.pages.reduce((sum,page)=>sum+designPenalty(snapshotPage(page,copy)),0);
-    const cost = geometryCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800;
+    const cost = geometryCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800 + multi.links.length * 40;
     if (cost < bestCost) { best = candidate; bestCost = cost; }
     if (report.metrics.crossings <= 30 || count >= 4) break;
   }
