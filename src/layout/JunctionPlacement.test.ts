@@ -61,7 +61,7 @@ const chain = structuredClone(snapshot);
 chain.nodes.push({ ...structuredClone(chain.nodes.find(n => n.id === 'tee')!), id: 'second-tee' });
 chain.edges.push({ id: 'between-helpers', from: { componentId: 'tee', pinId: '2' }, to: { componentId: 'second-tee', pinId: '1' }, potential: 'Signal', points: [] });
 const chainChildren = [...children, { ...children.find(c => c.id === 'tee')!, id: 'second-tee' }];
-assert.equal(junctionPlacement(chainChildren, chain, 6, padding, () => { throw new Error('Connected helper chain retains regular candidate'); }), undefined);
+assert.equal(junctionPlacement(chainChildren, chain, 6, padding, () => { throw new Error('Malformed helper interface retains regular candidate'); }), undefined);
 
 // A plain crossing, terminal or interruption arrow is never silently made a T-piece.
 const roles = fixture();
