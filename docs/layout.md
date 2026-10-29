@@ -130,6 +130,18 @@ Tests prüfen linke und rechte Abgänge, horizontale Anordnung, sichtbare Beschr
 
 Die Strangtests ergänzen ein bis drei verbundene T-Stücke, feine Raster, umgekehrte Leitungsrichtungen und Eingabereihenfolgen, sichtbare Beschriftungen sowie fixierte, elektrisch getrennte, offene und zyklische Varianten. Offene Anfänge und Enden, beide Seiten und Achsen sowie die Rückgängig-Funktion sind abgedeckt. Die Tests prüfen insbesondere, dass nach der Übernahme ausschließlich die ursprünglichen Symbole und Leitungen im Projekt stehen und freie Pins keine erfundene Verbindung erhalten.
 
+### Sammelleitungen mit rechtwinklig abgehenden Gerätespalten
+
+Für eine einzelne lineare Sammelleitung innerhalb einer Layoutgruppe gibt es eine zusätzliche strukturierte Berechnung. Sie berücksichtigt waagerechte Leitungen mit Abgängen nach oben oder unten sowie senkrechte Leitungen mit seitlichen Abgängen. Durchgangs- und Geräteanschlüsse müssen einander zugewandt sein. Ein frei endender Strang ist möglich, solange mindestens ein tatsächlich angeschlossener Durchgangsnachbar vorhanden ist.
+
+Zuerst werden die Abgangsgeräte und ihre nachfolgenden Schaltungen entlang ihrer eigenen Anschlussrichtung angeordnet. Danach folgen die Positionen der T-Stücke den tatsächlichen Eintrittsachsen dieser Geräte. Die Reihenfolge des ursprünglichen Strangs bleibt erhalten. Die Platzreservierung einer Gerätespalte umfasst sowohl das Gerät als auch das zugehörige T-Stück einschließlich sichtbarer Beschriftungen. So können unterschiedlich lange Texte größere Abstände erzeugen, ohne Symbol- oder Schriftgrößen zu verändern.
+
+Einzeln angeschlossene Durchgangsnachbarn werden an den Enden angedockt. Die Sammelleitung erhält einen gemessenen Streifen außerhalb der Abgangsschaltung. Die endgültige Leitungsführung arbeitet anschließend mit sämtlichen Originalanschlüssen und Originalleitungen; vorübergehende Reihenfolge- und Platzierungskanten werden nicht gespeichert. Die Standardbibliothek und ihre vorhandenen Einfügepunkte bleiben unverändert.
+
+Die zusätzliche Berechnung benötigt eine eindeutige Zuordnung eines Abgangsgeräts zu jedem T-Stück und gemeinsame Eintrittsebenen. Mehrere Schienen, gemischte Abgangsseiten, mehrfach belegte Stationen, starre Makro-Innengeometrien, fixierte Nachbarn oder weiter vernetzte Durchgangsnachbarn behalten die bisherigen Varianten. Passt die gemessene Anordnung nicht auf das Blatt, bleiben die bestehenden Alternativen und die Mehrblattprüfung aktiv. Es werden keine Kontakte ergänzt und keine Geräte gespiegelt oder gedreht.
+
+Regressionstests prüfen beide Achsen und Seiten, lange Stationsbeschriftungen, offene Enden, nachgeschaltete Gerätekaskaden, unveränderte elektrische Topologie und Rückgängig. Ein gerader Abgang ist ein Ergebnis der berechneten Geometrie; sämtliche Leitungswege müssen zusätzlich die normale Hindernis- und Anschlussprüfung bestehen.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

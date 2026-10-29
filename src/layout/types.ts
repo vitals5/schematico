@@ -61,8 +61,10 @@ export interface LayoutEdge {
   points: Point[];
 }
 export interface LayoutSnapshot {
+  /** Preferred flow axis for a temporary branch-subcircuit calculation. */
+  planningAxis?: 'horizontal' | 'vertical';
   /** Temporary planning reservations; never persisted as project connections. */
-  junctionSpaces?: { pins: string[]; width: number; height: number; orderX?: [string, string][]; orderY?: [string, string][]; apartX?: [string, string][]; apartY?: [string, string][] }[];
+  junctionSpaces?: { pins: string[]; width: number; height: number; reserve?: boolean; orderX?: [string, string][]; orderY?: [string, string][]; apartX?: [string, string][]; apartY?: [string, string][] }[];
   pageId: string;
   area: Rect;
   nodes: LayoutNode[];
