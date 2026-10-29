@@ -4,7 +4,7 @@ interface AxialConnection { a: string; b: string; ac: string; bc: string }
 
 /** Align unambiguous serial chains exactly after local row optimisation. Operates
  * only on temporary layout nodes; first appearance establishes the column order. */
-export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection[], gap: number, left: number): boolean {
+export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection[], gap: number, left: number, preferredOrder: [string, string][] = []): boolean {
     const nodes = rows.flat(), byId = new Map(nodes.map(n => [n.id, n]));
     const level = new Map(rows.flatMap((row, i) => row.map(n => [n.id, i] as const)));
     const outgoing = new Map<string, Set<string>>(), incoming = new Map<string, Set<string>>();
@@ -51,6 +51,26 @@ export function alignSerialLanes(rows: ElkNode[][], connections: AxialConnection
     for (const row of rows) for (const n of [...row].sort((a, b) => a.x! - b.x! || a.id.localeCompare(b.id))) {
         const lane = laneOf.get(n.id)!;
         if (!column.has(lane)) column.set(lane, column.size);
+    }
+    if (preferredOrder.length) {
+        const next = new Map<string, Set<string>>(), indegree = new Map([...column.keys()].map(id => [id, 0]));
+        for (const [a, b] of preferredOrder) {
+            const from = laneOf.get(a), to = laneOf.get(b);
+            if (!from || !to || from === to) continue;
+            if (!next.has(from)) next.set(from, new Set());
+            if (!next.get(from)!.has(to)) { next.get(from)!.add(to); indegree.set(to, indegree.get(to)! + 1); }
+        }
+        const ready = [...indegree].filter(([, d]) => !d).map(([id]) => id), ordered: string[] = [];
+        while (ready.length) {
+            ready.sort((a, b) => column.get(a)! - column.get(b)!);
+            const id = ready.shift()!; ordered.push(id);
+            for (const to of next.get(id) ?? []) {
+                indegree.set(to, indegree.get(to)! - 1);
+                if (!indegree.get(to)) ready.push(to);
+            }
+        }
+        if (ordered.length !== column.size) return false;
+        ordered.forEach((id, i) => column.set(id, i));
     }
     for (const row of rows) {
         const ordered = [...row].sort((a, b) => column.get(laneOf.get(a.id)!)! - column.get(laneOf.get(b.id)!)!);

@@ -387,6 +387,7 @@ export function snapshotPage(
       id: comp.id,
       kind: 'component',
       handover: isInterruptionSymbol(sym),
+      routingJunction: ['corners', 'tees', 'crossings'].includes(connectionFamily(sym)),
       joinedPins:
         ['corners', 'tees', 'interruptions'].includes(connectionFamily(sym)) ||
         sym.id === 'terminal_single' ||

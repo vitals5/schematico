@@ -4,6 +4,7 @@ import { rankedGroup } from './ranked';
 import { channelGap, type ChannelSpan } from './channels';
 import { netIds } from './validate';
 import { alignSerialLanes } from './serialLanes';
+import { junctionPlacement } from './junctionPlacement';
 type Padding = {
     left: number;
     right: number;
@@ -13,6 +14,11 @@ type Padding = {
 /** Orthogonal circuit columns. Envelopes reserve labels; axes refer to real ports/bodies.
  * This is a geometric style candidate, never an inference of electrical current direction. */
 export function structuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
+    return junctionPlacement(children, snapshot, gap, padding, (core, planning) => axisStructuredGroup(id, core, planning, gap, padding))
+        ?? axisStructuredGroup(id, children, snapshot, gap, padding);
+}
+
+function axisStructuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
     // A left/right device chain needs columns rather than vertical ranks. Count device
     // pairs, not conductors: a three-phase cable must not outweigh three control paths.
     // Handover arrows are edge annotations and do not decide the circuit's main axis.
@@ -36,7 +42,7 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
         const rect = <T extends { x: number; y: number; width: number; height: number }>(r: T): T => ({ ...point(r), width: r.height, height: r.width });
         const transpose = (c: ElkNode): ElkNode => ({ ...point(c), width: c.height, height: c.width, ports: c.ports?.map(p => ({ ...point(p), width: p.height, height: p.width })), children: c.children?.map(transpose) });
         const directions = { left: 'top', right: 'bottom', top: 'left', bottom: 'right' } as const;
-        const transposed = { ...snapshot, nodes: snapshot.nodes.map(n => ({ ...n, rect: rect(n.rect), pins: n.pins.map(p => ({ ...point(p), direction: directions[p.direction] })), shapes: n.shapes.map(s => ({ ...s, rect: rect(s.rect) })) })) };
+        const transposed = { ...snapshot, junctionSpaces: snapshot.junctionSpaces?.map(s => ({ ...s, width: s.height, height: s.width, orderX: s.orderY, orderY: s.orderX })), nodes: snapshot.nodes.map(n => ({ ...n, rect: rect(n.rect), pins: n.pins.map(p => ({ ...point(p), direction: directions[p.direction] })), shapes: n.shapes.map(s => ({ ...s, rect: rect(s.rect) })) })) };
         const result = verticalStructuredGroup(id, children.map(transpose), transposed, gap, { left: padding.top, top: padding.left, right: padding.bottom, bottom: padding.right });
         return result && transpose(result);
     }
@@ -145,7 +151,11 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
                     row[i].x = Math.max(padding.left, b.sum / b.weight) + offsets[i];
         }
     }
-    alignSerialLanes([...rows.values()], axial, gap, padding.left);
+    const columnOrder = (snapshot.junctionSpaces ?? []).flatMap(s => (s.orderX ?? []).flatMap(([a, b]) => {
+        const from = owner.get(a), to = owner.get(b);
+        return from && to && from !== to ? [[from, to] as [string, string]] : [];
+    }));
+    alignSerialLanes([...rows.values()], axial, gap, padding.left, columnOrder);
     // Remove transverse drift of whole connected circuits, retaining every port-axis
     // relationship and the label clearance to independent neighbours in the same row.
     const unseen = new Set(nodes.map(c => c.id));
@@ -176,6 +186,13 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
     // A fixed device gap is insufficient for several independent fan-out bends.
     const levels = [...rows.values()];
     const levelOf = new Map(levels.flatMap((row, i) => row.map(c => [c.id, i] as const)));
+    const junctionGaps = levels.map(() => gap);
+    for (const space of snapshot.junctionSpaces ?? []) {
+        const ranks = space.pins.map(p => levelOf.get(owner.get(p)!)).filter(r => r !== undefined);
+        if (!ranks.length || Math.min(...ranks) === Math.max(...ranks)) return;
+        const first = Math.min(...ranks);
+        junctionGaps[first] = Math.max(junctionGaps[first], space.height + gap * 2);
+    }
     const spans = levels.map(() => [] as ChannelSpan[]);
     for (const e of connections) {
         const a = byId.get(e.ac), b = byId.get(e.bc);
@@ -200,7 +217,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
         for (const c of row)
             c.y = y + baseline - bodyOffset(c);
         y = Math.max(...row.map(c => c.y! + (c.height ?? 1))) +
-            (index === levels.length - 1 ? gap : channelGap(spans[index], snapshot.grid?.spacing ?? 2, gap));
+            (index === levels.length - 1 ? gap : Math.max(junctionGaps[index], channelGap(spans[index], snapshot.grid?.spacing ?? 2, gap)));
     }
     let width = Math.max(...nodes.map(c => c.x! + (c.width ?? 1))) + padding.right;
     let height = y - gap + padding.bottom;

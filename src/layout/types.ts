@@ -29,6 +29,7 @@ export interface LayoutPin extends Point {
   direction: Direction;
 }
 export interface LayoutNode {
+  routingJunction?: boolean;
   handover?: boolean;
   joinedPins?: string[][];
   insertion?: Point;
@@ -58,6 +59,8 @@ export interface LayoutEdge {
   points: Point[];
 }
 export interface LayoutSnapshot {
+  /** Temporary planning reservations; never persisted as project connections. */
+  junctionSpaces?: { pins: string[]; width: number; height: number; orderX?: [string, string][]; orderY?: [string, string][] }[];
   pageId: string;
   area: Rect;
   nodes: LayoutNode[];

@@ -112,6 +112,16 @@ Die Ausrichtung bleibt eine weiche Vorgabe: Serielle Reihenfolgen und die vorhan
 
 Tests decken direkte und sternförmige Verzweigungen, unterschiedliche Rückverbindungen, ausdrücklich gebrückte und getrennte Anschlüsse, beide Layoutachsen und umgekehrt gespeicherte Leitungsrichtungen ab. Zusätzliche Bibliothekstests prüfen gemeinsame Kontaktebenen, kollisionsfreie Leitungsführung und die Erhaltung aller ursprünglichen Endpunkte. Diese Regeln garantieren keine pixelgleichen Koordinaten verschiedener Verdrahtungsdarstellungen; Leitungsräume, zusätzliche Verbindungssymbole und Textmaße werden weiterhin anhand des jeweiligen Bestands berücksichtigt.
 
+### Einzelne T-Stücke im Leitungsraum
+
+Die strukturierte Variante kann einzelne leitend verbundene T-Stücke aus der normalen Geräte-Ebenenbildung herausnehmen und anschließend im Leitungsraum zwischen ihren Nachbarn platzieren. Für die Geräteanordnung entsteht vorübergehend eine virtuelle Verbindung entlang des vorhandenen Symboldurchgangs. Der seitliche Zweig liefert einen Hinweis auf die Spaltenreihenfolge: Ein nach links gerichteter Abgang bevorzugt den zugehörigen Nachbarn links, ein rechter rechts. Die bestehenden Kettenachsen bleiben dabei erhalten. Die Anwendung dreht das Symbol nicht.
+
+Der Leitungsraum berücksichtigt das vollständige gemessene Rechteck des Verbindungssymbols einschließlich sichtbarer Beschriftungen und zusätzlicher Abstände. Die endgültige Zeichnung enthält weiterhin das ursprüngliche Bibliothekssymbol und sämtliche ursprünglichen Leitungen. Virtuelle Planungskanten und Platzreservierungen werden nicht als Projektverbindungen gespeichert. Anschlüsse, Drehung, Beschriftungen und elektrische Eigenschaften bleiben erhalten; die anschließende echte Leitungsführung und Validierung müssen bestehen.
+
+Die zusätzliche Platzierung ist bewusst begrenzt: Sie benötigt einen erkennbaren Durchgang, ausdrücklich verbundene Pins und passende benachbarte Geräte innerhalb derselben Layoutgruppe. Fixierte Symbole, Kreuzungen, mehrpolige Klemmen, Symbole ohne ausreichend verbundene Nachbarn, unmittelbar miteinander verbundene Hilfssymbolketten und nicht passend unterzubringende Geometrien behalten die bisherige Berechnung. Native starre Gruppen werden nicht aufgelöst. Es wird keine interne elektrische Verbindung aus der bloßen Darstellung eines Kreuzes abgeleitet.
+
+Tests prüfen linke und rechte Abgänge, horizontale Anordnung, sichtbare Beschriftungen, gemessene Abstände, unveränderte elektrische Topologie und die sichere Rückkehr zur regulären Variante bei nicht unterstützten Fällen. Widersprüchliche Spaltenhinweise werden vor einer teilweisen Verschiebung verworfen.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.
