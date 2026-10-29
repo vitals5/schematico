@@ -138,9 +138,17 @@ Zuerst werden die Abgangsgeräte und ihre nachfolgenden Schaltungen entlang ihre
 
 Einzeln angeschlossene Durchgangsnachbarn werden an den Enden angedockt. Die Sammelleitung erhält einen gemessenen Streifen außerhalb der Abgangsschaltung. Die endgültige Leitungsführung arbeitet anschließend mit sämtlichen Originalanschlüssen und Originalleitungen; vorübergehende Reihenfolge- und Platzierungskanten werden nicht gespeichert. Die Standardbibliothek und ihre vorhandenen Einfügepunkte bleiben unverändert.
 
-Die zusätzliche Berechnung benötigt eine eindeutige Zuordnung eines Abgangsgeräts zu jedem T-Stück und gemeinsame Eintrittsebenen. Mehrere Schienen, gemischte Abgangsseiten, mehrfach belegte Stationen, starre Makro-Innengeometrien, fixierte Nachbarn oder weiter vernetzte Durchgangsnachbarn behalten die bisherigen Varianten. Passt die gemessene Anordnung nicht auf das Blatt, bleiben die bestehenden Alternativen und die Mehrblattprüfung aktiv. Es werden keine Kontakte ergänzt und keine Geräte gespiegelt oder gedreht.
+Die Berechnung für eine einzelne Schiene benötigt eine eindeutige Zuordnung eines Abgangsgeräts zu jedem T-Stück und gemeinsame Eintrittsebenen. Mehr als zwei Schienen, gemischte Abgangsseiten innerhalb einer Schiene, mehrfach belegte Stationen, starre Makro-Innengeometrien, fixierte Nachbarn oder weiter vernetzte Durchgangsnachbarn behalten die bisherigen Varianten. Passt die gemessene Anordnung nicht auf das Blatt, bleiben die bestehenden Alternativen und die Mehrblattprüfung aktiv. Es werden keine Kontakte ergänzt und keine Geräte gespiegelt oder gedreht.
 
 Regressionstests prüfen beide Achsen und Seiten, lange Stationsbeschriftungen, offene Enden, nachgeschaltete Gerätekaskaden, unveränderte elektrische Topologie und Rückgängig. Ein gerader Abgang ist ein Ergebnis der berechneten Geometrie; sämtliche Leitungswege müssen zusätzlich die normale Hindernis- und Anschlussprüfung bestehen.
+
+### Gegenüberliegende Versorgungs- und Rückleiterschienen
+
+Zwei parallele lineare Sammelleitungen können gemeinsam angeordnet werden, wenn ihre Abgänge einander zugewandt sind. Zuerst werden die tatsächlichen Geräteschaltungen zwischen den Schienen berechnet. Anschließend folgen beide Schienen den physischen Anschlussachsen der zugehörigen Geräte. Ihre Beschriftungen und die der Abgangsgeräte reservieren gemeinsam Platz. Das funktioniert für obere/untere sowie linke/rechte Schienen; die Bezeichnungen im Projekt entscheiden nicht über ihre elektrische Bedeutung.
+
+Die Reihenfolge beider ursprünglichen Stationsketten bleibt verbindlich. Widersprüchliche Reihenfolgen, nicht gemeinsame Anschlussebenen, unpassende Anschlussrichtungen, fixierte Nachbarn und mehr als zwei Schienen behalten die allgemeinen Layoutalternativen. Eine Schiene benötigt weiterhin mindestens einen tatsächlich angeschlossenen Durchgangsnachbarn. Die Berechnung ergänzt keine Rückleitung, legt keine Brücke an und ändert keine Anschlussbelegung. Nach der Platzierung gelten weiterhin die vollständige Leitungs-, Kollisions- und Blattprüfung sowie gegebenenfalls die Mehrblattberechnung.
+
+Regressionstests prüfen drei Gerätespalten zwischen zwei Schienen mit unterschiedlichen Beschriftungsbreiten, beide Achsen, umgekehrte Eingabereihenfolge und Leitungsrichtungen, widersprüchliche Stationsreihenfolgen, unveränderte Topologie und Rückgängig. Die Tests messen auch Kreuzungen und Knicke der endgültigen Originalleitungen.
 
 ## Verbindungen aufräumen und bearbeiten
 

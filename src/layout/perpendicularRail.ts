@@ -4,7 +4,7 @@ import { junctionBlocks } from './junctionBlocks';
 
 type Padding = { left: number; right: number; top: number; bottom: number };
 const opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' } as const;
-/** A bounded candidate for one straight rail with facing perpendicular branches.
+/** A bounded candidate for straight rails with facing perpendicular branches.
  * Branch subcircuits are arranged first; rail stations then follow their real pins. */
 export function perpendicularRail(children: ElkNode[], source: LayoutSnapshot, gap: number, padding: Padding,
     plan: (core: ElkNode[], snapshot: LayoutSnapshot) => ElkNode | undefined): ElkNode | undefined {
@@ -16,7 +16,16 @@ export function perpendicularRail(children: ElkNode[], source: LayoutSnapshot, g
     });
     if (!selected.length) return;
     const blocks = junctionBlocks(selected, source, gap);
-    if (blocks?.length !== 1) return;
+    if (!blocks?.length || blocks.length > 2) return;
+    if (blocks.length === 2) {
+        // Paired supply/return rails are peeled from the outside inward. Both
+        // original station orders remain constraints on the intervening paths.
+        const side = (block: typeof blocks[number]) => nodes.get(block.parts[0].id)!.pins.find(p =>
+            block.vertical ? ['left', 'right'].includes(p.direction) : ['top', 'bottom'].includes(p.direction))?.direction;
+        const firstSide = side(blocks[0]), secondSide = side(blocks[1]);
+        if (!firstSide || !secondSide || blocks[0].vertical !== blocks[1].vertical || firstSide !== opposite[secondSide]) return;
+        blocks.sort((a, b) => Number(['left', 'top'].includes(side(a)!)) - Number(['left', 'top'].includes(side(b)!)));
+    }
     const rail = blocks[0], originals = new Map(children.map(c => [c.id, c]));
     const owner = new Map(children.flatMap(c => (c.ports ?? []).map(p => [p.id, c.id] as const)));
     const pins = new Map(source.nodes.flatMap(n => n.pins.map(p => [JSON.stringify([n.id, p.id]), p] as const)));
@@ -70,8 +79,9 @@ export function perpendicularRail(children: ElkNode[], source: LayoutSnapshot, g
     // Same-net planning edges align branch entrances; no virtual wire is applied.
     for (let i = 1; i < branches.length; i++) edges.push({ id: 'rail-order-' + i, from: endpoint(branches[0].other),
         to: endpoint(branches[i].other), potential: '', points: [], alignAxis: false });
-    const layout = plan(core, { ...source, edges, planningAxis: rail.vertical ? 'horizontal' : 'vertical',
-        junctionSpaces: [{ pins: branches.map(c => c.other), width: 0, height: 0, reserve: false, orderX: rail.vertical ? [] : order, orderY: rail.vertical ? order : [] }] });
+    const planning: LayoutSnapshot = { ...source, edges, planningAxis: rail.vertical ? 'horizontal' : 'vertical',
+        junctionSpaces: [...(source.junctionSpaces ?? []), { pins: branches.map(c => c.other), width: 0, height: 0, reserve: false, orderX: rail.vertical ? [] : order, orderY: rail.vertical ? order : [] }] };
+    const layout = blocks.length === 2 ? perpendicularRail(core, planning, gap, padding, plan) : plan(core, planning);
     if (!layout?.children) return;
     const placed = layout.children.map(c => {
         const old = originals.get(c.id)!;
