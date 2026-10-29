@@ -63,6 +63,21 @@ Für gleich aufgebaute mehrpolige Verbindungen versucht der Router, einen bereit
 
 Neben Kreuzungen, Knicken und Leitungslängen bewertet die Auswahl nun auch versetzte Anschlussachsen und ungleichmäßige Achsversätze paralleler Verbindungen. Die bisherigen Varianten bleiben als Alternativen erhalten. Eine neue Stilvariante wird nicht allein wegen ihres Namens bevorzugt. Die Regeln leiten keine Stromflussrichtung oder elektrotechnische Funktion aus räumlichen Anschlussrichtungen ab. Bestehende Blattreihenfolgen und elektrische Verbindungen werden dadurch nicht umgedeutet.
 
+## Darstellungsregeln aus Schaltungsbeispielen
+
+Als zusätzliche Referenz wurde das [Eaton-Schaltungsbuch 2023, PU08703001Z-DE](https://www.eaton.com/content/dam/eaton/markets/machinebuilding/eaton-wiring-manual-pu08703001z-de-de-de.pdf) untersucht (korrigierte Ausgabe 10/23, 594 PDF-Seiten). Die PDF und ihre Zeichnungen werden nicht im Repository verteilt. Die folgenden allgemeinen Darstellungsprinzipien sind in eigenen Algorithmen und eigenständig aufgebauten Testschaltungen umgesetzt:
+
+| Fundstelle im Buch | Beobachtung | Umsetzung / Absicherung |
+|---|---|---|
+| 3-28 bis 3-30 (PDF-Seiten 208–210) | Stromlauf-, Verdrahtungs- und Anordnungspläne verfolgen unterschiedliche Zwecke. | Die automatische Anordnung bearbeitet Stromlaufplangeometrie; aus dem Leitungsdatensatz `from/to` wird keine elektrische Stromrichtung abgeleitet. |
+| 3-31 (PDF-Seite 211) | Mehrpolige Leistungspfade behalten Anschlussreihenfolge und gemeinsame Geräteachsen. | Vorhandene Anschlussachsen bleiben maßgebend; die zusätzliche Hauptachsenwahl zählt verbundene Gerätepaare statt einzelne Leiter. Mehrpolige Verbindungen dominieren dadurch nicht allein wegen ihrer Leiterzahl. |
+| 3-32 und 3-36 (PDF-Seiten 212 und 216) | Steuerzweige sind als parallele Pfade mit seriellen Abschnitten lesbar. | Eigenständiger Regressionstest für Stopp → parallele Start-/Haltekontakte → Spule. Der Assistent beschreibt Leistungs- und Steuerkreise als getrennte Funktionsgruppen, sofern deren Rollen bekannt sind. |
+| 3-35 bis 3-44 (PDF-Seiten 215–224) | Komplexere Motorstarter benötigen erkennbare Pfade und Verzweigungen. | Die Variantenbewertung berücksichtigt zusätzlich rückwärts geführte Anschlussketten. Bestehende Hindernis-, Netz- und Mehrblattprüfungen bleiben verbindlich. |
+
+Die Variante **Geordnete Strompfade** unterstützt nun auch überwiegend horizontale Geräteketten. Sie wählt die Achse anhand gegenüberliegender Anschlüsse innerhalb der jeweiligen Gruppe; Abbruchstellen bestimmen diese Wahl nicht. Bei Gleichstand bleibt die vertikale Variante erhalten. Temporär vertauschte Layoutkoordinaten ermöglichen dieselben Rang- und Abstandsregeln in beiden Achsen. Das dreht weder Bibliothekssymbole noch Texte und verändert keine elektrischen Endpunkte. Die geometrische Leserichtung dient ausschließlich als weiches Bewertungskriterium; sie ist keine Aussage über tatsächlichen Stromfluss oder Energiefluss.
+
+Die Referenz ist keine automatisch ausführbare Bemessungsvorschrift. Aus ihr werden keine Schutzorgane, Leiterquerschnitte, Verriegelungen oder Betriebszustände selbstständig ergänzt. Die Tests sichern Darstellung und Modellerhaltung ab, keine allgemeine Normkonformität oder vollständige Unterstützung sämtlicher Handbuchschaltungen.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.

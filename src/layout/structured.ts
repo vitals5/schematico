@@ -10,6 +10,37 @@ type Padding = {
 /** Orthogonal circuit columns. Envelopes reserve labels; axes refer to real ports/bodies.
  * This is a geometric style candidate, never an inference of electrical current direction. */
 export function structuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
+    // A left/right device chain needs columns rather than vertical ranks. Count device
+    // pairs, not conductors: a three-phase cable must not outweigh three control paths.
+    // Handover arrows are edge annotations and do not decide the circuit's main axis.
+    const owners = new Map(children.flatMap(c => (c.ports ?? []).map(p => [p.id, c.id] as const)));
+    const nodes = new Map(snapshot.nodes.map(n => [n.id, n]));
+    const axes = { horizontal: new Set<string>(), vertical: new Set<string>() };
+    for (const e of snapshot.edges) {
+        const a = nodes.get(e.from.componentId), b = nodes.get(e.to.componentId);
+        const ac = owners.get(JSON.stringify([e.from.componentId, e.from.pinId]));
+        const bc = owners.get(JSON.stringify([e.to.componentId, e.to.pinId]));
+        if (!ac || !bc || ac === bc || a?.handover || b?.handover) continue;
+        const ap = a?.pins.find(p => p.id === e.from.pinId), bp = b?.pins.find(p => p.id === e.to.pinId);
+        const key = JSON.stringify([ac, bc].sort());
+        if ((ap?.direction === 'right' && bp?.direction === 'left') || (ap?.direction === 'left' && bp?.direction === 'right')) axes.horizontal.add(key);
+        if ((ap?.direction === 'bottom' && bp?.direction === 'top') || (ap?.direction === 'top' && bp?.direction === 'bottom')) axes.vertical.add(key);
+    }
+    if (axes.horizontal.size > axes.vertical.size) {
+        // Transpose only the temporary layout geometry. Symbols, text rotations and
+        // electrical endpoints in the project are never rotated or rewritten.
+        const point = <T extends { x?: number; y?: number }>(p: T): T => ({ ...p, x: p.y, y: p.x });
+        const rect = <T extends { x: number; y: number; width: number; height: number }>(r: T): T => ({ ...point(r), width: r.height, height: r.width });
+        const transpose = (c: ElkNode): ElkNode => ({ ...point(c), width: c.height, height: c.width, ports: c.ports?.map(p => ({ ...point(p), width: p.height, height: p.width })), children: c.children?.map(transpose) });
+        const directions = { left: 'top', right: 'bottom', top: 'left', bottom: 'right' } as const;
+        const transposed = { ...snapshot, nodes: snapshot.nodes.map(n => ({ ...n, rect: rect(n.rect), pins: n.pins.map(p => ({ ...point(p), direction: directions[p.direction] })), shapes: n.shapes.map(s => ({ ...s, rect: rect(s.rect) })) })) };
+        const result = verticalStructuredGroup(id, children.map(transpose), transposed, gap, { left: padding.top, top: padding.left, right: padding.bottom, bottom: padding.right });
+        return result && transpose(result);
+    }
+    return verticalStructuredGroup(id, children, snapshot, gap, padding);
+}
+
+function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
     const pins = new Map(snapshot.nodes.flatMap(n => n.pins.map(p => [JSON.stringify([n.id, p.id]), p] as const)));
     const owner = new Map(children.flatMap(c => (c.ports ?? []).map(p => [p.id, c.id] as const)));
     const side = new Map<string, 'left' | 'right'>();
@@ -195,6 +226,7 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
 export function designPenalty(s: LayoutSnapshot): number {
     const nodes = new Map(s.nodes.map(n => [n.id, n]));
     const pairs = new Map<string, number[]>();
+    let score = 0;
     for (const e of s.edges) {
         const a = nodes.get(e.from.componentId)?.pins.find(p => p.id === e.from.pinId);
         const b = nodes.get(e.to.componentId)?.pins.find(p => p.id === e.to.pinId);
@@ -204,13 +236,18 @@ export function designPenalty(s: LayoutSnapshot): number {
         const horizontal = (a.direction === 'left' && b.direction === 'right') || (a.direction === 'right' && b.direction === 'left');
         if (!vertical && !horizontal)
             continue;
+        // Geometric reading order follows facing ports, independent of wire from/to.
+        // A backwards path remains electrically legal but is harder to read.
+        const forward = vertical
+            ? (a.direction === 'bottom' ? b.y - a.y : a.y - b.y)
+            : (a.direction === 'right' ? b.x - a.x : a.x - b.x);
+        score += Math.max(0, -forward) * 3;
         const ids = [e.from.componentId, e.to.componentId].sort();
         const sign = e.from.componentId === ids[0] ? 1 : -1;
         const delta = sign * (vertical ? a.x - b.x : a.y - b.y);
         const key = JSON.stringify([ids, vertical]);
         pairs.set(key, [...(pairs.get(key) ?? []), delta]);
     }
-    let score = 0;
     for (const deltas of pairs.values()) {
         const mean = deltas.reduce((a, b) => a + b, 0) / deltas.length;
         score += Math.abs(mean) * 3 + deltas.reduce((a, b) => a + Math.abs(b - mean), 0) * 2;
