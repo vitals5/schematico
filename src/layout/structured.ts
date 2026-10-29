@@ -3,6 +3,7 @@ import type { LayoutSnapshot } from './types';
 import { rankedGroup } from './ranked';
 import { channelGap, type ChannelSpan } from './channels';
 import { netIds } from './validate';
+import { spaceParallelBranches } from './branchSpacing';
 import { alignSerialLanes } from './serialLanes';
 import { junctionPlacement } from './junctionPlacement';
 import { perpendicularRail } from './perpendicularRail';
@@ -163,6 +164,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
     }));
     const aligned = alignSerialLanes([...rows.values()], axial, gap, padding.left, columnOrder, separatedOrder);
     if (separatedOrder.length && !aligned) return;
+    if (!columnOrder.length && !separatedOrder.length) spaceParallelBranches([...rows.values()], axial, snapshot, gap, padding.left);
     // Remove transverse drift of whole connected circuits, retaining every port-axis
     // relationship and the label clearance to independent neighbours in the same row.
     const unseen = new Set(nodes.map(c => c.id));

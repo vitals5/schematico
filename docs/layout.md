@@ -158,6 +158,14 @@ Die Außenbahnen folgen dem Raster. Lange parallele Abschnitte innerhalb der Sch
 
 Tests prüfen beide Achsen und gespeicherten Leitungsrichtungen, gesperrte Außenkorridore mit innerer Ausweichroute, unveränderte Endpunkte sowie die Abgrenzung kurzer, gegenüberliegender und unverbundener Fälle.
 
+### Gleichmäßige Abstände äquivalenter Steuerzweige
+
+Drei oder mehr eindeutige serielle Zweige können einen gemeinsamen Achsabstand erhalten, wenn sie an denselben tatsächlichen Eingangs- und Ausgangsnetzen liegen und dieselben Geräteebenen belegen. Jeder Zweig muss aus mindestens zwei durchgehend ausgerichteten Geräten mit jeweils genau zwei gegenüberliegenden Anschlüssen bestehen. Die Erkennung verwendet weder BMK-Texte noch gleichlautende Potentialbezeichnungen als Netzbrücke. Sie ergänzt keine Kontakte oder Verriegelungen und bewertet nicht die elektrische Eignung der Schaltung.
+
+Der gemeinsame Abstand berücksichtigt die vollständigen Symbol- und Beschriftungsbereiche jeder Geräteebene und wird auf das Layout-Raster aufgerundet. Die ursprüngliche Spaltenreihenfolge und die geraden Achsen innerhalb jedes Zweigs bleiben erhalten. Ein ausschließlich an diese Zweige angeschlossenes gemeinsames Einspeise- oder Rückleitergerät kann über der Mitte der äußeren Zweigachsen ausgerichtet werden; weitere externe Verbindungen, unpassende Anschlussrichtungen oder fixierte Geräte schließen diese zusätzliche Verschiebung aus. Andere Nachbargeräte bleiben Hindernisse: Passt eine Gruppe nicht, wird sie vollständig bei ihrer bisherigen Anordnung belassen. Fixierte Geräte, mehrpolige Anschlussbänke, unterschiedliche Zweiglängen und durch Sammelleitungsstationen vorgegebene Spaltenordnungen erhalten diese zusätzliche Umordnung nicht. Blattgrenzen und endgültige Leitungsprüfung gelten anschließend unverändert; bei Platzmangel bleiben andere Varianten und Mehrblattberechnung verfügbar.
+
+Tests decken unterschiedliche Beschriftungsbreiten, beide Hauptachsen, umgekehrte Eingabereihenfolgen und Leitungsrichtungen, gleiche Achsabstände sowie geroutete Bibliothekssymbole mit erhaltenen Querverweisen ab. Ausschlussfälle prüfen getrennte Netze, fixierte und mehrpolige Geräte, zu kurze Zweige, Nachbarhindernisse und das Ausbleiben teilweiser Verschiebungen. Vorschau, elektrische Topologie und Rückgängig bleiben abgesichert.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.
