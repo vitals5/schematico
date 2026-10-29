@@ -3,6 +3,7 @@ import type { LayoutSnapshot } from './types';
 import { rankedGroup } from './ranked';
 import { channelGap, type ChannelSpan } from './channels';
 import { netIds } from './validate';
+import { alignSerialLanes } from './serialLanes';
 type Padding = {
     left: number;
     right: number;
@@ -98,11 +99,13 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
                         return [];
                     const p = c.ports?.find(p => p.id === own);
                     const q = other.ports?.find(p => p.id === (e.ac === c.id ? e.b : e.a));
-                    return p && q ? [other.x! + (q.x ?? 0) - (p.x ?? 0)] : [];
+                    return p && q ? [other.x! + (q.x ?? 0)] : [];
                 });
-                return targets.length ? targets.reduce((a, b) => a + b, 0) / targets.length : c.x!;
+                const ownAxis = c.ports?.length ? c.ports.reduce((sum, p) => sum + (p.x ?? 0), 0) / c.ports.length : (c.width ?? 0) / 2;
+                return targets.length ? targets.reduce((a, b) => a + b, 0) / targets.length : c.x! + ownAxis;
             };
             const desired = new Map(row.map(c => [c.id, desiredAxis(c)]));
+            // Order by physical source axes, not the left edges of unequal labels.
             row.sort((a, b) => desired.get(a.id)! - desired.get(b.id)! || a.id.localeCompare(b.id));
             let offset = 0;
             const offsets: number[] = [];
@@ -142,6 +145,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
                     row[i].x = Math.max(padding.left, b.sum / b.weight) + offsets[i];
         }
     }
+    alignSerialLanes([...rows.values()], axial, gap, padding.left);
     // Remove transverse drift of whole connected circuits, retaining every port-axis
     // relationship and the label clearance to independent neighbours in the same row.
     const unseen = new Set(nodes.map(c => c.id));

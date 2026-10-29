@@ -96,6 +96,14 @@ Gleichgerichtete seitliche Anschlüsse erzwingen keine gemeinsame vertikale Eben
 
 Die Regressionstests umfassen parallele Pfade mit einem, zwei und vier seriellen Geräten, unterschiedlich große Beschriftungsbereiche, beide Achsen, vertauschte Eingabereihenfolge, echte Zyklen und seitliche Verbindungen. Ein vollständiger Bibliothekstest prüft zusätzlich sichtbare Querverweise, Leitungsführung, unveränderte elektrische Daten, isolierte Vorschau und Rückgängig. Die Layoutberechnung fügt keine Kontakte oder Verriegelungen hinzu und bewertet nicht deren elektrotechnische Eignung.
 
+### Durchgehende Spalten für serielle Geräteketten
+
+Die lokale Reihenoptimierung wird durch eine gemeinsame Berechnung eindeutiger serieller Ketten ergänzt. Wo ein Gerät genau einen nachfolgenden und dieses genau einen vorhergehenden Nachbarn entlang der Hauptachse hat, können beide dieselbe Anschlussachse erhalten. Bei mehrpoligen Verbindungen müssen die benötigten Achsversätze aller Leiter übereinstimmen; unterschiedliche Polabstände werden nicht durch Skalierung oder veränderte Anschlüsse ausgeglichen.
+
+Für diese Ketten gelten gemeinsame Spaltenpositionen über alle Geräteebenen. Abstandsbedingungen berücksichtigen die vollständigen Beschriftungsbereiche in jeder Ebene. Die Spaltenreihenfolge folgt dem ersten Auftreten der Pfade; die vorgelagerte Sortierung verwendet dabei die physischen Anschlussachsen statt der linken Textbereichsränder. So verändert eine längere Beschriftung weder die Reihenfolge der Abgänge noch zieht sie nachfolgende Geräte in eine Zickzacklinie. Horizontale Ketten nutzen dieselbe Berechnung mit vertauschter Layoutachse.
+
+Diese Ausrichtung kann mehr Breite benötigen als eine versetzte Anordnung. Die bestehenden Blattgrenzen, alternativen Varianten und die Mehrblattprüfung bleiben daher maßgebend. Symbole und Schriftgrößen werden nicht verkleinert. Tests decken unterschiedlich lange Ketten und Beschriftungen, Abstände jeder Ebene, physische Anschlussreihenfolge, beide Achsen, unveränderte Eingabedaten und inkompatible mehrpolige Geometrien ab. Ein Bibliothekstest mit drei Abgängen und insgesamt 13 Geräten prüft zusätzlich die geroutete Vorschau und die Erhaltung aller elektrischen Endpunkte bei der Übernahme.
+
 ## Verbindungen aufräumen und bearbeiten
 
 **Rechtsklick auf eine Verbindung → Verbindung aufräumen** berechnet nur deren Verlauf neu. Die übrigen Leitungen bleiben dabei unverändert und dienen als Hindernisse. **Bearbeiten → Verbindungen auf dieser Seite aufräumen** sowie der entsprechende Eintrag im Kontextmenü bearbeiten die manuellen Leitungen des aktuellen Stromlaufplanblatts. Autoconnect-Leitungen bleiben erhalten.
