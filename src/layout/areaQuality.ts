@@ -15,15 +15,17 @@ function circuitAreas(snapshot: LayoutSnapshot) {
         while(queue.length){const id=queue.pop()!;if(!unseen.delete(id))continue;ids.push(id);queue.push(...adjacent.get(id)!);}
         circuits.push(ids.map(id=>({id})));
     }
-    return { available, circuits };
+    const wired=new Set(snapshot.edges.flatMap(e=>[e.from.componentId,e.to.componentId]));
+    const active=circuits.filter(c=>c.length>1||c.some(n=>wired.has(n.id)));
+    return { available, circuits, active };
 }
 export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
-    const { available, circuits } = circuitAreas(snapshot);
-    if(circuits.length<2 || circuits.length>12)return 0;
+    const { available, circuits, active } = circuitAreas(snapshot);
+    if(active.length<2 || active.length>12)return 0;
     const bounds=(c:{id:string}[])=>union(c.map(n=>available.get(n.id)!.rect));
     const rectangles=new Map(circuits.map(c=>[c,bounds(c)]));
     let score=0;
-    for(const pair of relatedCircuits(circuits,snapshot)){
+    for(const pair of relatedCircuits(active,snapshot)){
         if(pair.length!==2 || pair.flat().some(n=>available.get(n.id)!.fixed))continue;
         const [power,control]=pair.map(c=>rectangles.get(c)!);
         const dx=Math.max(0,control.x-right(power),power.x-right(control));
@@ -45,10 +47,10 @@ export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
 
 /** Preserve useful proximity when comparing otherwise valid sheet partitions. */
 export function separatedAreaPenalty(snapshot: LayoutSnapshot, sheets: ReadonlyMap<string,string>): number {
-    const {available,circuits}=circuitAreas(snapshot);
-    if(circuits.length<2||circuits.length>12)return 0;
+    const {available,active}=circuitAreas(snapshot);
+    if(active.length<2||active.length>12)return 0;
     let score=0;
-    for(const pair of relatedCircuits(circuits,snapshot)){
+    for(const pair of relatedCircuits(active,snapshot)){
         if(pair.length!==2||pair.flat().some(n=>available.get(n.id)!.fixed||!sheets.has(n.id)))continue;
         if(new Set(pair.flat().map(n=>sheets.get(n.id)!)).size>1)score+=120;
     }

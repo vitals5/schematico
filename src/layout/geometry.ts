@@ -386,6 +386,7 @@ export function snapshotPage(
     snapshot.nodes.push({
       id: comp.id,
       kind: 'component',
+      deviceTag: comp.bmk.trim(),
       circuitRole: sym.layoutRole,
       deviceRelation: comp.bmk.trim() && (sym.isMaster || sym.isContact) ? {
         key: JSON.stringify([comp.higherLevelFunction ?? page.higherLevel, comp.mountingLocation ?? page.location, comp.bmk.trim()]),

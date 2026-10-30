@@ -29,6 +29,7 @@ export interface LayoutPin extends Point {
   direction: Direction;
 }
 export interface LayoutNode {
+  deviceTag?: string;
   deviceRelation?: { key: string; kind: 'master' | 'contact' };
   circuitRole?: 'power' | 'control';
   routingJunction?: boolean;

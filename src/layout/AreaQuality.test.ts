@@ -20,6 +20,9 @@ assert(relatedAreaPenalty(interposed)>relatedAreaPenalty(adjacent),'Related neig
 assert(relatedAreaPenalty(backward)>0,'Power-before-control reading order matters');
 assert(relatedAreaPenalty(drawing([20,40,90,110],[20,100,20,100]))>0,'Separate rows are a soft disadvantage');
 assert(designPenalty(interposed)>designPenalty(adjacent),'Quality reaches the shared layout and multi-page scoring');
+const reserves=structuredClone(interposed);
+for(let i=0;i<20;i++){const n=structuredClone(reserves.nodes[0]);n.id='spare'+i;n.deviceRelation=undefined;n.circuitRole=undefined;n.rect={...n.rect,x:250,y:200};reserves.nodes.push(n);}
+assert.equal(relatedAreaPenalty(reserves),relatedAreaPenalty(interposed),'Many unused devices must not disable the active area quality score');
 const reversed=structuredClone(interposed);reversed.nodes.reverse();reversed.edges.reverse();for(const e of reversed.edges)[e.from,e.to]=[e.to,e.from];
 assert.equal(relatedAreaPenalty(reversed),relatedAreaPenalty(interposed));
 const unknown=structuredClone(interposed);for(const n of unknown.nodes)n.deviceRelation=undefined;

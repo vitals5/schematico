@@ -33,9 +33,23 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
         while (queue.length) { const key = queue.pop()!; if (!unseen.delete(key)) continue; members.add(key); queue.push(...adjacency.get(key)!); }
         circuits.push(children.filter(c => members.has(c.id)));
     }
-    if (circuits.length > 1 && circuits.length <= 12 && circuits.every(c => c.length >= 2) && !children.some(c => snapshot.nodes.find(n => n.id === c.id)?.fixed)) {
-        const units = relatedCircuits(circuits, snapshot);
+    const wired = new Set(snapshot.edges.flatMap(e => [owner.get(JSON.stringify([e.from.componentId,e.from.pinId])), owner.get(JSON.stringify([e.to.componentId,e.to.pinId]))]).filter(Boolean));
+    const active = circuits.filter(c => c.length>1 || c.some(n=>wired.has(n.id)||n.children?.length));
+    const spare = circuits.filter(c=>!active.includes(c)).flat().sort((a,b)=>{
+        const first=snapshot.nodes.find(n=>n.id===a.id)?.deviceTag?.trim()||a.id;
+        const second=snapshot.nodes.find(n=>n.id===b.id)?.deviceTag?.trim()||b.id;
+        return first.localeCompare(second,'de',{numeric:true})||a.id.localeCompare(b.id);
+    });
+    if (active.length && active.length+(spare.length?1:0)>1 && active.length+(spare.length?1:0)<=12 && !children.some(c => snapshot.nodes.find(n => n.id === c.id)?.fixed)) {
+        const units = relatedCircuits(active, snapshot);
         const plannedUnits = units.map(unit => unit.map(c => connectedStructuredGroup(id + '-circuit-' + c.map(n=>n.id).sort()[0], c, snapshot, gap, padding)));
+        if(spare.length){
+            const individual=spare.map(n=>connectedStructuredGroup(id+'-reserve-'+n.id,[n],snapshot,gap,padding));
+            const region=individual.every(b=>b?.children)?packCircuitUnits(id+'-reserve-area',individual.map(b=>[b!]),
+                Math.min(snapshot.area?.width??Infinity,budget?.width??Infinity),
+                Math.min(snapshot.area?.height??Infinity,budget?.height??Infinity),gap,gap):undefined;
+            plannedUnits.push([region]);
+        }
         const blocks = plannedUnits.flat();
         if (blocks.every(b => b?.children)) {
             const packed=packCircuitUnits(id,plannedUnits as ElkNode[][],
