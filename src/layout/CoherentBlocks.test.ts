@@ -43,17 +43,28 @@ for (const branch of ['a', 'b']) for (let i = 0; i < 3; i++) {
     add(large, branch + i, 'wide').functionText = '';
     if (i) large.pages[0].wires.push({ id: branch + 'wire' + i, from: { componentId: branch + (i - 1), pinId: 'out' }, to: { componentId: branch + i, pinId: 'in' }, potential: '', waypoints: [], isAutoconnect: false });
 }
+large.pages[0].texts = [{id:'note',text:'Hinweis',x:40,y:40,fontSize:6}];
+large.pages[0].images = [{id:'logo',dataUrl:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=',x:40,y:60,width:8,height:8}];
 const graph = (project: typeof large) => JSON.stringify({
     components: project.pages.flatMap(p => p.components).map(c => [c.id, c.symbolId, c.bmk, Object.keys(c.pins).sort()]).sort(),
     wires: project.pages.flatMap(p => p.wires).map(w => [w.id, w.from, w.to, w.potential]).sort(),
 });
 const original = JSON.stringify(large), net = graph(large), history = new ProjectHistory(); history.reset(large);
+const single = await previewLayout(large, 'p', { multiPage: false });
+assert.equal(single.status, 'layout_invalid');
 const preview = await previewLayout(large, 'p');
 const candidate = preview.candidates.find(c => c.multiPage);
 assert(candidate?.multiPage, 'Oversized independent paths need a validated multi-sheet candidate');
 assert.equal(candidate.multiPage.pages.length, 2);
 assert.equal(candidate.multiPage.links.length, 0, 'Complete paths need no serial cut references');
 for (const branch of ['a', 'b']) assert(candidate.multiPage.pages.some(p => [0,1,2].every(i => p.components.some(c => c.id === branch + i))));
+assert.equal(candidate.multiPage.pages.flatMap(p=>p.texts??[]).length,1);
+assert.equal(candidate.multiPage.pages.flatMap(p=>p.images??[]).length,1);
+assert.equal(candidate.multiPage.pages[0].texts![0].text,'Hinweis');
+assert.equal(candidate.multiPage.pages[0].images![0].dataUrl,large.pages[0].images![0].dataUrl);
+const altered = JSON.parse(JSON.stringify(candidate));
+altered.multiPage.pages[1].texts=[...altered.multiPage.pages[0].texts];
+assert.throws(()=>applyLayout(large,altered),/Zusatzinhalte/);
 assert.equal(JSON.stringify(large), original);
 applyLayout(large, candidate); history.record(large);
 assert.equal(graph(large), net);

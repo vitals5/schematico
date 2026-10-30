@@ -9,6 +9,7 @@ import { validateLayout } from './validate';
 import { previewLayout } from './service';
 import { clone, type LayoutOptions, type LayoutPreview } from './types';
 const optionsSchema = {
+  multiPage: { type: 'boolean' as const, description: 'Allow checked additional sheets when a single-sheet layout fails. Defaults to true.' },
   pageId: { type: 'string' as const },
   lockedIds: {
     type: 'array' as const,
@@ -149,6 +150,7 @@ function options(args: any): LayoutOptions {
       containerMembers: Object.fromEntries(args.containers.map((c: any) => [c.id, c.members])),
     };
   }
+  if (args.multiPage !== undefined && typeof args.multiPage !== 'boolean') throw new Error('Ungültige Mehrblattoption.');
   for (const key of ['lockedIds', 'selectedIds'])
     if (
       args[key] !== undefined &&
@@ -166,6 +168,7 @@ function options(args: any): LayoutOptions {
   )
     throw new Error('Ungültige Gruppenmitgliedschaft.');
   return {
+    multiPage: args.multiPage,
     lockedIds: args.lockedIds,
     selectedIds: args.selectedIds,
     containerMembers: args.containerMembers,

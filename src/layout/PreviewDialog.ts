@@ -65,7 +65,7 @@ export class LayoutPreviewDialog {
  <div style="display:flex;gap:12px;flex:1;min-height:0;flex-wrap:wrap;overflow:auto"><div style="flex:3;min-width:300px;display:flex;flex-direction:column;min-height:200px"><div style="display:flex;gap:8px"><button class="btn" data-original ${candidate ? '' : 'disabled'}>${this.original ? 'Vorschau zeigen' : 'Vorher zeigen'}</button><select class="form-select" data-candidate aria-label="Layoutvariante" ${candidate ? '' : 'disabled'}>${this.preview.candidates.map((c, i) => `<option value="${i}" ${i === this.selected ? 'selected' : ''}>${c.multiPage ? `${c.multiPage.pages.length} Blätter` : c.profile === 'structured' ? 'Geordnete Strompfade' : c.profile === 'lanes' ? 'Strompfade' : c.profile === 'readability' ? 'Lesbarkeit' : c.profile === 'compact' ? 'Kompakt' : 'Wenig Veränderung'}</option>`).join('')}</select>${candidate?.multiPage ? `<select class="form-select" data-sheet aria-label="Vorschaublatt">${candidate.multiPage.pages.map((p,i)=>`<option value="${i}" ${i===this.sheet?'selected':''}>Blatt ${escapeSvg(p.pageNumber)} · ${escapeSvg(p.title)}</option>`).join('')}</select>` : ''}</div><div data-drawing style="flex:1;min-height:0;background:#10151f;margin-top:8px"></div></div>
  <div style="flex:1;min-width:240px;overflow:auto;font-size:12px"><p>${candidate ? 'Geprüfter Kandidat · 0 unzulässige Kollisionen' : 'Kein gültiger Kandidat'}</p>${metrics ? `<table><tr><th></th><th>Vorher</th><th>Vorschau</th></tr>${(['bodyOverlaps', 'textOverlaps', 'wireObstacles', 'overflows', 'crossings', 'bends', 'length', 'displacement'] as const).map((k) => `<tr><td>${{ bodyOverlaps: 'Körperkollisionen', textOverlaps: 'Textkollisionen', wireObstacles: 'Leitungshindernisse', overflows: 'Blattüberschreitungen', crossings: 'Kreuzungen', bends: 'Knicke', length: 'Leitungslänge (mm)', displacement: 'Verschiebung (mm)' }[k]}</td><td>${Math.round(this.preview.before.metrics[k])}</td><td>${Math.round(metrics[k])}</td></tr>`).join('')}</table>` : ''}
  <p>Fixierte Objekte</p><div style="max-height:190px;overflow:auto">${[...page.components.map((c) => ({ id: c.id, name: c.bmk || c.functionText || c.id })), ...(page.groups ?? []).map((g) => ({ id: g.id, name: g.name || g.id }))].map((o) => `<label style="display:block"><input type="checkbox" data-lock="${escapeSvg(o.id)}" ${(this.options.lockedIds ?? page.layoutConstraints?.lockedIds ?? []).includes(o.id) ? 'checked' : ''}> ${escapeSvg(o.name)}</label>`).join('')}</div>
- <p><label><input type="checkbox" data-selection ${this.options.selectedIds ? 'checked' : ''} ${this.config.selection?.length ? '' : 'disabled'}> Nur aktuelle Auswahl</label></p><button class="btn" data-recompute>Neu berechnen</button>
+ <p><label><input type="checkbox" data-multi ${this.options.multiPage !== false ? 'checked' : ''}> Bei Platzmangel mehrere Blätter erstellen</label></p><p><label><input type="checkbox" data-selection ${this.options.selectedIds ? 'checked' : ''} ${this.config.selection?.length ? '' : 'disabled'}> Nur aktuelle Auswahl</label></p><button class="btn" data-recompute>Neu berechnen</button>
  ${this.preview.issues
    .slice(0, 60)
    .map(
@@ -125,10 +125,11 @@ export class LayoutPreviewDialog {
         this.render();
       }
     });
-    this.el.querySelectorAll<HTMLInputElement>('[data-lock], [data-selection]').forEach((input) =>
+    this.el.querySelectorAll<HTMLInputElement>('[data-lock], [data-selection], [data-multi]').forEach((input) =>
       input.addEventListener('change', () => {
         this.options = {
           ...this.options,
+          multiPage: this.el.querySelector<HTMLInputElement>('[data-multi]')?.checked !== false,
           lockedIds: Array.from(
             this.el.querySelectorAll<HTMLInputElement>('[data-lock]:checked'),
           ).map((e) => e.dataset.lock!),
@@ -137,7 +138,7 @@ export class LayoutPreviewDialog {
             : undefined,
         };
         this.dirty = true;
-        this.status = 'Fixierungen geändert. Bitte neu berechnen.';
+        this.status = 'Layoutoptionen geändert. Bitte neu berechnen.';
         this.render();
       }),
     );
@@ -150,6 +151,7 @@ export class LayoutPreviewDialog {
       this.options = {
         ...this.options,
         lockedIds: locks,
+        multiPage: this.el.querySelector<HTMLInputElement>('[data-multi]')?.checked !== false,
         selectedIds: this.el.querySelector<HTMLInputElement>('[data-selection]')?.checked
           ? this.config.selection
           : undefined,

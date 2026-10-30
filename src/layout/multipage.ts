@@ -57,6 +57,8 @@ function buildPages(
       p.id,
       ...p.components.map((c) => c.id),
       ...p.wires.map((w) => w.id),
+      ...(p.texts ?? []).map(t => t.id),
+      ...(p.images ?? []).map(image => image.id),
       ...(p.groups ?? []).map((g) => g.id),
     ]),
   );
@@ -88,6 +90,8 @@ function buildPages(
     p.plotFrame.titleBlock.sheetNumber = p.pageNumber;
     p.components = p.components.filter((c) => ids.includes(c.id));
     p.wires = [];
+    p.texts = i === 0 ? clone(source.texts ?? []) : [];
+    p.images = i === 0 ? clone(source.images ?? []) : [];
     p.layoutConstraints = source.layoutConstraints
       ? {
           ...clone(source.layoutConstraints),
@@ -253,14 +257,19 @@ export function auditMultiPage(
       p.location !== source.location ||
       p.floorPlan ||
       p.importedDrawing ||
-      p.texts?.length ||
-      p.images?.length ||
       p.boxes?.length ||
       p.cables?.length
     )
       throw new Error('Blattinhalt oder Format verändert.');
   }
 
+  for (const field of ['texts', 'images'] as const) {
+    const original = source[field] ?? [], actual = multi.pages.flatMap<{ id: string }>(p => p[field] ?? []);
+    const signature = (value: unknown) => { const copy = clone(value) as any; delete copy.x; delete copy.y; return JSON.stringify(copy); };
+    if (actual.length !== original.length || new Set(actual.map(x => x.id)).size !== actual.length ||
+        original.some(x => !actual.some(y => y.id === x.id && signature(y) === signature(x))) ||
+        multi.pages.slice(1).some(p => p[field]?.length)) throw new Error('Zusatzinhalte verändert oder dupliziert.');
+  }
   const components = multi.pages.flatMap((p) => p.components),
     wires = multi.pages.flatMap((p) => p.wires);
   const original = new Set(source.components.map((c) => c.id));
@@ -373,6 +382,12 @@ export function auditMultiPage(
       )
         throw new Error('Leitung ohne lokale Anschlüsse.');
 }
+export function multiPageBlockReason(source: Page, options: LayoutOptions): string | undefined {
+  if (options.selectedIds?.length) return 'Mehrblattaufteilung benötigt die gesamte Seite; die aktuelle Auswahl ist begrenzt.';
+  if (options.lockedIds?.length || source.layoutConstraints?.lockedIds?.length) return 'Fixierte Objekte verhindern die automatische Mehrblattaufteilung. Fixierungen prüfen.';
+  if (source.boxes?.length || source.cables?.length || source.importedDrawing) return 'Diese Seite enthält Kästen, Kabeldefinitionen oder eine importierte Hintergrundzeichnung, deren automatische Blattzuordnung noch nicht unterstützt wird.';
+  if (source.groups?.some(g => g.members.some(m => !['component', 'wire', 'group'].includes(m.kind)))) return 'Gruppen mit Texten, Bildern oder anderen Zusatzobjekten können noch nicht automatisch auf Blätter verteilt werden.';
+}
 export async function multiPageCandidate(
   project: Project,
   target: Project,
@@ -380,17 +395,7 @@ export async function multiPageCandidate(
   options: LayoutOptions,
 ): Promise<LayoutCandidate | undefined> {
   const source = target.pages.find((p) => p.id === pageId)!;
-  if (
-    options.selectedIds ||
-    options.lockedIds?.length ||
-    source.layoutConstraints?.lockedIds?.length ||
-    source.texts?.length ||
-    source.images?.length ||
-    source.boxes?.length ||
-    source.cables?.length ||
-    source.importedDrawing
-  )
-    return;
+  if (multiPageBlockReason(source, options)) return;
   let best: LayoutCandidate | undefined;
   let bestCost = Infinity;
   const failedInputs = new Set<string>();

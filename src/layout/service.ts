@@ -164,7 +164,9 @@ export async function previewLayout(
     options.multiPage !== false &&
     !input.issues.some((i) => i.severity === 'error')
   ) {
-    const { multiPageCandidate } = await import('./multipage');
+    const { multiPageCandidate, multiPageBlockReason } = await import('./multipage');
+    const reason = multiPageBlockReason(target.pages.find(p => p.id === pageId)!, options);
+    if (reason) rejections.push({ type: 'multi_page_unavailable', severity: 'warning', objectIds: [pageId], message: reason });
     const multi = await multiPageCandidate(project, target, pageId, options);
     if (multi) candidates.push(multi);
   }
