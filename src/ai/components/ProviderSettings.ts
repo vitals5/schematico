@@ -79,7 +79,7 @@ export function showProviderSettings(onSave: () => void): void {
     if (selected && !entries.some((m) => m.id === selected))
       entries.unshift({ id: selected, name: selected });
     model.add(new Option('Modell auswählen …', ''));
-    for (const entry of entries) model.add(new Option(entry.name + (current === 'openrouter' && models.find(m => m.id === entry.id)?.vision ? ' [Bild]' : ''), entry.id));
+    for (const entry of entries) model.add(new Option(entry.name + (current === 'openrouter' && models.find(m => m.id === entry.id)?.vision ? ' [Bild]' : '') + (current === 'openrouter' && models.find(m=>m.id===entry.id)?.pdf ? ' [PDF]' : ''), entry.id));
     model.value = selected;
     $('routerUpdated').textContent = readSetting('openrouter_models_updated')
       ? 'Modellliste: ' +

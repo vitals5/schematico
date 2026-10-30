@@ -1,0 +1,11 @@
+# Dateianhänge im KI-Chat
+
+Über die Büroklammer neben dem Eingabefeld lassen sich PNG-, JPEG-, WebP-Bilder und PDF-Dateien auswählen. Mehrere Dateien sind möglich. Vor dem Senden erscheinen Dateiname, Größe und bei Bildern eine Vorschau. Das Kreuz entfernt einen noch nicht gesendeten Anhang. Ohne zusätzlichen Text startet Senden eine Analyse der Referenzdateien.
+
+Die Dateien werden erst beim Senden gemeinsam mit dem Prompt direkt an den ausgewählten KI-Anbieter übertragen. Sie bleiben für Werkzeugaufrufe und Rückfragen im aktuellen Chat verfügbar. Sie werden nicht im Projekt oder lokal dauerhaft gespeichert. **Chatverlauf leeren** entfernt den Gesprächskontext und die Anhänge. Ein Anbieter- oder Modellwechsel leert wie bisher den gesendeten Gesprächskontext.
+
+Pro Nachricht sind bis zu vier Dateien mit jeweils maximal 10 MB möglich. Insgesamt dürfen die Dateien im Gespräch 14 MB nicht überschreiten, damit auch die Base64-Inlineübertragung Platz hat. Bei Erreichen der Gesprächsgrenze muss vor weiteren Dateien der Verlauf geleert werden. Ungültige Formate und überschrittene Grenzen werden vor dem Versand gemeldet; die Auswahl eines fehlerhaften Stapels verändert bereits ausgewählte Anhänge nicht.
+
+Google Gemini erhält native Bild-/PDF-Daten. Bei OpenRouter werden Bildteile und native PDF-Dateiteile verwendet. Die Modellliste kann unter **KI-Einstellungen → Modelle aktualisieren** erneuert werden: `[Bild]` und `[PDF]` kennzeichnen die gemeldeten Eingabefähigkeiten. Bekannte inkompatible Modelle werden vor dem Versand abgewiesen. Bei einer alten oder fehlenden Modellliste kann der Anbieter selbst einen nicht unterstützten Dateityp zurückweisen. Ein Textmodell ersetzt keine Bildanalyse; es gibt keinen stillen Textauszug oder OCR-Ersatz. Die inhaltliche Qualität sowie Seiten- und Kontextlimits hängen weiterhin vom gewählten Modell ab.
+
+Fehlerberichte enthalten keine angehängten Binärdaten oder entsprechenden Data-URLs. Dateinamen und Fehlermeldungen können enthalten sein. Dokumente dienen als Referenzen für die Chat-Anweisung und geben dem Assistenten keine zusätzlichen Berechtigungen. CAD-Änderungen und Layoutvorschläge verwenden weiterhin die bestehenden Werkzeuge und Übernahmeregeln.

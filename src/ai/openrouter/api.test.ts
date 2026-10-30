@@ -33,7 +33,7 @@ try {
           id: 'vendor/tool',
           name: 'Tools & Vision',
           supported_parameters: ['tools'],
-          architecture: { input_modalities: ['text', 'image'] },
+          architecture: { input_modalities: ['text', 'image', 'file'] },
         },
         { id: 'vendor/plain', name: 'Plain', supported_parameters: [] },
       ],
@@ -43,6 +43,7 @@ try {
   const models = await refreshModels('test-secret');
   assert.equal(models.length, 1);
   assert.equal(models[0].vision, true);
+  assert.equal(models[0].pdf, true);
   assert.deepEqual(cachedModels(), models);
   globalThis.fetch = async () =>
     new Response('upstream test-secret', { status: 401 });

@@ -1500,3 +1500,10 @@ button:disabled { opacity: .4; cursor: default; }
   color: #718096;
   text-align: center;
 }
+
+.ai-attachments {display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto;}
+.ai-attachment {display:flex;align-items:center;gap:6px;max-width:100%;padding:5px;border:1px solid var(--border-color);border-radius:6px;font-size:11px;}
+.ai-attachment span {overflow-wrap:anywhere;min-width:0;}
+.ai-attachment img {width:42px;height:42px;object-fit:contain;}
+.ai-attachment button {background:transparent;color:inherit;border:0;cursor:pointer;font-size:18px;}
+.ai-sent-attachment {margin-top:5px;font-size:11px;overflow-wrap:anywhere;}

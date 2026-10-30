@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import {readAttachments,attachmentParts,validateAttachments,assertAttachmentModel} from './Attachments';
+import {routerMessages} from './openrouter/api';
+import {sanitizeDiagnostic} from './Diagnostics';
+import {writeSetting} from './ProviderConfig';
+import {GeminiChatClient} from './gemini/client';
+import {setGeminiApiKey} from './GeminiConfig';
+import {McpToolRegistry} from './mcp-tools';
+const storage=new Map<string,string>();
+Object.defineProperty(globalThis,'localStorage',{value:{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)},configurable:true});
+const files=await readAttachments([new File(['%PDF-1.7\nreference'],'plan.pdf',{type:'application/pdf'}),new File([new Uint8Array([137,80,78,71,13,10,26,10,0])],'photo.PNG')]);
+assert.deepEqual(files.map(f=>f.mimeType),['application/pdf','image/png']);
+assert.equal(atob(files[0].data),'%PDF-1.7\nreference');
+assert.throws(()=>validateAttachments(Array(5).fill(files[0])),/4 Anhänge/);
+assert.throws(()=>validateAttachments([{...files[0],size:11*1024*1024}]),/10 MB/);
+assert.throws(()=>validateAttachments(Array(3).fill({...files[0],size:8*1024*1024})),/14 MB/);
+assert.throws(()=>validateAttachments([{...files[0],size:0}]),/1 Byte/);
+await assert.rejects(readAttachments([new File(['bad'],'plan.pdf')]),/Dateiformat/);
+await assert.rejects(readAttachments([new File(['<svg/>'],'photo.svg')]),/Unterstützt/);
+assert.throws(()=>assertAttachmentModel(files,{vision:false,pdf:true}),/Bilder/);
+assert.throws(()=>assertAttachmentModel(files,{vision:true,pdf:false}),/PDF/);
+const parts=attachmentParts('Analysiere die Referenzen',files);
+assert.equal(parts[2].inlineData?.displayName,'plan.pdf');
+const messages=routerMessages([{role:'user',parts}],'instruction');
+assert.equal(messages[1].content[2].type,'file');
+assert.equal(messages[1].content[2].file.filename,'plan.pdf');
+assert.equal(messages[1].content[4].type,'image_url');
+assert.equal(routerMessages([{role:'user',parts:[{text:'Text only'}]}],'instruction')[1].content,'Text only');
+const report=JSON.stringify(sanitizeDiagnostic({parts,messages}));
+assert(!report.includes(files[0].data)&&!report.includes(files[1].data),'Diagnostic exports omit all attachment bytes');
+assert(report.includes('plan.pdf'));
+writeSetting('ai_provider','openrouter');writeSetting('openrouter_api_key','test-secret');writeSetting('openrouter_model','test/vision');
+writeSetting('openrouter_models',JSON.stringify([{id:'test/vision',name:'Vision',vision:true,pdf:true}]));
+const originalFetch=globalThis.fetch,requests:any[]=[];
+try{
+ const registry=new McpToolRegistry();let executed=0;
+ registry.register({name:'inspect_reference',description:'Inspect',inputSchema:{type:'object',properties:{}}},async()=>{executed++;return {success:true};});
+ globalThis.fetch=async(_url,init)=>{
+  const request=JSON.parse(String(init?.body));requests.push(request);
+  return Response.json({choices:[{message:requests.length===1?{role:'assistant',content:null,tool_calls:[{id:'call-1',type:'function',function:{name:'inspect_reference',arguments:'{}'}}]}:{role:'assistant',content:'Referenzen analysiert.'}}]});
+ };
+ const client=new GeminiChatClient({toolRegistry:registry});
+ await client.sendMessage('Analysiere',{} as any,{attachments:files});
+ assert.equal(executed,1);assert.equal(requests.length,2);
+ await client.sendMessage('Und weiter?',{} as any);
+ for(const r of requests){const user=r.messages.find((m:any)=>m.role==='user');assert.equal(user.content[2].file.filename,'plan.pdf');assert.equal(user.content[4].image_url.url,'data:image/png;base64,'+files[1].data);}
+ writeSetting('openrouter_models',JSON.stringify([{id:'test/vision',name:'Text',vision:false,pdf:false}]));
+ const blocked=new GeminiChatClient();await assert.rejects(blocked.sendMessage('Analysiere',{} as any,{attachments:files}),/Bilder/);
+ assert.equal(requests.length,3,'Unsupported models must fail before a network request');
+ assert(!JSON.stringify(client.getMessages()).includes(files[0].data),'Public chat messages contain metadata only');
+ client.clearHistory();assert.equal(client.getMessages().length,0);
+ writeSetting('ai_provider','gemini');setGeminiApiKey('test-gemini-secret');
+ let nativeBody:any;
+ globalThis.fetch=async(_url,init)=>{nativeBody=JSON.parse(String(init?.body));return Response.json({candidates:[{content:{role:'model',parts:[{text:'Dateien gelesen.'}]},finishReason:'STOP'}]});};
+ await new GeminiChatClient().sendMessage('Dateien lesen',{} as any,{attachments:files});
+ assert.equal(nativeBody.contents[0].parts[2].inlineData.mimeType,'application/pdf');
+ assert.equal(nativeBody.contents[0].parts[2].inlineData.displayName,undefined,'Prompt-management filename metadata is not sent to the native API');
+ assert.equal(nativeBody.contents[0].parts[4].inlineData.data,files[1].data);
+
+}finally{globalThis.fetch=originalFetch;}
+console.log('✓ File reading/signatures/limits, native parts, OpenRouter image/PDF messages, tool-loop and follow-up context, capability guards and diagnostic byte redaction');

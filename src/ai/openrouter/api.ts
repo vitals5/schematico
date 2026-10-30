@@ -5,6 +5,7 @@ export interface RouterModel {
   id: string;
   name: string;
   vision: boolean;
+  pdf?: boolean;
 }
 const API = 'https://openrouter.ai/api/v1';
 export function cachedModels(): RouterModel[] {
@@ -60,6 +61,7 @@ export async function refreshModels(key: string): Promise<RouterModel[]> {
       id: m.id,
       name: typeof m.name === 'string' ? m.name : m.id,
       vision: !!m.architecture?.input_modalities?.includes('image'),
+      pdf: !!m.architecture?.input_modalities?.includes('file'),
     }))
     .sort((a: RouterModel, b: RouterModel) => a.name.localeCompare(b.name));
   if (!models.length)
@@ -112,7 +114,12 @@ export function routerMessages(history: Content[], instruction: string): any[] {
       pending = [];
       messages.push({
         role: content.role === 'model' ? 'assistant' : 'user',
-        content: content.parts?.map((p) => p.text ?? '').join('') ?? '',
+        content: content.parts?.some(p=>p.inlineData)
+          ? content.parts.flatMap<any>(p=>p.inlineData ? [p.inlineData.mimeType==='application/pdf'
+            ? {type:'file',file:{filename:p.inlineData.displayName??'Anhang.pdf',file_data:`data:application/pdf;base64,${p.inlineData.data}`}}
+            : {type:'image_url',image_url:{url:`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`}}]
+            : p.text ? [{type:'text',text:p.text}] : [])
+          : content.parts?.map((p) => p.text ?? '').join('') ?? '',
       });
     }
   }

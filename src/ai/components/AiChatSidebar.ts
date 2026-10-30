@@ -1,3 +1,5 @@
+import { readAttachments, assertAttachmentModel, ATTACHMENT_ACCEPT, type AiAttachment } from '../Attachments';
+import { cachedModels } from '../openrouter/api';
 import { getDiagnostic, clearDiagnostics, diagnosticSummary, sanitizeDiagnostic } from '../Diagnostics';
 import { getAiProvider, getAiModel, hasAiApiKey } from '../ProviderConfig';
 import { showProviderSettings } from './ProviderSettings';
@@ -22,6 +24,8 @@ export class AiChatSidebar {
   private geminiClient: GeminiChatClient;
   private isOpenState: boolean = false;
   private isGenerating: boolean = false;
+  private attachments: AiAttachment[] = [];
+  private readingAttachments = false;
   private currentStatusText: string = 'Bereit';
   private options: AiChatSidebarOptions;
   private unsubscribeBridge?: () => void;
@@ -182,7 +186,11 @@ export class AiChatSidebar {
       </div>
 
       <div class="ai-chat-footer">
+        <div id="aiAttachments" class="ai-attachments" aria-label="Dateianhänge"></div>
+        <input id="aiAttachmentInput" type="file" accept="${ATTACHMENT_ACCEPT}" multiple hidden>
+        <div id="aiAttachmentStatus" role="status" class="ai-footer-note"></div>
         <div class="ai-input-wrap">
+          <button type="button" class="ai-header-btn" id="btnAiAttach" title="Bilder oder PDFs anhängen" aria-label="Dateien anhängen">📎</button>
           <textarea
             id="aiPromptInput"
             class="ai-prompt-input"
@@ -197,7 +205,7 @@ export class AiChatSidebar {
           </button>
         </div>
         <div class="ai-footer-note">
-          Tipp: Shift+Enter für Zeilenumbruch • Vollständig MCP-kompatibel
+          PNG, JPEG, WebP, PDF · max. 4 Dateien, je 10 MB, zusammen 14 MB. Anhänge gehen beim Senden an den gewählten KI-Anbieter.
         </div>
       </div>
     `;
@@ -213,6 +221,8 @@ export class AiChatSidebar {
 
     const btnClear = this.container.querySelector('#btnAiClearHistory');
     btnClear?.addEventListener('click', () => {
+      if(this.isGenerating||this.readingAttachments)return;
+      this.attachments=[];this.renderAttachments();
       this.geminiClient.clearHistory();
       clearDiagnostics();
       const messagesContainer = this.container.querySelector('#aiChatMessages');
@@ -265,6 +275,17 @@ export class AiChatSidebar {
           }
         }
       });
+    });
+
+    const fileInput=this.container.querySelector<HTMLInputElement>('#aiAttachmentInput')!;
+    this.container.querySelector('#btnAiAttach')?.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',async()=>{
+      if(this.isGenerating||this.readingAttachments)return;
+      const files=Array.from(fileInput.files??[]);fileInput.value='';
+      this.readingAttachments=true;this.renderAttachments();
+      try{this.attachments.push(...await readAttachments(files,this.attachments));}
+      catch(error){this.appendErrorMessage(error instanceof Error?error.message:String(error));}
+      finally{this.readingAttachments=false;this.renderAttachments();}
     });
 
     // Input auto-grow and submit
@@ -346,19 +367,22 @@ export class AiChatSidebar {
   }
 
   private async handleSend(): Promise<void> {
-    if (this.isGenerating) return;
+    if (this.isGenerating || this.readingAttachments) return;
 
     const input = this.container.querySelector<HTMLTextAreaElement>('#aiPromptInput');
     if (!input) return;
 
-    const prompt = input.value.trim();
+    const prompt = input.value.trim() || (this.attachments.length ? 'Analysiere die angehängten Referenzdateien.' : '');
     if (!prompt) return;
+    try{if(getAiProvider()==='openrouter')assertAttachmentModel(this.attachments,cachedModels().find(m=>m.id===this.geminiClient.getModel()));}
+    catch(error){this.appendErrorMessage(error instanceof Error?error.message:String(error));return;}
 
     if (!hasAiApiKey()) {
       this.showApiKeyModal();
       return;
     }
 
+    const attachments=this.attachments;this.attachments=[];this.renderAttachments();
     input.value = '';
     input.style.height = 'auto';
 
@@ -367,13 +391,15 @@ export class AiChatSidebar {
     if (welcome) welcome.style.display = 'none';
 
     // Render user message in UI
-    this.appendUserMessage(prompt);
+    const userMessage=this.appendUserMessage(prompt, attachments);
 
     // Show loading state
     this.setGenerating(true, 'Analysiere CAD-Anweisung...');
+    const historyLength=this.geminiClient.getMessages().length;
 
     try {
       const response = await this.geminiClient.sendMessage(prompt, this.stateManager, {
+        attachments,
         onStatusUpdate: (status) => {
           this.setLoadingStatus(status);
         },
@@ -387,6 +413,7 @@ export class AiChatSidebar {
 
       this.appendModelResponse(response);
     } catch (err: any) {
+      if(this.geminiClient.getMessages().length===historyLength){this.attachments=attachments;this.renderAttachments();input.value=prompt;userMessage?.remove();}
       this.appendErrorMessage(sanitizeDiagnostic(err?.message || 'Fehler bei der Kommunikation mit der KI-API.'));
       if(err?.diagnosticId){const list=this.container.querySelector<HTMLElement>('#aiChatMessages');if(list)this.appendDiagnostic(list,err.diagnosticId);}
     } finally {
@@ -396,6 +423,7 @@ export class AiChatSidebar {
 
   private setGenerating(isGen: boolean, statusText = 'Bereit'): void {
     this.isGenerating = isGen;
+    this.renderAttachments();
     const loading = this.container.querySelector<HTMLElement>('#aiChatLoading');
     const sendBtn = this.container.querySelector<HTMLButtonElement>('#btnAiSend');
     const input = this.container.querySelector<HTMLTextAreaElement>('#aiPromptInput');
@@ -437,22 +465,40 @@ export class AiChatSidebar {
     this.scrollToBottom();
   }
 
+  private renderAttachments(): void {
+    const list=this.container.querySelector<HTMLElement>('#aiAttachments');if(!list)return;
+    list.replaceChildren();
+    const busy=this.readingAttachments||this.isGenerating;
+    for(const a of this.attachments){
+      const chip=document.createElement('div');chip.className='ai-attachment';
+      if(a.mimeType.startsWith('image/')){const img=document.createElement('img');img.src=`data:${a.mimeType};base64,${a.data}`;img.alt=a.name;chip.append(img);}
+      const label=document.createElement('span');label.textContent=`${a.name} (${Math.ceil(a.size/1024)} KB)`;chip.append(label);
+      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Anhang entfernen: '+a.name;remove.setAttribute('aria-label',remove.title);remove.disabled=busy;
+      remove.addEventListener('click',()=>{this.attachments=this.attachments.filter(f=>f.id!==a.id);this.renderAttachments();});chip.append(remove);list.append(chip);
+    }
+    this.container.querySelector<HTMLButtonElement>('#btnAiAttach')!.disabled=busy;
+    this.container.querySelector<HTMLButtonElement>('#btnAiClearHistory')!.disabled=busy;
+    this.container.querySelector<HTMLButtonElement>('#btnAiSend')!.disabled=this.readingAttachments;
+    this.container.querySelector<HTMLElement>('#aiAttachmentStatus')!.textContent=this.readingAttachments?'Dateien werden eingelesen …':'';
+  }
+
   private setLoadingStatus(statusText: string): void {
     const el = this.container.querySelector<HTMLElement>('#aiLoadingStatusText');
     if (el) el.textContent = statusText;
   }
 
-  private appendUserMessage(text: string): void {
+  private appendUserMessage(text: string, attachments: AiAttachment[] = []): HTMLElement | undefined {
     const list = this.container.querySelector<HTMLElement>('#aiChatMessages');
     if (!list) return;
 
     const msgEl = document.createElement('div');
     msgEl.className = 'ai-msg ai-msg-user';
     msgEl.innerHTML = `
-      <div class="ai-msg-bubble">${this.escapeHtml(text)}</div>
+      <div class="ai-msg-bubble">${this.escapeHtml(text)}${attachments.map(a=>`<div class="ai-sent-attachment">📎 ${this.escapeHtml(a.name)}</div>`).join('')}</div>
     `;
     list.appendChild(msgEl);
     this.scrollToBottom();
+    return msgEl;
   }
 
   private appendModelResponse(response: ChatMessage): void {

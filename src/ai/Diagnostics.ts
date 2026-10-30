@@ -34,7 +34,7 @@ export function sanitizeDiagnostic(value: unknown): any {
   const text = (s: string) => {
     for (const secret of secrets)
       s = s.split(secret).join('[REDACTED]');
-    return s.replace(/Bearer\s+[^\s"'<>]+/gi, 'Bearer [REDACTED]')
+    return s.replace(/data:(?:image\/[a-z0-9.+-]+|application\/pdf);base64,[A-Za-z0-9+/=]+/gi,'[Dateiinhalt nicht exportiert]').replace(/Bearer\s+[^\s"'<>]+/gi, 'Bearer [REDACTED]')
       .replace(/\b(?:sk-or-v1-|sk-|ghp_|github_pat_|AIza)[A-Za-z0-9_-]{16,}/g, '[REDACTED]')
       .replace(/([?&](?:key|api_key|token|access_token)=)[^&\s"']+/gi, '$1[REDACTED]');
   };
@@ -43,12 +43,13 @@ export function sanitizeDiagnostic(value: unknown): any {
       return text(v);
     if (v === null || typeof v === 'number' || typeof v === 'boolean')
       return v;
+    if (typeof v === 'object' && v?.mimeType && typeof v?.data === 'string')return {mimeType:text(v.mimeType),displayName:v.displayName?text(v.displayName):undefined,data:'[Dateiinhalt nicht exportiert]'};
     if (typeof v !== 'object')
       return v === undefined ? undefined : String(v);
     if (seen.has(v))
       return '[Circular]';
     seen.add(v);
-    const result = Array.isArray(v) ? v.map(walk) : Object.fromEntries(Object.entries(v).map(([k, x]) => [text(k), /^(?:.*api[_-]?key|authorization|proxy-authorization|password|secret|clientSecret|access[_-]?token|refresh[_-]?token|token|cookie|set-cookie|credentials|headers|key)$/i.test(k) ? '[REDACTED]' : walk(x)]));
+    const result = Array.isArray(v) ? v.map(walk) : Object.fromEntries(Object.entries(v).map(([k, x]) => [text(k), /^(?:file_data|.*api[_-]?key|authorization|proxy-authorization|password|secret|clientSecret|access[_-]?token|refresh[_-]?token|token|cookie|set-cookie|credentials|headers|key)$/i.test(k) ? '[REDACTED]' : walk(x)]));
     seen.delete(v);
     return result;
   };
