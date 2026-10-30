@@ -27,7 +27,7 @@ export function functionalBlocks(atomic: string[][], snapshot: LayoutSnapshot): 
   const parent = atomic.map((_, i) => i);
   const root = (i: number): number => parent[i] === i ? i : (parent[i] = root(parent[i]));
   for (const unit of relatedCircuits(active, snapshot)) {
-    if (unit.length !== 2) continue;
+    if (unit.length < 2) continue;
     const ids = unit.flat().map(n => n.id);
     if (ids.some(id => nodes.get(id)!.fixed || !owner.has(id))) continue;
     const first = root(owner.get(ids[0])!);

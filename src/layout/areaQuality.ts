@@ -26,8 +26,10 @@ export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
     const rectangles=new Map(circuits.map(c=>[c,bounds(c)]));
     let score=0;
     for(const pair of relatedCircuits(active,snapshot)){
-        if(pair.length!==2 || pair.flat().some(n=>available.get(n.id)!.fixed))continue;
-        const [power,control]=pair.map(c=>rectangles.get(c)!);
+        if(pair.length<2 || pair.flat().some(n=>available.get(n.id)!.fixed))continue;
+        const role=(c:{id:string}[])=>c.some(n=>available.get(n.id)!.circuitRole==='power');
+        const power=union(pair.filter(role).map(c=>rectangles.get(c)!));
+        const control=union(pair.filter(c=>!role(c)).map(c=>rectangles.get(c)!));
         const dx=Math.max(0,control.x-right(power),power.x-right(control));
         const dy=Math.max(0,control.y-bottom(power),power.y-bottom(control));
         let cost=Math.max(0,dx+dy*2-24)*0.75 + Math.abs(power.y-control.y)*0.75;
@@ -35,10 +37,11 @@ export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
         const overlapX=Math.min(right(power),right(control))-Math.max(power.x,control.x);
         const overlapY=Math.min(bottom(power),bottom(control))-Math.max(power.y,control.y);
         if(overlapX>0 && overlapY>0)cost+=40+Math.min(overlapX,overlapY)*4;
-        if(right(power)<=control.x && overlapY>0)for(const c of circuits){
+        const ordered=pair.map(c=>rectangles.get(c)!).sort((a,b)=>a.x-b.x);
+        for(const c of circuits){
             if(pair.includes(c))continue;
             const r=rectangles.get(c)!;
-            if(r.x>=right(power) && right(r)<=control.x && bottom(r)>Math.max(power.y,control.y) && r.y<Math.min(bottom(power),bottom(control)))cost+=60;
+            if(ordered.some((a,i)=>{const b=ordered[i+1];return b && r.x>=right(a) && right(r)<=b.x && bottom(r)>Math.max(a.y,b.y) && r.y<Math.min(bottom(a),bottom(b));}))cost+=60;
         }
         score+=Math.min(200,cost);
     }
@@ -51,7 +54,7 @@ export function separatedAreaPenalty(snapshot: LayoutSnapshot, sheets: ReadonlyM
     if(active.length<2||active.length>12)return 0;
     let score=0;
     for(const pair of relatedCircuits(active,snapshot)){
-        if(pair.length!==2||pair.flat().some(n=>available.get(n.id)!.fixed||!sheets.has(n.id)))continue;
+        if(pair.length<2||pair.flat().some(n=>available.get(n.id)!.fixed||!sheets.has(n.id)))continue;
         if(new Set(pair.flat().map(n=>sheets.get(n.id)!)).size>1)score+=120;
     }
     return score;

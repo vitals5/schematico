@@ -14,8 +14,9 @@ export function relatedCircuits(circuits: ElkNode[][], snapshot: LayoutSnapshot)
     const used=new Set<number>(),units:{ids:number[];priority:number;name:string}[]=[];
     for(const i of circuits.map((_,i)=>i).sort((a,b)=>priority[a]-priority[b]||names[a].localeCompare(names[b]))){
         if(used.has(i))continue;
-        const p=[...partners[i]][0];
-        const ids=partners[i].size===1&&partners[p].size===1&&!used.has(p)?[i,p].sort((a,b)=>priority[a]-priority[b]):[i];
+        const queue=[i],seen=new Set<number>();
+        while(queue.length){const current=queue.pop()!;if(seen.has(current))continue;seen.add(current);queue.push(...partners[current]);}
+        const ids=[...seen].sort((a,b)=>priority[a]-priority[b]||names[a].localeCompare(names[b]));
         ids.forEach(id=>used.add(id));units.push({ids,priority:Math.min(...ids.map(id=>priority[id])),name:names[ids[0]]});
     }
     return units.sort((a,b)=>a.priority-b.priority||a.name.localeCompare(b.name)).map(u=>u.ids.map(i=>circuits[i]));
