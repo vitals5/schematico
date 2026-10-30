@@ -77,6 +77,7 @@ for(const c of portrait.pages[0].components.filter(c=>['z1p','z2p'].includes(c.i
 const portraitBefore=JSON.stringify(portrait),portraitNet=topology(portrait),portraitHistory=new ProjectHistory();portraitHistory.reset(portrait);
 const wrapped=(await previewLayout(portrait,'p',{multiPage:false})).candidates.find(c=>c.profile==='structured');assert(wrapped);
 const wrappedGeometry=snapshotPage(wrapped.page,portrait);
+assert(relatedAreaPenalty(wrappedGeometry)<30,'A clear multi-row functional region must not receive a large horizontal-only displacement cost');
 const bounds=(ids:string[])=>{const ns=wrappedGeometry.nodes.filter(n=>ids.includes(n.id));return {top:Math.min(...ns.map(n=>n.rect.y)),bottom:Math.max(...ns.map(n=>n.rect.y+n.rect.height))};};
 const power=bounds(['z1p','z1m','z2p','z2m']),shared=bounds(['a1s','a1c','a2s','a2c']),independent=bounds(['z3p','z3m','a3s','a3c']);
 assert(power.bottom<shared.top,'The common control follows its power areas on the next internal row');

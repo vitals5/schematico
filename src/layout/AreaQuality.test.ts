@@ -38,3 +38,31 @@ assert(separatedAreaPenalty(adjacent,split)>0,'Sheet partition scores must not r
 assert.equal(separatedAreaPenalty(ambiguous,split),0);
 assert.equal(JSON.stringify(adjacent),original);
 console.log('✓ Shared quality scoring for related area distance/order/interposition, unchanged source, deterministic input order, unknown/ambiguous/fixed guards');
+
+// A close, left-aligned second reading row should not pay the full absolute
+// vertical displacement of a horizontal-only placement model.
+const wrapped=drawing([20,20,180,200],[20,100,20,20]);
+const wrappedBefore=JSON.stringify(wrapped);
+const nearby=relatedAreaPenalty(wrapped);
+assert(nearby>0 && nearby<30,'A clear row break has a small bounded cost');
+const remote=drawing([20,20,180,200],[20,210,20,20]);
+assert(relatedAreaPenalty(remote)>nearby,'Excessive empty vertical distance still worsens the score');
+assert(relatedAreaPenalty(drawing([20,130,180,200],[20,100,20,20]))>nearby,'A sideways-displaced second row is less clear');
+assert(relatedAreaPenalty(drawing([20,20,180,200],[100,20,20,20]))>nearby,'Control above its power area must not receive the preferred reading order');
+const intervening=structuredClone(wrapped);
+intervening.nodes.push({id:'foreign',kind:'component',fixed:false,origin:{x:20,y:80},rect:{x:20,y:80,width:10,height:10},shapes:[],pins:[]});
+// Pinned but unwired objects count as independent circuit obstacles.
+intervening.nodes.at(-1)!.pins=[{id:'p',x:25,y:80,direction:'top'}];
+assert(relatedAreaPenalty(intervening)>=nearby+60,'A foreign area between reading rows remains undesirable');
+const inverse=structuredClone(wrapped);inverse.nodes.reverse();inverse.edges.reverse();for(const e of inverse.edges)[e.from,e.to]=[e.to,e.from];
+assert.equal(relatedAreaPenalty(inverse),nearby);
+assert.equal(JSON.stringify(wrapped),wrappedBefore);
+assert(designPenalty(remote)>designPenalty(wrapped),'Row reading quality reaches candidate comparison');
+console.log('✓ Row-aware area quality, small ordered-wrap cost, long gaps/offsets/reversed roles/interposed areas, deterministic scoring and unchanged input');
+const threeRows=drawing([20,20,20,40],[20,180,100,180]);
+threeRows.edges.push({id:'shared-control',from:{componentId:'a1n0',pinId:'in'},to:{componentId:'a3n0',pinId:'in'},potential:'',points:[]});
+const threeCost=relatedAreaPenalty(threeRows);
+assert(threeCost>nearby&&threeCost<60,'Several associated power rows before a common control retain a modest row cost');
+const reversedThree=structuredClone(threeRows);
+for(const n of reversedThree.nodes.filter(n=>n.id.startsWith('a2')))n.rect={...n.rect,y:n.rect.y+160};
+assert(relatedAreaPenalty(reversedThree)>threeCost,'A power row following a control row loses the preferred order');

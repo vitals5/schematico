@@ -1,4 +1,4 @@
-import type { LayoutSnapshot } from './types';
+import type { LayoutSnapshot, Rect } from './types';
 import { relatedCircuits } from './relatedCircuits';
 import { union, right, bottom } from './rect';
 
@@ -19,6 +19,32 @@ function circuitAreas(snapshot: LayoutSnapshot) {
     const active=circuits.filter(c=>c.length>1||c.some(n=>wired.has(n.id)));
     return { available, circuits, active };
 }
+/** Reading rows are a soft alternative to a single horizontal band. */
+function readingRows(areas: { rect: Rect; power: boolean }[], tolerance: number) {
+    const rows: typeof areas[] = [];
+    for (const a of [...areas].sort((a,b)=>a.rect.y-b.rect.y||a.rect.x-b.rect.x)) {
+        const last=rows.at(-1);
+        if(last && Math.abs(a.rect.y-last[0].rect.y)<=tolerance)last.push(a);else rows.push([a]);
+    }
+    if(rows.length<2)return;
+    let controlSeen=false;
+    const bounds=rows.map(row=>union(row.map(a=>a.rect)));
+    for(const [index,row]of rows.entries()){
+        row.sort((a,b)=>a.rect.x-b.rect.x);
+        if(index && bottom(bounds[index-1])>bounds[index].y)return;
+        for(const [i,a]of row.entries()){
+            if(i && right(row[i-1].rect)>a.rect.x)return;
+            if(a.power && controlSeen)return;
+            if(!a.power)controlSeen=true;
+        }
+    }
+    let cost=12*(rows.length-1);
+    for(let i=1;i<bounds.length;i++){
+        cost+=Math.max(0,bounds[i].y-bottom(bounds[i-1])-24)*0.75;
+        cost+=Math.abs(bounds[i].x-bounds[i-1].x)*0.5;
+    }
+    return {cost,bounds};
+}
 export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
     const { available, circuits, active } = circuitAreas(snapshot);
     if(active.length<2 || active.length>12)return 0;
@@ -37,11 +63,15 @@ export function relatedAreaPenalty(snapshot: LayoutSnapshot): number {
         const overlapX=Math.min(right(power),right(control))-Math.max(power.x,control.x);
         const overlapY=Math.min(bottom(power),bottom(control))-Math.max(power.y,control.y);
         if(overlapX>0 && overlapY>0)cost+=40+Math.min(overlapX,overlapY)*4;
+        const wrapped=readingRows(pair.map(c=>({rect:rectangles.get(c)!,power:role(c)})),Math.max(2,Math.min(4,snapshot.grid.spacing)));
+        if(wrapped)cost=Math.min(cost,wrapped.cost);
         const ordered=pair.map(c=>rectangles.get(c)!).sort((a,b)=>a.x-b.x);
         for(const c of circuits){
             if(pair.includes(c))continue;
             const r=rectangles.get(c)!;
-            if(ordered.some((a,i)=>{const b=ordered[i+1];return b && r.x>=right(a) && right(r)<=b.x && bottom(r)>Math.max(a.y,b.y) && r.y<Math.min(bottom(a),bottom(b));}))cost+=60;
+            const horizontal=ordered.some((a,i)=>{const b=ordered[i+1];return b && r.x>=right(a) && right(r)<=b.x && bottom(r)>Math.max(a.y,b.y) && r.y<Math.min(bottom(a),bottom(b));});
+            const vertical=wrapped?.bounds.some((a,i)=>{const b=wrapped.bounds[i+1];return b && r.y>=bottom(a) && bottom(r)<=b.y && right(r)>Math.max(a.x,b.x) && r.x<Math.min(right(a),right(b));});
+            if(horizontal||vertical)cost+=60;
         }
         score+=Math.min(200,cost);
     }
