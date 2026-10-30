@@ -225,3 +225,11 @@ Die gemeinsame Qualitätsbewertung berücksichtigt die eindeutigen Leistungs-/St
 Die Zuordnung verwendet dieselben Rollen und eindeutigen Gerätebeziehungen wie die Platzierung. Unbekannte Beziehungen, mehrdeutige Hauptgeräte und fixierte Paarbereiche erhalten keine solchen Zusatzkosten. Es entstehen weder elektrische Kanten noch Projektgruppen. Der gemeinsame Qualitätswert fließt sowohl in die Einblatt- als auch in die Mehrblattbewertung ein. Zusätzlich bewertet die Mehrblattsuche die auf Grundlage der Ausgangsseite erkannten Paare: Werden deren Geräte auf verschiedene Blätter verteilt, entstehen begrenzte Zusatzkosten. Dadurch verschwindet die Nachbarschaftspräferenz nicht allein deshalb, weil der Gegenpartner auf einem anderen Blatt liegt. Eine notwendige Trennung bei Platzmangel bleibt möglich. Die Gültigkeitsprüfung bleibt vorrangig: Ein ungültiges Layout wird durch einen guten Qualitätswert nicht übernehmbar.
 
 Tests vergleichen benachbarte, auseinandergezogene, vertauschte und durch andere Kreise getrennte Anordnungen. Umgekehrte Eingabereihenfolgen und Leitungsrichtungen liefern dieselbe Bewertung; Quelldaten bleiben unverändert.
+
+### Sichtbare Abstände zwischen unabhängigen Schaltungsbereichen
+
+Die strukturierte Platzierung unterscheidet die Abstände innerhalb zugehöriger Leistungs-/Steuerpaare von größeren Abständen zum nächsten unabhängigen Bereich. Sie berechnet dafür eine großzügigere und eine kompakte Anordnung. Der größere Abstand wird nur gewählt, wenn er in die tatsächliche verfügbare Breite und Höhe passt und gegenüber der kompakten Anordnung keine zusätzliche Reihe benötigt. Andernfalls bleibt die kompakte Variante verfügbar. Paare bleiben beim Reihenwechsel zusammen, solange sie als Einheit in die Breite passen.
+
+Die verfügbaren Maße berücksichtigen auch den Platzbedarf übergeordneter Rahmen. Reichen beide Varianten nicht aus, bleibt die gemeinsame Anordnung beziehungsweise die weitere Varianten- und Mehrblattsuche aktiv. Es werden keine zusätzlichen Kästen oder Texte angelegt; Geräte, Schriftgrößen und elektrische Endpunkte bleiben erhalten.
+
+Tests prüfen unterschiedliche Innen-/Außenabstände, enge Breiten- und Höhenbudgets, zusammenhängende Paare beim Reihenwechsel, zu große Einheiten, unveränderte Quelldaten und die vollständige geroutete Antriebsschaltung.

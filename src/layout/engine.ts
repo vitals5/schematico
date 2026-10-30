@@ -149,7 +149,7 @@ export async function solveLayouts(
           targets: [JSON.stringify([e.to.componentId, e.to.pinId])],
         }));
       if (profile === 'structured') {
-        const structured = structuredGroup(id, children, s, gap, padding);
+        const structured = structuredGroup(id, children, s, gap, padding, { width: widthBudget, height: heightBudget });
         if (structured && (structured.width ?? 0) <= widthBudget &&
             (structured.height ?? 0) <= heightBudget) return structured;
       }

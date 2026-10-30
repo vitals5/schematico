@@ -1,5 +1,6 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
+import { packCircuitUnits } from './circuitPacking';
 import { relatedAreaPenalty } from './areaQuality';
 import { relatedCircuits } from './relatedCircuits';
 import { rankedGroup } from './ranked';
@@ -17,7 +18,7 @@ type Padding = {
 };
 /** Orthogonal circuit columns. Envelopes reserve labels; axes refer to real ports/bodies.
  * This is a geometric style candidate, never an inference of electrical current direction. */
-export function structuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
+export function structuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding, budget?: { width: number; height: number }): ElkNode | undefined {
     // Electrically separate circuits keep their own reading axis and envelope.
     // Equal device tags/cross-references do not create electrical adjacency.
     const owner = new Map(children.flatMap(c => (c.ports ?? []).map(p => [p.id, c.id] as const)));
@@ -37,19 +38,10 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
         const plannedUnits = units.map(unit => unit.map(c => connectedStructuredGroup(id + '-circuit-' + c.map(n=>n.id).sort()[0], c, snapshot, gap, padding)));
         const blocks = plannedUnits.flat();
         if (blocks.every(b => b?.children)) {
-            const result: ElkNode[] = [], separation = Math.max(16, gap * 2);
-            let x = 0, y = 0, height = 0, width = 0;
-            const limit = snapshot.area?.width ?? Infinity;
-            const packingUnits = plannedUnits.flatMap(unit => unit.reduce((sum,b)=>sum+b!.width!,0) + separation*(unit.length-1) <= limit ? [unit] : unit.map(b=>[b]));
-            for (const unit of packingUnits) {
-                const unitWidth = unit.reduce((sum,b)=>sum+b!.width!,0) + separation*(unit.length-1);
-                if (x && x + unitWidth > limit) { x=0; y+=height+separation; height=0; }
-                for (const b of unit) {
-                    result.push(...b!.children!.map(c => ({ ...c, x: c.x! + x, y: c.y! + y })));
-                    width=Math.max(width,x+b!.width!);height=Math.max(height,b!.height!);x+=b!.width!+separation;
-                }
-            }
-            return { id, children: result, width, height: y + height };
+            const packed=packCircuitUnits(id,plannedUnits as ElkNode[][],
+                Math.min(snapshot.area?.width??Infinity,budget?.width??Infinity),
+                Math.min(snapshot.area?.height??Infinity,budget?.height??Infinity),Math.max(16,gap*2),Math.max(32,gap*4));
+            if(packed)return packed;
         }
     }
     return connectedStructuredGroup(id, children, snapshot, gap, padding);

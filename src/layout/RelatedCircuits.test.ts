@@ -28,6 +28,8 @@ const before=JSON.stringify(project),net=topology(project),history=new ProjectHi
 const candidate=(await previewLayout(project,'p',{multiPage:false})).candidates.find(c=>c.profile==='structured');assert(candidate);
 const bounds=(ids:string[])=>{const ns=snapshotPage(candidate.page,project).nodes.filter(n=>ids.includes(n.id));return {x:Math.min(...ns.map(n=>n.rect.x)),y:Math.min(...ns.map(n=>n.rect.y)),right:Math.max(...ns.map(n=>n.rect.x+n.rect.width))};};
 for(let i=1;i<=2;i++){const power=bounds(['z'+i+'p','z'+i+'m']),control=bounds(['a'+i+'s','a'+i+'c']);assert(power.right<control.x);assert(Math.abs(power.y-control.y)<1e-6);}
+const firstPower=bounds(['z1p','z1m']),firstControl=bounds(['a1s','a1c']),nextPower=bounds(['z2p','z2m']);
+assert(nextPower.x-firstControl.right>firstControl.x-firstPower.right,'Independent drives need a visibly larger separator than their own power/control pair');
 assert.equal(candidate.report.metrics.crossings,0);assert.equal(candidate.report.metrics.bends,0);
 const narrow=JSON.parse(before);narrow.pages[0].plotFrame.width=360;
 const wrapped=(await previewLayout(narrow,'p',{multiPage:false})).candidates.find(c=>c.profile==='structured');assert(wrapped,'Paired areas must also support row wrapping');
