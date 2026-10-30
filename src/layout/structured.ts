@@ -1,5 +1,6 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
+import { relatedCircuits } from './relatedCircuits';
 import { rankedGroup } from './ranked';
 import { channelGap, type ChannelSpan } from './channels';
 import { netIds } from './validate';
@@ -31,20 +32,21 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
         circuits.push(children.filter(c => members.has(c.id)));
     }
     if (circuits.length > 1 && circuits.length <= 12 && circuits.every(c => c.length >= 2) && !children.some(c => snapshot.nodes.find(n => n.id === c.id)?.fixed)) {
-        const priority = (circuit: ElkNode[]) => {
-            const ids = new Set(circuit.map(c => c.id));
-            const roles = new Set(snapshot.nodes.filter(n => ids.has(n.id) || n.pins.some(p => ids.has(owner.get(JSON.stringify([n.id, p.id]))!))).map(n => n.circuitRole).filter(Boolean));
-            return roles.size === 1 && roles.has('power') ? 0 : roles.size === 1 && roles.has('control') ? 2 : 1;
-        };
-        circuits.sort((a, b) => priority(a) - priority(b) || a.map(c => c.id).sort()[0].localeCompare(b.map(c => c.id).sort()[0]));
-        const blocks = circuits.map((c, i) => connectedStructuredGroup(id + '-circuit-' + i, c, snapshot, gap, padding));
+        const units = relatedCircuits(circuits, snapshot);
+        const plannedUnits = units.map(unit => unit.map(c => connectedStructuredGroup(id + '-circuit-' + c.map(n=>n.id).sort()[0], c, snapshot, gap, padding)));
+        const blocks = plannedUnits.flat();
         if (blocks.every(b => b?.children)) {
             const result: ElkNode[] = [], separation = Math.max(16, gap * 2);
             let x = 0, y = 0, height = 0, width = 0;
-            for (const b of blocks) {
-                if (x && x + b!.width! > (snapshot.area?.width ?? Infinity)) { x = 0; y += height + separation; height = 0; }
-                result.push(...b!.children!.map(c => ({ ...c, x: c.x! + x, y: c.y! + y })));
-                width = Math.max(width, x + b!.width!); height = Math.max(height, b!.height!); x += b!.width! + separation;
+            const limit = snapshot.area?.width ?? Infinity;
+            const packingUnits = plannedUnits.flatMap(unit => unit.reduce((sum,b)=>sum+b!.width!,0) + separation*(unit.length-1) <= limit ? [unit] : unit.map(b=>[b]));
+            for (const unit of packingUnits) {
+                const unitWidth = unit.reduce((sum,b)=>sum+b!.width!,0) + separation*(unit.length-1);
+                if (x && x + unitWidth > limit) { x=0; y+=height+separation; height=0; }
+                for (const b of unit) {
+                    result.push(...b!.children!.map(c => ({ ...c, x: c.x! + x, y: c.y! + y })));
+                    width=Math.max(width,x+b!.width!);height=Math.max(height,b!.height!);x+=b!.width!+separation;
+                }
             }
             return { id, children: result, width, height: y + height };
         }

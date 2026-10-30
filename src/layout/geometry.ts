@@ -387,6 +387,10 @@ export function snapshotPage(
       id: comp.id,
       kind: 'component',
       circuitRole: sym.layoutRole,
+      deviceRelation: comp.bmk.trim() && (sym.isMaster || sym.isContact) ? {
+        key: JSON.stringify([comp.higherLevelFunction ?? page.higherLevel, comp.mountingLocation ?? page.location, comp.bmk.trim()]),
+        kind: sym.isMaster ? 'master' : 'contact',
+      } : undefined,
       handover: isInterruptionSymbol(sym),
       routingJunction: ['corners', 'tees', 'crossings'].includes(connectionFamily(sym)),
       joinedPins:
