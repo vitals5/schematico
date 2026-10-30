@@ -1,5 +1,6 @@
 import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { LayoutSnapshot } from './types';
+import { relatedAreaPenalty } from './areaQuality';
 import { relatedCircuits } from './relatedCircuits';
 import { rankedGroup } from './ranked';
 import { channelGap, type ChannelSpan } from './channels';
@@ -322,7 +323,7 @@ function verticalStructuredGroup(id: string, children: ElkNode[], snapshot: Layo
 export function designPenalty(s: LayoutSnapshot): number {
     const nodes = new Map(s.nodes.map(n => [n.id, n]));
     const pairs = new Map<string, number[]>();
-    let score = 0;
+    let score = relatedAreaPenalty(s);
     for (const e of s.edges) {
         const a = nodes.get(e.from.componentId)?.pins.find(p => p.id === e.from.pinId);
         const b = nodes.get(e.to.componentId)?.pins.find(p => p.id === e.to.pinId);

@@ -1,3 +1,4 @@
+import { separatedAreaPenalty } from './areaQuality';
 import { handoverSymbol } from './handoverSymbol';
 import { coherentBlocks, partitionBins } from './coherentBlocks';
 import { designPenalty } from './structured';
@@ -475,7 +476,8 @@ export async function multiPageCandidate(
       multiPage: multi,
     };
     const geometryCost = multi.pages.reduce((sum,page)=>sum+designPenalty(snapshotPage(page,copy)),0);
-    const cost = geometryCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800 + multi.links.length * 40;
+    const splitCost = separatedAreaPenalty(geometry, new Map(multi.pages.flatMap(p=>p.components.map(c=>[c.id,p.id] as const))));
+    const cost = geometryCost + splitCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800 + multi.links.length * 40;
     if (cost < bestCost) { best = candidate; bestCost = cost; }
     if (report.metrics.crossings <= 30 || count >= 4) break;
   }
