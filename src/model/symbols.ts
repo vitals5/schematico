@@ -1,3 +1,4 @@
+import { CONNECTION_VARIANTS } from './ConnectionVariants';
 import { migrateLegacyData } from './LegacyCompatibility';
 import { DEVICE_BOX_SYMBOL, componentFromBox, deviceBoxDefinition, geometryFromSymbol, isDeviceBoxDefinition } from './DeviceBoxElement';
 // src/model/symbols.ts
@@ -1446,7 +1447,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   }
 ];
 
-SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...INSTALLATION_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, DEVICE_BOX_SYMBOL);
+SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...INSTALLATION_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, ...CONNECTION_VARIANTS, DEVICE_BOX_SYMBOL);
 
 for (const symbol of SYMBOL_DEFINITIONS) {
   symbol.unitsPerMm = 2;

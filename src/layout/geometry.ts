@@ -391,7 +391,7 @@ export function snapshotPage(
       joinedPins:
         ['corners', 'tees', 'interruptions'].includes(connectionFamily(sym)) ||
         sym.id === 'terminal_single' ||
-        sym.id === 'cross_junction'
+        (sym.id === 'cross_junction' || sym.id.startsWith('cross_junction_bus_'))
           ? [pins.map((p) => p.id)]
           : undefined,
       insertion: {
