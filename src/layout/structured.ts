@@ -16,6 +16,36 @@ type Padding = {
 /** Orthogonal circuit columns. Envelopes reserve labels; axes refer to real ports/bodies.
  * This is a geometric style candidate, never an inference of electrical current direction. */
 export function structuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
+    // Electrically separate circuits keep their own reading axis and envelope.
+    // Equal device tags/cross-references do not create electrical adjacency.
+    const owner = new Map(children.flatMap(c => (c.ports ?? []).map(p => [p.id, c.id] as const)));
+    const adjacency = new Map(children.map(c => [c.id, new Set<string>()]));
+    for (const e of snapshot.edges) {
+        const a = owner.get(JSON.stringify([e.from.componentId, e.from.pinId])), b = owner.get(JSON.stringify([e.to.componentId, e.to.pinId]));
+        if (a && b && a !== b) { adjacency.get(a)!.add(b); adjacency.get(b)!.add(a); }
+    }
+    const unseen = new Set([...adjacency.keys()].sort()), circuits: ElkNode[][] = [];
+    while (unseen.size) {
+        const queue = [unseen.values().next().value!], members = new Set<string>();
+        while (queue.length) { const key = queue.pop()!; if (!unseen.delete(key)) continue; members.add(key); queue.push(...adjacency.get(key)!); }
+        circuits.push(children.filter(c => members.has(c.id)));
+    }
+    if (circuits.length > 1 && circuits.length <= 12 && circuits.every(c => c.length >= 2) && !children.some(c => snapshot.nodes.find(n => n.id === c.id)?.fixed)) {
+        const blocks = circuits.map((c, i) => connectedStructuredGroup(id + '-circuit-' + i, c, snapshot, gap, padding));
+        if (blocks.every(b => b?.children)) {
+            const result: ElkNode[] = [], separation = Math.max(16, gap * 2);
+            let x = 0, y = 0, height = 0, width = 0;
+            for (const b of blocks) {
+                if (x && x + b!.width! > (snapshot.area?.width ?? Infinity)) { x = 0; y += height + separation; height = 0; }
+                result.push(...b!.children!.map(c => ({ ...c, x: c.x! + x, y: c.y! + y })));
+                width = Math.max(width, x + b!.width!); height = Math.max(height, b!.height!); x += b!.width! + separation;
+            }
+            return { id, children: result, width, height: y + height };
+        }
+    }
+    return connectedStructuredGroup(id, children, snapshot, gap, padding);
+}
+function connectedStructuredGroup(id: string, children: ElkNode[], snapshot: LayoutSnapshot, gap: number, padding: Padding): ElkNode | undefined {
     return perpendicularRail(children, snapshot, gap, padding, (core, planning) => axisStructuredGroup(id, core, planning, gap, padding))
         ?? junctionPlacement(children, snapshot, gap, padding, (core, planning) => axisStructuredGroup(id, core, planning, gap, padding))
         ?? axisStructuredGroup(id, children, snapshot, gap, padding);
