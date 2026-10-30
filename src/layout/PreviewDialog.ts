@@ -14,6 +14,7 @@ export class LayoutPreviewDialog {
   private selected = 0;
   private sheet = 0;
   private original = false;
+  private zoom = 1;
   private closed = false;
   private status = '';
   private dirty = false;
@@ -59,10 +60,16 @@ export class LayoutPreviewDialog {
     }
     const candidate = this.preview.candidates[this.selected],
       metrics = candidate?.report.metrics;
+    const sheets = candidate?.multiPage?.pages ?? (candidate ? [candidate.page] : []);
+    this.sheet = Math.max(0, Math.min(this.sheet, sheets.length - 1));
+    const visiblePage = this.original ? page : sheets[this.sheet] ?? page;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-label="Layoutvorschau" style="width:min(1450px,96vw);height:92vh;background:var(--bg-primary,#151a23);color:var(--text-primary,#eee);display:flex;flex-direction:column;border:1px solid #526170;border-radius:8px;padding:16px;gap:10px">
  <style>#layoutPreviewModal table{width:100%;border-collapse:collapse;margin:10px 0}#layoutPreviewModal th,#layoutPreviewModal td{padding:4px 6px;text-align:right;border-bottom:1px solid #334155}#layoutPreviewModal td:first-child{text-align:left}#layoutPreviewModal input[type=checkbox]{margin-right:6px}#layoutPreviewModal footer>div{display:flex;gap:8px}</style><header style="display:flex;justify-content:space-between"><strong>Layoutvorschau · ${escapeSvg(page.title)}</strong><div><button class="btn" data-export>Entwurf exportieren</button> <button class="btn" data-close>Schließen</button></div></header>
  <div>${candidate?.multiPage ? `Mehrseitenvorschlag: ${candidate.multiPage.pages.length} Blätter, ${candidate.multiPage.links.length} Verweispaare. Neue Blätter werden erst mit Übernehmen angelegt.` : 'Noch nicht übernommen. Symbole, Schriftgrößen und elektrische Verbindungen bleiben erhalten.'}</div>
- <div style="display:flex;gap:12px;flex:1;min-height:0;flex-wrap:wrap;overflow:auto"><div style="flex:3;min-width:300px;display:flex;flex-direction:column;min-height:200px"><div style="display:flex;gap:8px"><button class="btn" data-original ${candidate ? '' : 'disabled'}>${this.original ? 'Vorschau zeigen' : 'Vorher zeigen'}</button><select class="form-select" data-candidate aria-label="Layoutvariante" ${candidate ? '' : 'disabled'}>${this.preview.candidates.map((c, i) => `<option value="${i}" ${i === this.selected ? 'selected' : ''}>${c.multiPage ? `${c.multiPage.pages.length} Blätter` : c.profile === 'structured' ? 'Geordnete Strompfade' : c.profile === 'lanes' ? 'Strompfade' : c.profile === 'readability' ? 'Lesbarkeit' : c.profile === 'compact' ? 'Kompakt' : 'Wenig Veränderung'}</option>`).join('')}</select>${candidate?.multiPage ? `<select class="form-select" data-sheet aria-label="Vorschaublatt">${candidate.multiPage.pages.map((p,i)=>`<option value="${i}" ${i===this.sheet?'selected':''}>Blatt ${escapeSvg(p.pageNumber)} · ${escapeSvg(p.title)}</option>`).join('')}</select>` : ''}</div><div data-drawing style="flex:1;min-height:0;background:#10151f;margin-top:8px"></div></div>
+ <div style="display:flex;gap:12px;flex:1;min-height:0;flex-wrap:wrap;overflow:auto"><div style="flex:3;min-width:300px;display:flex;flex-direction:column;min-height:200px"><div style="display:flex;gap:8px"><button class="btn" data-original ${candidate ? '' : 'disabled'}>${this.original ? 'Vorschau zeigen' : 'Vorher zeigen'}</button><select class="form-select" data-candidate aria-label="Layoutvariante" ${candidate ? '' : 'disabled'}>${this.preview.candidates.map((c, i) => `<option value="${i}" ${i === this.selected ? 'selected' : ''}>${c.multiPage ? `${c.multiPage.pages.length} Blätter` : c.profile === 'structured' ? 'Geordnete Strompfade' : c.profile === 'lanes' ? 'Strompfade' : c.profile === 'readability' ? 'Lesbarkeit' : c.profile === 'compact' ? 'Kompakt' : 'Wenig Veränderung'}</option>`).join('')}</select></div>
+ ${sheets.length > 1 ? `<nav aria-label="Vorschaublätter" style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px"><button class="btn" data-sheet-prev aria-label="Vorheriges Vorschaublatt" ${this.sheet === 0 ? 'disabled' : ''}>◀</button><label style="flex:1;min-width:150px">Vorschaublatt <select class="form-select" data-sheet aria-label="Vorschaublatt" style="width:100%">${sheets.map((p, i) => `<option value="${i}" ${i === this.sheet ? 'selected' : ''}>${i + 1} / ${sheets.length} · Blatt ${escapeSvg(p.pageNumber)} · ${escapeSvg(p.title)}</option>`).join('')}</select></label><button class="btn" data-sheet-next aria-label="Nächstes Vorschaublatt" ${this.sheet === sheets.length - 1 ? 'disabled' : ''}>▶</button></nav>` : ''}
+ <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px"><span data-sheet-caption style="flex:1">${this.original ? 'Originalblatt' : 'Vorschau'} · Blatt ${escapeSvg(visiblePage.pageNumber)} · ${escapeSvg(visiblePage.title)}</span><button class="btn" data-zoom-out aria-label="Vorschau verkleinern" ${this.zoom <= 1 ? 'disabled' : ''}>−</button><output data-zoom>${Math.round(this.zoom * 100)} %</output><button class="btn" data-zoom-in aria-label="Vorschau vergrößern" ${this.zoom >= 4 ? 'disabled' : ''}>+</button><button class="btn" data-zoom-fit>Ganzes Blatt</button></div>
+ <div data-viewport tabindex="0" aria-label="Blattansicht; vergrößerte Vorschau mit Scrollleisten verschieben" style="position:relative;flex:1;min-height:180px;overflow:auto;background:#10151f;margin-top:8px"><div data-drawing style="position:absolute;inset:0 auto auto 0;width:${this.zoom * 100}%;height:${this.zoom * 100}%;min-height:100%"></div></div></div>
  <div style="flex:1;min-width:240px;overflow:auto;font-size:12px"><p>${candidate ? 'Geprüfter Kandidat · 0 unzulässige Kollisionen' : 'Kein gültiger Kandidat'}</p>${metrics ? `<table><tr><th></th><th>Vorher</th><th>Vorschau</th></tr>${(['bodyOverlaps', 'textOverlaps', 'wireObstacles', 'overflows', 'crossings', 'bends', 'length', 'displacement'] as const).map((k) => `<tr><td>${{ bodyOverlaps: 'Körperkollisionen', textOverlaps: 'Textkollisionen', wireObstacles: 'Leitungshindernisse', overflows: 'Blattüberschreitungen', crossings: 'Kreuzungen', bends: 'Knicke', length: 'Leitungslänge (mm)', displacement: 'Verschiebung (mm)' }[k]}</td><td>${Math.round(this.preview.before.metrics[k])}</td><td>${Math.round(metrics[k])}</td></tr>`).join('')}</table>` : ''}
  <p>Fixierte Objekte</p><div style="max-height:190px;overflow:auto">${[...page.components.map((c) => ({ id: c.id, name: c.bmk || c.functionText || c.id })), ...(page.groups ?? []).map((g) => ({ id: g.id, name: g.name || g.id }))].map((o) => `<label style="display:block"><input type="checkbox" data-lock="${escapeSvg(o.id)}" ${(this.options.lockedIds ?? page.layoutConstraints?.lockedIds ?? []).includes(o.id) ? 'checked' : ''}> ${escapeSvg(o.name)}</label>`).join('')}</div>
  <p><label><input type="checkbox" data-multi ${this.options.multiPage !== false ? 'checked' : ''}> Bei Platzmangel mehrere Blätter erstellen</label></p><p><label><input type="checkbox" data-selection ${this.options.selectedIds ? 'checked' : ''} ${this.config.selection?.length ? '' : 'disabled'}> Nur aktuelle Auswahl</label></p><button class="btn" data-recompute>Neu berechnen</button>
@@ -111,10 +118,28 @@ export class LayoutPreviewDialog {
     });
     this.el.querySelector('[data-candidate]')?.addEventListener('change', (e) => {
       this.selected = Number((e.target as HTMLSelectElement).value);
+      this.original = false;
       this.sheet = 0;
+      this.zoom = 1;
       this.render();
     });
-    this.el.querySelector('[data-sheet]')?.addEventListener('change', e => { this.sheet = Number((e.target as HTMLSelectElement).value); this.render(); });
+    const showSheet = (index: number) => {
+      this.sheet = index;
+      this.original = false;
+      this.render();
+    };
+    this.el.querySelector('[data-sheet]')?.addEventListener('change', (e) =>
+      showSheet(Number((e.target as HTMLSelectElement).value)),
+    );
+    this.el.querySelector('[data-sheet-prev]')?.addEventListener('click', () => showSheet(this.sheet - 1));
+    this.el.querySelector('[data-sheet-next]')?.addEventListener('click', () => showSheet(this.sheet + 1));
+    const setZoom = (value: number) => {
+      this.zoom = Math.max(1, Math.min(4, value));
+      this.render();
+    };
+    this.el.querySelector('[data-zoom-out]')?.addEventListener('click', () => setZoom(this.zoom - 0.5));
+    this.el.querySelector('[data-zoom-in]')?.addEventListener('click', () => setZoom(this.zoom + 0.5));
+    this.el.querySelector('[data-zoom-fit]')?.addEventListener('click', () => setZoom(1));
     this.el.querySelector('[data-apply]')?.addEventListener('click', () => {
       if (!candidate || this.dirty) return;
       try {
@@ -166,6 +191,9 @@ export class LayoutPreviewDialog {
         this.status = '';
         this.dirty = false;
         this.selected = 0;
+        this.sheet = 0;
+        this.original = false;
+        this.zoom = 1;
       } catch (e) {
         this.status = e instanceof Error ? e.message : String(e);
       }
@@ -243,7 +271,7 @@ export class LayoutPreviewDialog {
 
     const errors = this.original ? this.preview.before.issues : this.preview.issues;
     this.el.querySelector('[data-drawing]')!.innerHTML =
-      `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%;color:#d6dfec" xmlns="http://www.w3.org/2000/svg"><rect x="${snapshot.area.x}" y="${snapshot.area.y}" width="${snapshot.area.width}" height="${snapshot.area.height}" fill="none" stroke="#536370" stroke-width=".4"/>${images}${frames}${wires}${vectors}${texts}${annotations}${cables}${errors
+      `<svg viewBox="0 0 ${w} ${h}" style="display:block;width:100%;height:100%;color:#d6dfec" xmlns="http://www.w3.org/2000/svg"><rect x="${snapshot.area.x}" y="${snapshot.area.y}" width="${snapshot.area.width}" height="${snapshot.area.height}" fill="none" stroke="#536370" stroke-width=".4"/>${images}${frames}${wires}${vectors}${texts}${annotations}${cables}${errors
         .flatMap((i) => i.bounds ?? [])
         .slice(0, 80)
         .map(
