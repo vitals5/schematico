@@ -3,9 +3,9 @@ import type { LayoutSnapshot } from './types';
 import { netIds } from './validate';
 
 type Connection = { a: string; b: string; ac: string; bc: string };
-/** Equal physical pitch for equivalent two-terminal paths between the same nets.
- * Only temporary node positions change; unequal paths and multipole banks retain
- * the existing serial-lane arrangement. */
+/** Equal physical pitch for straight two-terminal paths between the same nets.
+ * Paths may occupy different device levels; measured envelopes on every shared
+ * row determine their clearance. Only temporary positions change. */
 export function spaceParallelBranches(rows: ElkNode[][], connections: Connection[], snapshot: LayoutSnapshot, gap: number, left: number): boolean {
     const nodes = rows.flat(), byId = new Map(nodes.map(n => [n.id, n]));
     const levels = new Map(rows.flatMap((r, i) => r.map(n => [n.id, i] as const)));
@@ -42,7 +42,7 @@ export function spaceParallelBranches(rows: ElkNode[][], connections: Connection
         const local = new Map(members.map(c => [c.id, c.ports![0].x ?? 0]));
         const axis = seed.x! + local.get(seed.id)!;
         if (members.some(c => Math.abs(c.x! + local.get(c.id)! - axis) > 1e-6)) continue;
-        const group = JSON.stringify([entry, exit, members.map(c => levels.get(c.id))]);
+        const group = JSON.stringify([entry, exit]);
         if (!groups.has(group)) groups.set(group, []);
         groups.get(group)!.push({ members, axis, local });
     }
@@ -51,9 +51,14 @@ export function spaceParallelBranches(rows: ElkNode[][], connections: Connection
         if (branches.length < 3) continue;
         branches.sort((a, b) => a.axis - b.axis || a.members[0].id.localeCompare(b.members[0].id));
         let pitch = (branches.at(-1)!.axis - branches[0].axis) / (branches.length - 1);
-        for (let i = 1; i < branches.length; i++) for (let j = 0; j < branches[i].members.length; j++) {
-            const a = branches[i - 1], b = branches[i], first = a.members[j], second = b.members[j];
-            pitch = Math.max(pitch, (first.width ?? 1) - a.local.get(first.id)! + b.local.get(second.id)! + gap);
+        // Different branch lengths leave holes in some rows. Check every pair,
+        // including non-neighbours: a long label can span an empty middle column.
+        for (let i = 0; i < branches.length; i++) for (let j = i + 1; j < branches.length; j++) {
+            const a = branches[i], b = branches[j];
+            for (const first of a.members) for (const second of b.members) {
+                if (levels.get(first.id) !== levels.get(second.id)) continue;
+                pitch = Math.max(pitch, ((first.width ?? 1) - a.local.get(first.id)! + b.local.get(second.id)! + gap) / (j - i));
+            }
         }
         if (snapshot.grid.spacing > 0) pitch = Math.ceil(pitch / snapshot.grid.spacing) * snapshot.grid.spacing;
         let start = (branches[0].axis + branches.at(-1)!.axis - pitch * (branches.length - 1)) / 2;
