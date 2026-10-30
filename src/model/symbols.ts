@@ -14,6 +14,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   // --- 1. SCHÜTZE & RELAIS ---
   {
     id: 'contactor_coil',
+    layoutRole: 'control',
     name: 'Schützspule',
     category: 'relays',
     standard: 'DIN EN 60617',
@@ -85,6 +86,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   },
   {
     id: 'contactor_power_3p',
+    layoutRole: 'power',
     name: 'Leistungsschaltglieder (3-polig)',
     category: 'relays',
     standard: 'DIN EN 60617',
@@ -197,6 +199,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   // --- 3. BEFEHLS- & MELDEGERÄTE ---
   {
     id: 'pushbutton_no',
+    layoutRole: 'control',
     name: 'Taster (Schließer)',
     category: 'controls',
     standard: 'DIN EN 60617',
@@ -219,6 +222,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   },
   {
     id: 'pushbutton_emergency_stop',
+    layoutRole: 'control',
     name: 'Not-Halt-Taster (Öffner)',
     category: 'controls',
     standard: 'DIN EN 60617',
@@ -267,6 +271,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   // --- 4. MOTOREN & AKTOREN ---
   {
     id: 'motor_3phase',
+    layoutRole: 'power',
     name: 'Drehstrommotor (3~)',
     category: 'motors',
     standard: 'DIN EN 60617',

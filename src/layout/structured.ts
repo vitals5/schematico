@@ -31,6 +31,12 @@ export function structuredGroup(id: string, children: ElkNode[], snapshot: Layou
         circuits.push(children.filter(c => members.has(c.id)));
     }
     if (circuits.length > 1 && circuits.length <= 12 && circuits.every(c => c.length >= 2) && !children.some(c => snapshot.nodes.find(n => n.id === c.id)?.fixed)) {
+        const priority = (circuit: ElkNode[]) => {
+            const ids = new Set(circuit.map(c => c.id));
+            const roles = new Set(snapshot.nodes.filter(n => ids.has(n.id) || n.pins.some(p => ids.has(owner.get(JSON.stringify([n.id, p.id]))!))).map(n => n.circuitRole).filter(Boolean));
+            return roles.size === 1 && roles.has('power') ? 0 : roles.size === 1 && roles.has('control') ? 2 : 1;
+        };
+        circuits.sort((a, b) => priority(a) - priority(b) || a.map(c => c.id).sort()[0].localeCompare(b.map(c => c.id).sort()[0]));
         const blocks = circuits.map((c, i) => connectedStructuredGroup(id + '-circuit-' + i, c, snapshot, gap, padding));
         if (blocks.every(b => b?.children)) {
             const result: ElkNode[] = [], separation = Math.max(16, gap * 2);

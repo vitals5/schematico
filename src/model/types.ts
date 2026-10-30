@@ -113,6 +113,8 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  /** Optional drawing role; does not describe current direction or connectivity. */
+  layoutRole?: 'power' | 'control';
   unresolved?: boolean;
   id: string;
   name: string;
