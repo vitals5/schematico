@@ -1,3 +1,4 @@
+import { functionalBlocks } from './functionalBlocks';
 import { separatedAreaPenalty } from './areaQuality';
 import { handoverSymbol } from './handoverSymbol';
 import { coherentBlocks, partitionBins } from './coherentBlocks';
@@ -404,11 +405,17 @@ export async function multiPageCandidate(
   if (blocks.length < 2) return;
   const geometry = snapshotPage(source, target, options);
   const coherent = coherentBlocks(blocks, geometry);
+  const functional = functionalBlocks(coherent, geometry);
   const attempts = Array.from({ length: Math.min(12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
-    const ordinary = partitionBins(blocks, count, geometry);
-    const preferred = coherent.length >= count ? partitionBins(coherent, count, geometry) : undefined;
-    return preferred && JSON.stringify(preferred) !== JSON.stringify(ordinary)
-      ? [{ count, bins: preferred }, { count, bins: ordinary }] : [{ count, bins: ordinary }];
+    const seen = new Set<string>();
+    return [functional, coherent, blocks].filter(units => units.length >= count).flatMap(units => {
+      const bins = partitionBins(units, count, geometry);
+      // Keep sheet order: the first sheet retains source texts and images.
+      const key = JSON.stringify(bins.map(b => [...b].sort()));
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [{ count, bins }];
+    });
   });
   for (const { count, bins } of attempts) {
     const multi = buildPages(
