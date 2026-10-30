@@ -69,3 +69,19 @@ assert.equal(multi.multiPage.pages.length,2);assert.equal(multi.multiPage.links.
 assert(multi.multiPage.pages.some(p=>['a1s','a1c','a2s','a2c','z1p','z1m','z2p','z2m'].every(id=>p.components.some(c=>c.id===id))));
 assert.equal(JSON.stringify(separate),original,'Multi-page planning remains isolated');
 console.log('✓ Several control areas for a shared power area and checked two-page planning with complete functional units');
+
+// A narrower, taller drawing area and full-sized labels need internal wrapping.
+const portrait=JSON.parse(original) as typeof project;
+portrait.pages[0].plotFrame.width=594;portrait.pages[0].plotFrame.height=840;
+for(const c of portrait.pages[0].components.filter(c=>['z1p','z2p'].includes(c.id)))c.functionText='Leistungsschaltglied Antrieb';
+const portraitBefore=JSON.stringify(portrait),portraitNet=topology(portrait),portraitHistory=new ProjectHistory();portraitHistory.reset(portrait);
+const wrapped=(await previewLayout(portrait,'p',{multiPage:false})).candidates.find(c=>c.profile==='structured');assert(wrapped);
+const wrappedGeometry=snapshotPage(wrapped.page,portrait);
+const bounds=(ids:string[])=>{const ns=wrappedGeometry.nodes.filter(n=>ids.includes(n.id));return {top:Math.min(...ns.map(n=>n.rect.y)),bottom:Math.max(...ns.map(n=>n.rect.y+n.rect.height))};};
+const power=bounds(['z1p','z1m','z2p','z2m']),shared=bounds(['a1s','a1c','a2s','a2c']),independent=bounds(['z3p','z3m','a3s','a3c']);
+assert(power.bottom<shared.top,'The common control follows its power areas on the next internal row');
+assert(shared.bottom+16<independent.top,'The independent drive must retain a separator below the complete wrapped unit');
+assert.equal(wrapped.report.metrics.crossings,0);
+assert.equal(JSON.stringify(portrait),portraitBefore);
+applyLayout(portrait,wrapped);portraitHistory.record(portrait);assert.equal(topology(portrait),portraitNet);assert.deepEqual(portraitHistory.undo(),JSON.parse(portraitBefore));
+console.log('✓ Wrapped functional areas with real symbols and unchanged large labels, separate independent drive, routing, original topology and undo');

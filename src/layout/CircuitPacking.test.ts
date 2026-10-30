@@ -20,3 +20,23 @@ const narrow=packCircuitUnits('root',units,100,400,16,32)!;
 assert.deepEqual(new Set(narrow.children!.map(c=>c.id)),new Set(['p1','c1','p2','c2']),'Oversized pairs retain all individual blocks');
 assert.equal(JSON.stringify(units),source);
 console.log('✓ Distinct internal/external circuit spacing, compact width/height fallback, whole-pair wrapping, oversize fallback and immutable input');
+
+const functional = [[block('p1'), block('p2'), block('shared-control')], [block('independent')]];
+const functionalBefore = JSON.stringify(functional);
+const preserved = packCircuitUnits('root', functional, 200, 250, 16, 32)!;
+assert(preserved);
+assert.equal(position(preserved,'p1').y,position(preserved,'p2').y);
+assert(position(preserved,'shared-control').y! > position(preserved,'p1').y!);
+assert(position(preserved,'independent').y! >= position(preserved,'shared-control').y! + 60 + 32,
+  'An unrelated circuit must not occupy the last row of a wrapped functional unit');
+assert.equal(preserved.height,228);
+assert.equal(JSON.stringify(functional),functionalBefore);
+const measured=(id:string,w:number,h:number)=>({id:'region-'+id,width:w,height:h,children:[{id,x:0,y:0,width:w,height:h}]});
+const uneven=[[measured('a',130,100),measured('b',130,100),measured('c',130,10)],[measured('d',130,100)]];
+const fallback=packCircuitUnits('root',uneven,280,220,16,32)!;
+assert(fallback,'An oversized functional envelope must not suppress a valid finer layout');
+assert.equal(fallback.height,216);
+assert.equal(position(fallback,'c').y,position(fallback,'d').y);
+assert.equal(new Set(fallback.children!.map(n=>n.id)).size,4);
+assert.equal(packCircuitUnits('root',functional,200,130,16,32),undefined,'No packing may exceed the real height budget');
+console.log('✓ Multi-row functional regions, independent separators, unchanged children and measured-height fallback to individual blocks');
