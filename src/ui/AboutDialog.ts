@@ -17,7 +17,7 @@ export class AboutDialog {
       </div>
       <div class="about-body">
         <img class="about-logo" src="${import.meta.env.BASE_URL}branding/logo-dark.png" alt="Schematico" width="1200" height="361" />
-        <p class="about-version">Version ${version} · Windows &amp; Web</p>
+        <p class="about-version">Version ${version} · Windows, Linux &amp; Web</p>
         <p>${isEn ? 'Create and edit electrical schematics.' : 'Stromlaufpläne erstellen und bearbeiten.'}</p>
         <ul>
           <li>${isEn ? 'Symbol library, connections, and cross-references' : 'Elementbibliothek, Verbindungen und Querverweise'}</li>

@@ -1,0 +1,64 @@
+name: Build Linux Application
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Dependencies
+        run: npm ci
+      - name: Build AppImage and Debian Package
+        run: |
+          umask 022
+          npm run dist:linux
+      - name: Check Packages and Launch Desktop Application
+        run: |
+          if ! command -v xvfb-run >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+          npm run test:linux
+      - name: Upload Linux Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: Schematico-Linux-x64
+          if-no-files-found: error
+          path: |
+            release/*.AppImage
+            release/*.deb
+  publish-linux:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: Schematico-Linux-x64
+          path: release
+      - name: Add Linux Packages to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            release/*.AppImage
+            release/*.deb

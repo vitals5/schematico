@@ -9,13 +9,14 @@
 </p>
 
 <p align="center">
-  <strong>Professional Schematic Diagrams &amp; Architectural Electrical CAD for Windows and Modern Web Browsers</strong>
+  <strong>Professional Schematic Diagrams &amp; Architectural Electrical CAD for Windows, Linux and Modern Web Browsers</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/vitals5/schematico/releases/latest"><img src="https://img.shields.io/github/v/release/vitals5/schematico?color=3182ce&label=Release&logo=github" alt="Release Version"></a>
   <a href="https://vitals5.github.io/schematico/"><img src="https://img.shields.io/badge/Web%20App-Live%20Demo-68d391?logo=googlechrome&logoColor=white" alt="Live Web App"></a>
   <a href="https://github.com/vitals5/schematico/actions/workflows/build-windows.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitals5/schematico/build-windows.yml?branch=main&label=Windows%20Build&logo=windows" alt="Windows Build Status"></a>
+  <a href="https://github.com/vitals5/schematico/actions/workflows/build-linux.yml"><img src="https://img.shields.io/github/actions/workflow/status/vitals5/schematico/build-linux.yml?branch=main&label=Linux%20Build&logo=linux" alt="Linux Build Status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
   <a href="#supported-standards"><img src="https://img.shields.io/badge/Standards-DIN%20EN%2081346%20%7C%20IEC%2060617%20%7C%20DIN%20EN%2060617--11-f6ad55" alt="Engineering Standards"></a>
 </p>
@@ -23,6 +24,7 @@
 <p align="center">
   <a href="https://vitals5.github.io/schematico/"><strong>🚀 Launch Web App</strong></a> •
   <a href="https://github.com/vitals5/schematico/releases/latest"><strong>💾 Windows Download (.exe)</strong></a> •
+  <a href="https://github.com/vitals5/schematico/releases/latest"><strong>🐧 Linux Download (.AppImage / .deb)</strong></a> •
   <a href="https://vitals5.github.io/schematico/landing.html"><strong>🌐 Interactive Landing Page</strong></a> •
   <a href="#highlights--features"><strong>✨ Feature Overview</strong></a>
 </p>
@@ -258,7 +260,7 @@ Schematico provides a dedicated **Installation Plan Page Type** for residential,
 | **Building Installation (DIN EN 60617-11)** | **✓ Fully Integrated** | ▲ Incomplete generic stencils | ▲ Expensive extra module |
 | **Curved Routing Lines (arcWires)** | **✓ Yes** (Smooth &amp; taggable) | ✗ Cumbersome manual drawing | ▲ Limited |
 | **Macro Compatibility (.ema, .ems)** | **✓ Yes** (Extensive Libraries) | ✗ No | ✓ Yes |
-| **Supported Platforms** | **Windows Desktop &amp; Web (PWA)** | Mostly Web only | Mostly Windows Desktop only |
+| **Supported Platforms** | **Windows, Linux Desktop &amp; Web (PWA)** | Mostly Web only | Mostly Windows Desktop only |
 | **Offline Operation &amp; Privacy** | **100% Local** (Zero cloud dependency) | ▲ Cloud storage required | 100% Local |
 | **License &amp; Cost** | **Free &amp; Open Source (MIT)** | Freemium / Monthly subscriptions | Very costly multi-thousand € licenses |
 
@@ -339,17 +341,29 @@ npm run preview
 
 # Package Windows installer & portable executable
 npm run dist:win
+
+# Package Linux x64 AppImage & Debian package
+npm run dist:linux
+
+# Verify both Linux packages and launch the packaged app (Linux + Xvfb)
+npm run test:linux
 ```
 
 ---
 
-## Desktop Application (Windows)
+## Desktop Applications (Windows & Linux)
 
 Schematico can be compiled as a native desktop application for Windows:
-- **`Schematico-Setup-<version>.exe`**: Guided installer with Start Menu and Desktop shortcuts.
-- **`Schematico-<version>.exe`**: Standalone portable version requiring no administrator privileges.
+- **`Schematico.Setup.<version>.exe`**: Guided installer with Start Menu and Desktop shortcuts.
+- **`Schematico.<version>.exe`**: Standalone portable version requiring no administrator privileges.
 
-Automated releases are compiled and deployed via GitHub Actions on every tag push (`v*`).
+Linux x64 packages use the same application, native file dialogs, macro library and branding:
+- **`Schematico-<version>-linux-x64.AppImage`**: Portable application. Make it executable before launching (`chmod +x Schematico-*.AppImage`). Systems without FUSE can use the AppImage runtime's `--appimage-extract-and-run` option.
+- **`Schematico-<version>-linux-x64.deb`**: Debian/Ubuntu package with application-menu entry and icon; install with your package manager.
+
+The Linux build runs on pushes, pull requests and manual dispatch. Its `Schematico-Linux-x64` artifact is downloadable from the [workflow run](https://github.com/vitals5/schematico/actions/workflows/build-linux.yml). A smoke check extracts both packages, verifies their metadata and branding, then launches the packaged editor under Xvfb and checks the native macro bridge. The test uses an isolated temporary profile. Without Xvfb, `npm run test:linux -- --packages-only` performs just the package checks.
+
+New tagged releases (`v*`) automatically receive Linux packages alongside the Windows binaries and web archive. Existing release tags are not moved or rebuilt automatically. The Linux build currently targets x64; ARM packages are not generated.
 
 ---
 

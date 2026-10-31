@@ -44,7 +44,7 @@ function createWindow() {
   });
 }
 
-// IPC Handlers for native Windows file operations
+// IPC Handlers for native desktop file operations
 ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Projekt-Datei auswählen',

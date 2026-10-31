@@ -3,7 +3,7 @@
   "version": "1.2.70",
   "type": "module",
   "main": "electron/main.cjs",
-  "description": "Schematico – editierbare Stromlaufpläne für Windows und Web",
+  "description": "Schematico – editierbare Stromlaufpläne für Windows, Linux und Web",
   "author": "VitalS5",
   "license": "MIT",
   "scripts": {
@@ -15,7 +15,9 @@
     "electron:start": "electron .",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "test:native": "tsx scripts/test-native.ts",
-    "check:branding": "tsx scripts/check-branding.ts"
+    "check:branding": "tsx scripts/check-branding.ts",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "test:linux": "node scripts/smoke-linux.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
@@ -73,6 +75,28 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "linux": {
+      "icon": "public/branding/icon-512.png",
+      "category": "Graphics",
+      "maintainer": "VitalS5 <vitals5@users.noreply.github.com>",
+      "executableName": "schematico",
+      "artifactName": "Schematico-${version}-linux-x64.${ext}",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "syncDesktopName": true
     }
   },
   "repository": {
@@ -82,5 +106,6 @@
   "homepage": "https://vitals5.github.io/schematico/",
   "bugs": {
     "url": "https://github.com/vitals5/schematico/issues"
-  }
+  },
+  "desktopName": "schematico.desktop"
 }
