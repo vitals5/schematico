@@ -1,4 +1,4 @@
-import {sessionDiagnostics} from '../SessionDiagnostics';
+import {sessionDiagnostics,createSessionArchive} from '../SessionDiagnostics';
 import { readAttachments, assertAttachmentModel, ATTACHMENT_ACCEPT, type AiAttachment } from '../Attachments';
 import { cachedModels } from '../openrouter/api';
 import { getDiagnostic, clearDiagnostics, diagnosticSummary, sanitizeDiagnostic } from '../Diagnostics';
@@ -145,7 +145,7 @@ export class AiChatSidebar {
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
           <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Geprüfte Layoutvorschau berechnen; Änderungen erst nach Übernehmen">📐</button>
-          <button type="button" class="ai-header-btn" id="btnAiExportSession" title="Session-Diagnose exportieren: enthält Chat, Werkzeugaufrufe und Projektdaten; Zugangsdaten und Anhanginhalte werden entfernt" aria-label="Session-Diagnose exportieren">⇩</button>
+          <button type="button" class="ai-header-btn" id="btnAiExportSession" title="Session-Diagnose als ZIP exportieren: enthält Chat, Werkzeugaufrufe und Projektdaten; Zugangsdaten und Anhanginhalte werden entfernt" aria-label="Session-Diagnose exportieren">⇩</button>
           <button type="button" class="ai-header-btn" id="btnAiSettings" title="KI-Anbieter, API-Schlüssel und Modell verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
@@ -234,9 +234,18 @@ export class AiChatSidebar {
       if (welcome) welcome.style.display = 'block';
     });
 
-    this.container.querySelector('#btnAiExportSession')?.addEventListener('click',()=>{
-      const report=sessionDiagnostics.export({project:this.stateManager.getProject(),chat:this.geminiClient.getMessages(),environment:{userAgent:navigator.userAgent,language:navigator.language,viewport:{width:window.innerWidth,height:window.innerHeight},desktop:!!(window as any).electronAPI},pendingAttachments:this.attachments.map(({name,mimeType,size})=>({name,mimeType,size})),generating:this.isGenerating});
-      const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='schematico-session-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const exportSession=this.container.querySelector<HTMLButtonElement>('#btnAiExportSession');
+    exportSession?.addEventListener('click',async()=>{
+      exportSession.disabled=true;exportSession.setAttribute('aria-busy','true');
+      try {
+        const report=sessionDiagnostics.export({project:this.stateManager.getProject(),chat:this.geminiClient.getMessages(),environment:{userAgent:navigator.userAgent,language:navigator.language,viewport:{width:window.innerWidth,height:window.innerHeight},desktop:!!(window as any).electronAPI},pendingAttachments:this.attachments.map(({name,mimeType,size})=>({name,mimeType,size})),generating:this.isGenerating});
+        const archive=await createSessionArchive(report);
+        const url=URL.createObjectURL(new Blob([new Uint8Array(archive.bytes).buffer],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download=archive.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      } catch(error) {
+        const message=error instanceof Error?error.message:String(error);
+        sessionDiagnostics.record('session_export_error',{message});
+        alert('Session-Diagnose konnte nicht exportiert werden: '+message);
+      } finally {exportSession.disabled=false;exportSession.removeAttribute('aria-busy');}
     });
     const btnSettings = this.container.querySelector('#btnAiSettings');
     btnSettings?.addEventListener('click', () => this.showApiKeyModal());

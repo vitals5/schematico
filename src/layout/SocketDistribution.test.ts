@@ -39,6 +39,17 @@ const offset=buildDraft(shifted,'p',{...input,preferAutoconnect:true});
 for(const n of snapshotPage(offset.pages[0],offset).nodes)for(const pin of n.pins){assert(Math.abs((pin.x-1.5)/2-Math.round((pin.x-1.5)/2))<1e-6);assert(Math.abs((pin.y-2.5)/2-Math.round((pin.y-2.5)/2))<1e-6);}
 const large=source();large.pages[0].plotFrame.width=1400;large.pages[0].plotFrame.height=1000;
 const triple=buildDraft(large,'p',{...socketDraft(3,3),preferAutoconnect:true});assert(triple.pages[0].wires.every(w=>w.isAutoconnect));assert(validateLayout(snapshotPage(triple.pages[0],triple)).valid);
+// Long FI labels must reserve space beside the PE/N return corridor too, even
+// when the outgoing devices have much shorter labels. No font shrinking/fallback.
+for(const functionText of ['Fehlerstromschutzschalter FI','Fehlerstromschutzschalter Verteilung']){
+ const args=socketDraft();args.components.find(c=>c.id==='R')!.functionText=functionText;
+ for(const c of args.components)if(c.id!=='R')c.functionText=c.id.startsWith('IN')?'Einspeisung':'Steckdose';
+ const base=source(),raw=buildDraft(base,'p',args),planned=buildDraft(base,'p',{...args,preferAutoconnect:true});
+ assert.equal(planned.pages[0].layoutConstraints?.draftPreparation?.status,'applied',JSON.stringify(planned.pages[0].layoutConstraints?.draftPreparation));
+ assert(planned.pages[0].wires.every(w=>w.isAutoconnect));assert(validateLayout(snapshotPage(planned.pages[0],planned)).valid);
+ assert.deepEqual(partition(planned,originalIds),partition(raw,originalIds));
+ assert.equal(planned.pages[0].components.find(c=>c.id==='ai-R')!.functionText,functionText);
+}
 // Fail closed and atomically: pre-FI neutrals, extra bridges, mixed wire metadata, existing devices and small sheets.
 for(const kind of ['neutral','bridge','metadata','existing','capacity'] as const){
  const test=buildDraft(source(),'p',input),page=test.pages[0];

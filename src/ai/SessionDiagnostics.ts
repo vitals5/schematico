@@ -19,4 +19,13 @@ export class SessionDiagnostics {
 }
 export const sessionDiagnostics=new SessionDiagnostics();
 
+/** Keep the complete sanitized JSON while compressing repeated geometry/history.
+ * Compression is asynchronous so large diagnostics do not freeze the editor. */
+export async function createSessionArchive(report: ReturnType<SessionDiagnostics['export']>) {
+ const {default:JSZip}=await import('jszip');
+ const name='schematico-session-'+report.exportedAt.replace(/[:.]/g,'-');
+ const zip=new JSZip();zip.file(name+'.json',JSON.stringify(report));
+ return {name:name+'.zip',bytes:await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}})};
+}
+
 if(typeof window!=='undefined'){window.addEventListener('error',e=>sessionDiagnostics.record('runtime_error',{message:e.message,file:e.filename,line:e.lineno,column:e.colno,stack:e.error?.stack}));window.addEventListener('unhandledrejection',e=>sessionDiagnostics.record('unhandled_rejection',{message:e.reason?.message??String(e.reason),stack:e.reason?.stack}));}

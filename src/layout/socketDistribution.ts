@@ -114,7 +114,13 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   const socketReach=Math.max(...loads.map(c=>point(at(c,live(c))).x-measured.get(c.id)!.rect.x));
   const socketPins=Math.max(...loads.flatMap(c=>['N','PE'].map(p=>point(at(c,contact(c,p as 'N'|'PE'))).x-point(at(c,live(c))).x)));
   const envelope=Math.max(Math.max(...[...breakers,...loads].map(c=>measured.get(c.id)!.rect.width)),socketReach+pairShift*(Math.max(...circuits.map(c=>c.sockets.length))-1)+socketPins);
-  const reach = Math.max(...circuits.flatMap(c => [at(c.breaker, c.output), ...c.sockets.map(s => at(s, live(s)))]).map(ep => point(ep).x - measured.get(ep.componentId)!.rect.x));
+  // N/PE returns pass to the left of the entire stack, including the FI.
+  // Its function/technical text can extend farther left than the loads' labels.
+  // Reserve that measured envelope before choosing the first column and pitch.
+  const columnAnchors = [at(rcd, rcdPins.inputs[0]), ...circuits.flatMap(c =>
+    [at(c.breaker, c.output), ...c.sockets.map(s => at(s, live(s)))])];
+  const reach = Math.max(...columnAnchors.map(ep =>
+    point(ep).x - measured.get(ep.componentId)!.rect.x));
   const leftN = snapX(initial.area.x + 6), leftPE = leftN + row;
   const first = snapX(leftPE + reach + 6);
   // Spend optional whitespace only after reserving the full measured last column.

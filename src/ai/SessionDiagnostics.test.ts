@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {SessionDiagnostics,sessionDiagnostics} from './SessionDiagnostics';
+import {SessionDiagnostics,sessionDiagnostics,createSessionArchive} from './SessionDiagnostics';
+import JSZip from 'jszip';
 import {McpToolRegistry} from './mcp-tools';
 import {fixture} from '../layout/testing/fixture';
 const values=new Map([['schematico_openrouter_api_key','private-session-key-value']]);
@@ -8,6 +9,10 @@ const trace=new SessionDiagnostics(),original={prompt:'test private-session-key-
 trace.record('request',original);original.prompt='changed';
 const report=trace.export({project:fixture()}),json=JSON.stringify(report);
 assert(!json.includes('private-session-key-value'));assert(!json.includes('other-secret'));assert(!json.includes('raw-document'));assert(!json.includes('Bearer private'));assert(json.includes('test [REDACTED]'));assert.equal(report.coverage.eventsIncluded,1);
+const archive=await createSessionArchive(report),unzipped=await JSZip.loadAsync(archive.bytes);
+assert(archive.name.endsWith('.zip'));assert.deepEqual(JSON.parse(await unzipped.file(archive.name.replace(/\.zip$/,'.json'))!.async('string')),JSON.parse(json));
+const repeated=new SessionDiagnostics();for(let i=0;i<20;i++)repeated.record('geometry',{text:'Repeated geometry and project snapshots. '.repeat(1000)});
+const largeReport=repeated.export({}),compressed=await createSessionArchive(largeReport);assert(compressed.bytes.length<JSON.stringify(largeReport).length/10);
 const bounded=new SessionDiagnostics(1000,2,500);for(let i=0;i<5;i++)bounded.record('test',{i});assert.equal(bounded.export({}).coverage.droppedEvents,3);bounded.record('big',{text:'x'.repeat(1000)});assert(bounded.export({}).events.at(-1).data.truncated);bounded.clear();assert.equal(bounded.export({}).coverage.eventsRecorded,0);
 sessionDiagnostics.clear();const project=fixture(),registry=new McpToolRegistry(),manager:any={getProject:()=>project,getActivePage:()=>project.pages[0]};
 await registry.executeTool('get_project_info',{},manager);await registry.executeTool('unknown_tool',{},manager);
