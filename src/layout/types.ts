@@ -99,10 +99,18 @@ export interface LayoutReport {
   };
 }
 export interface LayoutConstraints {
+  draftPreparation?: DraftPreparation;
   protectedComponentIds?: string[];
   fixedFrameIds?: string[];
   lockedIds?: string[];
   containerMembers?: Record<string, string[]>;
+}
+export interface DraftPreparation {
+  strategy: 'socket_distribution' | 'generic';
+  status: 'applied' | 'rejected' | 'not_applicable' | 'disabled';
+  code: string;
+  message: string;
+  issues?: LayoutIssue[];
 }
 export interface LayoutOptions extends LayoutConstraints {
   multiPage?: boolean;
@@ -123,6 +131,7 @@ export interface LayoutCandidate {
   profile: string;
 }
 export interface LayoutPreview {
+  preparation?: DraftPreparation;
   pageId: string;
   status: 'preview_ready' | 'layout_invalid';
   before: LayoutReport;

@@ -139,6 +139,7 @@ export async function previewLayout(
     next.connectionMode = 'explicit';
     next.layoutConstraints = {
       ...next.layoutConstraints,
+      draftPreparation:draft ? next.layoutConstraints?.draftPreparation : undefined,
       protectedComponentIds: next.components.map(c => c.id),
       lockedIds: options.lockedIds ?? next.layoutConstraints?.lockedIds,
       containerMembers: Object.fromEntries(
@@ -199,6 +200,7 @@ export async function previewLayout(
       : (solutions[0]?.report.issues ?? before.issues);
   return {
     pageId,
+    preparation:draft ? page.layoutConstraints?.draftPreparation : undefined,
     status: candidates.length ? 'preview_ready' : 'layout_invalid',
     before,
     candidates,

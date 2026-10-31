@@ -9,7 +9,7 @@ import { getSymbolById } from '../model/symbols';
 import { snapshotPage } from './geometry';
 import { validateLayout } from './validate';
 import { previewLayout } from './service';
-import { clone, type LayoutOptions, type LayoutPreview } from './types';
+import { clone, type LayoutOptions, type LayoutPreview, type DraftPreparation } from './types';
 const optionsSchema = {
   multiPage: { type: 'boolean' as const, description: 'Allow checked additional sheets when a single-sheet layout fails. Defaults to true.' },
   pageId: { type: 'string' as const },
@@ -123,6 +123,7 @@ function result(preview: LayoutPreview) {
   return {
     success: preview.status === 'preview_ready',
     status: preview.status,
+    layoutPreparation: preview.preparation,
     requiresUserApply: true,
     before: preview.before.metrics,
     candidates: preview.candidates.map((c) => ({
@@ -307,8 +308,12 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   }
   if(input.preferAutoconnect){
     const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
-    if(!prepareSocketDistribution(draft,page,devices,wires))prepareDraftConnections(draft,page,devices,wires);
-  }
+    let preparation:DraftPreparation={strategy:'generic',status:'not_applicable',code:'not_applicable',message:'Allgemeines Layoutverfahren: kein vollständiges unterstütztes Verteilungsmuster erkannt.'};
+    if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d))prepareDraftConnections(draft,page,devices,wires);
+    page.layoutConstraints={...page.layoutConstraints,draftPreparation:preparation};
+  }else if(input.preferAutoconnect===false){
+    page.layoutConstraints={...page.layoutConstraints,draftPreparation:{strategy:'generic',status:'disabled',code:'disabled',message:'Autoconnect-Konstruktionsmuster wurden für diesen Entwurf deaktiviert.'}};
+  }else if(page.layoutConstraints)delete page.layoutConstraints.draftPreparation;
   return draft;
 }
 export async function handleCreateDraft(args: any, manager: CanvasStateManager) {
@@ -320,6 +325,8 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager) 
     let preview=await previewLayout(project,page.id,{},draft);
     if(preview.status==='layout_invalid'&&args.preferAutoconnect!==false){
       const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
+      const preparation=draft.pages.find(p=>p.id===page.id)!.layoutConstraints?.draftPreparation;
+      if(preparation){const p=fallback.pages.find(p=>p.id===page.id)!;p.layoutConstraints={...p.layoutConstraints,draftPreparation:preparation.status==='applied'?{...preparation,status:'rejected',code:'layout_rejected',message:'Das konstruierte Verteilungsmuster hat die abschließende Layoutprüfung nicht bestanden. Allgemeines Layoutverfahren wird verwendet.',issues:preview.issues.filter(i=>i.severity==='error').slice(0,20)}:preparation};}
       if(fallback.pages.find(p=>p.id===page.id)!.components.length!==draft.pages.find(p=>p.id===page.id)!.components.length){
         const alternative=await previewLayout(project,page.id,{},fallback);
         if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}

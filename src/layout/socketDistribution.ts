@@ -1,8 +1,9 @@
+import {rcdPorts,breakerPorts,socketPorts,isDistributionFeed} from './distributionRoles';
 import type { Page, Project, PlacedComponent, Wire, PinDefinition } from '../model/types';
 import { getDrawingUnitsPerMm, getSymbolById, getSymbolForComponent } from '../model/symbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { snapshotPage } from './geometry';
-import { clone } from './types';
+import { clone, type DraftPreparation, type LayoutIssue } from './types';
 import { netIds, validateLayout } from './validate';
 import { markLayoutAutoconnections } from './draftConnections';
 
@@ -16,19 +17,26 @@ interface Circuit { breaker: PlacedComponent; sockets: PlacedComponent[]; input:
 /** A bounded construction grammar for NEW complete socket distributions. Recognition
  * follows terminal connectivity, never prose, coordinates, device tags or potential names.
  * The source page is only replaced after net equivalence AND full geometry checks pass. */
-export function prepareSocketDistribution(project: Project, original: Page, newDevices: Set<string>, newWires: Set<string>): boolean {
+export function prepareSocketDistribution(project: Project, original: Page, newDevices: Set<string>, newWires: Set<string>, diagnose?: (result:DraftPreparation)=>void): boolean {
+  const masters=original.components.map(c=>getSymbolForComponent(c,project));
+  if(!masters.some(s=>s?.family==='rcd'||s?.id==='rcd_4p') || !masters.some(s=>s?.family==='socket'||s?.id==='socket_schuko'))return false;
+  const reject=(code:string,message:string,issues?:LayoutIssue[])=>{diagnose?.({strategy:'socket_distribution',status:'rejected',code,message,issues:issues?.filter(i=>i.severity==='error').slice(0,20)});return false;};
   if (original.components.some(c => !newDevices.has(c.id) || c.rotation || c.source || c.deviceBox || c.scale && c.scale !== 1) ||
       original.wires.some(w => !newWires.has(w.id)) || original.texts?.length || original.images?.length || original.boxes?.length || original.cables?.length ||
-      original.layoutConstraints?.lockedIds?.length || original.layoutConstraints?.fixedFrameIds?.length) return false;
+      original.layoutConstraints?.lockedIds?.length || original.layoutConstraints?.fixedFrameIds?.length) return reject('existing_content','Das Muster benötigt einen neuen vollständigen Entwurf ohne bestehende oder fixierte Objekte.');
   const work = clone(project), page = work.pages.find(p => p.id === original.id)!;
-  const rcds = page.components.filter(c => c.symbolId === 'rcd_4p');
-  const breakers = page.components.filter(c => /^(catalog_mcb_1p_[bcdkz]|circuit_breaker_1p)$/.test(c.symbolId)).sort(byTag);
-  const sockets = page.components.filter(c => c.symbolId === 'socket_schuko');
-  const feeds = page.components.filter(c => ['terminal_single', 'terminal_pe', 'potential_arrow', 'potential_arrow_up', 'potential_arrow_down'].includes(c.symbolId));
+  const symbol=(c:PlacedComponent)=>getSymbolForComponent(c,work);
+  const rcds = page.components.filter(c => rcdPorts(symbol(c)));
+  const breakers = page.components.filter(c => breakerPorts(symbol(c))).sort(byTag);
+  const sockets = page.components.filter(c => socketPorts(symbol(c)));
+  const feeds = page.components.filter(c=>isDistributionFeed(symbol(c)));
   if (rcds.length !== 1 || breakers.length < 2 || breakers.length > 8 || sockets.length < breakers.length || feeds.length !== 5 ||
-      page.components.length !== 1 + breakers.length + sockets.length + feeds.length) return false;
+      page.components.length !== 1 + breakers.length + sockets.length + feeds.length){
+    const recognized=new Set([...rcds,...breakers,...sockets,...feeds].map(c=>c.id));
+    return reject('unsupported_symbols',`Gerätefunktionen oder Anschlussgeometrie passen nicht zum Muster. Erkannt: ${rcds.length} vierpolige FI, ${breakers.length} einpolige Schutzgeräte, ${sockets.length} Steckdosen und ${feeds.length} Einspeisungen.`,[{type:'distribution_roles',severity:'error',objectIds:page.components.filter(c=>!recognized.has(c.id)).map(c=>c.id),message:'Nicht unterstützte Gerätefunktionen oder eine für diese Verteilung ungeeignete Geräteanzahl.'}]);
+  }
   const rcd = rcds[0], initial = snapshotPage(page, work), ids = netIds(initial);
-  if (initial.issues.some(i => i.severity === 'error')) return false;
+  if (initial.issues.some(i => i.severity === 'error')) return reject('invalid_input','Der Entwurf enthält ungültige Symbol- oder Anschlussdaten.',initial.issues);
   const nets = new Map<string, Net>(), endpointNet = new Map<string, string>();
   for (const w of page.wires) {
     const id = ids.get(w.id)!;
@@ -39,46 +47,49 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   }
   const at = (c: PlacedComponent, pinId: string): Endpoint => ({ componentId: c.id, pinId });
   const netAt = (c: PlacedComponent, pin: string) => endpointNet.get(key(at(c, pin)));
-  const phasePins = ['2', '4', '6'];
+  const rcdPins=rcdPorts(symbol(rcd))!;
+  const live=(c:PlacedComponent)=>socketPorts(symbol(c))!.live;
+  const contact=(c:PlacedComponent,p:'N'|'PE')=>socketPorts(symbol(c))![p];
+  const phasePins = rcdPins.outputs;
   const phases = phasePins.map(pin => netAt(rcd, pin));
-  const neutral = netAt(rcd, 'N_out');
+  const neutral = netAt(rcd, rcdPins.neutralOut);
   const circuits: Circuit[] = [];
   for (const breaker of breakers) {
     const sym = getSymbolForComponent(breaker, work);
     const input = sym?.pins.filter(p => p.direction === 'top'), output = sym?.pins.filter(p => p.direction === 'bottom');
-    if (!sym || sym.pins.length !== 2 || input?.length !== 1 || output?.length !== 1) return false;
+    if (!sym || sym.pins.length !== 2 || input?.length !== 1 || output?.length !== 1) return reject('breaker_ports','Ein Schutzgerät besitzt keine eindeutigen Ein-/Ausgänge.');
     const inputNet=netAt(breaker,input[0].id);
     const phase = inputNet ? phases.indexOf(inputNet) : -1, liveNet = netAt(breaker, output[0].id);
-    const loads = sockets.filter(s => netAt(s, '1') === liveNet).sort(byTag);
-    if (phase < 0 || !liveNet || loads.length < 1 || loads.length > 4) return false;
+    const loads = sockets.filter(s => netAt(s, live(s)) === liveNet).sort(byTag);
+    if (phase < 0 || !liveNet || loads.length < 1 || loads.length > 4) return reject('circuit_topology','Ein Stromkreis hat keine eindeutige FI-Phase oder keine unterstützte Steckdosengruppe.');
     circuits.push({ breaker, sockets: loads, input: input[0].id, output: output[0].id, phase, liveNet });
   }
-  if (new Set(circuits.flatMap(c => c.sockets.map(s => s.id))).size !== sockets.length) return false;
-  const pe = netAt(sockets[0], 'PE');
+  if (new Set(circuits.flatMap(c => c.sockets.map(s => s.id))).size !== sockets.length) return reject('socket_assignment','Nicht jede Steckdose ist einem Schutzgerät eindeutig zugeordnet.');
+  const pe = netAt(sockets[0], contact(sockets[0],'PE'));
   if (!pe || !neutral || new Set([...phases.filter(Boolean), neutral, pe]).size !== phases.filter(Boolean).length + 2 ||
-      sockets.some(s => netAt(s, 'N') !== neutral || netAt(s, 'PE') !== pe)) return false;
+      sockets.some(s => netAt(s, contact(s,'N')) !== neutral || netAt(s, contact(s,'PE')) !== pe)) return reject('neutral_protective_nets','N muss hinter dem FI liegen; PE und die Phasennetze müssen davon getrennt bleiben.');
   const feedPorts: Endpoint[] = [];
-  const inputPins = ['1', '3', '5', 'N_in'];
+  const inputPins = [...rcdPins.inputs,rcdPins.neutralIn];
   for (const pin of inputPins) {
     const net = nets.get(netAt(rcd, pin) ?? '');
     const eps = net?.endpoints.filter(ep => ep.componentId !== rcd.id);
-    if (!eps || eps.length !== 1 || !feeds.some(f => f.id === eps[0].componentId)) return false;
+    if (!eps || eps.length !== 1 || !feeds.some(f => f.id === eps[0].componentId)) return reject('supply_contacts','Die vier FI-Eingänge benötigen jeweils einen eindeutigen Einspeisepunkt.');
     feedPorts.push(eps[0]);
   }
   const peFeed = nets.get(pe)!.endpoints.filter(ep => !sockets.some(s => s.id === ep.componentId));
   if (peFeed.length !== 1 || !feeds.some(f => f.id === peFeed[0].componentId) ||
-      new Set([...feedPorts, peFeed[0]].map(ep => ep.componentId)).size !== 5) return false;
+      new Set([...feedPorts, peFeed[0]].map(ep => ep.componentId)).size !== 5) return reject('protective_supply','Die Schutzleiter-Einspeisung muss ein eigener Anschluss sein.');
   // Explicitly enumerate every allowed contact; extra contacts/bridges/loads reject the grammar.
   const expected = new Map<string, Endpoint[]>();
   const expect = (id: string | undefined, eps: Endpoint[]) => { if (id) expected.set(id, eps); };
   inputPins.forEach((p, i) => expect(netAt(rcd, p), [at(rcd, p), feedPorts[i]]));
   phases.forEach((p, i) => expect(p, [at(rcd, phasePins[i]), ...circuits.filter(c => c.phase === i).map(c => at(c.breaker, c.input))]));
-  for (const c of circuits) expect(c.liveNet, [at(c.breaker, c.output), ...c.sockets.map(s => at(s, '1'))]);
-  expect(neutral, [at(rcd, 'N_out'), ...sockets.map(s => at(s, 'N'))]);
-  expect(pe, [peFeed[0], ...sockets.map(s => at(s, 'PE'))]);
-  if (expected.size !== nets.size || [...expected].some(([id, eps]) => JSON.stringify(eps.map(key).sort()) !== JSON.stringify(nets.get(id)!.endpoints.map(key).sort()))) return false;
+  for (const c of circuits) expect(c.liveNet, [at(c.breaker, c.output), ...c.sockets.map(s => at(s, live(s)))]);
+  expect(neutral, [at(rcd, rcdPins.neutralOut), ...sockets.map(s => at(s, contact(s,'N')))]);
+  expect(pe, [peFeed[0], ...sockets.map(s => at(s, contact(s,'PE')))]);
+  if (expected.size !== nets.size || [...expected].some(([id, eps]) => JSON.stringify(eps.map(key).sort()) !== JSON.stringify(nets.get(id)!.endpoints.map(key).sort()))) return reject('extra_contacts','Zusätzliche Anschlüsse oder Brücken verhindern eine eindeutige Verteilung.');
   const specification = (w: Wire) => { const { id, from, to, waypoints, isAutoconnect, routingMode, ...spec } = w; return JSON.stringify(spec); };
-  if ([...nets.values()].some(n => n.wires.some(w => specification(w) !== specification(n.wires[0])))) return false;
+  if ([...nets.values()].some(n => n.wires.some(w => specification(w) !== specification(n.wires[0])))) return reject('different_wire_data','Unterschiedliche Leitungsdaten innerhalb eines Netzes werden nicht zusammengelegt.');
   const u = getDrawingUnitsPerMm(work), step = initial.grid.spacing / 2;
   const snap = (v: number) => Math.ceil(v / step - 1e-8) * step;
   const snapX=(v:number)=>snap(v-initial.grid.origin.x)+initial.grid.origin.x;
@@ -92,33 +103,42 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   for (const ep of [...feedPorts, peFeed[0]]) {
     const c = page.components.find(c => c.id === ep.componentId)!;
     if (point(ep).direction === 'top') c.rotation = 180;
-    if (point(ep).direction !== 'bottom') return false;
+    if (point(ep).direction !== 'bottom') return reject('feed_direction','Eine Einspeisung kann nicht zur Anschlussrichtung ausgerichtet werden.');
   }
   const geometry = snapshotPage(page, work);
   const measured = new Map(geometry.nodes.map(n => [n.id, n]));
   const loads = circuits.flatMap(c => c.sockets), inputNodes = feeds.map(f => measured.get(f.id)!);
   const row = snap(Math.max(10, initial.grid.spacing * 2));
-  const pairShift = snap(16);
-  const socketReach=Math.max(...loads.map(c=>point(at(c,'1')).x-measured.get(c.id)!.rect.x));
-  const socketPins=Math.max(...loads.map(c=>point(at(c,'N')).x-point(at(c,'1')).x));
-  const pitch = snap(Math.max(Math.max(...[...breakers, ...loads].map(c => measured.get(c.id)!.rect.width)),socketReach+pairShift*(Math.max(...circuits.map(c=>c.sockets.length))-1)+socketPins) + 4);
-  const reach = Math.max(...circuits.flatMap(c => [at(c.breaker, c.output), ...c.sockets.map(s => at(s, '1'))]).map(ep => point(ep).x - measured.get(ep.componentId)!.rect.x));
+  const pairShift = snap(Math.max(16,...loads.map(c=>Math.max(...measured.get(c.id)!.shapes.filter(s=>s.kind==='body'||s.kind==='pin_label').map(s=>s.rect.x+s.rect.width))-point(at(c,live(c))).x+2)));
+  const socketReach=Math.max(...loads.map(c=>point(at(c,live(c))).x-measured.get(c.id)!.rect.x));
+  const socketPins=Math.max(...loads.flatMap(c=>['N','PE'].map(p=>point(at(c,contact(c,p as 'N'|'PE'))).x-point(at(c,live(c))).x)));
+  const envelope=Math.max(Math.max(...[...breakers,...loads].map(c=>measured.get(c.id)!.rect.width)),socketReach+pairShift*(Math.max(...circuits.map(c=>c.sockets.length))-1)+socketPins);
+  const reach = Math.max(...circuits.flatMap(c => [at(c.breaker, c.output), ...c.sockets.map(s => at(s, live(s)))]).map(ep => point(ep).x - measured.get(ep.componentId)!.rect.x));
   const leftN = snapX(initial.area.x + 6), leftPE = leftN + row;
   const first = snapX(leftPE + reach + 6);
+  // Spend optional whitespace only after reserving the full measured last column.
+  // Tightening a gap never changes symbols, text size or electrical endpoints.
+  const last=circuits[circuits.length-1];
+  const lastRight=Math.max(measured.get(last.breaker.id)!.rect.x+measured.get(last.breaker.id)!.rect.width-point(at(last.breaker,last.output)).x,...last.sockets.map((c,j)=>measured.get(c.id)!.rect.x+measured.get(c.id)!.rect.width-point(at(c,live(c))).x+j*pairShift));
+  const availablePitch=Math.floor((initial.area.x+initial.area.width-first-lastRight-2)/(circuits.length-1)/step)*step;
+  const pitch=Math.max(snap(envelope+2),Math.min(snap(envelope+4),availablePitch));
   const feedBottom = snapY(initial.area.y + Math.max(...inputNodes.map(n => {
     const ep = [...feedPorts, peFeed[0]].find(ep => ep.componentId === n.id)!; return point(ep).y - n.rect.y;
   })) + 4);
   const rcdTop = feedBottom + row * 5;
-  place(at(rcd, '1'), first, rcdTop);
-  const rcdBottom = point(at(rcd, '2')).y;
+  place(at(rcd,rcdPins.inputs[0]), first, rcdTop);
+  const rcdBottom = point(at(rcd,rcdPins.outputs[0])).y;
   const breakerTop = rcdBottom + row * 5 + 4;
   circuits.forEach((c, i) => place(at(c.breaker, c.input), first + i * pitch, breakerTop));
   const breakerBottom = Math.max(...circuits.map(c => point(at(c.breaker, c.output)).y));
-  const peY = snapY(breakerBottom + row + 4), nY = peY + row;
-  const liveY = nY + row;
+  const peFirst=point(at(loads[0],contact(loads[0],'PE'))).x<point(at(loads[0],contact(loads[0],'N'))).x;
+  if(loads.some(c=>(point(at(c,contact(c,'PE'))).x<point(at(c,contact(c,'N'))).x)!==peFirst))return reject('mixed_contact_order','Gemischte N-/PE-Anschlussreihenfolgen benötigen eine gesonderte Leitungsanordnung.');
+  const railY=snapY(breakerBottom+row+4);
+  const peY=railY+(peFirst?0:row),nY=railY+(peFirst?row:0);
+  const liveY = railY + 2*row;
   const socketY = liveY + 16;
   const socketRow = snap(Math.max(...loads.map(c => measured.get(c.id)!.rect.height)) + 6);
-  circuits.forEach((c, i) => c.sockets.forEach((s, j) => place(at(s, '1'), first + i * pitch + j * pairShift, socketY + j * socketRow)));
+  circuits.forEach((c, i) => c.sockets.forEach((s, j) => place(at(s, live(s)), first + i * pitch + j * pairShift, socketY + j * socketRow)));
   const used = new Set(work.pages.flatMap(p => [p, ...p.components, ...p.wires, ...(p.groups ?? []), ...(p.texts ?? []), ...(p.boxes ?? []), ...(p.images ?? []), ...(p.cables ?? [])].map(x => x.id)));
   const allocate = (base: string) => { let id = base, i = 1; while (used.has(id)) id = base + '-' + i++; used.add(id); return id; };
   const added: PlacedComponent[] = [], generated: Wire[] = [];
@@ -146,7 +166,9 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
         connect(id, ep, a('top')); connect(id, a('left'), b('right')); connect(id, b('bottom'), target);
       }
     });
-    place(peFeed[0], first - 2 * row, feedBottom + 3 * row);
+    const peBody=measured.get(peFeed[0].componentId)!.shapes.filter(s=>s.kind==='body'),firstBody=measured.get(feedPorts[0].componentId)!.shapes.filter(s=>s.kind==='body');
+    const feedSeparation=snap(Math.max(2*row,Math.max(...peBody.map(s=>s.rect.x+s.rect.width))-measured.get(peFeed[0].componentId)!.pins.find(p=>p.id===peFeed[0].pinId)!.x-(Math.min(...firstBody.map(s=>s.rect.x))-measured.get(feedPorts[0].componentId)!.pins.find(p=>p.id===feedPorts[0].pinId)!.x)+2));
+    place(peFeed[0], first - feedSeparation, feedBottom + 3 * row);
     const pea=junction(['top','left'],point(peFeed[0]).x,feedBottom+row*4),peb=junction(['right','bottom'],leftPE,feedBottom+row*4);
     connect(pe,peFeed[0],pea('top'));connect(pe,pea('left'),peb('right'));
     phases.forEach((id, i) => {
@@ -174,11 +196,11 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
         });
       }
     });
-    const nSource = at(rcd, 'N_out'), na = junction(['top', 'left'], point(nSource).x, rcdBottom + row), nb = junction(['right', 'bottom'], leftN, rcdBottom + row);
+    const nSource = at(rcd, rcdPins.neutralOut), na = junction(['top', 'left'], point(nSource).x, rcdBottom + row), nb = junction(['right', 'bottom'], leftN, rcdBottom + row);
     connect(neutral, nSource, na('top')); connect(neutral, na('left'), nb('right'));
     for (const [id, source, x, y, pin] of [[neutral, nb('bottom'), leftN, nY, 'N'], [pe, peb('bottom'), leftPE, peY, 'PE']] as const) {
       const start = junction(['top', 'right'], x, y); connect(id, source, start('top')); let previous = start('right');
-      const targets = loads.map(s => at(s, pin)).sort((a, b) => point(a).x - point(b).x);
+      const targets = loads.map(s => at(s, contact(s,pin))).sort((a, b) => point(a).x - point(b).x);
       targets.forEach((ep, i) => {
         const t = junction(i === targets.length - 1 ? ['left', 'bottom'] : ['left', 'right', 'bottom'], point(ep).x, y);
         connect(id, previous, t('left')); connect(id, t('bottom'), ep);
@@ -187,20 +209,20 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
     }
     for (const c of circuits) {
       const source = at(c.breaker, c.output);
-      if (c.sockets.length === 1) connect(c.liveNet, source, at(c.sockets[0], '1'));
+      if (c.sockets.length === 1) connect(c.liveNet, source, at(c.sockets[0],live(c.sockets[0])));
       else {
         const firstTap = junction(['top', 'bottom', 'right'], point(source).x, liveY, c.breaker);
-        connect(c.liveNet, source, firstTap('top')); connect(c.liveNet, firstTap('bottom'), at(c.sockets[0], '1'));
+        connect(c.liveNet, source, firstTap('top')); connect(c.liveNet, firstTap('bottom'), at(c.sockets[0],live(c.sockets[0])));
         let previous = firstTap('right');
         c.sockets.slice(1).forEach((s, i, rest) => {
-          const target = at(s, '1'), t = junction(i === rest.length - 1 ? ['left', 'bottom'] : ['left', 'right', 'bottom'], point(target).x, liveY, c.breaker);
+          const target = at(s, live(s)), t = junction(i === rest.length - 1 ? ['left', 'bottom'] : ['left', 'right', 'bottom'], point(target).x, liveY, c.breaker);
           connect(c.liveNet, previous, t('left')); connect(c.liveNet, t('bottom'), target);
           if (i < rest.length - 1) previous = t('right');
         });
       }
     }
-  } catch { return false; }
-  if (page.components.length > 200 || [...nets].some(([id, n]) => (consumed.get(id) ?? 0) < n.wires.length)) return false;
+  } catch { return reject('junction_library','Die benötigten Bibliotheks-Verbindungsstücke sind nicht eindeutig verfügbar.'); }
+  if (page.components.length > 200 || [...nets].some(([id, n]) => (consumed.get(id) ?? 0) < n.wires.length)) return reject('object_limit','Die Konstruktion würde die Objektgrenze überschreiten oder Leitungs-IDs verlieren.');
   page.wires = generated;
   for (const c of page.components) for (const p of Object.values(c.pins)) p.wireIds = [];
   for (const w of generated) for (const ep of [w.from, w.to]) page.components.find(c => c.id === ep.componentId)!.pins[ep.pinId].wireIds!.push(w.id);
@@ -211,9 +233,12 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
     for (const w of wires) for (const ep of [w.from, w.to]) if (newDevices.has(ep.componentId)) contact.set(key(ep), mapping.get(w.id)!);
     return [...new Set(contact.values())].map(id => [...contact].filter(([, n]) => n === id).map(([ep]) => ep).sort()).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
   };
-  if (JSON.stringify(signature(ids, original.wires)) !== JSON.stringify(signature(finalNets, page.wires)) || !validateLayout(final).valid) return false;
+  if (JSON.stringify(signature(ids, original.wires)) !== JSON.stringify(signature(finalNets, page.wires)))return reject('net_equivalence','Die ursprüngliche elektrische Netzstruktur konnte nicht erhalten werden.');
+  const report=validateLayout(final);
+  if(!report.valid)return reject('geometry_rejected','Die gemessenen Symbole, Beschriftungen oder Leitungszüge passen nicht kollisionsfrei in den Zeichenbereich.',report.issues);
   markLayoutAutoconnections(work, page);
-  if (page.wires.some(w => !w.isAutoconnect)) return false;
+  if (page.wires.some(w => !w.isAutoconnect)) return reject('autoconnect_unavailable','Nicht alle konstruierten Abschnitte sind mit der tatsächlichen Autoconnect-Erkennung reproduzierbar.');
   Object.assign(original, page);
+  diagnose?.({strategy:'socket_distribution',status:'applied',code:'applied',message:'Steckdosen-Verteilungsmuster angewendet: gemeinsame Leitungszüge und geprüfte Autoconnect-Achsen.'});
   return true;
 }
