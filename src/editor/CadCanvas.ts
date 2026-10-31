@@ -9,7 +9,7 @@ import { cableSvg, cableCrossings } from '../model/CableDefinition';
 // src/editor/CadCanvas.ts
 // Interactive SVG-based CAD drawing canvas for electrical schematics
 
-import { interruptionLabelPosition, isInterruptionSymbol } from '../model/ConnectionSymbols';
+import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
 import { labelTransform } from '../model/LabelLayout';
 import { plotFrameSvg } from '../model/PlotFrame';
 import { cleanupConnections } from '../model/WireCleanup';
@@ -3409,8 +3409,8 @@ export class CadCanvas {
       const isConn = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
       const isTerminal = sym.id === 'terminal_single';
       const isSelected = this.getElementSelection().componentIds.includes(comp.id);
-      const connectedWire = graphicWires.get(comp.id);
-      const strokeColor = isSelected ? '#63b3ed' : comp.deviceBox?.color??(isConnectionGraphic(comp, sym)
+      const connectedWire = graphicWires.get(comp.id) ?? (isConn ? this.activePage.wires.find(w => w.from.componentId === comp.id || w.to.componentId === comp.id) : undefined);
+      const strokeColor = isSelected ? '#63b3ed' : comp.deviceBox?.color??(isConn || isConnectionGraphic(comp, sym)
         ? this.getWireColor(connectedWire?.potential ?? 'Signal', connectedWire?.color) : '#e2e8f0');
 
       const bmkPos = computeBmkPosition(comp, sym);
@@ -3431,10 +3431,12 @@ export class CadCanvas {
       }
 
       // Pins render
+      const editingConnections = this.mode === 'wire' || !!this.wireStart;
+      const connectionPins = isConnectionSymbol(sym) || isConnectionGraphic(comp, sym);
       const pinsSvg = sym.pins.map(pin => {
         if (sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition || comp.pinLabelPosition) {
           const pinPos = computePinLabelPosition(comp, sym, pin);
-          const handle = !sym.source || this.mode === 'wire' || this.wireStart
+          const handle = (!sym.source && !connectionPins) || editingConnections
             ? `<circle class="pin-handle" cx="${pin.x}" cy="${pin.y}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>` : '';
           const text = pinPos.visible
             ? `<text class="source-pin-label" x="${pinPos.x}" y="${pinPos.y}" font-size="${pinPos.fontSize}" font-family="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? 'Tahoma, Arial, sans-serif' : 'monospace'}" fill="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? '#e2e8f0' : '#a0aec0'}" text-anchor="${pinPos.anchor}" ${pinPos.transform}>${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>` : '';
@@ -3443,7 +3445,9 @@ export class CadCanvas {
         if (isConn || isTerminal) {
           return `
             <g class="pin" transform="translate(${pin.x}, ${pin.y})">
-              <circle cx="0" cy="0" r="2.5" fill="transparent"/>
+              ${connectionPins && editingConnections
+                ? '<circle class="pin-handle" cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>'
+                : '<circle cx="0" cy="0" r="2.5" fill="transparent"/>'}
             </g>
           `;
         }

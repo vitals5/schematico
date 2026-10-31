@@ -1,3 +1,4 @@
+import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
 import { coverPageTemplate, coverPageTextRuns, coverPageLogo } from '../model/CoverPage';
@@ -676,7 +677,7 @@ export class PdfExporter {
       const p1 = this.getPinCoords(page, wire.from.componentId, wire.from.pinId, project);
       const p2 = this.getPinCoords(page, wire.to.componentId, wire.to.pinId, project);
       if (!p1 || !p2) continue;
-      doc.setLineWidth(wire.lineWidth === undefined ? 0.35 : wire.lineWidth * sx);
+      doc.setLineWidth((wire.lineWidth ?? 2) * sx);
       const rgb = colorMode === 'color' ? this.getPotentialRgb(wire.potential, wire.color) : { r: 0, g: 0, b: 0 };
       doc.setDrawColor(rgb.r, rgb.g, rgb.b);
       doc.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -715,7 +716,7 @@ export class PdfExporter {
       const routingGlyph = isConnectionGraphic(comp, sym);
       const isInterruption = isInterruptionSymbol(sym);
       const isConnection = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
-      const isTerminal = sym.id === 'terminal_single' || sym.id === 'terminal_pe';
+      const isTerminal = sym.id === 'terminal_single';
 
       const connectedWire = graphicWires.get(comp.id)
         ?? page.wires.find(w => w.from.componentId === comp.id || w.to.componentId === comp.id);
@@ -741,37 +742,20 @@ export class PdfExporter {
           doc.setFillColor(0, 0, 0);
           doc.setLineWidth(0.35);
         }
-        this.drawVectorSymbol(this.rotatedSymbolDocument(doc, compX, compY, compW, compH, comp.rotation, sx, sy), sym.id, compX, compY, compW, compH, sym);
+        this.drawVectorSymbol(doc, sym.id, compX, compY, compW, compH, sym, comp.rotation, foreground, options.colorMode === 'monochrome');
       }
 
-      // Label anchors are library data for imported and built-in symbols alike.
+      // Export the same anchors and fonts as the editor; pin handles are editing aids.
       for (const pin of sym.pins) {
-        const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
-        if (sym.source || label || comp.pinLabelPosition) {
-          if (!sym.source && !label && !isConnection && !isTerminal) {
-            const coords = this.getPinCoords(page, comp.id, pin.id, project)!;
-            doc.setFillColor(255, 255, 255);
-            doc.circle(coords.x * sx, coords.y * sy, 0.4, 'FD');
-          }
-          const pinPos = computePinLabelPosition(comp, sym, pin);
-          if (!pinPos.visible) continue;
-          const point = rotatedLocalPoint(pinPos, sym, comp.rotation);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(pinPos.fontSize * sy * 72 / 25.4);
-          doc.setTextColor(0, 0, 0);
-          doc.text(comp.pins[pin.id]?.customLabel ?? pin.name, (comp.x + point.x) * sx, (comp.y + point.y) * sy,
-            { align: pinPos.anchor === 'middle' ? 'center' : pinPos.anchor === 'end' ? 'right' : 'left', angle: -(pinPos.rotation ?? 0) });
-        } else if (!isConnection && !isTerminal) {
-          const coords = this.getPinCoords(page, comp.id, pin.id, project)!;
-          const px = coords.x * sx, py = coords.y * sy;
-          doc.setFillColor(255, 255, 255);
-          doc.circle(px, py, 0.4, 'FD');
-          doc.setFont('courier', 'normal');
-          doc.setFontSize((comp.pinLabelFontSize ?? 6.5) * sy * 72 / 25.4);
-          doc.setTextColor(80, 80, 80);
-          const ty = pin.direction === 'top' ? py - 1.0 : py + 2.0;
-          doc.text(comp.pins[pin.id]?.customLabel ?? pin.name, px, ty, { align: 'center' });
-        }
+        const pinPos = computePinLabelPosition(comp, sym, pin);
+        if (!pinPos.visible) continue;
+        const point = rotatedLocalPoint(pinPos, sym, comp.rotation);
+        const sourceLabel = sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition;
+        doc.setFont(sourceLabel ? 'helvetica' : 'courier', 'normal');
+        doc.setFontSize(pinPos.fontSize * sy * 72 / 25.4);
+        doc.setTextColor(0, 0, 0);
+        doc.text(comp.pins[pin.id]?.customLabel ?? pin.name, (comp.x + point.x) * sx, (comp.y + point.y) * sy,
+          { align: pinPos.anchor === 'middle' ? 'center' : pinPos.anchor === 'end' ? 'right' : 'left', angle: -pinPos.rotation });
       }
 
       // Draw Labels according to component type
@@ -816,7 +800,7 @@ export class PdfExporter {
           const dx = pos.x - sym.width / 2, dy = pos.y - sym.height / 2;
           const px = comp.x + sym.width / 2 + dx * Math.cos(a) - dy * Math.sin(a);
           const py = comp.y + sym.height / 2 + dx * Math.sin(a) + dy * Math.cos(a);
-          doc.setFont('helvetica', bold || pos.fontWeight === 'bold' ? 'bold' : 'normal');
+          doc.setFont(bold ? 'courier' : 'helvetica', bold || pos.fontWeight === 'bold' ? 'bold' : 'normal');
           doc.setFontSize(pos.fontSize * sy * 72 / 25.4);
           const hex = pos.fontColor?.match(/^#([0-9a-f]{6})$/i)?.[1];
           const ownColor = hex ? [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)] : color;
@@ -930,600 +914,13 @@ export class PdfExporter {
     }
   }
 
-  /** Rotate built-in outlines and text anchors with the same center as their pins. */
-  private static rotatedSymbolDocument(doc: jsPDF, x: number, y: number, w: number, h: number, rotation: number, sx: number, sy: number): jsPDF {
-    if (!rotation) return doc;
-    const rad = rotation * Math.PI / 180, cos = Math.cos(rad), sin = Math.sin(rad);
-    const point = (px: number, py: number) => [x+w/2+(px-x-w/2)*cos-(py-y-h/2)*sin*sx/sy,
-      y+h/2+(px-x-w/2)*sin*sy/sx+(py-y-h/2)*cos] as [number,number];
-    const polygon = (points: [number,number][], style?: string) => {
-      doc.path([...points.map(([px,py], i) => ({op: i ? 'l' : 'm', c: point(px,py)})), {op:'h',c:[]}]);
-      if (style === 'F') doc.fill(); else if (style === 'FD' || style === 'DF') doc.fillStroke(); else doc.stroke();
-      return doc;
-    };
-    const methods = {
-      line: (x1: number,y1: number,x2: number,y2: number) => doc.line(...point(x1,y1),...point(x2,y2)),
-      rect: (px: number,py: number,pw: number,ph: number,style?: string) => polygon([[px,py],[px+pw,py],[px+pw,py+ph],[px,py+ph]],style),
-      triangle: (x1: number,y1: number,x2: number,y2: number,x3: number,y3: number,style?: string) => polygon([[x1,y1],[x2,y2],[x3,y3]],style),
-      circle: (px: number,py: number,r: number,style?: string) => doc.circle(...point(px,py),r,style),
-      ellipse: (px: number,py: number,rx: number,ry: number,style?: string) => doc.ellipse(...point(px,py),Math.abs(sin)>.5?ry*sx/sy:rx,Math.abs(sin)>.5?rx*sy/sx:ry,style),
-      text: (text: string,px: number,py: number,options?: Parameters<jsPDF['text']>[3]) => doc.text(text,...point(px,py),options),
-    };
-    return new Proxy(doc, {get(target,key) {
-      if (key in methods) return methods[key as keyof typeof methods];
-      const value = Reflect.get(target,key); return typeof value === 'function' ? value.bind(target) : value;
-    }});
-  }
-
-  /**
-   * Vector drawing commands for DIN EN 60617 symbols in PDF
-   */
-  private static drawVectorSymbol(doc: jsPDF, symId: string, x: number, y: number, w: number, h: number, sym?: SymbolDefinition): void {
-    switch (symId) {
-      case 'contactor_coil': {
-        doc.rect(x + w * 0.2, y + h * 0.25, w * 0.6, h * 0.5);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.25);
-        doc.line(x + w * 0.5, y + h * 0.75, x + w * 0.5, y + h);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
-        doc.text('K', x + w * 0.5, y + h * 0.55, { align: 'center' });
-        break;
-      }
-      case 'contact_no':
-      case 'pushbutton_no':
-      case 'switch_single': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.35);
-        doc.line(x + w * 0.5, y + h * 0.35, x + w * 0.85, y + h * 0.65);
-        doc.line(x + w * 0.5, y + h * 0.68, x + w * 0.5, y + h);
-        doc.circle(x + w * 0.5, y + h * 0.35, 0.4, 'F');
-        doc.circle(x + w * 0.5, y + h * 0.68, 0.4, 'F');
-        break;
-      }
-      case 'contact_nc':
-      case 'pushbutton_emergency_stop': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.35);
-        doc.line(x + w * 0.5, y + h * 0.35, x + w * 0.15, y + h * 0.65);
-        doc.line(x + w * 0.15, y + h * 0.65, x + w * 0.5, y + h * 0.65);
-        doc.line(x + w * 0.5, y + h * 0.68, x + w * 0.5, y + h);
-        break;
-      }
-      case 'circuit_breaker_1p': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.28);
-        doc.line(x + w * 0.5, y + h * 0.28, x + w * 0.8, y + h * 0.58);
-        doc.line(x + w * 0.5, y + h * 0.62, x + w * 0.5, y + h);
-        // Thermal bimetal
-        doc.rect(x + w * 0.35, y + h * 0.68, w * 0.3, h * 0.18);
-        // Magnetic trip
-        doc.line(x + w * 0.65, y + h * 0.42, x + w * 0.8, y + h * 0.34);
-        doc.line(x + w * 0.8, y + h * 0.34, x + w * 0.8, y + h * 0.5);
-        break;
-      }
-      case 'circuit_breaker_3p': {
-        const poleOffsets = [12, 36, 60];
-        for (let p = 0; p < 3; p++) {
-          const px = x + w * (poleOffsets[p] / 72);
-          doc.line(px, y, px, y + h * 0.28);
-          doc.line(px, y + h * 0.28, px + w * 0.1, y + h * 0.58);
-          doc.line(px, y + h * 0.62, px, y + h);
-          doc.rect(px - 1.2, y + h * 0.68, 2.4, 2.0);
-        }
-        doc.setLineDashPattern([1, 1], 0);
-        doc.line(x + w * (12 / 72), y + h * 0.44, x + w * (60 / 72), y + h * 0.44);
-        doc.setLineDashPattern([], 0);
-        break;
-      }
-      case 'fuse_switch_3p': {
-        const poleOffsets = [12, 36, 60];
-        for (let p = 0; p < 3; p++) {
-          const px = x + w * (poleOffsets[p] / 72);
-          doc.line(px, y, px, y + h * 0.15);
-          doc.rect(px - 1.5, y + h * 0.15, 3.0, h * 0.3);
-          doc.line(px, y + h * 0.15, px, y + h * 0.45);
-          doc.line(px, y + h * 0.45, px + w * 0.1, y + h * 0.72);
-          doc.line(px, y + h * 0.75, px, y + h);
-        }
-        doc.setLineDashPattern([1, 1], 0);
-        doc.line(x + w * (12 / 72), y + h * 0.6, x + w * (60 / 72), y + h * 0.6);
-        doc.setLineDashPattern([], 0);
-        break;
-      }
-      case 'main_switch_4p':
-      case 'changeover_switch_4p': {
-        const poleOffsets = [12, 36, 60, 84];
-        for (let p = 0; p < 4; p++) {
-          const px = x + w * (poleOffsets[p] / 96);
-          doc.line(px, y, px, y + h * 0.3);
-          doc.line(px, y + h * 0.3, px + w * 0.08, y + h * 0.65);
-          doc.line(px, y + h * 0.68, px, y + h);
-        }
-        doc.setLineDashPattern([1, 1], 0);
-        doc.line(x + w * (12 / 96), y + h * 0.48, x + w * (84 / 96), y + h * 0.48);
-        doc.setLineDashPattern([], 0);
-        break;
-      }
-      case 'energy_meter_3p': {
-        doc.rect(x + w * 0.05, y + h * 0.15, w * 0.9, h * 0.7, 'S');
-        doc.line(x + w * 0.05, y + h * 0.45, x + w * 0.95, y + h * 0.45);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text('kWh', x + w * 0.5, y + h * 0.35, { align: 'center' });
-        const poleOffsets = [12, 36, 60, 84];
-        for (let p = 0; p < 4; p++) {
-          const px = x + w * (poleOffsets[p] / 96);
-          doc.line(px, y, px, y + h * 0.15);
-          doc.line(px, y + h * 0.85, px, y + h);
-        }
-        break;
-      }
-      case 'contactor_power_3p':
-      case 'motor_protective_switch': {
-        for (let p = 0; p < 3; p++) {
-          const px = x + w * (0.16 + p * 0.33);
-          doc.line(px, y, px, y + h * 0.3);
-          doc.line(px, y + h * 0.3, px + w * 0.12, y + h * 0.6);
-          doc.line(px, y + h * 0.65, px, y + h);
-          if (symId === 'motor_protective_switch') {
-            doc.rect(px - 1.5, y + h * 0.72, 3, 2.5);
-          }
-        }
-        doc.setLineDashPattern([1, 1], 0);
-        doc.line(x + w * 0.2, y + h * 0.45, x + w * 0.8, y + h * 0.45);
-        doc.setLineDashPattern([], 0);
-        break;
-      }
-      case 'motor_3phase':
-      case 'motor_1phase': {
-        const radius = Math.min(w, h) * 0.38;
-        const cx = x + w * 0.5;
-        const cy = y + h * 0.55;
-        doc.circle(cx, cy, radius);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.text('M', cx, cy - 0.5, { align: 'center' });
-        doc.setFontSize(6);
-        doc.text(symId === 'motor_3phase' ? '3 ~' : '1 ~', cx, cy + 3.5, { align: 'center' });
-        if (symId === 'motor_3phase') {
-          doc.line(cx - radius * 0.5, y, cx - radius * 0.5, cy - radius);
-          doc.line(cx, y, cx, cy - radius);
-          doc.line(cx + radius * 0.5, y, cx + radius * 0.5, cy - radius);
-        } else {
-          doc.line(cx - radius * 0.4, y, cx - radius * 0.4, cy - radius);
-          doc.line(cx + radius * 0.4, y, cx + radius * 0.4, cy - radius);
-        }
-        break;
-      }
-      case 'socket_schuko': {
-        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.35);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.35);
-        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.35);
-        doc.ellipse(x + w * 0.5, y + h * 0.35, w * 0.35, h * 0.45, 'S');
-        doc.circle(x + w * 0.4, y + h * 0.55, 0.5, 'F');
-        doc.circle(x + w * 0.6, y + h * 0.55, 0.5, 'F');
-        break;
-      }
-      case 'light_bulb': {
-        const radius = Math.min(w, h) * 0.38;
-        const cx = x + w * 0.5;
-        const cy = y + h * 0.5;
-        doc.circle(cx, cy, radius);
-        doc.line(cx - radius * 0.707, cy - radius * 0.707, cx + radius * 0.707, cy + radius * 0.707);
-        doc.line(cx + radius * 0.707, cy - radius * 0.707, cx - radius * 0.707, cy + radius * 0.707);
-        doc.line(cx, y, cx, cy - radius);
-        doc.line(cx, cy + radius, cx, y + h);
-        break;
-      }
-      case 'rj45_port': {
-        doc.rect(x + w * 0.15, y + h * 0.25, w * 0.7, h * 0.6, 'S');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(5);
-        doc.text('ETH', x + w * 0.5, y + h * 0.6, { align: 'center' });
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.25);
-        break;
-      }
-      case 'valve_actuator': {
-        doc.triangle(x + w * 0.2, y + h * 0.2, x + w * 0.8, y + h * 0.8, x + w * 0.2, y + h * 0.8, 'S');
-        doc.triangle(x + w * 0.8, y + h * 0.2, x + w * 0.8, y + h * 0.8, x + w * 0.2, y + h * 0.2, 'S');
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.3);
-        doc.line(x + w * 0.5, y + h * 0.7, x + w * 0.5, y + h);
-        break;
-      }
-      case 'thermostat_box': {
-        doc.rect(x + w * 0.08, y + h * 0.2, w * 0.84, h * 0.6, 'S');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
-        doc.text('°C', x + w * 0.5, y + h * 0.55, { align: 'center' });
-        break;
-      }
-      case 'inverter_solar': {
-        doc.setLineDashPattern([1.5, 1], 0);
-        doc.rect(x + w * 0.03, y + h * 0.1, w * 0.94, h * 0.8, 'S');
-        doc.setLineDashPattern([], 0);
-        doc.line(x + w * 0.03, y + h * 0.1, x + w * 0.97, y + h * 0.9);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
-        doc.text('DC', x + w * 0.25, y + h * 0.65);
-        doc.text('AC ~', x + w * 0.7, y + h * 0.35);
-        break;
-      }
-      case 'electronic_relay_4ch': {
-        doc.rect(x + w * 0.04, y + h * 0.12, w * 0.92, h * 0.76, 'S');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
-        doc.text('ESR12Z-4DX-UC', x + w * 0.5, y + h * 0.42, { align: 'center' });
-        doc.setFontSize(5.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text('4-Kanal Multifunktion', x + w * 0.5, y + h * 0.62, { align: 'center' });
-        break;
-      }
-      case 'potential_arrow':
-      case 'potential_arrow_down': {
-        const cx = x + w * 0.5;
-        doc.line(cx, y, cx, y + h * 0.45);
-        doc.triangle(cx - w * 0.25, y + h * 0.45, cx, y + h * 0.92, cx + w * 0.25, y + h * 0.45, 'FD');
-        break;
-      }
-      case 'potential_arrow_up': {
-        const cx = x + w * 0.5;
-        doc.line(cx, y + h, cx, y + h * 0.55);
-        doc.triangle(cx - w * 0.25, y + h * 0.55, cx, y + h * 0.08, cx + w * 0.25, y + h * 0.55, 'FD');
-        break;
-      }
-      case 'potential_arrow_right': {
-        const cy = y + h * 0.5;
-        doc.line(x, cy, x + w * 0.45, cy);
-        doc.triangle(x + w * 0.45, cy - h * 0.25, x + w * 0.92, cy, x + w * 0.45, cy + h * 0.25, 'FD');
-        break;
-      }
-      case 'potential_arrow_left': {
-        const cy = y + h * 0.5;
-        doc.line(x + w, cy, x + w * 0.55, cy);
-        doc.triangle(x + w * 0.55, cy - h * 0.25, x + w * 0.08, cy, x + w * 0.55, cy + h * 0.25, 'FD');
-        break;
-      }
-      case 't_piece_down': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x, cy, x + w, cy);
-        doc.line(cx, cy, cx, y + h);
-        doc.circle(cx, cy, 0.8, 'FD');
-        break;
-      }
-      case 't_piece_up': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x, cy, x + w, cy);
-        doc.line(cx, y, cx, cy);
-        doc.circle(cx, cy, 0.8, 'FD');
-        break;
-      }
-      case 't_piece_right': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(cx, y, cx, y + h);
-        doc.line(cx, cy, x + w, cy);
-        doc.circle(cx, cy, 0.8, 'FD');
-        break;
-      }
-      case 't_piece_left': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(cx, y, cx, y + h);
-        doc.line(x, cy, cx, cy);
-        doc.circle(cx, cy, 0.8, 'FD');
-        break;
-      }
-      case 'corner_top_right': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x, cy, cx, cy);
-        doc.line(cx, cy, cx, y + h);
-        break;
-      }
-      case 'corner_top_left': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x + w, cy, cx, cy);
-        doc.line(cx, cy, cx, y + h);
-        break;
-      }
-      case 'corner_bottom_right': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x, cy, cx, cy);
-        doc.line(cx, cy, cx, y);
-        break;
-      }
-      case 'corner_bottom_left': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x + w, cy, cx, cy);
-        doc.line(cx, cy, cx, y);
-        break;
-      }
-      case 'cross_junction': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(x, cy, x + w, cy);
-        doc.line(cx, y, cx, y + h);
-        doc.circle(cx, cy, 0.9, 'FD');
-        break;
-      }
-      case 'cross_bridge': {
-        const cx = x + w * 0.5, cy = y + h * 0.5;
-        doc.line(cx, y, cx, y + h);
-        const br = w * 0.2;
-        doc.line(x, cy, cx - br, cy);
-        doc.line(cx + br, cy, x + w, cy);
-        for (let i = 0; i < 6; i++) {
-          const a1 = Math.PI - (i / 6) * Math.PI, a2 = Math.PI - ((i + 1) / 6) * Math.PI;
-          doc.line(cx + br * Math.cos(a1), cy - br * Math.sin(a1), cx + br * Math.cos(a2), cy - br * Math.sin(a2));
-        }
-        break;
-      }
-      case 'potential_rail_source': {
-        doc.circle(x + w * 0.5, y + h * 0.5, 0.9, 'S');
-        doc.line(x + w * 0.5 + 0.9, y + h * 0.5, x + w, y + h * 0.5);
-        break;
-      }
-      case 'terminal_pe': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.4);
-        doc.circle(x + w * 0.5, y + h * 0.5, 1.0, 'FD');
-        doc.line(x + w * 0.5, y + h * 0.6, x + w * 0.5, y + h);
-        break;
-      }
-      case 'ground_pe': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.5);
-        doc.line(x + w * 0.1, y + h * 0.5, x + w * 0.9, y + h * 0.5);
-        doc.line(x + w * 0.25, y + h * 0.75, x + w * 0.75, y + h * 0.75);
-        doc.line(x + w * 0.4, y + h, x + w * 0.6, y + h);
-        break;
-      }
-      case 'power_supply_dc': {
-        doc.rect(x + w * 0.1, y + h * 0.15, w * 0.8, h * 0.7);
-        doc.line(x + w * 0.1, y + h * 0.85, x + w * 0.9, y + h * 0.15);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text('~', x + w * 0.3, y + h * 0.45, { align: 'center' });
-        doc.text('=', x + w * 0.7, y + h * 0.7, { align: 'center' });
-        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.15);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.15);
-        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.15);
-        doc.line(x + w * 0.35, y + h * 0.85, x + w * 0.35, y + h);
-        doc.line(x + w * 0.65, y + h * 0.85, x + w * 0.65, y + h);
-        break;
-      }
-      case 'socket_switch': {
-        doc.rect(x + w * 0.1, y + h * 0.25, w * 0.8, h * 0.65);
-        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.25);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.25);
-        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.25);
-        const radius = Math.min(w, h) * 0.2;
-        doc.circle(x + w * 0.5, y + h * 0.58, radius);
-        doc.line(x + w * 0.5 - radius * 0.7, y + h * 0.58 - radius * 0.7, x + w * 0.5 + radius * 0.7, y + h * 0.58 + radius * 0.7);
-        break;
-      }
-      case 'fuse_1p': {
-        doc.rect(x + w * 0.25, y + h * 0.25, w * 0.5, h * 0.5);
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h);
-        break;
-      }
-      case 'pilot_lamp': {
-        const radius = Math.min(w, h) * 0.35;
-        const cx = x + w * 0.5;
-        const cy = y + h * 0.5;
-        doc.circle(cx, cy, radius);
-        doc.line(cx - radius * 0.7, cy - radius * 0.7, cx + radius * 0.7, cy + radius * 0.7);
-        doc.line(cx + radius * 0.7, cy - radius * 0.7, cx - radius * 0.7, cy + radius * 0.7);
-        doc.line(cx, y, cx, cy - radius);
-        doc.line(cx, cy + radius, cx, y + h);
-        break;
-      }
-      case 'terminal_single': {
-        doc.line(x + w * 0.5, y, x + w * 0.5, y + h * 0.38);
-        doc.circle(x + w * 0.5, y + h * 0.5, 1.0, 'S');
-        doc.line(x + w * 0.5, y + h * 0.62, x + w * 0.5, y + h);
-        break;
-      }
-      case 'rcd_4p':
-      case 'rcd_2p':
-      case 'rcbo_1p_n': {
-        const poles = symId === 'rcd_4p' ? 4 : 2;
-        for (let p = 0; p < poles; p++) {
-          const px = x + w * ((p + 0.5) / poles);
-          doc.line(px, y, px, y + h * 0.28);
-          doc.line(px, y + h * 0.28, px + w * 0.08, y + h * 0.58);
-          doc.line(px, y + h * 0.62, px, y + h);
-        }
-        doc.ellipse(x + w * 0.5, y + h * 0.8, w * 0.42, h * 0.12);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6);
-        doc.text('T', x + w * 0.9, y + h * 0.8);
-        break;
-      }
-      case 'impulse_relay_1no':
-      case 'impulse_relay_2no': {
-        doc.rect(x + w * 0.08, y + h * 0.25, w * 0.35, h * 0.48);
-        doc.line(x + w * 0.25, y, x + w * 0.25, y + h * 0.25);
-        doc.line(x + w * 0.25, y + h * 0.73, x + w * 0.25, y + h);
-        doc.line(x + w * 0.12, y + h * 0.55, x + w * 0.2, y + h * 0.55);
-        doc.line(x + w * 0.2, y + h * 0.55, x + w * 0.2, y + h * 0.4);
-        doc.line(x + w * 0.2, y + h * 0.4, x + w * 0.35, y + h * 0.4);
-        const contacts = symId === 'impulse_relay_2no' ? 2 : 1;
-        for (let c = 0; c < contacts; c++) {
-          const cx = x + w * (0.55 + c * 0.3);
-          doc.line(cx, y, cx, y + h * 0.35);
-          doc.line(cx, y + h * 0.35, cx + w * 0.15, y + h * 0.65);
-          doc.line(cx, y + h * 0.65, cx, y + h);
-        }
-        break;
-      }
-      case 'timer_relay_multifunction': {
-        doc.rect(x + w * 0.1, y + h * 0.25, w * 0.35, h * 0.45);
-        doc.line(x + w * 0.1, y + h * 0.25, x + w * 0.45, y + h * 0.7);
-        doc.line(x + w * 0.27, y, x + w * 0.27, y + h * 0.25);
-        doc.line(x + w * 0.27, y + h * 0.7, x + w * 0.27, y + h);
-        doc.line(x + w * 0.75, y, x + w * 0.75, y + h * 0.3);
-        doc.line(x + w * 0.75, y + h * 0.3, x + w * 0.6, y + h * 0.6);
-        doc.line(x + w * 0.6, y + h * 0.65, x + w * 0.6, y + h);
-        doc.line(x + w * 0.85, y + h * 0.65, x + w * 0.85, y + h);
-        break;
-      }
-      case 'surge_arrester_spd': {
-        for (let s = 0; s < 4; s++) {
-          const sx = x + w * (0.15 + s * 0.22);
-          doc.rect(sx - 1.5, y + h * 0.3, 3, 5);
-          doc.line(sx - 2, y + h * 0.6, sx + 2, y + h * 0.3);
-          doc.line(sx, y, sx, y + h * 0.3);
-          doc.line(sx, y + h * 0.65, sx, y + h * 0.8);
-        }
-        doc.line(x + w * 0.15, y + h * 0.8, x + w * 0.81, y + h * 0.8);
-        doc.line(x + w * 0.48, y + h * 0.8, x + w * 0.48, y + h);
-        break;
-      }
-      default: {
-        if (sym?.svgContent) {
-          this.renderSvgContent(doc, sym.svgContent, x, y, w, h, sym.width, sym.height);
-        } else if (!sym || (!isConnectionSymbol(sym) && sym.category !== 'connections')) {
-          doc.rect(x, y, w, h);
-        }
-        break;
-      }
-    }
-  }
-
-  /**
-   * Fallback renderer that translates symbol svgContent into PDF vector primitives
-   */
-  private static renderSvgContent(doc: jsPDF, svg: string, x: number, y: number, w: number, h: number, symWidth: number, symHeight: number): void {
-    const scaleX = w / (symWidth || 1), scaleY = h / (symHeight || 1);
-    const toX = (val: number) => x + val * scaleX;
-    const toY = (val: number) => y + val * scaleY;
-
-    const tagRegex = /<([a-zA-Z]+)\b([^>]*)\/?>/g;
-    let match: RegExpExecArray | null;
-    while ((match = tagRegex.exec(svg)) !== null) {
-      const tagName = match[1];
-      const attrsStr = match[2];
-      const getAttr = (name: string): string | undefined => {
-        const m = new RegExp(`\\b${name}="([^"]*)"`).exec(attrsStr);
-        return m ? m[1] : undefined;
-      };
-      const getNum = (name: string, def = 0): number => {
-        const v = getAttr(name);
-        return v !== undefined ? parseFloat(v) : def;
-      };
-
-      if (tagName === 'line') {
-        doc.line(toX(getNum('x1')), toY(getNum('y1')), toX(getNum('x2')), toY(getNum('y2')));
-      } else if (tagName === 'rect') {
-        const rx = toX(getNum('x')), ry = toY(getNum('y'));
-        const rw = getNum('width') * scaleX, rh = getNum('height') * scaleY;
-        const fill = getAttr('fill');
-        const isFilled = fill && fill !== 'none';
-        doc.rect(rx, ry, rw, rh, isFilled ? 'FD' : 'S');
-      } else if (tagName === 'circle') {
-        const cx = toX(getNum('cx')), cy = toY(getNum('cy'));
-        const r = getNum('r') * scaleX;
-        const fill = getAttr('fill');
-        const isFilled = fill && fill !== 'none';
-        doc.circle(cx, cy, r, isFilled ? 'FD' : 'S');
-      } else if (tagName === 'ellipse') {
-        const cx = toX(getNum('cx')), cy = toY(getNum('cy'));
-        const rx = getNum('rx') * scaleX, ry = getNum('ry') * scaleY;
-        const fill = getAttr('fill');
-        const isFilled = fill && fill !== 'none';
-        doc.ellipse(cx, cy, rx, ry, isFilled ? 'FD' : 'S');
-      } else if (tagName === 'polygon' || tagName === 'polyline') {
-        const pointsStr = getAttr('points') || '';
-        const pts = pointsStr.trim().split(/[\s,]+/).reduce((acc, val, i, arr) => {
-          if (i % 2 === 0 && i + 1 < arr.length) {
-            acc.push([toX(parseFloat(val)), toY(parseFloat(arr[i + 1]))]);
-          }
-          return acc;
-        }, [] as [number, number][]);
-        if (pts.length >= 2) {
-          const fill = getAttr('fill');
-          const isFilled = tagName === 'polygon' && fill && fill !== 'none';
-          if (pts.length === 3) {
-            doc.triangle(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1], isFilled ? 'FD' : 'S');
-          } else {
-            for (let i = 1; i < pts.length; i++) {
-              doc.line(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
-            }
-            if (tagName === 'polygon') {
-              doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
-            }
-          }
-        }
-      } else if (tagName === 'path') {
-        const d = getAttr('d') || '';
-        const fill = getAttr('fill');
-        const isFilled = fill && fill !== 'none';
-        const arcMatch = /M\s*([-\d.]+)[,\s]+([-\d.]+)\s*A\s*([-\d.]+)[,\s]+([-\d.]+)\s+([-\d.]+)\s+([01])[,\s]+([01])\s+([-\d.]+)[,\s]+([-\d.]+)(\s*Z)?/i.exec(d);
-        if (arcMatch) {
-          const x1 = parseFloat(arcMatch[1]), y1 = parseFloat(arcMatch[2]);
-          const rx = parseFloat(arcMatch[3]), ry = parseFloat(arcMatch[4]);
-          const sweepFlag = parseInt(arcMatch[7], 10);
-          const x2 = parseFloat(arcMatch[8]), y2 = parseFloat(arcMatch[9]);
-          const closed = !!arcMatch[10];
-          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-          const startAng = Math.atan2(y1 - my, x1 - mx);
-          const endAng = Math.atan2(y2 - my, x2 - mx);
-          let delta = endAng - startAng;
-          if (sweepFlag === 1 && delta <= 0) delta += Math.PI * 2;
-          if (sweepFlag === 0 && delta >= 0) delta -= Math.PI * 2;
-          const steps = 16;
-          const pts: [number, number][] = [];
-          for (let s = 0; s <= steps; s++) {
-            const ang = startAng + (delta * s) / steps;
-            pts.push([toX(mx + rx * Math.cos(ang)), toY(my + ry * Math.sin(ang))]);
-          }
-          if (closed && isFilled) {
-            const pathOps = pts.map(([px, py], idx) => ({ op: idx === 0 ? 'm' : 'l', c: [px, py] }));
-            pathOps.push({ op: 'h', c: [] });
-            doc.path(pathOps);
-            doc.fillStroke();
-          } else {
-            for (let s = 1; s < pts.length; s++) {
-              doc.line(pts[s - 1][0], pts[s - 1][1], pts[s][0], pts[s][1]);
-            }
-            if (closed) {
-              doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
-            }
-          }
-        } else {
-          const lineTokens = [...d.matchAll(/([ML])\s*([-\d.]+)[,\s]+([-\d.]+)/gi)];
-          if (lineTokens.length >= 2) {
-            for (let i = 1; i < lineTokens.length; i++) {
-              doc.line(
-                toX(parseFloat(lineTokens[i - 1][2])),
-                toY(parseFloat(lineTokens[i - 1][3])),
-                toX(parseFloat(lineTokens[i][2])),
-                toY(parseFloat(lineTokens[i][3]))
-              );
-            }
-            if (/Z\s*$/i.test(d)) {
-              doc.line(
-                toX(parseFloat(lineTokens[lineTokens.length - 1][2])),
-                toY(parseFloat(lineTokens[lineTokens.length - 1][3])),
-                toX(parseFloat(lineTokens[0][2])),
-                toY(parseFloat(lineTokens[0][3]))
-              );
-            }
-          }
-        }
-      }
-    }
-    const textRegex = /<text\b([^>]*)>([\s\S]*?)<\/text>/g;
-    let textMatch: RegExpExecArray | null;
-    while ((textMatch = textRegex.exec(svg)) !== null) {
-      const attrsStr = textMatch[1];
-      const content = textMatch[2].replace(/<[^>]+>/g, '').trim();
-      if (!content) continue;
-      const getAttr = (name: string): string | undefined => {
-        const m = new RegExp(`\\b${name}="([^"]*)"`).exec(attrsStr);
-        return m ? m[1] : undefined;
-      };
-      const tx = parseFloat(getAttr('x') ?? '0');
-      const ty = parseFloat(getAttr('y') ?? '0');
-      const fontSize = parseFloat(getAttr('font-size') ?? '8');
-      const anchor = getAttr('text-anchor');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(Math.max(4, fontSize * scaleY * 72 / 25.4));
-      doc.text(content, toX(tx), toY(ty), {
-        align: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left'
-      });
+  /** The library contour is the single source for the editor and PDF. */
+  private static drawVectorSymbol(doc: jsPDF, symId: string, x: number, y: number, w: number, h: number,
+    sym?: SymbolDefinition, rotation = 0, foreground = '#000000', monochrome = false): void {
+    if (sym?.svgContent) {
+      renderSymbolSvg(doc, sym.svgContent, x, y, w, h, sym.width, sym.height, rotation, foreground, monochrome);
+    } else if (!sym || (!isConnectionSymbol(sym) && sym.category !== 'connections')) {
+      doc.rect(x, y, w, h);
     }
   }
 
@@ -1791,7 +1188,8 @@ export class PdfExporter {
     const col = (color || '').toUpperCase();
     if (col === 'BU' || pot === 'N' || pot.startsWith('N')) return { r: 37, g: 99, b: 235 };
     if (col === 'GNYE' || pot === 'PE' || pot === 'PEN' || pot.startsWith('PE')) return { r: 22, g: 163, b: 74 };
-    if (col === 'RD' || pot.startsWith('L') || pot === '+24V' || col === 'BK') return { r: 220, g: 38, b: 38 };
+    if (col === 'RD' || pot === '+24V') return { r: 220, g: 38, b: 38 };
+    if (col === 'BK' || pot.startsWith('L')) return { r: 0, g: 0, b: 0 };
     if (col === 'DBU' || pot === '0V') return { r: 30, g: 64, b: 175 };
     return { r: 220, g: 38, b: 38 };
   }

@@ -53,7 +53,7 @@ assert.doesNotMatch(scene.svg.innerHTML, /fill="#ffffff"/);
 
 const texts: string[] = [], lines: number[][] = [], drawColors: unknown[][] = [];
 const pdf: any = {};
-for (const name of ['setLineWidth', 'setLineDashPattern', 'setTextColor', 'setFillColor', 'setFont', 'setFontSize', 'circle', 'rect', 'path', 'fillStroke', 'stroke']) pdf[name] = () => undefined;
+for (const name of ['setLineWidth', 'setLineDashPattern', 'setTextColor', 'setFillColor', 'setFont', 'setFontSize', 'circle', 'rect', 'path', 'fill', 'fillStroke', 'stroke']) pdf[name] = () => undefined;
 pdf.text = (text: string) => texts.push(text);
 pdf.line = (...coords: number[]) => lines.push(coords);
 pdf.setDrawColor = (...color: unknown[]) => drawColors.push(color);

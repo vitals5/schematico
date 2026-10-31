@@ -90,6 +90,7 @@ The software unites two essential electrical engineering workflows into one mode
 - **Component Placement &amp; Grid:** Place, rotate, and align components on a standard 8 mm grid with optional 4 mm half-grid precision.
 - **Directional Ports &amp; Autoconnect:** Component pins feature directional connection vectors (`top`, `bottom`, `left`, `right`). Aligned ports automatically connect upon placement. Orthogonal routing calculates clean paths with standard clearance.
 - **Junctions &amp; Jumpers:** Automated T-junctions on wire splits and optical wire bridges to eliminate ambiguous net crossings.
+- **Connection Editing:** T-piece, corner and crossing pin handles are hidden in the normal view and appear in wire mode. The electrical contacts remain available for snapping and Autoconnect.
 - **Cable Definitions &amp; Core Colors:** Assign multi-conductor cables (e.g. `NYM-J 5x1.5`, `ÖLFLEX 4G2.5`) across crossing lines with core color codes and shielding.
 - **Location Boxes (+S1 / +ET1):** Spatial and functional device grouping for enclosures, control desks, and field junction boxes with customizable bounding borders.
 
@@ -149,6 +150,7 @@ Schematico provides a dedicated **Installation Plan Page Type** for residential,
 - **Direct Navigation via Ctrl + Click:** Hold `Ctrl` and click any coil, contact, interruption point, or installation symbol to instantly jump to its reference target on any project sheet.
 - **Inspector Quick Navigation:** The properties inspector displays all linked targets with one-click navigation buttons.
 - **Interactive PDF Hyperlinks:** Vector PDF exports include full PDF annotation links for one-click navigation across the entire drawing set in any standard viewer.
+- **Shared Library Graphics:** PDF exports use the editor's library symbol contours, connection positions, label anchors and stroke styles. Editing handles are excluded from the printed drawing.
 
 <!-- ======================================================================= -->
 <!-- SCREENSHOT 4: Property Inspector & Device Tagging                       -->
