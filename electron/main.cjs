@@ -1,5 +1,6 @@
 // electron/main.cjs
-const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+const { githubReleaseUrl } = require('./release-links.cjs');
 const path = require('path');
 const fs = require('fs');
 const { migrateMacroSettings } = require('./settings-migration.cjs');
@@ -43,6 +44,11 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+ipcMain.handle('updates:openRelease', async (_event, tag) => {
+  await shell.openExternal(githubReleaseUrl(tag));
+  return true;
+});
 
 // IPC Handlers for native desktop file operations
 ipcMain.handle('dialog:openFile', async () => {

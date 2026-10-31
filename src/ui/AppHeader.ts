@@ -68,7 +68,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+
           opt('menuAiSettings','KI-Anbieter & Modell (BYOK)...')+separator+
           opt('menuAiClear','Chatverlauf leeren'),'menu-item')}
-        ${menu('menuHelpTrigger',t('menuHelp'),opt('menuShortcuts',t('menuShortcuts'))+opt('menuMobile',t('menuMobile'))+separator+opt('menuAbout',t('menuAbout')),'menu-item')}
+        ${menu('menuHelpTrigger',t('menuHelp'),opt('menuShortcuts',t('menuShortcuts'))+opt('menuMobile',t('menuMobile'))+separator+opt('menuCheckUpdates',t('menuCheckUpdates'))+opt('menuAbout',t('menuAbout')),'menu-item')}
       </div>
       <div id="headerStatusBadgeContainer" class="header-status-badge-container"></div>
       <span id="headerProjectName" class="header-project-name" title="${escapeSvg(projectName)}">${escapeSvg(projectName)}</span>

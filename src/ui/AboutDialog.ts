@@ -1,3 +1,4 @@
+import { UpdateDialog } from './UpdateDialog';
 import { version } from '../../package.json';
 import { getUiLanguage } from '../i18n';
 
@@ -17,7 +18,7 @@ export class AboutDialog {
       </div>
       <div class="about-body">
         <img class="about-logo" src="${import.meta.env.BASE_URL}branding/logo-dark.png" alt="Schematico" width="1200" height="361" />
-        <p class="about-version">Version ${version} · Windows, Linux &amp; Web</p>
+        <p class="about-version">Version ${version} · Windows, Linux &amp; Web</p><button type="button" class="btn" id="about-updates">${isEn ? 'Check for updates' : 'Nach Updates suchen'}</button>
         <p>${isEn ? 'Create and edit electrical schematics.' : 'Stromlaufpläne erstellen und bearbeiten.'}</p>
         <ul>
           <li>${isEn ? 'Symbol library, connections, and cross-references' : 'Elementbibliothek, Verbindungen und Querverweise'}</li>
@@ -27,6 +28,7 @@ export class AboutDialog {
         <p class="about-standards">${isEn ? 'Reference designation structured to DIN EN 81346 and symbols according to IEC 60617. Supported project archives, XML, and macro files can be imported as editable objects.' : 'Kennzeichnungsstruktur nach DIN EN 81346 und Schaltzeichen nach IEC 60617. Unterstützte Projektarchive, XML- und Makrodateien lassen sich als bearbeitbare Objekte importieren.'}</p>
       </div>`;
     document.body.appendChild(dialog);
+    dialog.querySelector('#about-updates')!.addEventListener('click',()=>UpdateDialog.show());
     dialog.querySelector('#about-close')!.addEventListener('click', () => dialog.close());
     dialog.addEventListener('click', event => {
       const rect = dialog.getBoundingClientRect();

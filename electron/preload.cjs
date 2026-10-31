@@ -2,6 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  updates: { openRelease: tag => ipcRenderer.invoke('updates:openRelease', tag) },
   macroLibrary: {
     getFolder: () => ipcRenderer.invoke('macroLibrary:getFolder'),
     setFolder: path => ipcRenderer.invoke('macroLibrary:setFolder', path),

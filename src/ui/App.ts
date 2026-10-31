@@ -8,6 +8,7 @@ import { defaultBridgeClient } from '../ai/bridge/bridgeClient';
 import type { CanvasStateManager } from '../ai/mcp-tools';
 import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
+import { UpdateDialog } from './UpdateDialog';
 import { AboutDialog } from './AboutDialog';
 import { macroWithVariables } from '../model/NativeMacroVariables';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
@@ -1293,6 +1294,7 @@ export class App {
       alert(t('shortcutsHelp'));
     });
     bindMenuOpt('menuAbout', () => AboutDialog.show());
+    bindMenuOpt('menuCheckUpdates', () => UpdateDialog.show());
 
     // AI & MCP
     bindMenuOpt('menuToggleAiChat', () => this.toggleAiChat());

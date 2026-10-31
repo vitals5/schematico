@@ -359,6 +359,8 @@ Windows packages:
 - **`Schematico.Setup.<version>.exe`**: Guided installer with Start Menu and Desktop shortcuts.
 - **`Schematico.<version>.exe`**: Standalone portable version requiring no administrator privileges.
 
+**Updates:** Use **Help → Check for updates** (or the button in **About Schematico**) to compare your version with the latest stable GitHub release. The download button opens the release page in your browser. No automatic installation or project upload takes place. Offline and GitHub request-limit errors can be retried.
+
 Linux x64 packages use the same application, native file dialogs, macro library and branding:
 - **`Schematico-<version>-linux-x64.AppImage`**: Portable application. Make it executable before launching (`chmod +x Schematico-*.AppImage`). Systems without FUSE can use the AppImage runtime's `--appimage-extract-and-run` option.
 - **`Schematico-<version>-linux-x64.deb`**: Debian/Ubuntu package with application-menu entry and icon; install with your package manager.

@@ -74,6 +74,7 @@ export const translations = {
     menuShortcuts: 'Tastenkürzel…',
     menuMobile: 'Auf dem Smartphone öffnen…',
     menuAbout: 'Über Schematico',
+    menuCheckUpdates: 'Nach Updates suchen',
 
     // Key shortcuts
     keyCtrlS: 'Strg+S',
@@ -938,6 +939,7 @@ export const translations = {
     menuShortcuts: 'Keyboard Shortcuts…',
     menuMobile: 'Open on Smartphone…',
     menuAbout: 'About Schematico',
+    menuCheckUpdates: 'Check for updates',
 
     // Key shortcuts
     keyCtrlS: 'Ctrl+S',
