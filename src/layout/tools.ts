@@ -1,4 +1,5 @@
 import { prepareSocketDistribution } from './socketDistribution';
+import { preferDraftAutoconnect } from './autoconnectDraft';
 import { prepareDraftConnections } from './draftConnections';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
 import { nextDeviceTag } from '../model/DeviceTag';
@@ -53,7 +54,7 @@ export const CREATE_DRAFT_TOOL: McpToolDefinition = {
     type: 'object',
     properties: {
       pageId: { type: 'string' },
-      preferAutoconnect: {type:'boolean',description:'Prefer real library T/corner bus elements for compatible new branches. Defaults to true in the AI tool.'},
+      preferAutoconnect: {type:'boolean',description:'Default true: reserve room and compile suitable checked routes into real library T/corner elements. Remaining routed sections are reported. Do not disable as a retry strategy.'},
       components: {
         type: 'array',
         items: {
@@ -124,10 +125,11 @@ function result(preview: LayoutPreview) {
     success: preview.status === 'preview_ready',
     status: preview.status,
     layoutPreparation: preview.preparation,
+    connectionConstruction: preview.connectionConstruction,
     requiresUserApply: true,
     before: preview.before.metrics,
     candidates: preview.candidates.map((c) => ({
-      pages: c.multiPage?.pages.map(p => ({ id: p.id, pageNumber: p.pageNumber, title: p.title })),
+      pages: (c.multiPage?.pages??[c.page]).map(p => ({ id: p.id, pageNumber: p.pageNumber, title: p.title })),
       crossSheetConnections: c.multiPage?.links.length,
       id: c.id,
       profile: c.profile,
@@ -221,10 +223,18 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     page = draft.pages.find((p) => p.id === pageId);
   if (!page || page.floorPlan || page.pageType !== 'schematic')
     throw new Error('Stromlaufplanseite fehlt.');
+  // An empty destination from older sessions can already have a duplicate
+  // number. Resolve it in the preview draft alongside its new contents.
+  if(!page.components.length&&!page.wires.length&&draft.pages.some(p=>p.id!==page.id&&p.higherLevel===page.higherLevel&&p.location===page.location&&p.pageNumber===page.pageNumber)){
+    const occupied=new Set(draft.pages.filter(p=>p.id!==page.id&&p.higherLevel===page.higherLevel&&p.location===page.location).map(p=>p.pageNumber));
+    let n=1;while(occupied.has(String(n)))n++;
+    page.pageNumber=String(n);page.plotFrame.titleBlock.sheetNumber=String(n);
+  }
   const refs = new Map<string, string>(),
     taken = new Set(
       draft.pages.flatMap((p) =>
         [
+          p,
           ...p.components,
           ...p.wires,
           ...(p.groups ?? []),
@@ -238,8 +248,9 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   const newId = (id: string) => {
     if (typeof id !== 'string' || !id.trim() || refs.has(id))
       throw new Error('Entwurfs-IDs müssen eindeutig sein.');
-    const next = 'ai-' + id;
-    if (taken.has(next)) throw new Error('Objekt-ID existiert bereits: ' + next);
+    const base = 'ai-' + id;
+    let next = base, suffix = 2;
+    while(taken.has(next))next=base+'-'+suffix++;
     refs.set(id, next);
     taken.add(next);
     return next;
@@ -310,9 +321,9 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
     let preparation:DraftPreparation={strategy:'generic',status:'not_applicable',code:'not_applicable',message:'Allgemeines Layoutverfahren: kein vollständiges unterstütztes Verteilungsmuster erkannt.'};
     if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d))prepareDraftConnections(draft,page,devices,wires);
-    page.layoutConstraints={...page.layoutConstraints,draftPreparation:preparation};
+    page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true,draftPreparation:preparation};
   }else if(input.preferAutoconnect===false){
-    page.layoutConstraints={...page.layoutConstraints,draftPreparation:{strategy:'generic',status:'disabled',code:'disabled',message:'Autoconnect-Konstruktionsmuster wurden für diesen Entwurf deaktiviert.'}};
+    page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:false,draftPreparation:{strategy:'generic',status:'disabled',code:'disabled',message:'Autoconnect-Konstruktionsmuster wurden für diesen Entwurf deaktiviert.'}};
   }else if(page.layoutConstraints)delete page.layoutConstraints.draftPreparation;
   return draft;
 }
@@ -332,6 +343,7 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager) 
         if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}
       }
     }
+    if(args.preferAutoconnect!==false)({draft,preview}=preferDraftAutoconnect(project,draft,preview));
     phase='preview_presentation';
     manager.showLayoutPreview?.(preview,draft,{});
     return result(preview);

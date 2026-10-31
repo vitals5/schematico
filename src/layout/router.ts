@@ -69,13 +69,15 @@ export function pinStub(
       )
       .map((g) => g.rect),
     body = parts.length ? union(parts) : undefined;
-  let len = Math.max(2, s.grid.spacing / 2);
+  let len = Math.max(2, s.grid.spacing / 2,s.autoconnectSpacing??0);
+  const gap=s.autoconnectSpacing?6:2;
   if (body) {
-    if (v.x > 0) len = Math.max(len, right(body) - pin.x + 2);
-    if (v.x < 0) len = Math.max(len, pin.x - body.x + 2);
-    if (v.y > 0) len = Math.max(len, bottom(body) - pin.y + 2);
-    if (v.y < 0) len = Math.max(len, pin.y - body.y + 2);
+    if (v.x > 0) len = Math.max(len, right(body) - pin.x + gap);
+    if (v.x < 0) len = Math.max(len, pin.x - body.x + gap);
+    if (v.y > 0) len = Math.max(len, bottom(body) - pin.y + gap);
+    if (v.y < 0) len = Math.max(len, pin.y - body.y + gap);
   }
+  if(s.autoconnectSpacing)len=Math.ceil((len-1e-8)/(s.grid.spacing/2))*(s.grid.spacing/2);
   return { x: pin.x + v.x * len, y: pin.y + v.y * len };
 }
 type ReservedStub = { edgeId: string; p: Point; q: Point };
@@ -230,21 +232,23 @@ function route(
     ys = new Set<number>([a.y, b.y, s.area.y, bottom(s.area)]);
   if (returnHint) for (const lane of returnHint.lanes) (returnHint.vertical ? xs : ys).add(lane);
   // Visibility lanes are rounded OUTWARD from obstacles. Physical pin/stub positions remain exact.
-  const step = clearance>0 ? s.grid.spacing : Math.max(0.5, s.grid.spacing / 4),
+  const step = s.autoconnectSpacing ? s.grid.spacing/2 : clearance>0 ? s.grid.spacing : Math.max(0.5, s.grid.spacing / 4),
     down = (v: number, origin=0) => origin+Math.floor((v-origin) / step) * step,
     up = (v: number, origin=0) => origin+Math.ceil((v-origin) / step) * step;
+  const margin=s.autoconnectSpacing ? 5 : 1;
+  const origin=s.autoconnectSpacing||clearance?s.grid.origin:{x:0,y:0};
   for (const g of shapes) {
-    xs.add(down(g.rect.x - 1, clearance?s.grid.origin.x:0));
-    xs.add(up(right(g.rect) + 1, clearance?s.grid.origin.x:0));
-    ys.add(down(g.rect.y - 1, clearance?s.grid.origin.y:0));
-    ys.add(up(bottom(g.rect) + 1, clearance?s.grid.origin.y:0));
+    xs.add(down(g.rect.x - margin, origin.x));
+    xs.add(up(right(g.rect) + margin, origin.x));
+    ys.add(down(g.rect.y - margin, origin.y));
+    ys.add(up(bottom(g.rect) + margin, origin.y));
   }
   for (const wire of done)
     for (const p of wire.points) {
-      xs.add(down(p.x - Math.max(1,clearance),clearance?s.grid.origin.x:0));
-      xs.add(up(p.x + Math.max(1,clearance),clearance?s.grid.origin.x:0));
-      ys.add(down(p.y - Math.max(1,clearance),clearance?s.grid.origin.y:0));
-      ys.add(up(p.y + Math.max(1,clearance),clearance?s.grid.origin.y:0));
+      xs.add(down(p.x - Math.max(margin,clearance),origin.x));
+      xs.add(up(p.x + Math.max(margin,clearance),origin.x));
+      ys.add(down(p.y - Math.max(margin,clearance),origin.y));
+      ys.add(up(p.y + Math.max(margin,clearance),origin.y));
     }
   const xx = [...xs]
       .filter((x) => x >= s.area.x && x <= right(s.area))

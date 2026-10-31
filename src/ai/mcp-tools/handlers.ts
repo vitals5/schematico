@@ -1240,7 +1240,15 @@ export async function handleCreatePage(
   manager: CanvasStateManager
 ): Promise<any> {
   const project = manager.getProject();
-  const num = args.pageNumber || (project.pages.length + 1).toString();
+  const higherLevel = args.higherLevel || project.pages[0]?.higherLevel || '=A1';
+  const location = args.location || project.pages[0]?.location || '+S1';
+  const occupied = new Set(project.pages.filter(p => p.higherLevel === higherLevel && p.location === location).map(p => p.pageNumber));
+  let num = args.pageNumber || (project.pages.length + 1).toString();
+  if(occupied.has(num)) {
+    let next = project.pages.length + 1;
+    while(occupied.has(String(next)))next++;
+    num=String(next);
+  }
   const pageType: PageType = args.pageType || 'schematic';
   const title = args.title || (pageType === 'cover' ? 'Deckblatt' : `Schaltplan Seite ${num}`);
 
@@ -1249,8 +1257,8 @@ export async function handleCreatePage(
     pageNumber: num,
     pageType,
     title,
-    higherLevel: args.higherLevel || project.pages[0]?.higherLevel || '=A1',
-    location: args.location || project.pages[0]?.location || '+S1',
+    higherLevel,
+    location,
     components: [],
     wires: [],
     plotFrame: {
@@ -1278,7 +1286,7 @@ export async function handleCreatePage(
   manager.notifyModified();
   manager.render();
 
-  return { success: true, page: { id: newPage.id, pageNumber: newPage.pageNumber, pageType: newPage.pageType, title: newPage.title } };
+  return { success: true, numberAdjusted:!!args.pageNumber&&num!==args.pageNumber, page: { id: newPage.id, pageNumber: newPage.pageNumber, pageType: newPage.pageType, title: newPage.title } };
 }
 
 export async function handleSwitchPage(

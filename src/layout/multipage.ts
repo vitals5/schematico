@@ -79,8 +79,8 @@ function buildPages(
   const pages = bins.map((ids, i) => {
     const p = clone(source);
     p.id = i === 0 ? source.id : fresh(`layout-page-${source.id}-${i + 1}`);
-    if (i) {
-      let n = 2;
+    if (i || occupied.has(`${p.higherLevel}|${p.location}|${p.pageNumber}`)) {
+      let n = i ? 2 : 1;
       while (
         occupied.has(`${p.higherLevel}|${p.location}|${source.pageNumber}-${n}`)
       )

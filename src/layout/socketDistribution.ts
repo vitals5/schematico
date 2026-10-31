@@ -19,6 +19,17 @@ interface Circuit { breaker: PlacedComponent; sockets: PlacedComponent[]; input:
  * follows terminal connectivity, never prose, coordinates, device tags or potential names.
  * The source page is only replaced after net equivalence AND full geometry checks pass. */
 export function prepareSocketDistribution(project: Project, original: Page, newDevices: Set<string>, newWires: Set<string>, diagnose?: (result:DraftPreparation)=>void): boolean {
+  let last: DraftPreparation | undefined;
+  // Spend optional whitespace only if the complete measured construction fits.
+  // Every attempt still has to pass geometry, net equivalence and real Autoconnect.
+  for (const profile of [{row:10,gap:6},{row:8,gap:4},{row:8,gap:2}]) {
+    if (constructDistribution(project,original,newDevices,newWires,profile,d=>last=d)) {if(last)diagnose?.(last);return true;}
+    if (!last || !['geometry_rejected','autoconnect_unavailable'].includes(last.code)) break;
+  }
+  if(last)diagnose?.(last);
+  return false;
+}
+function constructDistribution(project: Project, original: Page, newDevices: Set<string>, newWires: Set<string>, profile:{row:number;gap:number}, diagnose?: (result:DraftPreparation)=>void): boolean {
   const masters=original.components.map(c=>getSymbolForComponent(c,project));
   if(!masters.some(s=>s?.family==='rcd'||s?.id==='rcd_4p') || !masters.some(s=>s?.family==='socket'||s?.id==='socket_schuko'))return false;
   const reject=(code:string,message:string,issues?:LayoutIssue[])=>{diagnose?.({strategy:'socket_distribution',status:'rejected',code,message,issues:issues?.filter(i=>i.severity==='error').slice(0,20)});return false;};
@@ -109,7 +120,7 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   const geometry = snapshotPage(page, work);
   const measured = new Map(geometry.nodes.map(n => [n.id, n]));
   const loads = circuits.flatMap(c => c.sockets), inputNodes = feeds.map(f => measured.get(f.id)!);
-  const row = snap(Math.max(10, initial.grid.spacing * 2));
+  const row = snap(Math.max(profile.row, initial.grid.spacing * 2));
   const pairShift = snap(Math.max(16,...loads.map(c=>Math.max(...measured.get(c.id)!.shapes.filter(s=>s.kind==='body'||s.kind==='pin_label').map(s=>s.rect.x+s.rect.width))-point(at(c,live(c))).x+2)));
   const socketReach=Math.max(...loads.map(c=>point(at(c,live(c))).x-measured.get(c.id)!.rect.x));
   const socketPins=Math.max(...loads.flatMap(c=>['N','PE'].map(p=>point(at(c,contact(c,p as 'N'|'PE'))).x-point(at(c,live(c))).x)));
@@ -144,7 +155,7 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   const peY=railY+(peFirst?0:row),nY=railY+(peFirst?row:0);
   const liveY = railY + 2*row;
   const socketY = liveY + 16;
-  const socketRow = snap(Math.max(...loads.map(c => measured.get(c.id)!.rect.height)) + 6);
+  const socketRow = snap(Math.max(...loads.map(c => measured.get(c.id)!.rect.height)) + profile.gap);
   circuits.forEach((c, i) => c.sockets.forEach((s, j) => place(at(s, live(s)), first + i * pitch + j * pairShift, socketY + j * socketRow)));
   const used = new Set(work.pages.flatMap(p => [p, ...p.components, ...p.wires, ...(p.groups ?? []), ...(p.texts ?? []), ...(p.boxes ?? []), ...(p.images ?? []), ...(p.cables ?? [])].map(x => x.id)));
   const allocate = (base: string) => { let id = base, i = 1; while (used.has(id)) id = base + '-' + i++; used.add(id); return id; };

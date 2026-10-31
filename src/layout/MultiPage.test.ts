@@ -95,6 +95,13 @@ for (const link of candidate.multiPage.links) {
 }
 assert.deepEqual(history.undo(), JSON.parse(before));
 assert.equal(history.redo()?.pages.length, 3);
+// Existing duplicate sheet numbers must not abort the entire proposal. The
+// proposed first sheet receives a free number too, not only the extra sheets.
+const duplicateNumbers=JSON.parse(before),occupied=clone(duplicateNumbers.pages[0]);
+occupied.id='occupied-number';occupied.components=[];occupied.wires=[];occupied.groups=[];duplicateNumbers.pages.push(occupied);
+const numbered=await previewLayout(duplicateNumbers,'p');assert.equal(numbered.status,'preview_ready');
+assert(numbered.candidates[0].multiPage);assert.notEqual(numbered.candidates[0].multiPage!.pages[0].pageNumber,occupied.pageNumber);
+applyLayout(duplicateNumbers,numbered.candidates[0]);assert.equal(new Set(duplicateNumbers.pages.map((p:any)=>p.pageNumber)).size,duplicateNumbers.pages.length);
 const locked = JSON.parse(before);
 const fail = await previewLayout(locked, 'p', { lockedIds: ['c0'] });
 assert.equal(fail.status, 'layout_invalid');

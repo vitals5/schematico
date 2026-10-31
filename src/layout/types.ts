@@ -64,6 +64,8 @@ export interface LayoutEdge {
   points: Point[];
 }
 export interface LayoutSnapshot {
+  /** Endpoint/visibility room reserved for real library connection pieces, in mm. */
+  autoconnectSpacing?: number;
   /** Preferred flow axis for a temporary branch-subcircuit calculation. */
   planningAxis?: 'horizontal' | 'vertical';
   /** Temporary planning reservations; never persisted as project connections. */
@@ -99,6 +101,7 @@ export interface LayoutReport {
   };
 }
 export interface LayoutConstraints {
+  preferAutoconnect?: boolean;
   draftPreparation?: DraftPreparation;
   protectedComponentIds?: string[];
   fixedFrameIds?: string[];
@@ -131,6 +134,7 @@ export interface LayoutCandidate {
   profile: string;
 }
 export interface LayoutPreview {
+  connectionConstruction?: import('./autoconnectRoutes').ConnectionConstruction;
   preparation?: DraftPreparation;
   pageId: string;
   status: 'preview_ready' | 'layout_invalid';

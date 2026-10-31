@@ -1,4 +1,6 @@
 import {sessionDiagnostics} from '../ai/SessionDiagnostics';
+import {pinStub} from './router';
+import {union} from './rect';
 import { alignBusInlet, markLayoutAutoconnections } from './draftConnections';
 import { runLayoutWorker } from './WorkerClient';
 import { applyMultiPage } from './multipage';
@@ -71,7 +73,6 @@ export async function previewLayout(
     ),
     base = projectRevision(project),
     candidates: LayoutCandidate[] = [];
-  sessionDiagnostics.record('layout_geometry_input',input);
   // A construction grammar may already have produced a completely checked,
   // pin-aligned draft. Preserve that solution before generic graph placement.
   let preparedReport;
@@ -84,6 +85,14 @@ export async function previewLayout(
       if(report.valid)preparedReport=report;
     }
   }
+  if(!preparedReport&&page.layoutConstraints?.preferAutoconnect){
+    const u=getDrawingUnitsPerMm(target),step=input.grid.spacing/2;
+    input.autoconnectSpacing=Math.ceil((4+(page.grid?page.grid.spacing/4:8)/u)/step)*step;
+    for(const node of input.nodes)node.rect=union([node.rect,...node.pins.map(pin=>{
+      const p=pinStub(input,pin,node.id);return {x:p.x-6,y:p.y-6,width:12,height:12};
+    })]);
+  }
+  sessionDiagnostics.record('layout_geometry_input',input);
   const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input);
   const rejections: LayoutPreview['issues'] = [];
   for (const solution of solutions) {

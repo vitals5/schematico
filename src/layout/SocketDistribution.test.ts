@@ -39,6 +39,13 @@ const offset=buildDraft(shifted,'p',{...input,preferAutoconnect:true});
 for(const n of snapshotPage(offset.pages[0],offset).nodes)for(const pin of n.pins){assert(Math.abs((pin.x-1.5)/2-Math.round((pin.x-1.5)/2))<1e-6);assert(Math.abs((pin.y-2.5)/2-Math.round((pin.y-2.5)/2))<1e-6);}
 const large=source();large.pages[0].plotFrame.width=1400;large.pages[0].plotFrame.height=1000;
 const triple=buildDraft(large,'p',{...socketDraft(3,3),preferAutoconnect:true});assert(triple.pages[0].wires.every(w=>w.isAutoconnect));assert(validateLayout(snapshotPage(triple.pages[0],triple)).valid);
+// A third socket row must spend optional whitespace before abandoning the
+// complete Autoconnect construction and splitting the circuit over sheets.
+const adaptiveSource=source(),adaptiveArgs=socketDraft(4,3),adaptiveRaw=buildDraft(adaptiveSource,'p',adaptiveArgs);
+const adaptive=buildDraft(adaptiveSource,'p',{...adaptiveArgs,preferAutoconnect:true});
+assert.equal(adaptive.pages[0].layoutConstraints?.draftPreparation?.status,'applied');assert.equal(adaptive.pages[0].wires.length,98);
+assert(adaptive.pages[0].wires.every(w=>w.isAutoconnect));assert(validateLayout(snapshotPage(adaptive.pages[0],adaptive)).valid);
+assert.equal(adaptive.pages.length,1);assert.deepEqual(partition(adaptive,new Set(adaptiveRaw.pages[0].components.map(c=>c.id))),partition(adaptiveRaw,new Set(adaptiveRaw.pages[0].components.map(c=>c.id))));
 // Long FI labels must reserve space beside the PE/N return corridor too, even
 // when the outgoing devices have much shorter labels. No font shrinking/fallback.
 for(const functionText of ['Fehlerstromschutzschalter FI','Fehlerstromschutzschalter Verteilung']){
