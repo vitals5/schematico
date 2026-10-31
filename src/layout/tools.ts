@@ -1,3 +1,4 @@
+import { prepareDraftConnections } from './draftConnections';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
 import { nextDeviceTag } from '../model/DeviceTag';
 import type { CanvasStateManager } from '../ai/mcp-tools/handlers';
@@ -51,6 +52,7 @@ export const CREATE_DRAFT_TOOL: McpToolDefinition = {
     type: 'object',
     properties: {
       pageId: { type: 'string' },
+      preferAutoconnect: {type:'boolean',description:'Prefer real library T/corner bus elements for compatible new branches. Defaults to true in the AI tool.'},
       components: {
         type: 'array',
         items: {
@@ -127,6 +129,8 @@ function result(preview: LayoutPreview) {
       crossSheetConnections: c.multiPage?.links.length,
       id: c.id,
       profile: c.profile,
+      autoconnectConnections: (c.multiPage?.pages??[c.page]).flatMap(p=>p.wires).filter(w=>w.isAutoconnect).length,
+      routedConnections: (c.multiPage?.pages??[c.page]).flatMap(p=>p.wires).filter(w=>!w.isAutoconnect).length,
       metrics: c.report.metrics,
       valid: c.report.valid,
     })),
@@ -182,6 +186,7 @@ export async function handleOptimizeLayout(args: any, manager: CanvasStateManage
   return result(preview);
 }
 interface Draft {
+  preferAutoconnect?: boolean;
   components: {
     id: string;
     symbolId: string;
@@ -209,6 +214,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     (input.groups !== undefined && !Array.isArray(input.groups))
   )
     throw new Error('Entwurf benötigt 1–200 Komponenten und höchstens 1000 Verbindungen.');
+  if(input.preferAutoconnect!==undefined&&typeof input.preferAutoconnect!=='boolean')throw new Error('preferAutoconnect muss ein Wahrheitswert sein.');
   const draft = clone(project),
     page = draft.pages.find((p) => p.id === pageId);
   if (!page || page.floorPlan || page.pageType !== 'schematic')
@@ -298,14 +304,23 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
       }),
     });
   }
+  if(input.preferAutoconnect)prepareDraftConnections(draft,page,new Set(input.components.map(c=>refs.get(c.id)!)),new Set(input.connections.map(w=>refs.get(w.id)!)));
   return draft;
 }
 export async function handleCreateDraft(args: any, manager: CanvasStateManager) {
   let phase='draft_validation';
   try {
-    const {project,page}=pageFor(args,manager),draft=buildDraft(project,page.id,args);
+    const {project,page}=pageFor(args,manager);
+    let draft=buildDraft(project,page.id,{...args,preferAutoconnect:args.preferAutoconnect??true});
     phase='layout_computation';
-    const preview=await previewLayout(project,page.id,{},draft);
+    let preview=await previewLayout(project,page.id,{},draft);
+    if(preview.status==='layout_invalid'&&args.preferAutoconnect!==false){
+      const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
+      if(fallback.pages.find(p=>p.id===page.id)!.components.length!==draft.pages.find(p=>p.id===page.id)!.components.length){
+        const alternative=await previewLayout(project,page.id,{},fallback);
+        if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}
+      }
+    }
     phase='preview_presentation';
     manager.showLayoutPreview?.(preview,draft,{});
     return result(preview);

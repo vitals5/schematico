@@ -35,7 +35,7 @@ history.reset(p);
 applyLayout(p, candidate);
 history.record(p);
 assert.equal(topology(p), net);
-assert.equal(p.pages[0].wires[0].isAutoconnect, false);
+assert.equal(p.pages[0].wires[0].isAutoconnect, true, 'A verified straight facing path is retained as autoconnect');
 assert(validateLayout(snapshotPage(p.pages[0], p)).valid);
 assert.deepEqual(history.undo(), JSON.parse(before));
 assert(history.redo());

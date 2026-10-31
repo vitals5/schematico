@@ -1,3 +1,4 @@
+import { alignBusInlet, markLayoutAutoconnections } from './draftConnections';
 import { runLayoutWorker } from './WorkerClient';
 import { applyMultiPage } from './multipage';
 import { suggestSplit } from './split';
@@ -136,10 +137,19 @@ export async function previewLayout(
     };
     const copy = clone(target);
     copy.pages[copy.pages.findIndex((p) => p.id === pageId)] = next;
+    if(!input.nodes.some(n=>n.fixed)&&!input.frames.some(f=>f.fixed)){
+      const saved=clone(next);
+      if(alignBusInlet(copy,next)&&!validateLayout(snapshotPage(next,copy,options)).valid)Object.assign(next,saved);
+    }
+    markLayoutAutoconnections(copy,next);
     CrossReferenceEngine.updateProjectCrossReferences(copy);
-    const report = validateLayout(snapshotPage(next, copy, options));
+    const finalSnapshot = snapshotPage(next, copy, options);
+    const report = validateLayout(finalSnapshot);
     report.issues.push(...solution.report.issues.filter(i=>i.type==='layout_timeout'&&i.severity==='warning'));
-    report.metrics.displacement = solution.report.metrics.displacement;
+    report.metrics.displacement = finalSnapshot.nodes.reduce((sum,n)=>{
+      const original=input.nodes.find(o=>o.id===n.id)!;
+      return sum+Math.abs(n.origin.x-original.origin.x)+Math.abs(n.origin.y-original.origin.y);
+    },0);
     if (topology(copy) !== topology(target))
       report.issues.push({
         type: 'topology_changed',
