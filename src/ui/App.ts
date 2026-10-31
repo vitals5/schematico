@@ -1,3 +1,5 @@
+import {RecentFiles,type RecentEntry,type RecentHandle} from '../model/RecentFiles';
+import {RecentFilesDialog} from './RecentFilesDialog';
 import { showProviderSettings } from '../ai/components/ProviderSettings';
 import { applyLayout } from '../layout/service';
 import { LayoutPreviewDialog } from '../layout/PreviewDialog';
@@ -83,6 +85,16 @@ export class App {
   private isFloatingBarMinimized: boolean = false;
   private autoSaveTimer: any = null;
   private saveFeedbackTimer: any = null;
+  private recentFiles=new RecentFiles((window as any).electronAPI?.recentFiles);
+  private savedFileRevision='';
+  private fileRevision(project:Project=this.project):string{return JSON.stringify({...project,modified:undefined,activePageId:undefined});}
+  private async rememberRecent(project:Project,names:string[],source:{paths?:string[];handles?:RecentHandle[];recentId?:string}={}):Promise<void>{try{await this.recentFiles.remember(project,names,source);}catch{console.warn('Recent file history could not be updated.');}}
+  private openRecentFiles():void{new RecentFilesDialog(this.recentFiles,async(entry:RecentEntry)=>{
+    if(this.savedFileRevision!==this.fileRevision()&&!confirm(t('recentReplaceConfirm')))return false;
+    const selected=await this.recentFiles.open(entry);
+    if(!selected){const before=this.project;await this.openProjectWithPicker();return before!==this.project;}
+    return this.handleFilesOpen(selected.files,{filePath:selected.filePaths?.length===1?selected.filePaths[0]:undefined,filePaths:selected.filePaths,fileHandle:selected.fileHandle,fileHandles:selected.fileHandles,recentId:entry.id});
+  },()=>void this.openProjectWithPicker()).show();}
   private currentFilePath: string | null = null;
   private currentFileHandle: any = null;
   private currentFileFormat: 'json' | 'zw1' | 'xml' = 'json';
@@ -109,6 +121,7 @@ export class App {
     this.initCanvas();
     this.initAiAssistant();
     this.history.reset(this.project);
+    this.savedFileRevision=this.fileRevision();
     this.initHistoryEvents();
     this.initPanelResizers();
     onLanguageChange(() => {
@@ -189,6 +202,7 @@ export class App {
     this.history.reset(this.project);
     this.updateUI();
     this.saveActiveProject();
+    this.savedFileRevision=this.fileRevision();
   }
 
   private triggerAutoSave(): void {
@@ -1145,6 +1159,7 @@ export class App {
 
     // Projekt
     bindMenuOpt('menuOpen', () => void this.openProjectWithPicker());
+    bindMenuOpt('menuRecentFiles',()=>this.openRecentFiles());
     bindMenuOpt('menuToggleLeftPanel',()=>this.setLeftPanelCollapsed(!this.isLeftCollapsed));
     bindMenuOpt('menuToggleRightPanel',()=>this.setRightPanelCollapsed(!this.isRightCollapsed));
     bindMenuOpt('menuToggleFloatingBar',()=>this.setFloatingBarMinimized(!this.isFloatingBarMinimized));
@@ -4695,7 +4710,8 @@ export class App {
           : [result];
         const files = list.map((f: { name: string; buffer: number[] }) => new File([new Uint8Array(f.buffer)], f.name));
         await this.handleFilesOpen(files, {
-          filePath: files.length === 1 ? list[0].path : undefined
+          filePath: files.length === 1 ? list[0].path : undefined,
+          filePaths:list.map((f:{path:string})=>f.path)
         });
       } catch (err: any) {
         const isEn = this.project.language === 'en';
@@ -4726,7 +4742,8 @@ export class App {
           files.push(await h.getFile());
         }
         await this.handleFilesOpen(files, {
-          fileHandle: handles.length === 1 ? handles[0] : undefined
+          fileHandle: handles.length === 1 ? handles[0] : undefined,
+          fileHandles:handles
         });
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
@@ -4744,15 +4761,16 @@ export class App {
 
   private async handleFilesOpen(
     files: FileList | File[],
-    sourceInfo?: { filePath?: string; fileHandle?: any }
-  ): Promise<void> {
+    sourceInfo?: { filePath?: string; filePaths?:string[]; fileHandle?: any; fileHandles?:RecentHandle[]; recentId?:string }
+  ): Promise<boolean> {
+    const selectedFiles=Array.from(files);
     try {
-      const result: PackageInspectionResult = await PackageHandler.inspectFiles(files);
+      const result: PackageInspectionResult = await PackageHandler.inspectFiles(selectedFiles);
       
       if (result.extractedProject) {
         this.project = result.extractedProject;
-        const firstFile = files[0];
-        const electronFilePath = sourceInfo?.filePath || (files.length === 1 ? (firstFile as any)?.path : undefined);
+        const firstFile = selectedFiles[0];
+        const electronFilePath = sourceInfo?.filePath || (selectedFiles.length === 1 ? (firstFile as any)?.path : undefined);
         const format = this.detectProjectFileFormat(electronFilePath || firstFile?.name);
         if (format && (electronFilePath || sourceInfo?.fileHandle)) {
           this.currentFilePath = electronFilePath ?? null;
@@ -4776,11 +4794,15 @@ export class App {
         this.history.reset(this.project);
         this.updateUI();
         this.saveActiveProject();
+        this.savedFileRevision=this.fileRevision();
+        await this.rememberRecent(this.project,selectedFiles.map(f=>f.name),{paths:sourceInfo?.filePaths??(sourceInfo?.filePath?[sourceInfo.filePath]:undefined),handles:sourceInfo?.fileHandles??(sourceInfo?.fileHandle?[sourceInfo.fileHandle]:undefined),recentId:sourceInfo?.recentId});
+        return true;
       }
     } catch (err: any) {
       const isEn = this.project.language === 'en';
       alert(`${isEn ? 'Error opening file' : 'Fehler beim Öffnen der Datei'}: ${neutralSourceLabel(err.message)}`);
     }
+    return false;
   }
 
   private createNewProject(): void {
@@ -4836,17 +4858,18 @@ export class App {
     this.history.reset(this.project);
     this.updateUI();
     this.saveActiveProject();
+    this.savedFileRevision=this.fileRevision();
   }
 
-  private async buildProjectBlob(format: 'json' | 'zw1' | 'xml'): Promise<Blob> {
+  private async buildProjectBlob(format: 'json' | 'zw1' | 'xml',project:Project=this.project): Promise<Blob> {
     if (format === 'zw1') {
-      return await PackageHandler.exportToZw1(this.project);
+      return await PackageHandler.exportToZw1(project);
     }
     if (format === 'xml') {
-      const xml = PackageHandler.generateProjectXml(this.project);
+      const xml = PackageHandler.generateProjectXml(project);
       return new Blob([xml], { type: 'application/xml' });
     }
-    const jsonStr = JSON.stringify(this.project, null, 2);
+    const jsonStr = JSON.stringify(project, null, 2);
     return new Blob([jsonStr], { type: 'application/json' });
   }
 
@@ -4896,7 +4919,8 @@ export class App {
       : 'json';
     const ext = format;
     const defaultName = `${this.project.name}.${ext}`;
-    const blob = await this.buildProjectBlob(format);
+    const savedProject=structuredClone(this.project),savedRevision=this.fileRevision(savedProject);
+    const blob = await this.buildProjectBlob(format,savedProject);
 
     const electronAPI = (window as any).electronAPI;
     if (electronAPI?.saveFile) {
@@ -4916,6 +4940,8 @@ export class App {
         if (typeof saved === 'string') {
           this.currentFilePath = saved;
           this.currentFileFormat = this.detectProjectFileFormat(saved) ?? format;
+          this.savedFileRevision=savedRevision;
+          await this.rememberRecent(savedProject,[saved.split(/[\\/]/).pop()||saved],{paths:[saved]});
           this.showSaveFeedback(saved.split(/[\\/]/).pop() || saved);
         } else {
           this.showSaveFeedback(defaultName);
@@ -4929,6 +4955,8 @@ export class App {
         const writable = await this.currentFileHandle.createWritable();
         await writable.write(blob);
         await writable.close();
+        this.savedFileRevision=savedRevision;
+        await this.rememberRecent(savedProject,[this.currentFileHandle.name||defaultName],{handles:[this.currentFileHandle]});
         this.showSaveFeedback(this.currentFileHandle.name || defaultName);
         return;
       } catch (err: any) {
@@ -4958,12 +4986,14 @@ export class App {
         });
         if (!handle) return;
         const chosenFormat = this.detectProjectFileFormat(handle.name) ?? 'json';
-        const finalBlob = chosenFormat === format ? blob : await this.buildProjectBlob(chosenFormat);
+        const finalBlob = chosenFormat === format ? blob : await this.buildProjectBlob(chosenFormat,savedProject);
         const writable = await handle.createWritable();
         await writable.write(finalBlob);
         await writable.close();
         this.currentFileHandle = handle;
         this.currentFileFormat = chosenFormat;
+        this.savedFileRevision=savedRevision;
+        await this.rememberRecent(savedProject,[handle.name||defaultName],{handles:[handle]});
         this.showSaveFeedback(handle.name || defaultName);
         return;
       } catch (err: any) {
@@ -4972,6 +5002,8 @@ export class App {
     }
 
     this.downloadBlob(blob, defaultName);
+    this.savedFileRevision=savedRevision;
+    await this.rememberRecent(savedProject,[defaultName]);
     this.showSaveFeedback(defaultName);
   }
 

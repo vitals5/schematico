@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const { migrateMacroSettings } = require('./settings-migration.cjs');
 const { createMacroLibrary } = require('./macro-library.cjs');
+const {createRecentFiles}=require('./recent-files.cjs');
+let recentStore;
+const recentFiles=()=>recentStore??=createRecentFiles(path.join(app.getPath('userData'),'recent-files.json'));
 const macroLibrary = () => createMacroLibrary(path.join(app.getPath('userData'), 'macro-library.json'));
 const brandIcon = path.join(__dirname, app.isPackaged
   ? '../dist/branding/icon-256.png' : '../public/branding/icon-256.png');
@@ -61,6 +64,7 @@ ipcMain.handle('dialog:openFile', async () => {
     properties: ['openFile', 'multiSelections']
   });
   if (canceled || filePaths.length === 0) return null;
+  recentFiles().grant(filePaths);
   const files = filePaths.map(fp => ({
     path: fp,
     name: path.basename(fp),
@@ -85,8 +89,15 @@ ipcMain.handle('dialog:saveFile', async (_event, { filePath: targetPath, default
     finalPath = filePath;
   }
   fs.writeFileSync(finalPath, Buffer.from(data));
+  recentFiles().grant([finalPath]);
   return finalPath;
 });
+
+ipcMain.handle('recentFiles:list',()=>recentFiles().list());
+ipcMain.handle('recentFiles:remember',(_event,paths)=>recentFiles().remember(paths));
+ipcMain.handle('recentFiles:read',(_event,id)=>recentFiles().read(id));
+ipcMain.handle('recentFiles:remove',(_event,id)=>recentFiles().remove(id));
+ipcMain.handle('recentFiles:clear',()=>recentFiles().clear());
 
 ipcMain.handle('macroLibrary:getFolder', () => macroLibrary().getFolder());
 ipcMain.handle('macroLibrary:setFolder', (_event, folder) => macroLibrary().setFolder(folder));

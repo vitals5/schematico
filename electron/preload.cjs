@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     list: () => ipcRenderer.invoke('macroLibrary:list'),
     read: relativePath => ipcRenderer.invoke('macroLibrary:read', relativePath)
   },
+  recentFiles: {
+    list:()=>ipcRenderer.invoke('recentFiles:list'),
+    remember:paths=>ipcRenderer.invoke('recentFiles:remember',paths),
+    read:id=>ipcRenderer.invoke('recentFiles:read',id),
+    remove:id=>ipcRenderer.invoke('recentFiles:remove',id),
+    clear:()=>ipcRenderer.invoke('recentFiles:clear')
+  },
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
   saveFile: (options) => ipcRenderer.invoke('dialog:saveFile', options),
   onMenuAction: (channel, callback) => {

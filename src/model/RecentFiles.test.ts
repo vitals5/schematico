@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {RecentFiles,type BrowserRecent,type RecentStore,type RecentHandle} from './RecentFiles';
+import {fixture} from '../layout/testing/fixture';
+class Memory implements RecentStore {entries:BrowserRecent[]=[];async get(){return this.entries;}async put(entries:BrowserRecent[]){this.entries=entries;}}
+const project=fixture(),store=new Memory(),recent=new RecentFiles(undefined,store);
+await recent.remember(project,['one.json']);let list=await recent.list();assert.equal(list.length,1);assert.equal(list[0].kind,'copy');const firstId=list[0].id;
+project.name='Updated';await recent.remember(project,['one.json']);assert.equal((await recent.list()).length,1);assert.equal((await recent.list())[0].id,firstId);
+const reopened=await new RecentFiles(undefined,store).open(list[0]);assert.equal(JSON.parse(await reopened!.files[0].text()).name,'Updated');assert.equal(reopened!.fileHandle,undefined,'Cached copies cannot overwrite an original file');
+await recent.remember(project,['two.json']);assert.equal((await recent.list()).length,2,'Save As retains distinct file names');
+await recent.remember(project,['Updated.json'],{recentId:firstId});assert.equal((await recent.list()).length,2);assert.equal((await recent.list())[0].name,'one.json','Reopening a cached JSON keeps its original archive/file label');
+for(let i=0;i<15;i++)await recent.remember({...project,id:'p'+i},['file'+i+'.json']);assert.equal((await recent.list()).length,10);
+const before=JSON.stringify(project);let requested=0,read=0,denied=false,current='first';
+const makeHandle=(id:string):RecentHandle&{key:string}=>({key:id,name:'same.json',isSameEntry:async h=>(h as any).key===id,queryPermission:async()=> 'prompt',requestPermission:async()=>{requested++;return denied?'denied':'granted';},getFile:async()=>{read++;return new File([current],'same.json');}});
+const handles=new Memory(),tracked=new RecentFiles(undefined,handles);await tracked.remember(project,['same.json'],{handles:[makeHandle('a')]});await tracked.remember(project,['same.json'],{handles:[makeHandle('a')]});assert.equal((await tracked.list()).length,1);await tracked.remember(project,['same.json'],{handles:[makeHandle('b')]});assert.equal((await tracked.list()).length,2,'Identical basenames in different directories stay distinct');assert.equal(requested,0);assert.equal(read,0,'Listing history never requests a grant or reads files');
+let entry=(await tracked.list())[0];current='latest';assert.equal(await (await tracked.open(entry))!.files[0].text(),'latest','File handles read current disk contents');assert.equal(requested,1);denied=true;await assert.rejects(tracked.open(entry),/not granted/);assert.equal(read,1,'Denied access must not read a stale cache');
+await tracked.remove(entry.id);assert.equal((await tracked.list()).length,1);await tracked.clear();assert.equal((await tracked.list()).length,0);assert.equal(JSON.stringify(project),before);
+const group=new RecentFiles(undefined,new Memory());await group.remember(project,['a.001','a.002'],{handles:[makeHandle('1'),makeHandle('2')]});await group.remember(project,['a.002','a.001'],{handles:[makeHandle('2'),makeHandle('1')]});assert.equal((await group.list()).length,1,'Multipart selections are one history entry independent of selection order');
+const quota=new RecentFiles(undefined,{get:async()=>{throw Error('disabled');},put:async()=>{throw Error('quota');}});await quota.remember(project,['session.json']);assert.equal((await quota.list()).length,1,'Storage failure retains a session history without blocking the primary operation');
+const large=new RecentFiles(undefined,new Memory());await large.remember({...project,description:'x'.repeat(33*1024*1024)},['huge.json']);entry=(await large.list())[0];assert.equal(entry.kind,'reselect');assert.equal(await large.open(entry),null,'Large copies offer reselection instead of unbounded local caching');
+const snapshotStore=new Memory(),snapshotProject=fixture(),snapshots=new RecentFiles(undefined,snapshotStore);
+snapshotProject.name='Recorded';const pending=snapshots.remember(snapshotProject,['captured.json']);snapshotProject.name='Edited later';await pending;assert.equal(JSON.parse(await (await snapshots.open((await snapshots.list())[0]))!.files[0].text()).name,'Recorded','Queued history writes retain the successful-open/save snapshot');
+const cryptoDescriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+try{Object.defineProperty(globalThis,'crypto',{configurable:true,value:undefined});const insecure=new RecentFiles(undefined,new Memory());await insecure.remember(project,['insecure.json']);assert.equal((await insecure.list()).length,1);}finally{if(cryptoDescriptor)Object.defineProperty(globalThis,'crypto',cryptoDescriptor);}
+console.log('✓ Recent browser projects: persistence, updated copies, Save As, limit/dedup, path-free fallback, real file handles, permission denial, multipart selections and clearing');

@@ -361,6 +361,9 @@ Windows packages:
 
 **Updates:** Use **Help → Check for updates** (or the button in **About Schematico**) to compare your version with the latest stable GitHub release. The download button opens the release page in your browser. No automatic installation or project upload takes place. Offline and GitHub request-limit errors can be retried.
 
+**Recent files:** Use **Project → Recent Files** to reopen the last ten successfully opened or saved projects. Windows and Linux retain the original paths and reopen the current files; multipart archives remain one entry. Browser file handles are retained where supported. Otherwise, a clearly labeled local project copy is stored in this browser and opens at its last recorded state. Larger copies require selecting the source file again. Entries survive restart when local storage is available. Remove individual entries or clear the list without deleting project files. Unsaved edits require confirmation before switching through the history.
+
+
 Linux x64 packages use the same application, native file dialogs, macro library and branding:
 - **`Schematico-<version>-linux-x64.AppImage`**: Portable application. Make it executable before launching (`chmod +x Schematico-*.AppImage`). Systems without FUSE can use the AppImage runtime's `--appimage-extract-and-run` option.
 - **`Schematico-<version>-linux-x64.deb`**: Debian/Ubuntu package with application-menu entry and icon; install with your package manager.
