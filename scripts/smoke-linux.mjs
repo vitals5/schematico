@@ -50,11 +50,11 @@ try{
   const result=await new Promise((yes,no)=>{
     const timer=setTimeout(()=>no(new Error('Desktop did not become ready: '+log)),30000);
     socket.addEventListener('message',event=>{const message=JSON.parse(event.data);if(message.id!==1)return;clearTimeout(timer);yes(message);});
-    socket.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{awaitPromise:true,returnByValue:true,expression:`(async()=>{for(let i=0;i<100;i++){if(document.querySelector('canvas')&&window.electronAPI?.macroLibrary?.getFolder){await window.electronAPI.macroLibrary.getFolder();return {title:document.title,canvas:true,native:true};}await new Promise(r=>setTimeout(r,200));}throw new Error('Editor or native bridge missing');})()`}}));
+    socket.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{awaitPromise:true,returnByValue:true,expression:`(async()=>{for(let i=0;i<100;i++){if(document.querySelector('#canvasContainer svg.cad-viewport')?.children.length&&window.electronAPI?.macroLibrary?.getFolder){await window.electronAPI.macroLibrary.getFolder();return {title:document.title,editor:true,native:true};}await new Promise(r=>setTimeout(r,200));}throw new Error('Editor or native bridge missing: '+JSON.stringify({title:document.title,editor:!!document.querySelector('#canvasContainer svg.cad-viewport'),native:typeof window.electronAPI?.macroLibrary?.getFolder}));})()`}}));
   });
-  assert(!result.error&&!result.result?.exceptionDetails,JSON.stringify(result));
+  assert(!result.error&&!result.result?.exceptionDetails,JSON.stringify(result)+'\n'+log);
   assert.match(result.result.result.value.title,/Schematico/);
-  assert.equal(result.result.result.value.canvas,true);assert.equal(result.result.result.value.native,true);
+  assert.equal(result.result.result.value.editor,true);assert.equal(result.result.result.value.native,true);
   console.log('✓ Linux x64 AppImage and Debian metadata, identical app contents, launcher/icon, packaged editor and native macro bridge');
   }
 }finally{

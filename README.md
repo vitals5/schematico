@@ -24,7 +24,7 @@
 <p align="center">
   <a href="https://vitals5.github.io/schematico/"><strong>🚀 Launch Web App</strong></a> •
   <a href="https://github.com/vitals5/schematico/releases/latest"><strong>💾 Windows Download (.exe)</strong></a> •
-  <a href="https://github.com/vitals5/schematico/releases/latest"><strong>🐧 Linux Download (.AppImage / .deb)</strong></a> •
+  <a href="https://github.com/vitals5/schematico/actions/workflows/build-linux.yml"><strong>🐧 Linux Builds (.AppImage / .deb)</strong></a> •
   <a href="https://vitals5.github.io/schematico/landing.html"><strong>🌐 Interactive Landing Page</strong></a> •
   <a href="#highlights--features"><strong>✨ Feature Overview</strong></a>
 </p>
