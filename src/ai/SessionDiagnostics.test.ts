@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {SessionDiagnostics,sessionDiagnostics} from './SessionDiagnostics';
+import {McpToolRegistry} from './mcp-tools';
+import {fixture} from '../layout/testing/fixture';
+const values=new Map([['schematico_openrouter_api_key','private-session-key-value']]);
+(globalThis as any).localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k)};
+const trace=new SessionDiagnostics(),original={prompt:'test private-session-key-value',apiKey:'other-secret',headers:{Authorization:'Bearer private'},attachment:{mimeType:'application/pdf',data:'raw-document'}};
+trace.record('request',original);original.prompt='changed';
+const report=trace.export({project:fixture()}),json=JSON.stringify(report);
+assert(!json.includes('private-session-key-value'));assert(!json.includes('other-secret'));assert(!json.includes('raw-document'));assert(!json.includes('Bearer private'));assert(json.includes('test [REDACTED]'));assert.equal(report.coverage.eventsIncluded,1);
+const bounded=new SessionDiagnostics(1000,2,500);for(let i=0;i<5;i++)bounded.record('test',{i});assert.equal(bounded.export({}).coverage.droppedEvents,3);bounded.record('big',{text:'x'.repeat(1000)});assert(bounded.export({}).events.at(-1).data.truncated);bounded.clear();assert.equal(bounded.export({}).coverage.eventsRecorded,0);
+sessionDiagnostics.clear();const project=fixture(),registry=new McpToolRegistry(),manager:any={getProject:()=>project,getActivePage:()=>project.pages[0]};
+await registry.executeTool('get_project_info',{},manager);await registry.executeTool('unknown_tool',{},manager);
+const events=sessionDiagnostics.export({}).events;assert.equal(events.filter((e:any)=>e.type==='tool_start').length,2);assert.equal(events.filter((e:any)=>e.type==='tool_end').length,2);assert(events.some((e:any)=>e.data.diagnosticId));for(const end of events.filter((e:any)=>e.type==='tool_end'))assert(events.some((start:any)=>start.type==='tool_start'&&start.data.callId===end.data.callId));
+assert(!JSON.stringify(await registry.executeTool('get_project_info',{},manager)).includes('schematico-session-diagnostic'),'Local trace is not added to provider tool responses');
+console.log('✓ Session export: immutable chronological events, successful/failed real tools, project context, secret/attachment redaction, bounded retention and clear');

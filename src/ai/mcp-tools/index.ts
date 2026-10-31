@@ -1,3 +1,4 @@
+import {sessionDiagnostics} from '../SessionDiagnostics';
 import { rememberDiagnostic, sanitizeDiagnostic } from '../Diagnostics';
 import {DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL, handleValidateLayout, handleOptimizeLayout, handleCreateDraft } from '../../layout/tools';
@@ -172,12 +173,14 @@ export class McpToolRegistry {
     args: any,
     manager: CanvasStateManager
   ): Promise<any> {
-    const started=Date.now();
+    const started=Date.now(),callId='tool-'+started.toString(36)+'-'+Math.random().toString(36).slice(2,9);
+    sessionDiagnostics.record('tool_start',{callId,tool:name,args});
     let stage='tool_lookup';
     const failure=(error:any,result?:any)=>{
       let project:unknown;
       try{project=manager.getProject();}catch{/* Missing state is part of the failure. */}
       const diagnosticId=rememberDiagnostic({tool:name,stage:error?.diagnosticStage??stage,error,args,result,project,durationMs:Date.now()-started});
+      sessionDiagnostics.record('tool_end',{callId,tool:name,args,result,error:{name:error?.name,message:error?.message,stack:error?.stack},diagnosticId,durationMs:Date.now()-started});
       return {...result,success:false,error:sanitizeDiagnostic(error?.message??result?.error??result?.message??'Aktion fehlgeschlagen.'),diagnosticId};
     };
     try {
@@ -188,6 +191,7 @@ export class McpToolRegistry {
       stage='tool_execution';
       const result = await entry.handler(parsedArgs, manager);
       if(result?.success===false){stage=result.status==='layout_invalid'?'layout_validation':'tool_execution';return failure(undefined,result);}
+      sessionDiagnostics.record('tool_end',{callId,tool:name,result,durationMs:Date.now()-started});
       return result;
     } catch (err: any) {
       return failure(err);

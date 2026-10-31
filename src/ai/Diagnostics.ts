@@ -82,6 +82,7 @@ export function rememberDiagnostic(input: {
     reports.delete(reports.keys().next().value!);
   return id;
 }
+export function getDiagnostics(): AiDiagnostic[] { return [...reports.values()]; }
 export function getDiagnostic(id: string): AiDiagnostic | undefined { return reports.get(id); }
 export function enrichDiagnostic(id: string, context: {
   prompt: string;

@@ -1,3 +1,4 @@
+import {sessionDiagnostics} from '../ai/SessionDiagnostics';
 import {rcdPorts,breakerPorts,socketPorts,isDistributionFeed} from './distributionRoles';
 import type { Page, Project, PlacedComponent, Wire, PinDefinition } from '../model/types';
 import { getDrawingUnitsPerMm, getSymbolById, getSymbolForComponent } from '../model/symbols';
@@ -235,6 +236,7 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
   };
   if (JSON.stringify(signature(ids, original.wires)) !== JSON.stringify(signature(finalNets, page.wires)))return reject('net_equivalence','Die ursprüngliche elektrische Netzstruktur konnte nicht erhalten werden.');
   const report=validateLayout(final);
+  sessionDiagnostics.record('distribution_geometry',{snapshot:final,report});
   if(!report.valid)return reject('geometry_rejected','Die gemessenen Symbole, Beschriftungen oder Leitungszüge passen nicht kollisionsfrei in den Zeichenbereich.',report.issues);
   markLayoutAutoconnections(work, page);
   if (page.wires.some(w => !w.isAutoconnect)) return reject('autoconnect_unavailable','Nicht alle konstruierten Abschnitte sind mit der tatsächlichen Autoconnect-Erkennung reproduzierbar.');

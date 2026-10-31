@@ -1,3 +1,4 @@
+import {sessionDiagnostics} from '../SessionDiagnostics';
 import { readAttachments, assertAttachmentModel, ATTACHMENT_ACCEPT, type AiAttachment } from '../Attachments';
 import { cachedModels } from '../openrouter/api';
 import { getDiagnostic, clearDiagnostics, diagnosticSummary, sanitizeDiagnostic } from '../Diagnostics';
@@ -144,6 +145,7 @@ export class AiChatSidebar {
         <div class="ai-chat-header-actions">
           <div id="aiSidebarBridgeStatus" class="ai-sidebar-bridge-pill" title="Status der lokalen MCP Bridge"></div>
           <button type="button" class="ai-header-btn" id="btnAiDistribute" title="Geprüfte Layoutvorschau berechnen; Änderungen erst nach Übernehmen">📐</button>
+          <button type="button" class="ai-header-btn" id="btnAiExportSession" title="Session-Diagnose exportieren: enthält Chat, Werkzeugaufrufe und Projektdaten; Zugangsdaten und Anhanginhalte werden entfernt" aria-label="Session-Diagnose exportieren">⇩</button>
           <button type="button" class="ai-header-btn" id="btnAiSettings" title="KI-Anbieter, API-Schlüssel und Modell verwalten">⚙️</button>
           <button type="button" class="ai-header-btn" id="btnAiClearHistory" title="Chatverlauf leeren">🗑️</button>
           <button type="button" class="ai-header-btn" id="btnAiClose" title="Schließen (✕)">✕</button>
@@ -205,7 +207,7 @@ export class AiChatSidebar {
           </button>
         </div>
         <div class="ai-footer-note">
-          PNG, JPEG, WebP, PDF · max. 4 Dateien, je 10 MB, zusammen 14 MB. Anhänge gehen beim Senden an den gewählten KI-Anbieter.
+          Session-Diagnose: ⇩ oben · enthält Chat und Projekt. Vor Neuladen exportieren; Anhanginhalte werden nicht mitgegeben.<br>PNG, JPEG, WebP, PDF · max. 4 Dateien, je 10 MB, zusammen 14 MB. Anhänge gehen beim Senden an den gewählten KI-Anbieter.
         </div>
       </div>
     `;
@@ -225,12 +227,17 @@ export class AiChatSidebar {
       this.attachments=[];this.renderAttachments();
       this.geminiClient.clearHistory();
       clearDiagnostics();
+      sessionDiagnostics.clear();
       const messagesContainer = this.container.querySelector('#aiChatMessages');
       if (messagesContainer) messagesContainer.innerHTML = '';
       const welcome = this.container.querySelector<HTMLElement>('#aiChatWelcome');
       if (welcome) welcome.style.display = 'block';
     });
 
+    this.container.querySelector('#btnAiExportSession')?.addEventListener('click',()=>{
+      const report=sessionDiagnostics.export({project:this.stateManager.getProject(),chat:this.geminiClient.getMessages(),environment:{userAgent:navigator.userAgent,language:navigator.language,viewport:{width:window.innerWidth,height:window.innerHeight},desktop:!!(window as any).electronAPI},pendingAttachments:this.attachments.map(({name,mimeType,size})=>({name,mimeType,size})),generating:this.isGenerating});
+      const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='schematico-session-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
     const btnSettings = this.container.querySelector('#btnAiSettings');
     btnSettings?.addEventListener('click', () => this.showApiKeyModal());
 
@@ -413,6 +420,7 @@ export class AiChatSidebar {
 
       this.appendModelResponse(response);
     } catch (err: any) {
+      sessionDiagnostics.record('chat_error',{message:err?.message,stack:err?.stack,diagnosticId:err?.diagnosticId});
       if(this.geminiClient.getMessages().length===historyLength){this.attachments=attachments;this.renderAttachments();input.value=prompt;userMessage?.remove();}
       this.appendErrorMessage(sanitizeDiagnostic(err?.message || 'Fehler bei der Kommunikation mit der KI-API.'));
       if(err?.diagnosticId){const list=this.container.querySelector<HTMLElement>('#aiChatMessages');if(list)this.appendDiagnostic(list,err.diagnosticId);}

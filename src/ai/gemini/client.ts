@@ -1,3 +1,4 @@
+import {sessionDiagnostics} from '../SessionDiagnostics';
 import { attachmentParts, assertAttachmentModel, type AiAttachment } from '../Attachments';
 import { rememberDiagnostic, enrichDiagnostic } from '../Diagnostics';
 import { getAiProvider, getAiModel, getOpenRouterKey } from '../ProviderConfig';
@@ -153,6 +154,8 @@ export class GeminiChatClient {
     }
 
     const attachments = options?.attachments ?? [];
+    sessionDiagnostics.record('generation_start',{prompt,provider,model:this.model,thinking:this.getThinkingLevel(),systemInstruction:this.systemInstruction,attachments:attachments.map(({name,mimeType,size})=>({name,mimeType,size}))});
+    try{sessionDiagnostics.record('project_before_generation',stateManager.getProject());}catch{}
     const parts = attachmentParts(prompt, attachments);
     const priorBytes=this.history.flatMap(c=>c.parts??[]).reduce((sum,p)=>sum+(p.inlineData?.data?p.inlineData.data.length*3/4-(p.inlineData.data.endsWith('==')?2:p.inlineData.data.endsWith('=')?1:0):0),0);
     if(priorBytes+attachments.reduce((sum,a)=>sum+a.size,0)>14*1024*1024)throw new Error('Der Chat enthält bereits zu viele Dateidaten. Bitte den Chatverlauf leeren, bevor weitere Dateien angehängt werden.');
@@ -206,6 +209,7 @@ export class GeminiChatClient {
           iteration === 1 ? 'Analysiere Anfrage...' : `Führe Schaltplan-Aktionen aus (Schritt ${iteration})...`
         );
 
+        sessionDiagnostics.record('provider_request',{iteration,provider,model:this.model,history:this.history,systemInstruction:this.systemInstruction,tools:this.toolRegistry.getToolDefinitions(),thinking:this.thinkingLevel});
         let response: any;
         try {
           response = provider === 'openrouter'
@@ -235,6 +239,7 @@ export class GeminiChatClient {
           break;
         }
 
+        sessionDiagnostics.record('provider_response',{iteration,candidates:response.candidates,functionCalls:response.functionCalls,text:response.text,usage:response.usageMetadata});
         // Append model response to conversation history
         const candidateContent = response.candidates?.[0]?.content;
         if (candidateContent) {
@@ -319,6 +324,8 @@ export class GeminiChatClient {
         }
       }
       // Layout proposals require explicit user acceptance; never mutate geometry as an implicit post-pass.
+      sessionDiagnostics.record('generation_end',{text:finalText,aborted:this.isAborted,iterations:iteration});
+      try{sessionDiagnostics.record('project_after_generation',stateManager.getProject());}catch{}
       modelMsg.text = finalText;
       return modelMsg;
     } catch(error){
@@ -326,6 +333,7 @@ export class GeminiChatClient {
       let diagnosticProject:unknown;try{diagnosticProject=stateManager.getProject();}catch{}
       const diagnosticId=rememberDiagnostic({tool:(error as any)?.toolName??'ai_request',stage:(error as any)?.diagnosticStage??'provider_request',
         error,args:(error as any)?.toolArguments,project:diagnosticProject,prompt,recentCalls:currentToolCalls.slice(-10),provider,model:this.model});
+      sessionDiagnostics.record('generation_error',{message:err.message,stack:err.stack,diagnosticId});
       Object.assign(err,{diagnosticId});throw err;
     } finally {
       this.currentAbortController = null;

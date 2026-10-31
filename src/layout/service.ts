@@ -1,3 +1,4 @@
+import {sessionDiagnostics} from '../ai/SessionDiagnostics';
 import { alignBusInlet, markLayoutAutoconnections } from './draftConnections';
 import { runLayoutWorker } from './WorkerClient';
 import { applyMultiPage } from './multipage';
@@ -35,6 +36,8 @@ export async function previewLayout(
   options: LayoutOptions = {},
   draft?: Project,
 ): Promise<LayoutPreview> {
+  sessionDiagnostics.record('layout_request',{pageId,options});
+  sessionDiagnostics.record('layout_input_project',draft??project);
   if (typeof document !== 'undefined') await document.fonts.ready;
   const target = clone(draft ?? project);
   // Generated labels must exist before placement/routing, not appear only in final validation.
@@ -68,6 +71,7 @@ export async function previewLayout(
     ),
     base = projectRevision(project),
     candidates: LayoutCandidate[] = [];
+  sessionDiagnostics.record('layout_geometry_input',input);
   // A construction grammar may already have produced a completely checked,
   // pin-aligned draft. Preserve that solution before generic graph placement.
   let preparedReport;
@@ -158,6 +162,7 @@ export async function previewLayout(
     CrossReferenceEngine.updateProjectCrossReferences(copy);
     const finalSnapshot = snapshotPage(next, copy, options);
     const report = validateLayout(finalSnapshot);
+    sessionDiagnostics.record('layout_candidate_geometry',{profile:solution.profile,snapshot:finalSnapshot,report});
     report.issues.push(...solution.report.issues.filter(i=>i.type==='layout_timeout'&&i.severity==='warning'));
     report.metrics.displacement = finalSnapshot.nodes.reduce((sum,n)=>{
       const original=input.nodes.find(o=>o.id===n.id)!;
@@ -198,6 +203,8 @@ export async function previewLayout(
     : rejections.length
       ? rejections
       : (solutions[0]?.report.issues ?? before.issues);
+  sessionDiagnostics.record('layout_report',{pageId,preparation:page.layoutConstraints?.draftPreparation,before,issues,rejectedAttempts:solutions.filter(s=>!s.report.valid).map(s=>({profile:s.profile,report:s.report})),storedModelRejections:rejections,candidates:candidates.map(c=>({id:c.id,profile:c.profile,report:c.report,multiPage:c.multiPage?{pages:c.multiPage.pages.map(p=>({id:p.id,title:p.title})),links:c.multiPage.links}:undefined}))});
+  for(const candidate of candidates)sessionDiagnostics.record('layout_candidate',candidate);
   return {
     pageId,
     preparation:draft ? page.layoutConstraints?.draftPreparation : undefined,
@@ -222,6 +229,7 @@ export function applyLayout(
     );
   if (candidate.multiPage) {
     applyMultiPage(project, candidate, draft);
+    sessionDiagnostics.record('layout_applied',{candidateId:candidate.id,pageIds:candidate.multiPage.pages.map(p=>p.id)});
     return;
   }
   const target = draft ?? project,
@@ -236,4 +244,5 @@ export function applyLayout(
       'Layoutprüfung fehlgeschlagen; es wurden keine Änderungen übernommen.',
     );
   Object.assign(project, copy);
+  sessionDiagnostics.record('layout_applied',{candidateId:candidate.id,pageId:candidate.pageId});
 }

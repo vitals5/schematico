@@ -380,3 +380,5 @@ Schematico is open-source software licensed under the [MIT License](LICENSE).
 The embedded WebAssembly 7-Zip decompression library is distributed under the LGPL (see [public/licenses/7zip-wasm.txt](public/licenses/7zip-wasm.txt)).
 
 The optional graph-layout library elkjs is distributed under EPL-2.0; see [license and corresponding source](public/licenses/elkjs.txt).
+
+**AI session diagnostics:** Click **⇩ Session-Diagnose exportieren** in the AI panel after reproducing a problem, before reloading or clearing the chat. The JSON includes chat, current project, chronological tool arguments/results, provider exchanges, layout inputs/candidates/rejections and applied layouts, errors, environment and build revision. Configured API keys and credential fields are redacted; attachment contents are omitted. The file contains project/chat data and should be reviewed before sharing. Recording is local, limited to the current app session and bounded to 500 events / approximately 32 MB of serialized event data; omitted events and oversized records are explicitly marked. No automatic upload takes place.
