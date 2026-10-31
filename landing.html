@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Schematico – Professional Electrical CAE & Architectural Installation CAD</title>
-  <meta name="description" content="Schematico – Open-source electrical CAD for industrial schematics adhering to DIN EN 81346 & IEC 60617, and building installation CAD per DIN EN 60617-11. For Windows & Web." />
+  <meta name="description" content="Schematico – Open-source electrical CAD for industrial schematics adhering to DIN EN 81346 & IEC 60617, and building installation CAD per DIN EN 60617-11. For Windows, Linux & Web." />
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./branding/icon-32.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./branding/apple-touch-icon.png" />
@@ -762,14 +762,14 @@
       </div>
       <div class="hero-badge">
         <span class="pulse"></span>
-        Schematico v1.2.36 • Open-Source Electrical CAE &amp; Installation CAD
+        <span id="landingVersion">Schematico</span> • Open-Source Electrical CAE &amp; Installation CAD
       </div>
       <h1>
         Professional Circuit Schematics &amp;<br />
         <span class="gradient">Electrical Installation CAD</span> in Browser and Desktop
       </h1>
       <p class="lead">
-        Schematico unites multi-sheet industrial schematics adhering to DIN EN 81346 &amp; IEC 60617 with modern architectural electrical installation planning per DIN EN 60617-11. Fast, precise, and completely offline.
+        Schematico unites multi-sheet industrial schematics adhering to DIN EN 81346 &amp; IEC 60617 with modern architectural electrical installation planning per DIN EN 60617-11. Fast local editing on Windows, Linux, and the Web.
       </p>
       <div class="hero-cta">
         <a href="./" class="btn btn-primary btn-lg">
@@ -780,9 +780,14 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Windows Download (.exe)
         </a>
+        <a href="https://github.com/vitals5/schematico/releases/latest" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Linux Download (x64)
+        </a>
       </div>
       <div class="hero-standards">
         <span>DIN EN 81346-1/2 (Tagging)</span>
+        <span>Windows &amp; Linux x64 · Web</span>
         <span>IEC 60617 (Symbols)</span>
         <span>DIN EN 60617-11 (Installation)</span>
         <span>DIN EN ISO 7200 (Title Block)</span>
@@ -823,7 +828,7 @@
         <div class="section-tag">Core Capabilities</div>
         <h2 class="section-title">Everything Electrical Engineers and Panel Builders Need</h2>
         <p class="section-subtitle">
-          Designed for maximum engineering productivity without bloated menus — right in your browser or as a native Windows desktop app.
+          Designed for maximum engineering productivity without bloated menus — right in your browser or as a native Windows or Linux desktop app.
         </p>
       </div>
 
@@ -1146,7 +1151,7 @@
             </tr>
             <tr>
               <td><strong>Platform &amp; Offline Availability</strong></td>
-              <td class="highlight">✓ Web &amp; Windows (PWA + Offline)</td>
+              <td class="highlight">✓ Windows, Linux &amp; Web</td>
               <td>✓ Mostly Web only</td>
               <td>✗ Heavyweight Windows client</td>
             </tr>
@@ -1183,7 +1188,14 @@
         <details class="faq-item" open>
           <summary>Can Schematico be used completely offline without an internet connection?</summary>
           <div class="faq-content">
-            Yes. Both the installable Windows desktop app (.exe) and the Web app run 100% locally on your machine. Your projects, schematics, and macro libraries remain on your device and are never transmitted to external cloud servers.
+            Core CAD editing runs locally in the Windows, Linux, and Web apps. Desktop packages work offline; the Web app needs to be loaded first. Optional AI features require an internet connection and send your prompt, attached reference files, and required drawing context to your chosen AI provider.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary>How do I install Schematico on Linux?</summary>
+          <div class="faq-content">
+            Linux x64 downloads are available as a portable <code>.AppImage</code> and a Debian/Ubuntu <code>.deb</code> package. Make the AppImage executable before launching it, or install the Debian package with your package manager for an application-menu entry and icon. If FUSE is unavailable, the AppImage supports <code>--appimage-extract-and-run</code>.
           </div>
         </details>
 
@@ -1225,7 +1237,7 @@
         Ready for Modern Electrical CAD?
       </h2>
       <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 680px; margin: 0 auto 36px;">
-        Launch directly in your web browser with zero installation, or download the standalone Windows installer.
+        Launch directly in your web browser with zero installation, or download a Windows or Linux desktop package.
       </p>
       <div class="hero-cta">
         <a href="./" class="btn btn-primary btn-lg">
@@ -1235,6 +1247,10 @@
         <a href="https://github.com/vitals5/schematico/releases/latest" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Windows Desktop (.exe)
+        </a>
+        <a href="https://github.com/vitals5/schematico/releases/latest" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Linux Download (x64)
         </a>
       </div>
     </div>
@@ -1258,6 +1274,7 @@
           <ul>
             <li><a href="./">Launch Web App</a></li>
             <li><a href="https://github.com/vitals5/schematico/releases/latest" target="_blank" rel="noopener">Windows Download</a></li>
+            <li><a href="https://github.com/vitals5/schematico/releases/latest" target="_blank" rel="noopener">Linux Download (AppImage / .deb)</a></li>
             <li><a href="https://github.com/vitals5/schematico/releases" target="_blank" rel="noopener">Release Notes</a></li>
             <li><a href="https://github.com/vitals5/schematico" target="_blank" rel="noopener">GitHub Repository</a></li>
           </ul>
@@ -1290,5 +1307,9 @@
     </div>
   </footer>
 
+<script type="module">
+  import { version } from './package.json';
+  document.getElementById('landingVersion').textContent = `Schematico v${version}`;
+</script>
 </body>
 </html>
