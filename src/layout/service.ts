@@ -68,8 +68,20 @@ export async function previewLayout(
     ),
     base = projectRevision(project),
     candidates: LayoutCandidate[] = [];
-  const solutions = await computeSolutions(input),
-    rejections: LayoutPreview['issues'] = [];
+  // A construction grammar may already have produced a completely checked,
+  // pin-aligned draft. Preserve that solution before generic graph placement.
+  let preparedReport;
+  if(draft){
+    const prepared=clone(page);
+    for(const wire of prepared.wires)wire.isAutoconnect=false;
+    markLayoutAutoconnections(target,prepared);
+    if(input.edges.length>0 && prepared.wires.every(w=>w.isAutoconnect && !w.waypoints?.length)){
+      const report=validateLayout(input);
+      if(report.valid)preparedReport=report;
+    }
+  }
+  const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input);
+  const rejections: LayoutPreview['issues'] = [];
   for (const solution of solutions) {
     if (!solution.report.valid) continue;
     const next = clone(page),

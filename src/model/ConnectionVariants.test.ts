@@ -5,8 +5,8 @@ import { connectionFamily, isConnectionSymbol } from './ConnectionSymbols';
 import { fixture, add } from '../layout/testing/fixture';
 import { snapshotPage } from '../layout/geometry';
 const project = fixture(); setProjectSymbolLibrary(project);
-assert.equal(CONNECTION_VARIANTS.length,32);
-assert.equal(new Set(CONNECTION_VARIANTS.map(s=>s.name)).size,32);
+assert.equal(CONNECTION_VARIANTS.length,36);
+assert.equal(new Set(CONNECTION_VARIANTS.map(s=>s.name)).size,36);
 for (const s of CONNECTION_VARIANTS) {
     assert(isConnectionSymbol(s)); assert(getSymbolDefinitions().some(d=>d.id===s.id));
     assert(!/SPECIAL|native:|\[\d/.test(s.name));
@@ -30,4 +30,4 @@ assert(getSymbolDefinitions().some(s=>s.id==='project-only'));
 setProjectSymbolLibrary(fixture());
 assert(!getSymbolDefinitions().some(s=>s.id==='project-only'));
 assert(CONNECTION_VARIANTS.every(s=>getSymbolDefinitions().some(d=>d.id===s.id)));
-console.log('✓ 32 named standard connection variants, fresh projects, pin grid/directions, electrical joins and project-library isolation');
+console.log('✓ 36 named standard connection variants, fresh projects, pin grid/directions, electrical joins and project-library isolation');

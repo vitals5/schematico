@@ -31,6 +31,11 @@ for (const horizontal of ['left','right'] as const) for (const vertical of ['top
     add(`corner_bus_${horizontal}_${vertical}_${bus}`, `Winkel ${label[horizontal]} / ${label[vertical]} – Sammelschiene ${label[bus]}`,
         [horizontal,vertical],line(point[horizontal],[8,8],bus===horizontal?3:1)+line([8,8],point[vertical],bus===vertical?3:1));
 }
+// Same 8-unit port pitch as directed T-pieces and the three socket contacts.
+for (const horizontal of ['left','right'] as const) for (const vertical of ['top','bottom'] as const) {
+    add(`corner_compact_${horizontal}_${vertical}`, `Winkel ${label[horizontal]} / ${label[vertical]} – kompaktes Raster`,
+        [horizontal,vertical],line(point[horizontal],[8,8])+line([8,8],point[vertical]));
+}
 for (const side of ['top','right','bottom','left'] as const) {
     const opposite = ({top:'bottom',bottom:'top',left:'right',right:'left'} as const)[side];
     add(`cross_junction_bus_${side}`, `Kreuzverteiler – Sammelschienenabgang ${label[side]}`, ['top','bottom','left','right'],

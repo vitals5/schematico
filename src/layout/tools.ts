@@ -1,3 +1,4 @@
+import { prepareSocketDistribution } from './socketDistribution';
 import { prepareDraftConnections } from './draftConnections';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
 import { nextDeviceTag } from '../model/DeviceTag';
@@ -304,7 +305,10 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
       }),
     });
   }
-  if(input.preferAutoconnect)prepareDraftConnections(draft,page,new Set(input.components.map(c=>refs.get(c.id)!)),new Set(input.connections.map(w=>refs.get(w.id)!)));
+  if(input.preferAutoconnect){
+    const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
+    if(!prepareSocketDistribution(draft,page,devices,wires))prepareDraftConnections(draft,page,devices,wires);
+  }
   return draft;
 }
 export async function handleCreateDraft(args: any, manager: CanvasStateManager) {
