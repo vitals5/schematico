@@ -215,11 +215,11 @@ export async function previewLayout(
     const multi = await multiPageCandidate(project, target, pageId, options);
     if (multi) candidates.push(multi);
   }
-  const issues = candidates.length
-    ? []
-    : rejections.length
-      ? rejections
-      : (solutions[0]?.report.issues ?? before.issues);
+  // A warning about an unavailable fallback must not hide why placement failed.
+  const failures = [...solutions.filter(s=>!s.report.valid).flatMap(s=>s.report.issues), ...rejections];
+  const issues = candidates.length ? [] : failures.length
+    ? failures.filter((issue,index)=>failures.findIndex(other=>other.type===issue.type&&other.message===issue.message&&JSON.stringify(other.objectIds)===JSON.stringify(issue.objectIds))===index)
+    : before.issues;
   sessionDiagnostics.record('layout_report',{pageId,preparation:page.layoutConstraints?.draftPreparation,before,issues,rejectedAttempts:solutions.filter(s=>!s.report.valid).map(s=>({profile:s.profile,report:s.report})),storedModelRejections:rejections,candidates:candidates.map(c=>({id:c.id,profile:c.profile,report:c.report,multiPage:c.multiPage?{pages:c.multiPage.pages.map(p=>({id:p.id,title:p.title})),links:c.multiPage.links}:undefined}))});
   for(const candidate of candidates)sessionDiagnostics.record('layout_candidate',candidate);
   return {
