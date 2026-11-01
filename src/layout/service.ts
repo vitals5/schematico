@@ -1,4 +1,6 @@
 import {sessionDiagnostics} from '../ai/SessionDiagnostics';
+import {unverifiedAutoconnections} from './autoconnectPolicy';
+import {projectWithPages} from './multipage';
 import {pinStub} from './router';
 import {union} from './rect';
 import { alignBusInlet, markLayoutAutoconnections } from './draftConnections';
@@ -242,6 +244,11 @@ export function applyLayout(
     throw new Error(
       'Das Projekt wurde seit der Vorschau verändert. Layout neu berechnen.',
     );
+  if(candidate.autoconnectRequired){
+    const context=candidate.multiPage?projectWithPages(draft??project,candidate.pageId,candidate.multiPage):(draft??project);
+    if((candidate.multiPage?.pages??[candidate.page]).some(p=>unverifiedAutoconnections(context,p).length))
+      throw new Error('Übernahme gesperrt: Alle Verbindungen müssen durch Autoconnect bestätigt sein.');
+  }
   if (candidate.multiPage) {
     applyMultiPage(project, candidate, draft);
     sessionDiagnostics.record('layout_applied',{candidateId:candidate.id,pageIds:candidate.multiPage.pages.map(p=>p.id)});

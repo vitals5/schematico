@@ -125,6 +125,7 @@ export interface LayoutSolution {
   report: LayoutReport;
 }
 export interface LayoutCandidate {
+  autoconnectRequired?: boolean;
   multiPage?: import('./multipage').MultiPageLayout;
   id: string;
   base: string;

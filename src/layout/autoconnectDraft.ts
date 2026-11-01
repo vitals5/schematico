@@ -5,12 +5,14 @@ import {snapshotPage} from './geometry';
 import {validateLayout} from './validate';
 import {constructAutoconnectRoutes,contactPartition,type ConnectionConstruction} from './autoconnectRoutes';
 import {auditMultiPage,projectWithPages} from './multipage';
+import {unverifiedAutoconnections} from './autoconnectPolicy';
 
-/** Lower a checked, newly generated drawing into editable library connection
- * pieces before it becomes the immutable draft against which Apply is audited. */
-export function preferDraftAutoconnect(project:Project,draft:Project,preview:LayoutPreview) {
+/** Lower a checked drawing into editable library connection pieces before it
+ * becomes the immutable draft against which Apply is audited. Required mode
+ * also covers existing pages and rejects partially compiled proposals. */
+export function preferDraftAutoconnect(project:Project,draft:Project,preview:LayoutPreview,required=false) {
   const source=project.pages.find(p=>p.id===preview.pageId);
-  if(!source||source.components.length||source.wires.length||preview.status!=='preview_ready'||draft.pages.find(p=>p.id===preview.pageId)?.layoutConstraints?.draftPreparation?.status==='disabled')return {draft,preview};
+  if(!source||preview.status!=='preview_ready'||!required&&(source.components.length||source.wires.length||draft.pages.find(p=>p.id===preview.pageId)?.layoutConstraints?.draftPreparation?.status==='disabled'))return {draft,preview};
   const prepared:{draft:Project;candidate:LayoutCandidate;construction:ConnectionConstruction}[]=[];
   for(const candidate of preview.candidates){
     let work=clone(draft),next=clone(candidate);
@@ -55,8 +57,15 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
   // Prefer fewer manual sections, then fewer bends/crossings. This is based on
   // the actual detector and independent validator, never on model assertions.
   prepared.sort((a,b)=>a.construction.routed-b.construction.routed||a.candidate.report.metrics.bends-b.candidate.report.metrics.bends||a.candidate.report.metrics.crossings-b.candidate.report.metrics.crossings);
-  const best=prepared[0];
+  const best=prepared.find(p=>!required||p.construction.routed===0&&!(p.candidate.multiPage?.pages??[p.candidate.page]).some(page=>unverifiedAutoconnections(p.draft,page).length));
+  if(required&&!best){
+    const partial=prepared[0]?.construction;
+    const issues=[{type:'autoconnect_required',severity:'error' as const,objectIds:[preview.pageId],message:'Kein vollständig mit Autoconnect aufgebautes Layout gefunden. Geroutete Restverbindungen werden nicht übernommen.'},...(partial?.issues??[])];
+    sessionDiagnostics.record('autoconnect_required_rejection',{pageId:preview.pageId,issues,construction:partial});
+    return {draft,preview:{...preview,status:'layout_invalid' as const,candidates:[],issues,connectionConstruction:partial}};
+  }
   if(!best)return {draft,preview};
+  if(required)best.candidate.autoconnectRequired=true;
   best.candidate.report.metrics.displacement=preview.candidates.find(c=>c.id===best.candidate.id)!.report.metrics.displacement;
   sessionDiagnostics.record('autoconnect_candidate',{candidate:best.candidate,construction:best.construction});
   return {draft:best.draft,preview:{...preview,candidates:[best.candidate],connectionConstruction:best.construction}};

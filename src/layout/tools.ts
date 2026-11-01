@@ -55,7 +55,7 @@ export const CREATE_DRAFT_TOOL: McpToolDefinition = {
     type: 'object',
     properties: {
       pageId: { type: 'string' },
-      preferAutoconnect: {type:'boolean',description:'Default true: reserve room and compile suitable checked routes into real library T/corner elements. Remaining routed sections are reported. Do not disable as a retry strategy.'},
+      preferAutoconnect: {type:'boolean',description:'Compatibility option: automatic layouts always require verified Autoconnect. False cannot disable this requirement.'},
       components: {
         type: 'array',
         items: {
@@ -186,8 +186,10 @@ function options(args: any): LayoutOptions {
 export async function handleOptimizeLayout(args: any, manager: CanvasStateManager) {
   const { project, page } = pageFor(args, manager),
     opts = options(args);
-  const preview = await previewLayout(project, page.id, opts);
-  manager.showLayoutPreview?.(preview, undefined, opts);
+  const planning=clone(project);planning.pages.find(p=>p.id===page.id)!.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true};
+  const raw=await previewLayout(project,page.id,opts,planning);
+  const {preview,draft}=preferDraftAutoconnect(project,planning,raw,true);
+  manager.showLayoutPreview?.(preview,draft,opts);
   return result(preview);
 }
 interface Draft {
@@ -334,10 +336,10 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager) 
   let phase='draft_validation';
   try {
     const {project,page}=pageFor(args,manager);
-    let draft=buildDraft(project,page.id,{...args,preferAutoconnect:args.preferAutoconnect??true});
+    let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
     phase='layout_computation';
     let preview=await previewLayout(project,page.id,{},draft);
-    if(preview.status==='layout_invalid'&&args.preferAutoconnect!==false){
+    if(preview.status==='layout_invalid'){
       const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
       const preparation=draft.pages.find(p=>p.id===page.id)!.layoutConstraints?.draftPreparation;
       if(preparation){const p=fallback.pages.find(p=>p.id===page.id)!;p.layoutConstraints={...p.layoutConstraints,draftPreparation:preparation.status==='applied'?{...preparation,status:'rejected',code:'layout_rejected',message:'Das konstruierte Verteilungsmuster hat die abschließende Layoutprüfung nicht bestanden. Allgemeines Layoutverfahren wird verwendet.',issues:preview.issues.filter(i=>i.severity==='error').slice(0,20)}:preparation};}
@@ -346,7 +348,7 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager) 
         if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}
       }
     }
-    if(args.preferAutoconnect!==false)({draft,preview}=preferDraftAutoconnect(project,draft,preview));
+    ({draft,preview}=preferDraftAutoconnect(project,draft,preview,true));
     phase='preview_presentation';
     manager.showLayoutPreview?.(preview,draft,{});
     return result(preview);

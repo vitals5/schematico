@@ -29,7 +29,9 @@ export class LayoutPreviewDialog {
       onApply: (candidate: LayoutCandidate, draft?: Project) => void;
     },
   ) {
-    this.preview = config.preview;
+    const checked=preferDraftAutoconnect(config.getProject(),config.draft??config.getProject(),config.preview,true);
+    config.draft=checked.draft;
+    this.preview = checked.preview;
     this.options = config.options ?? {};
   }
   show() {
@@ -196,8 +198,8 @@ export class LayoutPreviewDialog {
           this.options,
           this.config.draft,
         );
-        if(this.config.draft){
-          const prepared=preferDraftAutoconnect(this.config.getProject(),this.config.draft,this.preview);
+        {
+          const prepared=preferDraftAutoconnect(this.config.getProject(),this.config.draft??this.config.getProject(),this.preview,true);
           this.config.draft=prepared.draft;this.preview=prepared.preview;
         }
         this.status = '';
