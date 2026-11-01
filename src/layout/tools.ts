@@ -310,9 +310,18 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
       if (!ep || typeof ep.pinId !== 'string') throw new Error('Ungültiger Leitungsanschluss.');
       const id = refs.get(ep.componentId) ?? ep.componentId,
         c = page.components.find((c) => c.id === id);
-      if (!c?.pins[ep.pinId])
+      if (!c) throw new Error('Komponente nicht gefunden: ' + ep.componentId);
+      let pinId = ep.pinId;
+      if (!c.pins[pinId]) {
+        // Tolerant fallback for common neutral / polarity naming variants (e.g. N-in vs N_in, N-out vs N_out)
+        const normalize = (s: string) => s.replace(/[-_]/g, '').toLowerCase();
+        const target = normalize(pinId);
+        const resolved = Object.keys(c.pins).find((p) => normalize(p) === target);
+        if (resolved) pinId = resolved;
+      }
+      if (!c.pins[pinId])
         throw new Error('Anschluss fehlt: ' + ep.componentId + ':' + ep.pinId);
-      return { componentId: id, pinId: ep.pinId };
+      return { componentId: id, pinId };
     };
     const id = newId(item.id),
       from = endpoint(item.from),

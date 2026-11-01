@@ -137,4 +137,19 @@ assert.deepEqual(partition(generalCaptured.draft,generalOriginals),partition(gen
 const optResponse=await handleOptimizeLayout({pageId:'p'},{getProject:()=>generalRaw,getActivePage:()=>generalRaw.pages[0],showLayoutPreview:(preview:any,draft:any)=>{generalCaptured={preview,draft};}} as any);
 assert.equal(optResponse.status,'preview_ready');
 assert.equal(optResponse.connectionConstruction?.routed,0);
+
+// Pin alias tolerance: N_out/N-out and N_in/N-in variations resolve cleanly without failing draft creation
+const aliasToleranceArgs={
+ components:[
+  {id:'mcb',symbolId:'catalog_mcb_1p_n_b'},
+  {id:'term',symbolId:'terminal_single'}
+ ],
+ connections:[
+  {id:'wa',from:{componentId:'mcb',pinId:'N_out'},to:{componentId:'term',pinId:'1'},potential:'N'},
+  {id:'wb',from:{componentId:'mcb',pinId:'n_in'},to:{componentId:'term',pinId:'2'},potential:'N'}
+ ]
+};
+const aliasDraft=buildDraft(source(),'p',aliasToleranceArgs);
+assert.equal(aliasDraft.pages[0].wires[0].from.pinId,'N-out');
+assert.equal(aliasDraft.pages[0].wires[1].from.pinId,'N-in');
 console.log('✓ Complete socket distribution & general multi-tier circuits: one sheet, 100% true autoconnect segments, separated original nets, unchanged labels, groups/IDs, reversed endpoints, other branch counts, rejection isolation, refresh and undo');

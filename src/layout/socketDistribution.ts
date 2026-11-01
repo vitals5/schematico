@@ -870,7 +870,7 @@ function constructGeneralCircuit(
     return reject('junction_library', 'Die benötigten Bibliotheks-Verbindungsstücke sind nicht eindeutig verfügbar.');
   }
 
-  if (page.components.length > 200 || [...nets].some(([id, n]) => (consumed.get(id) ?? 0) < n.wires.length)) {
+  if (page.components.length > 500 || [...nets].some(([id, n]) => (consumed.get(id) ?? 0) < n.wires.length)) {
     return reject('object_limit', 'Die Konstruktion würde die Objektgrenze überschreiten oder Leitungs-IDs verlieren.');
   }
   page.wires = generated;
