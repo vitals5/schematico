@@ -3,6 +3,7 @@ import {rcdPorts,breakerPorts,socketPorts,isDistributionFeed} from './distributi
 import type { Page, Project, PlacedComponent, Wire, PinDefinition } from '../model/types';
 import { getDrawingUnitsPerMm, getSymbolById, getSymbolForComponent } from '../model/symbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
+import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { snapshotPage } from './geometry';
 import { clone, type DraftPreparation, type LayoutIssue } from './types';
 import { netIds, validateLayout } from './validate';
@@ -13,18 +14,41 @@ type Direction = PinDefinition['direction'];
 const key = (e: Endpoint) => JSON.stringify([e.componentId, e.pinId]);
 const byTag = (a: PlacedComponent, b: PlacedComponent) => a.bmk.localeCompare(b.bmk, 'de', { numeric: true }) || a.id.localeCompare(b.id);
 interface Net { endpoints: Endpoint[]; wires: Wire[] }
+interface IndexedNet extends Net { id: string }
 interface Circuit { breaker: PlacedComponent; sockets: PlacedComponent[]; input: string; output: string; phase: number; liveNet: string }
 
-/** A bounded construction grammar for NEW complete socket distributions. Recognition
- * follows terminal connectivity, never prose, coordinates, device tags or potential names.
+/** A bounded construction grammar for NEW complete socket distributions and general multi-net circuits.
+ * Recognition follows terminal connectivity, never prose, coordinates, device tags or potential names.
  * The source page is only replaced after net equivalence AND full geometry checks pass. */
 export function prepareSocketDistribution(project: Project, original: Page, newDevices: Set<string>, newWires: Set<string>, diagnose?: (result:DraftPreparation)=>void): boolean {
   let last: DraftPreparation | undefined;
+  const masters = original.components.map(c => getSymbolForComponent(c, project));
+  const isStrictSocketDistribution =
+    masters.some(s => s?.family === 'rcd' || s?.id === 'rcd_4p') &&
+    masters.some(s => s?.family === 'socket' || s?.id === 'socket_schuko');
   // Spend optional whitespace only if the complete measured construction fits.
   // Every attempt still has to pass geometry, net equivalence and real Autoconnect.
-  for (const profile of [{row:10,gap:6},{row:8,gap:4},{row:8,gap:2}]) {
-    if (constructDistribution(project,original,newDevices,newWires,profile,d=>last=d)) {if(last)diagnose?.(last);return true;}
-    if (!last || !['geometry_rejected','autoconnect_unavailable'].includes(last.code)) break;
+  if (isStrictSocketDistribution) {
+    for (const profile of [{row:10,gap:6},{row:8,gap:4},{row:8,gap:2}]) {
+      if (constructDistribution(project,original,newDevices,newWires,profile,d=>last=d)) {if(last)diagnose?.(last);return true;}
+      if (!last || !['geometry_rejected','autoconnect_unavailable'].includes(last.code)) break;
+    }
+    if(last)diagnose?.(last);
+    return false;
+  }
+  for (const profile of [
+    { row: 10, gap: 6, columns: 1 },
+    { row: 8, gap: 4, columns: 1 },
+    { row: 8, gap: 2, columns: 1 },
+    { row: 10, gap: 6, columns: 2 },
+    { row: 8, gap: 4, columns: 2 },
+    { row: 8, gap: 2, columns: 2 },
+  ]) {
+    if (constructGeneralCircuit(project, original, newDevices, newWires, profile, d => (last = d))) {
+      if (last) diagnose?.(last);
+      return true;
+    }
+    if (!last || !['geometry_rejected', 'autoconnect_unavailable', 'object_limit'].includes(last.code)) break;
   }
   if(last)diagnose?.(last);
   return false;
@@ -259,5 +283,646 @@ function constructDistribution(project: Project, original: Page, newDevices: Set
   if (page.wires.some(w => !w.isAutoconnect)) return reject('autoconnect_unavailable','Nicht alle konstruierten Abschnitte sind mit der tatsächlichen Autoconnect-Erkennung reproduzierbar.');
   Object.assign(original, page);
   diagnose?.({strategy:'socket_distribution',status:'applied',code:'applied',message:'Steckdosen-Verteilungsmuster angewendet: gemeinsame Leitungszüge und geprüfte Autoconnect-Achsen.'});
+  return true;
+}
+
+function constructGeneralCircuit(
+  project: Project,
+  original: Page,
+  newDevices: Set<string>,
+  newWires: Set<string>,
+  profile: { row: number; gap: number; columns?: number },
+  diagnose?: (result: DraftPreparation) => void,
+): boolean {
+  if (original.components.length < 2 || original.wires.length < 2) return false;
+  const reject = (code: string, message: string, issues?: LayoutIssue[]) => {
+    diagnose?.({
+      strategy: 'socket_distribution',
+      status: 'rejected',
+      code,
+      message,
+      issues: issues?.filter(i => i.severity === 'error').slice(0, 20),
+    });
+    return false;
+  };
+  if (
+    original.components.some(
+      c => !newDevices.has(c.id) || c.rotation || c.source || c.deviceBox || (c.scale && c.scale !== 1),
+    ) ||
+    original.wires.some(w => !newWires.has(w.id)) ||
+    original.texts?.length ||
+    original.images?.length ||
+    original.boxes?.length ||
+    original.cables?.length ||
+    original.layoutConstraints?.lockedIds?.length ||
+    original.layoutConstraints?.fixedFrameIds?.length
+  ) {
+    return reject(
+      'existing_content',
+      'Das Muster benötigt einen neuen vollständigen Entwurf ohne bestehende oder fixierte Objekte.',
+    );
+  }
+
+  const work = clone(project);
+  CrossReferenceEngine.updateProjectCrossReferences(work);
+  const page = work.pages.find(p => p.id === original.id)!;
+  const u = getDrawingUnitsPerMm(work);
+  const initial = snapshotPage(page, work);
+  if (initial.issues.some(i => i.severity === 'error')) {
+    return reject('invalid_input', 'Der Entwurf enthält ungültige Symbol- oder Anschlussdaten.', initial.issues);
+  }
+
+  const ids = netIds(initial);
+  const nets = new Map<string, IndexedNet>();
+  const endpointNet = new Map<string, string>();
+  for (const w of page.wires) {
+    const id = ids.get(w.id)!;
+    const net = nets.get(id) ?? { id, endpoints: [], wires: [] };
+    net.wires.push(w);
+    for (const ep of [w.from, w.to]) {
+      if (!net.endpoints.some(e => key(e) === key(ep))) net.endpoints.push(ep);
+      endpointNet.set(key(ep), id);
+    }
+    nets.set(id, net);
+  }
+  if (nets.size < 2) return false;
+
+  const netList = [...nets.values()];
+  if (page.components.some(c => !netList.some(n => n.endpoints.some(e => e.componentId === c.id)))) {
+    return reject('unconnected_component', 'Nicht verbundene Reservebauteile benötigen das allgemeine Layoutverfahren.');
+  }
+
+  const specification = (w: Wire) => {
+    const { id, from, to, waypoints, isAutoconnect, routingMode, ...spec } = w;
+    return JSON.stringify(spec);
+  };
+  if (netList.some(n => n.wires.some(w => specification(w) !== specification(n.wires[0])))) {
+    return reject(
+      'different_wire_data',
+      'Unterschiedliche Leitungsdaten innerhalb eines Netzes werden nicht zusammengelegt.',
+    );
+  }
+
+  const point = (ep: Endpoint) => {
+    const c = page.components.find(c => c.id === ep.componentId)!;
+    const s = getSymbolForComponent(c, work)!;
+    const p = s.pins.find(p => p.id === ep.pinId)!;
+    const q = AutoconnectEngine.getRotatedPinInfo(c, p, s);
+    return { x: q.worldX / u, y: q.worldY / u, direction: q.direction };
+  };
+  const place = (ep: Endpoint, x: number, y: number) => {
+    const c = page.components.find(c => c.id === ep.componentId)!;
+    const p = point(ep);
+    c.x += (x - p.x) * u;
+    c.y += (y - p.y) * u;
+  };
+
+  for (const c of page.components) {
+    const sym = getSymbolForComponent(c, work);
+    if (!isDistributionFeed(sym)) continue;
+    const connected = netList.flatMap(n => n.endpoints.filter(e => e.componentId === c.id));
+    if (connected.length !== 1) continue;
+    const ep = connected[0];
+    const net = nets.get(endpointNet.get(key(ep))!)!;
+    const others = net.endpoints.filter(e => e.componentId !== c.id);
+    if (!others.length) continue;
+    if (others.every(o => point(o).direction === 'top') && point(ep).direction === 'top') {
+      c.rotation = 180;
+    } else if (others.every(o => point(o).direction === 'bottom') && point(ep).direction === 'bottom') {
+      c.rotation = 180;
+    }
+  }
+
+  for (const n of netList) {
+    for (const ep of n.endpoints) {
+      const dir = point(ep).direction;
+      if (dir !== 'top' && dir !== 'bottom') {
+        return reject(
+          'unsupported_pin_direction',
+          'Horizontale Geräteanschlüsse benötigen das allgemeine Layoutverfahren.',
+        );
+      }
+    }
+  }
+
+  const rank = new Map<string, number>(page.components.map(c => [c.id, 0]));
+  const edges: [string, string][] = [];
+  for (const net of netList) {
+    const bottoms = [...new Set(net.endpoints.filter(e => point(e).direction === 'bottom').map(e => e.componentId))];
+    const tops = [...new Set(net.endpoints.filter(e => point(e).direction === 'top').map(e => e.componentId))];
+    for (const uComp of bottoms) {
+      for (const vComp of tops) {
+        if (uComp !== vComp) edges.push([uComp, vComp]);
+      }
+    }
+  }
+  for (let iter = 0; iter < page.components.length; iter++) {
+    let changed = false;
+    for (const [uComp, vComp] of edges) {
+      if (rank.get(vComp)! < rank.get(uComp)! + 1) {
+        rank.set(vComp, rank.get(uComp)! + 1);
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  for (const c of page.components) {
+    const hasIncoming = edges.some(([, v]) => v === c.id);
+    const outgoing = edges.filter(([u]) => u === c.id).map(([, v]) => rank.get(v)!);
+    if (!hasIncoming && outgoing.length) {
+      rank.set(c.id, Math.min(...outgoing) - 1);
+    }
+  }
+  const minRank = Math.min(0, ...rank.values());
+  if (minRank < 0) {
+    for (const [id, r] of rank) rank.set(id, r - minRank);
+  }
+
+  const geometry = snapshotPage(page, work);
+  const measured = new Map(geometry.nodes.map(n => [n.id, n]));
+  const step = initial.grid.spacing / 2;
+  const snap = (v: number) => Math.ceil(v / step - 1e-8) * step;
+  const snapX = (v: number) => snap(v - initial.grid.origin.x) + initial.grid.origin.x;
+  const snapY = (v: number) => snap(v - initial.grid.origin.y) + initial.grid.origin.y;
+  const row = snap(Math.max(profile.row, initial.grid.spacing * 2));
+
+  const maxBaseRank = Math.max(0, ...rank.values());
+  const groupOrder = new Map<string, number>();
+  (page.groups ?? []).forEach((g, gi) =>
+    g.members.forEach(m => {
+      if (m.kind === 'component' && !groupOrder.has(m.id)) groupOrder.set(m.id, gi);
+    }),
+  );
+
+  const refPin = (c: PlacedComponent): Endpoint => {
+    const connected = netList.flatMap(n => n.endpoints.filter(e => e.componentId === c.id));
+    const topPins = connected.filter(e => point(e).direction === 'top').sort((a, b) => point(a).x - point(b).x);
+    if (topPins.length) return topPins[0];
+    const botPins = connected.filter(e => point(e).direction === 'bottom').sort((a, b) => point(a).x - point(b).x);
+    if (botPins.length) return botPins[0];
+    const sym = getSymbolForComponent(c, work)!;
+    return { componentId: c.id, pinId: sym.pins[0].id };
+  };
+
+  const numCols = profile.columns ?? 1;
+  const corridorReserve = 5 * row;
+  const colBudget =
+    numCols === 1 ? initial.area.width - corridorReserve - 8 : (initial.area.width - corridorReserve - 12) / numCols;
+
+  const rows: PlacedComponent[][] = [];
+  for (let r = 0; r <= maxBaseRank; r++) {
+    const comps = page.components.filter(c => rank.get(c.id) === r);
+    comps.sort((a, b) => (groupOrder.get(a.id) ?? 999) - (groupOrder.get(b.id) ?? 999) || byTag(a, b));
+    let current: PlacedComponent[] = [];
+    let currentWidth = 0;
+    for (const c of comps) {
+      const w = measured.get(c.id)!.rect.width;
+      if (current.length > 0 && currentWidth + profile.gap + w > colBudget) {
+        rows.push(current);
+        current = [c];
+        currentWidth = w;
+      } else {
+        currentWidth += (current.length ? profile.gap : 0) + w;
+        current.push(c);
+      }
+    }
+    if (current.length) rows.push(current);
+  }
+
+  const colRows: PlacedComponent[][][] = Array.from({ length: numCols }, () => []);
+  if (numCols === 1 || rows.length <= 1) {
+    colRows[0] = rows;
+  } else {
+    const splitAt = Math.ceil(rows.length / 2);
+    colRows[0] = rows.slice(0, splitAt);
+    colRows[1] = rows.slice(splitAt);
+  }
+
+  const compLoc = new Map<string, { col: number; row: number }>();
+  colRows.forEach((cRows, col) => cRows.forEach((rComps, r) => rComps.forEach(c => compLoc.set(c.id, { col, row: r }))));
+
+  const epBand = (ep: Endpoint) => {
+    const loc = compLoc.get(ep.componentId)!;
+    const dir = point(ep).direction;
+    return { col: loc.col, band: dir === 'top' ? loc.row : loc.row + 1 };
+  };
+
+  const netBandSet = new Map<string, Set<string>>();
+  for (const net of netList) {
+    const set = new Set<string>();
+    for (const ep of net.endpoints) {
+      const b = epBand(ep);
+      set.add(`${b.col}:${b.band}`);
+    }
+    netBandSet.set(net.id, set);
+  }
+
+  const corridorNets = netList.filter(n => netBandSet.get(n.id)!.size > 1);
+  const colBandNets: IndexedNet[][][] = colRows.map(cRows => Array.from({ length: cRows.length + 1 }, () => []));
+  for (const net of netList) {
+    const set = netBandSet.get(net.id)!;
+    for (const code of set) {
+      const [col, b] = code.split(':').map(Number);
+      colBandNets[col][b].push(net);
+    }
+  }
+
+  const bandTrackY = new Map<string, number>();
+  const usedTrackYs = new Set<number>();
+  const assignBandTracks = (col: number, bandIdx: number, activeNets: IndexedNet[], startY: number): number => {
+    let trackY = snapY(startY);
+    for (const net of activeNets) {
+      while (usedTrackYs.has(Math.round(trackY * 1000))) {
+        trackY = snapY(trackY + step);
+      }
+      bandTrackY.set(`${col}:${bandIdx}:${net.id}`, trackY);
+      usedTrackYs.add(Math.round(trackY * 1000));
+      trackY = snapY(trackY + row);
+    }
+    return trackY;
+  };
+
+  let currentLeftX = snapX(initial.area.x + 6);
+  const corridorX = new Map<string, number>();
+
+  if (numCols === 1) {
+    corridorNets.forEach((n, i) => corridorX.set(n.id, currentLeftX + i * row));
+    if (corridorNets.length) currentLeftX = snapX(currentLeftX + corridorNets.length * row + 6);
+  }
+
+  for (let col = 0; col < numCols; col++) {
+    if (col === 1 && corridorNets.length) {
+      const baseCorr = snapX(currentLeftX + 6);
+      corridorNets.forEach((n, i) => corridorX.set(n.id, baseCorr + i * row));
+      currentLeftX = snapX(baseCorr + corridorNets.length * row + 6);
+    }
+
+    const cRows = colRows[col];
+    let lastTrackY = snapY(initial.area.y + 4);
+    let hasPrevTracks = false;
+    let maxColRight = currentLeftX;
+
+    const band0Nets = colBandNets[col][0];
+    if (band0Nets.length) {
+      lastTrackY = assignBandTracks(col, 0, band0Nets, lastTrackY + 2) - row;
+      hasPrevTracks = true;
+    }
+
+    for (let r = 0; r < cRows.length; r++) {
+      const rComps = cRows[r];
+      const topReach = Math.max(
+        ...rComps.map(c => {
+          const ep = refPin(c);
+          return point(ep).y - measured.get(c.id)!.rect.y;
+        }),
+      );
+      const rowRefY = hasPrevTracks
+        ? snapY(lastTrackY + Math.max(row, topReach + 4))
+        : snapY(lastTrackY + topReach);
+
+      const prevBandPins: { x: number; netId: string; isCorridor?: boolean }[] = [];
+      for (const [, cx] of corridorX) {
+        prevBandPins.push({ x: cx, netId: '__corridor__', isCorridor: true });
+      }
+      for (const net of colBandNets[col][r]) {
+        if (r > 0) {
+          for (const ep of net.endpoints) {
+            const loc = compLoc.get(ep.componentId)!;
+            if (loc.col === col && loc.row === r - 1 && point(ep).direction === 'bottom') {
+              prevBandPins.push({ x: point(ep).x, netId: net.id });
+            }
+          }
+        }
+      }
+
+      const placedRowPins: { x: number; netId: string; dir: Direction }[] = [];
+      let cursorX = currentLeftX;
+      for (const c of rComps) {
+        const ep = refPin(c);
+        const node = measured.get(c.id)!;
+        const leftReach = point(ep).x - node.rect.x;
+        const rightReach = node.rect.x + node.rect.width - point(ep).x;
+        let targetX = snapX(cursorX + leftReach);
+
+        const connectedPins = netList.flatMap(n =>
+          n.endpoints
+            .filter(e => e.componentId === c.id)
+            .map(e => ({ ep: e, netId: n.id, dx: point(e).x - point(ep).x, dir: point(e).direction })),
+        );
+        for (let shift = 0; shift < 25; shift++) {
+          const tryX = targetX + shift * step;
+          const conflict = connectedPins.some(cp => {
+            const px = tryX + cp.dx;
+            if (
+              placedRowPins.some(
+                other => other.netId === cp.netId && other.dir === cp.dir && Math.abs(px - other.x) < 8 - 1e-6,
+              )
+            ) {
+              return true;
+            }
+            if (cp.dir === 'top') {
+              return prevBandPins.some(other =>
+                other.isCorridor || other.netId !== cp.netId
+                  ? Math.abs(px - other.x) < 4 - 1e-6
+                  : Math.abs(px - other.x) > 1e-6 && Math.abs(px - other.x) < 8 - 1e-6,
+              );
+            }
+            return prevBandPins.some(other => other.isCorridor && Math.abs(px - other.x) < 4 - 1e-6);
+          });
+          if (!conflict) {
+            targetX = tryX;
+            break;
+          }
+        }
+
+        place(ep, targetX, rowRefY);
+        for (const cp of connectedPins) {
+          placedRowPins.push({ x: targetX + cp.dx, netId: cp.netId, dir: cp.dir });
+        }
+        cursorX = snapX(targetX + rightReach + profile.gap);
+        maxColRight = Math.max(maxColRight, targetX + rightReach);
+      }
+
+      const snapNow = snapshotPage(page, work);
+      const pinBottom = Math.max(
+        ...rComps.map(c => {
+          const n = snapNow.nodes.find(n => n.id === c.id)!;
+          return Math.max(...n.pins.map(p => p.y));
+        }),
+      );
+      const shapeBottom = Math.max(
+        ...rComps.map(c => {
+          const n = snapNow.nodes.find(n => n.id === c.id)!;
+          return Math.max(...n.shapes.map(s => s.rect.y + s.rect.height));
+        }),
+      );
+      const firstTrackStart = snapY(Math.max(pinBottom + row, shapeBottom + 4));
+
+      const bandIdx = r + 1;
+      const activeNets = colBandNets[col][bandIdx];
+      if (activeNets.length) {
+        lastTrackY = assignBandTracks(col, bandIdx, activeNets, firstTrackStart) - row;
+        hasPrevTracks = true;
+      } else {
+        lastTrackY = shapeBottom + 4;
+        hasPrevTracks = false;
+      }
+    }
+
+    currentLeftX = snapX(maxColRight + 6);
+  }
+
+  const used = new Set(
+    work.pages.flatMap(p =>
+      [
+        p,
+        ...p.components,
+        ...p.wires,
+        ...(p.groups ?? []),
+        ...(p.texts ?? []),
+        ...(p.boxes ?? []),
+        ...(p.images ?? []),
+        ...(p.cables ?? []),
+      ].map(x => x.id),
+    ),
+  );
+  const allocate = (base: string) => {
+    let id = base,
+      i = 1;
+    while (used.has(id)) id = base + '-' + i++;
+    used.add(id);
+    return id;
+  };
+  const added: PlacedComponent[] = [],
+    generated: Wire[] = [];
+  const consumed = new Map<string, number>();
+  const connect = (id: string, from: Endpoint, to: Endpoint) => {
+    const n = nets.get(id)!,
+      index = consumed.get(id) ?? 0;
+    consumed.set(id, index + 1);
+    generated.push({
+      ...n.wires[0],
+      id: n.wires[index]?.id ?? allocate(n.wires[0].id + '-distribution-' + index),
+      from,
+      to,
+      waypoints: [],
+      isAutoconnect: false,
+      routingMode: 'auto',
+    });
+  };
+  const junction = (dirs: Direction[], x: number, y: number, net: IndexedNet) => {
+    const names = [
+      'corner_compact_left_top',
+      'corner_compact_left_bottom',
+      'corner_compact_right_top',
+      'corner_compact_right_bottom',
+      't_piece_directed_bottom_left',
+      't_piece_directed_right_top',
+      't_piece_directed_left_top',
+      't_piece_directed_top_right',
+      'cross_junction_bus_top',
+      'cross_junction_bus_right',
+      'cross_junction_bus_bottom',
+      'cross_junction_bus_left',
+      't_piece_down',
+      't_piece_up',
+      't_piece_left',
+      't_piece_right',
+      'corner_top_left',
+      'corner_bottom_left',
+      'corner_top_right',
+      'corner_bottom_right',
+    ];
+    const s = names
+      .map(id => getSymbolById(id, work))
+      .find(
+        s =>
+          s &&
+          !s.unresolved &&
+          s.pins.length === dirs.length &&
+          dirs.every(d => s.pins.filter(p => p.direction === d).length === 1),
+      );
+    if (!s) throw new Error('Distribution junction is unavailable');
+    const c: PlacedComponent = {
+      id: allocate(page.components[0].id + '-distribution-' + added.length),
+      symbolId: s.id,
+      bmk: '',
+      functionText: '',
+      x: x * u - s.pins.find(p => p.direction === 'top' || p.direction === 'bottom')!.x,
+      y: y * u - s.pins.find(p => p.direction === 'left' || p.direction === 'right')!.y,
+      rotation: 0,
+      higherLevelFunction: page.higherLevel,
+      mountingLocation: page.location,
+      pinLabelPosition: { visible: false },
+      pins: Object.fromEntries(s.pins.map(p => [p.id, { wireIds: [] }])),
+    };
+    page.components.push(c);
+    added.push(c);
+    for (const g of page.groups ?? []) {
+      if (net.endpoints.every(ep => g.members.some(m => m.kind === 'component' && m.id === ep.componentId))) {
+        g.members.push({ kind: 'component', id: c.id });
+      }
+    }
+    return (dir: Direction): Endpoint => ({ componentId: c.id, pinId: s.pins.find(p => p.direction === dir)!.id });
+  };
+
+  try {
+    for (const net of netList) {
+      const corrX = corridorX.get(net.id);
+      const activeBands: { col: number; band: number; y: number }[] = [];
+      for (const code of netBandSet.get(net.id)!) {
+        const [col, band] = code.split(':').map(Number);
+        const upperEps = net.endpoints.filter(e => {
+          const l = compLoc.get(e.componentId)!;
+          return l.col === col && l.row === band - 1 && point(e).direction === 'bottom';
+        });
+        const lowerEps = net.endpoints.filter(e => {
+          const l = compLoc.get(e.componentId)!;
+          return l.col === col && l.row === band && point(e).direction === 'top';
+        });
+        if (
+          corrX === undefined &&
+          upperEps.length === 1 &&
+          lowerEps.length === 1 &&
+          Math.abs(point(upperEps[0]).x - point(lowerEps[0]).x) < 1e-6
+        ) {
+          connect(net.id, upperEps[0], lowerEps[0]);
+          continue;
+        }
+        const y = bandTrackY.get(`${col}:${band}:${net.id}`);
+        if (y !== undefined) activeBands.push({ col, band, y });
+      }
+
+      const byY = new Map<number, { col: number; band: number }[]>();
+      for (const ab of activeBands) {
+        const ry = Math.round(ab.y * 1000) / 1000;
+        byY.set(ry, [...(byY.get(ry) ?? []), { col: ab.col, band: ab.band }]);
+      }
+      const sortedYs = [...byY.keys()].sort((a, b) => a - b);
+      let prevCorrBottom: Endpoint | undefined;
+
+      sortedYs.forEach((y, yIdx) => {
+        const bandsAtY = byY.get(y)!;
+        const upperEps = net.endpoints.filter(e => {
+          const l = compLoc.get(e.componentId)!;
+          return point(e).direction === 'bottom' && bandsAtY.some(b => b.col === l.col && b.band === l.row + 1);
+        });
+        const lowerEps = net.endpoints.filter(e => {
+          const l = compLoc.get(e.componentId)!;
+          return point(e).direction === 'top' && bandsAtY.some(b => b.col === l.col && b.band === l.row);
+        });
+
+        type StationSpec = { x: number; upper?: Endpoint; lower?: Endpoint; corridorUp?: boolean; corridorDown?: boolean };
+        const byX = new Map<number, StationSpec>();
+        const getStation = (xVal: number) => {
+          const rx = Math.round(xVal * 1000) / 1000;
+          if (!byX.has(rx)) byX.set(rx, { x: xVal });
+          return byX.get(rx)!;
+        };
+
+        for (const ep of upperEps) {
+          const st = getStation(point(ep).x);
+          if (st.upper) throw new Error('Duplicate upper station endpoint');
+          st.upper = ep;
+        }
+        for (const ep of lowerEps) {
+          const st = getStation(point(ep).x);
+          if (st.lower) throw new Error('Duplicate lower station endpoint');
+          st.lower = ep;
+        }
+        if (corrX !== undefined && sortedYs.length > 1) {
+          const st = getStation(corrX);
+          if (yIdx > 0) st.corridorUp = true;
+          if (yIdx < sortedYs.length - 1) st.corridorDown = true;
+        }
+
+        const stations = [...byX.values()].sort((a, b) => a.x - b.x);
+        let prevRight: Endpoint | undefined;
+        let nextCorrBottom: Endpoint | undefined;
+
+        stations.forEach((st, idx) => {
+          if ((st.upper && st.corridorUp) || (st.lower && st.corridorDown)) {
+            throw new Error('Corridor collides with endpoint');
+          }
+          const hasTop = !!st.upper || !!st.corridorUp;
+          const hasBottom = !!st.lower || !!st.corridorDown;
+          const hasLeft = idx > 0;
+          const hasRight = idx < stations.length - 1;
+          const dirs: Direction[] = [
+            ...(hasTop ? ['top' as const] : []),
+            ...(hasBottom ? ['bottom' as const] : []),
+            ...(hasLeft ? ['left' as const] : []),
+            ...(hasRight ? ['right' as const] : []),
+          ];
+          const j = junction(dirs, st.x, y, net);
+          if (st.upper) connect(net.id, st.upper, j('top'));
+          if (st.corridorUp && prevCorrBottom) connect(net.id, prevCorrBottom, j('top'));
+          if (st.lower) connect(net.id, j('bottom'), st.lower);
+          if (st.corridorDown) nextCorrBottom = j('bottom');
+          if (hasLeft && prevRight) connect(net.id, prevRight, j('left'));
+          if (hasRight) prevRight = j('right');
+        });
+
+        prevCorrBottom = nextCorrBottom;
+      });
+    }
+  } catch {
+    return reject('junction_library', 'Die benötigten Bibliotheks-Verbindungsstücke sind nicht eindeutig verfügbar.');
+  }
+
+  if (page.components.length > 200 || [...nets].some(([id, n]) => (consumed.get(id) ?? 0) < n.wires.length)) {
+    return reject('object_limit', 'Die Konstruktion würde die Objektgrenze überschreiten oder Leitungs-IDs verlieren.');
+  }
+  page.wires = generated;
+  for (const c of page.components) for (const p of Object.values(c.pins)) p.wireIds = [];
+  for (const w of generated) {
+    for (const ep of [w.from, w.to]) {
+      page.components.find(c => c.id === ep.componentId)!.pins[ep.pinId].wireIds!.push(w.id);
+    }
+  }
+  const final = snapshotPage(page, work);
+  const finalNets = netIds(final);
+  const signature = (mapping: Map<string, string>, wires: Wire[]) => {
+    const contact = new Map<string, string>();
+    for (const w of wires) {
+      for (const ep of [w.from, w.to]) {
+        if (newDevices.has(ep.componentId)) contact.set(key(ep), mapping.get(w.id)!);
+      }
+    }
+    return [...new Set(contact.values())]
+      .map(id =>
+        [...contact]
+          .filter(([, n]) => n === id)
+          .map(([ep]) => ep)
+          .sort(),
+      )
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  };
+  if (JSON.stringify(signature(ids, original.wires)) !== JSON.stringify(signature(finalNets, page.wires))) {
+    return reject('net_equivalence', 'Die ursprüngliche elektrische Netzstruktur konnte nicht erhalten werden.');
+  }
+  const report = validateLayout(final);
+  sessionDiagnostics.record('distribution_geometry', { snapshot: final, report });
+  if (!report.valid) {
+    return reject(
+      'geometry_rejected',
+      'Die gemessenen Symbole, Beschriftungen oder Leitungszüge passen nicht kollisionsfrei in den Zeichenbereich.',
+      report.issues,
+    );
+  }
+  markLayoutAutoconnections(work, page);
+  if (page.wires.some(w => !w.isAutoconnect)) {
+    return reject(
+      'autoconnect_unavailable',
+      'Nicht alle konstruierten Abschnitte sind mit der tatsächlichen Autoconnect-Erkennung reproduzierbar.',
+    );
+  }
+  Object.assign(original, page);
+  diagnose?.({
+    strategy: 'socket_distribution',
+    status: 'applied',
+    code: 'applied',
+    message: 'Verteilungsmuster angewendet: gemeinsame Leitungszüge und geprüfte Autoconnect-Achsen.',
+  });
   return true;
 }

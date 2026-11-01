@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {fixture} from './testing/fixture';
-import {buildDraft} from './tools';
+import {buildDraft,handleCreateDraft,handleOptimizeLayout} from './tools';
 import {prepareSocketDistribution} from './socketDistribution';
 import {snapshotPage} from './geometry';
 import {netIds,validateLayout} from './validate';
@@ -68,4 +68,73 @@ for(const kind of ['neutral','bridge','metadata','existing','capacity'] as const
  if(kind==='existing')devices.delete('ai-R');
  assert.equal(prepareSocketDistribution(test,page,devices,wires),false,kind);assert.equal(JSON.stringify(test),saved,'Rejected preparation cannot mutate project: '+kind);
 }
-console.log('✓ Complete socket distribution: one sheet, 88 true autoconnect segments, separated original nets, unchanged labels, groups/IDs, reversed endpoints, other branch counts, rejection isolation, refresh and undo');
+
+// General multi-tier circuit (e.g. sub-distribution with main switch, SPD, RCD, 3P MCBs, 1P+N MCBs, RCBOs, and terminals)
+const generalArgs={
+ components:[
+  {id:'x1_l1',symbolId:'terminal_single',bmk:'-X1:L1',functionText:'Einspeisung L1'},
+  {id:'x1_l2',symbolId:'terminal_single',bmk:'-X1:L2',functionText:'Einspeisung L2'},
+  {id:'x1_l3',symbolId:'terminal_single',bmk:'-X1:L3',functionText:'Einspeisung L3'},
+  {id:'x1_n',symbolId:'terminal_single',bmk:'-X1:N',functionText:'Einspeisung N'},
+  {id:'x1_pe',symbolId:'terminal_pe',bmk:'-X1:PE',functionText:'Einspeisung PE'},
+  {id:'q1',symbolId:'main_switch_4p',bmk:'-Q1',functionText:'Hauptschalter'},
+  {id:'f1',symbolId:'catalog_spd_type_2_4p',bmk:'-F1',functionText:'Überspannungsschutz'},
+  {id:'q2',symbolId:'rcd_4p',bmk:'-Q2',functionText:'FI-Schutzschalter'},
+  {id:'f2',symbolId:'circuit_breaker_3p',bmk:'-F2',functionText:'Abgang 1'},
+  {id:'f3',symbolId:'circuit_breaker_3p',bmk:'-F3',functionText:'Abgang 2'},
+  {id:'f4',symbolId:'catalog_mcb_1p_n_c',bmk:'-F4',functionText:'Steckdosen 1'},
+  {id:'f5',symbolId:'catalog_mcb_1p_n_c',bmk:'-F5',functionText:'Steckdosen 2'},
+  {id:'f6',symbolId:'catalog_mcb_1p_n_c',bmk:'-F6',functionText:'Beleuchtung 1'},
+  {id:'f7',symbolId:'catalog_mcb_1p_n_c',bmk:'-F7',functionText:'Beleuchtung 2'},
+  {id:'q3',symbolId:'rcbo_1p_n',bmk:'-Q3',functionText:'FI/LS Reserve'},
+  {id:'x_n1',symbolId:'terminal_single',bmk:'-X_N1',functionText:'N-Schiene'},
+  {id:'x_pe',symbolId:'terminal_pe',bmk:'-X_PE',functionText:'PE-Schiene'},
+ ],
+ connections:[
+  {id:'w1',from:{componentId:'x1_l1',pinId:'1'},to:{componentId:'q1',pinId:'1'},potential:'L1'},
+  {id:'w2',from:{componentId:'x1_l2',pinId:'1'},to:{componentId:'q1',pinId:'3'},potential:'L2'},
+  {id:'w3',from:{componentId:'x1_l3',pinId:'1'},to:{componentId:'q1',pinId:'5'},potential:'L3'},
+  {id:'w4',from:{componentId:'x1_n',pinId:'1'},to:{componentId:'q1',pinId:'7'},potential:'N'},
+  {id:'w5',from:{componentId:'x1_pe',pinId:'1'},to:{componentId:'x_pe',pinId:'1'},potential:'PE'},
+  {id:'w6',from:{componentId:'q1',pinId:'2'},to:{componentId:'f1',pinId:'L1'},potential:'L1'},
+  {id:'w7',from:{componentId:'q1',pinId:'4'},to:{componentId:'f1',pinId:'L2'},potential:'L2'},
+  {id:'w8',from:{componentId:'q1',pinId:'6'},to:{componentId:'f1',pinId:'L3'},potential:'L3'},
+  {id:'w9',from:{componentId:'q1',pinId:'8'},to:{componentId:'f1',pinId:'N'},potential:'N'},
+  {id:'w10',from:{componentId:'f1',pinId:'PE'},to:{componentId:'x_pe',pinId:'2'},potential:'PE'},
+  {id:'w11',from:{componentId:'q1',pinId:'2'},to:{componentId:'q2',pinId:'1'},potential:'L1'},
+  {id:'w12',from:{componentId:'q1',pinId:'4'},to:{componentId:'q2',pinId:'3'},potential:'L2'},
+  {id:'w13',from:{componentId:'q1',pinId:'6'},to:{componentId:'q2',pinId:'5'},potential:'L3'},
+  {id:'w14',from:{componentId:'q1',pinId:'8'},to:{componentId:'q2',pinId:'N_in'},potential:'N'},
+  {id:'w15',from:{componentId:'q1',pinId:'2'},to:{componentId:'q3',pinId:'1'},potential:'L1'},
+  {id:'w16',from:{componentId:'q1',pinId:'8'},to:{componentId:'q3',pinId:'N_in'},potential:'N'},
+  {id:'w17',from:{componentId:'q2',pinId:'2'},to:{componentId:'f2',pinId:'1'},potential:'L1'},
+  {id:'w18',from:{componentId:'q2',pinId:'4'},to:{componentId:'f2',pinId:'3'},potential:'L2'},
+  {id:'w19',from:{componentId:'q2',pinId:'6'},to:{componentId:'f2',pinId:'5'},potential:'L3'},
+  {id:'w20',from:{componentId:'q2',pinId:'2'},to:{componentId:'f3',pinId:'1'},potential:'L1'},
+  {id:'w21',from:{componentId:'q2',pinId:'4'},to:{componentId:'f3',pinId:'3'},potential:'L2'},
+  {id:'w22',from:{componentId:'q2',pinId:'6'},to:{componentId:'f3',pinId:'5'},potential:'L3'},
+  {id:'w23',from:{componentId:'q2',pinId:'2'},to:{componentId:'f4',pinId:'1'},potential:'L1'},
+  {id:'w24',from:{componentId:'q2',pinId:'4'},to:{componentId:'f5',pinId:'1'},potential:'L2'},
+  {id:'w25',from:{componentId:'q2',pinId:'6'},to:{componentId:'f6',pinId:'1'},potential:'L3'},
+  {id:'w26',from:{componentId:'q2',pinId:'2'},to:{componentId:'f7',pinId:'1'},potential:'L1'},
+  {id:'w27',from:{componentId:'q2',pinId:'N_out'},to:{componentId:'x_n1',pinId:'1'},potential:'N'},
+  {id:'w28',from:{componentId:'x_n1',pinId:'2'},to:{componentId:'f4',pinId:'N-in'},potential:'N'},
+  {id:'w29',from:{componentId:'x_n1',pinId:'2'},to:{componentId:'f5',pinId:'N-in'},potential:'N'},
+  {id:'w30',from:{componentId:'x_n1',pinId:'2'},to:{componentId:'f6',pinId:'N-in'},potential:'N'},
+  {id:'w31',from:{componentId:'x_n1',pinId:'2'},to:{componentId:'f7',pinId:'N-in'},potential:'N'},
+ ],
+ groups:[{id:'uv1',name:'+UV1',members:['q1','f1','q2','f2','f3','f4','f5','f6','f7','q3','x_n1','x_pe']}],
+};
+const generalBase=source(),generalRaw=buildDraft(generalBase,'p',generalArgs),generalOriginals=new Set(generalRaw.pages[0].components.map(c=>c.id));
+let generalCaptured:any;
+const generalResponse=await handleCreateDraft(generalArgs,{getProject:()=>generalBase,getActivePage:()=>generalBase.pages[0],showLayoutPreview:(preview:any,draft:any)=>{generalCaptured={preview,draft};}} as any);
+assert.equal(generalResponse.status,'preview_ready');
+assert.equal(generalResponse.layoutPreparation?.status,'applied');
+assert.equal(generalResponse.connectionConstruction?.routed,0);
+assert(generalCaptured.preview.candidates[0].page.wires.every((w:any)=>w.isAutoconnect));
+assert(validateLayout(snapshotPage(generalCaptured.preview.candidates[0].page,generalCaptured.draft)).valid);
+assert.deepEqual(partition(generalCaptured.draft,generalOriginals),partition(generalRaw,generalOriginals));
+const optResponse=await handleOptimizeLayout({pageId:'p'},{getProject:()=>generalRaw,getActivePage:()=>generalRaw.pages[0],showLayoutPreview:(preview:any,draft:any)=>{generalCaptured={preview,draft};}} as any);
+assert.equal(optResponse.status,'preview_ready');
+assert.equal(optResponse.connectionConstruction?.routed,0);
+console.log('✓ Complete socket distribution & general multi-tier circuits: one sheet, 100% true autoconnect segments, separated original nets, unchanged labels, groups/IDs, reversed endpoints, other branch counts, rejection isolation, refresh and undo');

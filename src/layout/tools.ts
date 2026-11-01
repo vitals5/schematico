@@ -186,10 +186,31 @@ function options(args: any): LayoutOptions {
 export async function handleOptimizeLayout(args: any, manager: CanvasStateManager) {
   const { project, page } = pageFor(args, manager),
     opts = options(args);
-  const planning=clone(project);planning.pages.find(p=>p.id===page.id)!.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true};
-  const raw=await previewLayout(project,page.id,opts,planning);
-  const {preview,draft}=preferDraftAutoconnect(project,planning,raw,true);
-  manager.showLayoutPreview?.(preview,draft,opts);
+  const planning = clone(project);
+  const planningPage = planning.pages.find(p => p.id === page.id)!;
+  planningPage.layoutConstraints = { ...page.layoutConstraints, preferAutoconnect: true };
+  if (
+    !opts.lockedIds?.length &&
+    !opts.selectedIds?.length &&
+    !opts.containerMembers &&
+    !planningPage.components.some(c => getSymbolById(c.symbolId, planning)?.category === 'connections')
+  ) {
+    let preparation = planningPage.layoutConstraints.draftPreparation;
+    if (
+      prepareSocketDistribution(
+        planning,
+        planningPage,
+        new Set(planningPage.components.map(c => c.id)),
+        new Set(planningPage.wires.map(w => w.id)),
+        d => (preparation = d),
+      )
+    ) {
+      planningPage.layoutConstraints = { ...planningPage.layoutConstraints, draftPreparation: preparation };
+    }
+  }
+  const raw = await previewLayout(project, page.id, opts, planning);
+  const { preview, draft } = preferDraftAutoconnect(project, planning, raw, true);
+  manager.showLayoutPreview?.(preview, draft, opts);
   return result(preview);
 }
 interface Draft {
