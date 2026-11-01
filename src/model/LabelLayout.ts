@@ -8,6 +8,7 @@ import { rotatedLocalPoint } from './SymbolGeometry';
 import { splitCrossReferenceLines } from './CrossReferenceNavigation';
 
 export interface CalculatedLabelPosition {
+  maxWidth?: number;
   x: number;
   y: number;
   anchor: 'start' | 'middle' | 'end';
@@ -21,6 +22,16 @@ export interface CalculatedLabelPosition {
 
 type LabelKey = 'bmkPosition' | 'functionTextPosition' | 'technicalDataPosition' | 'additionalTextPosition' | 'crossRefPosition';
 const automatic = (cfg?: TextFormatConfig) => !cfg?.preset || cfg.preset === 'auto';
+/** Display-only word wrapping; stored equipment text and font sizes stay intact. */
+export function wrapLabelText(text:string,size:number,width?:number):string {
+  if(!width||width<=0)return text;
+  const measure=(s:string)=>[...s].reduce((n,c)=>n+size*(/[MW@%]/.test(c) ? 0.95 : /[ilI., :/]/.test(c) ? 0.33 : 0.63),0);
+  return text.split(/\r?\n/).flatMap(line=>{
+    const rows:string[]=[];let current='';
+    for(const word of line.split(/\s+/)){if(current&&measure(current+' '+word)>width){rows.push(current);current=word;}else current=current?current+' '+word:word;}
+    return [...rows,current];
+  }).join('\n');
+}
 
 /** A readable, right-aligned block on the world-left of the rotated symbol.
  * Only automatic, visible, populated labels consume lines in this block. */
@@ -31,7 +42,7 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
     ['additionalTextPosition', comp.additionalText ?? '', 8], ['crossRefPosition', comp.crossRef ?? '', comp.crossRefFontSize ?? 8]
   ];
   const rows = data.filter(([id, text]) => id === key || automatic(comp[id]) && comp[id]?.visible !== false && !!text);
-  const height = ([id, text, size]: typeof data[number]) => Math.max(1, (id === 'crossRefPosition' ? splitCrossReferenceLines(text) : text.split(/\r?\n/)).length)
+  const height = ([id, text, size]: typeof data[number]) => Math.max(1, (id === 'crossRefPosition' ? splitCrossReferenceLines(text) : wrapLabelText(text,comp[id]?.fontSize??size,comp[id]?.maxWidth).split(/\r?\n/)).length)
     * (id === 'crossRefPosition' ? comp.crossRefFontSize ?? comp[id]?.fontSize ?? size : comp[id]?.fontSize ?? size) * 1.4;
   const total = rows.reduce((sum, row) => sum + height(row), 0);
   let y = sym.height / 2 - total / 2;
@@ -42,7 +53,7 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
     const rotatedWidth = comp.rotation % 180 ? sym.height : sym.width;
     const local = rotatedLocalPoint({ x: sym.width / 2 - rotatedWidth / 2 - 4 * (sym.unitsPerMm ?? 2), y }, sym, -comp.rotation);
     const x = local.x + (cfg?.offsetX ?? 0), py = local.y + (cfg?.offsetY ?? 0), rotation = cfg?.rotation ?? 0;
-    return { x, y: py, anchor: cfg?.alignment ?? 'end', rotation, fontSize: size,
+    return { x, y: py, anchor: cfg?.alignment ?? 'end', rotation, fontSize: size, maxWidth:cfg?.maxWidth,
       visible: cfg?.visible ?? (key === 'technicalDataPosition' ? !!row[1] : true),
       transform: labelTransform(x, py, comp.rotation, rotation), fontColor: cfg?.fontColor, fontWeight: cfg?.fontWeight };
   }
@@ -118,7 +129,7 @@ export function computeBmkPosition(comp: PlacedComponent, sym: SymbolDefinition)
   const visible = cfg?.visible !== false;
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
-  return { x, y, anchor, rotation, fontSize, visible, transform, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
+  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:cfg?.maxWidth, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
 }
 
 export function computeFunctionTextPosition(comp: PlacedComponent, sym: SymbolDefinition): CalculatedLabelPosition {
@@ -190,7 +201,7 @@ export function computeFunctionTextPosition(comp: PlacedComponent, sym: SymbolDe
   const visible = cfg?.visible !== false;
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
-  return { x, y, anchor, rotation, fontSize, visible, transform, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
+  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:cfg?.maxWidth, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
 }
 
 export function computeTechnicalDataPosition(comp: PlacedComponent, sym: SymbolDefinition): CalculatedLabelPosition {
@@ -262,7 +273,7 @@ export function computeTechnicalDataPosition(comp: PlacedComponent, sym: SymbolD
   const visible = cfg?.visible !== undefined ? cfg.visible : !!(comp.deviceTag || comp.technicalCharacteristics);
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
-  return { x, y, anchor, rotation, fontSize, visible, transform, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
+  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:cfg?.maxWidth, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
 }
 
 /** Keep the automatic interruption layout unless an instance overrides it. */

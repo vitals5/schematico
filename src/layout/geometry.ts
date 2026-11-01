@@ -1,3 +1,4 @@
+import {wrapLabelText} from '../model/LabelLayout';
 import { pinStub } from './router';
 import { componentInsertionPoint } from '../model/SymbolGeometry';
 import { boxDrawing } from '../model/DeviceBox';
@@ -155,6 +156,7 @@ export function componentShapes(
     pinId?: string,
   ) => {
     if (!text || !pos.visible) return;
+    text=wrapLabelText(text,pos.fontSize,pos.maxWidth);
     const r = textRect(
         text,
         pos.fontSize,

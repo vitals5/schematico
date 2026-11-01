@@ -48,3 +48,29 @@ export function partitionBins(blocks: string[][], count: number, s: LayoutSnapsh
     }
     return bins.filter(b => b.length);
 }
+
+/** Bounded graph-cut alternatives. Atomic groups stay intact; large connected
+ * tails must not be forced onto one sheet just because all seeds were chosen first. */
+export function electricalPartitions(blocks:string[][],count:number,s:LayoutSnapshot):string[][][] {
+  if(blocks.length>9||count<2||count>blocks.length)return [];
+  const ordered=[...blocks].map(b=>[...b].sort()).sort((a,b)=>a[0].localeCompare(b[0]));
+  const owner=new Map(ordered.flatMap((b,i)=>b.map(id=>[id,i] as const)));
+  const weights=ordered.map(b=>s.nodes.filter(n=>b.includes(n.id)).reduce((sum,n)=>sum+(n.rect.width+8)*(n.rect.height+8),0));
+  const edges=s.edges.map(e=>[owner.get(e.from.componentId),owner.get(e.to.componentId)] as const).filter(([a,b])=>a!==undefined&&b!==undefined&&a!==b);
+  const choices:{bins:string[][];score:number}[]=[];const assignment:number[]=[];let visited=0;
+  const visit=(index:number,used:number)=>{
+    if(++visited>50000)return;
+    if(index===ordered.length){
+      if(used!==count)return;
+      const load=Array.from({length:count},()=>0),bins:string[][]=Array.from({length:count},()=>[]);
+      assignment.forEach((n,i)=>{load[n]+=weights[i];bins[n].push(...ordered[i]);});
+      const cuts=edges.filter(([a,b])=>assignment[a!]!==assignment[b!]).length;
+      const budget=s.area.width*s.area.height*.65;
+      const score=cuts*1200+load.reduce((v,n)=>v+Math.max(0,n-budget)*10,0)+Math.max(...load)*.25;
+      choices.push({bins,score});return;
+    }
+    for(let n=0;n<Math.min(used+1,count);n++){assignment[index]=n;visit(index+1,Math.max(used,n+1));}
+  };
+  visit(0,0);choices.sort((a,b)=>a.score-b.score||JSON.stringify(a.bins).localeCompare(JSON.stringify(b.bins)));
+  return choices.slice(0,1).map(c=>c.bins);
+}

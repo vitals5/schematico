@@ -1,3 +1,4 @@
+import {wrapLabelText} from '../model/LabelLayout';
 import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
 import { boxDrawing, boxSvg } from '../model/DeviceBox';
@@ -3476,18 +3477,18 @@ export class CadCanvas {
             
             <!-- Function text (Funktionstext) -->
             ${fnPos.visible && comp.functionText ? `
-              <text data-label="functionTextPosition" x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${labelText(comp.functionText, fnPos.x, fnPos.fontSize)}</text>
+              <text data-label="functionTextPosition" x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${labelText(wrapLabelText(comp.functionText,fnPos.fontSize,fnPos.maxWidth), fnPos.x, fnPos.fontSize)}</text>
             ` : ''}
 
             <!-- Device Tag / Technical Characteristics -->
             ${techPos.visible && techText ? `
-              <text data-label="technicalDataPosition" x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${labelText(techText, techPos.x, techPos.fontSize)}</text>
+              <text data-label="technicalDataPosition" x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${labelText(wrapLabelText(techText,techPos.fontSize,techPos.maxWidth), techPos.x, techPos.fontSize)}</text>
             ` : ''}
 
             <!-- Cross Reference -->
           ` : isTerminal && !hideLabels ? `
             <!-- Terminal designation and BMK -->
-            <text ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1'}</text>
+            <text ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${labelText(wrapLabelText(comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1',comp.pinLabelFontSize ?? 7.5,fnPos.maxWidth),sym.width+2,comp.pinLabelFontSize ?? 7.5)}</text>
             ${comp.bmk && bmkPos.visible && !comp.bmk.startsWith('comp_') ? `
               <text ${bmkPos.transform} x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="${bmkPos.anchor}">${labelText(comp.bmk, bmkPos.x, bmkPos.fontSize)}</text>
             ` : ''}

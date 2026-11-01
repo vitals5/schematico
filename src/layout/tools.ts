@@ -1,3 +1,4 @@
+import {isDistributionFeed,socketPorts} from './distributionRoles';
 import { prepareSocketDistribution } from './socketDistribution';
 import { preferDraftAutoconnect } from './autoconnectDraft';
 import { prepareDraftConnections } from './draftConnections';
@@ -6,7 +7,7 @@ import { nextDeviceTag } from '../model/DeviceTag';
 import type { CanvasStateManager } from '../ai/mcp-tools/handlers';
 import type { McpToolDefinition } from '../ai/mcp-tools/definitions';
 import type { Project, PlacedComponent } from '../model/types';
-import { getSymbolById } from '../model/symbols';
+import { getDrawingUnitsPerMm, getSymbolById } from '../model/symbols';
 import { snapshotPage } from './geometry';
 import { validateLayout } from './validate';
 import { previewLayout } from './service';
@@ -255,6 +256,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     taken.add(next);
     return next;
   };
+  const wrapDraftLabels=!input.components.some(c=>socketPorts(getSymbolById(c.symbolId,draft)));
   for (const item of input.components) {
     const sym = getSymbolById(item.symbolId, draft);
     if (!sym || sym.unresolved)
@@ -271,6 +273,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
         technicalCharacteristics: item.technicalCharacteristics ?? sym.technicalCharacteristics,
         manufacturer: item.manufacturer ?? sym.manufacturer,
         articleNumber: item.articleNumber ?? sym.articleNumber,
+        ...(wrapDraftLabels&&!isDistributionFeed(sym)?{functionTextPosition:{maxWidth:40*getDrawingUnitsPerMm(draft)},technicalDataPosition:{maxWidth:40*getDrawingUnitsPerMm(draft)}}:{}),
         x: 0,
         y: 0,
         rotation: 0,

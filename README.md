@@ -45,6 +45,8 @@ The drawing assistant can propose complete circuits using library symbols, pin-t
 
 New AI drafts prefer Autoconnect by default: routing reserves space for real library corners and T-pieces, and compatible shared paths are compiled into editable connection elements. Only paths reproduced by the actual Autoconnect detector are marked automatic. The preview and session diagnostics show remaining routed sections and their reasons. Socket distributions compare multiple spacing profiles against the usable sheet area while preserving symbol and font sizes. Local nets can also be compiled in multi-sheet drafts; cross-sheet references retain their audited endpoints.
 
+Long equipment labels in new non-socket AI drafts use display-only word wrapping; the stored text and font size remain unchanged. Multi-sheet planning also compares bounded electrical graph partitions to reduce sheet-to-sheet connections. Optional space reserved for Autoconnect pieces is relaxed before adding more sheets when a checked compact route fits.
+
 Existing circuits can also be copied exactly to another page using `duplicate_schematic_page`, retaining their native library symbols and connections.
 
 Only **Übernehmen / Apply** changes a layout proposal, as one undo step. Infeasible layouts return explicit issues and a proposed group split instead of shrinking symbols or fonts. Full-sheet utilization alone is not a quality guarantee. See [layout workflow, MCP tools and limitations](docs/layout.md).

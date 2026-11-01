@@ -94,6 +94,12 @@ export async function previewLayout(
   }
   sessionDiagnostics.record('layout_geometry_input',input);
   const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input);
+  // Optional connector reservations must not alone force extra sheets.
+  // The route compiler will still independently validate every inserted glyph.
+  if(!solutions.some(s=>s.report.valid)&&input.autoconnectSpacing){
+    const compact=await computeSolutions(snapshotPage(page,target,options));
+    solutions.push(...compact);
+  }
   const rejections: LayoutPreview['issues'] = [];
   for (const solution of solutions) {
     if (!solution.report.valid) continue;

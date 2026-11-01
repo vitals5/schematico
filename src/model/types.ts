@@ -153,6 +153,7 @@ export interface SymbolDefinition {
 }
 
 export interface TextFormatConfig {
+  maxWidth?: number;
   preset?: 'auto' | 'top' | 'bottom' | 'left' | 'right' | 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right' | 'custom';
   offsetX?: number;             // X offset in px relative to default position
   offsetY?: number;             // Y offset in px relative to default position

@@ -42,7 +42,7 @@ export function scalePlacedComponent(component: PlacedComponent, factor: number)
   for (const key of ['bmkPosition', 'functionTextPosition', 'additionalTextPosition', 'technicalDataPosition', 'crossRefPosition', 'pinLabelPosition'] as const) {
     const config = copy[key];
     if (!config) continue;
-    for (const field of ['offsetX', 'offsetY', 'fontSize'] as const) if (config[field] !== undefined) config[field]! *= factor;
+    for (const field of ['offsetX', 'offsetY', 'fontSize', 'maxWidth'] as const) if (config[field] !== undefined) config[field]! *= factor;
   }
   return copy;
 }

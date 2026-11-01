@@ -1,7 +1,7 @@
 import { functionalBlocks } from './functionalBlocks';
 import { separatedAreaPenalty } from './areaQuality';
 import { handoverSymbol } from './handoverSymbol';
-import { coherentBlocks, partitionBins } from './coherentBlocks';
+import { coherentBlocks, partitionBins, electricalPartitions } from './coherentBlocks';
 import { designPenalty } from './structured';
 import type { Project, Page, Wire, PlacedComponent } from '../model/types';
 import { getSymbolById, getSymbolForComponent } from '../model/symbols';
@@ -408,8 +408,7 @@ export async function multiPageCandidate(
   const functional = functionalBlocks(coherent, geometry);
   const attempts = Array.from({ length: Math.min(12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
     const seen = new Set<string>();
-    return [functional, coherent, blocks].filter(units => units.length >= count).flatMap(units => {
-      const bins = partitionBins(units, count, geometry);
+    return [...electricalPartitions(blocks,count,geometry),...[functional, coherent, blocks].filter(units => units.length >= count).map(units=>partitionBins(units,count,geometry))].flatMap(bins => {
       // Keep sheet order: the first sheet retains source texts and images.
       const key = JSON.stringify(bins.map(b => [...b].sort()));
       if (seen.has(key)) return [];
@@ -441,7 +440,14 @@ export async function multiPageCandidate(
         ...options,
         multiPage: false,
       });
-      const candidate = preview.candidates[0];
+      let candidate = preview.candidates[0];
+      if(!candidate&&page.layoutConstraints?.preferAutoconnect){
+        const relaxed=clone(copy),p=relaxed.pages.find(p=>p.id===page.id)!;
+        p.layoutConstraints={...p.layoutConstraints,preferAutoconnect:false};
+        const compact=await previewLayout(relaxed,page.id,{...options,multiPage:false});
+        candidate=compact.candidates[0];
+        if(candidate)candidate.page.layoutConstraints={...candidate.page.layoutConstraints,preferAutoconnect:true};
+      }
       if (!candidate) {
         failedInputs.add(key);
         valid = false;

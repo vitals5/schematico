@@ -1,3 +1,4 @@
+import {wrapLabelText} from '../model/LabelLayout';
 import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
@@ -790,12 +791,13 @@ export class PdfExporter {
         doc.setFontSize((comp.pinLabelFontSize ?? 7.5) * sy * 72 / 25.4);
         doc.setTextColor(50, 50, 50);
         const anchor = rotatedLocalPoint({x:sym.width+2,y:sym.height/2+3},sym,comp.rotation);
-        doc.text(termNum, (comp.x+anchor.x)*sx, (comp.y+anchor.y)*sy);
+        doc.text(wrapLabelText(termNum,comp.pinLabelFontSize??7.5,computeFunctionTextPosition(comp,sym).maxWidth), (comp.x+anchor.x)*sx, (comp.y+anchor.y)*sy,{lineHeightFactor:1.2});
 
       }
       {
         const drawLabel = (text: string, pos: ReturnType<typeof computeBmkPosition>, bold: boolean, color: number[]) => {
           if (!text || !pos.visible) return;
+          text=wrapLabelText(text,pos.fontSize,pos.maxWidth);
           const a = comp.rotation * Math.PI / 180;
           const dx = pos.x - sym.width / 2, dy = pos.y - sym.height / 2;
           const px = comp.x + sym.width / 2 + dx * Math.cos(a) - dy * Math.sin(a);
@@ -806,7 +808,7 @@ export class PdfExporter {
           const ownColor = hex ? [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)] : color;
           const rgb = options.colorMode === 'color' ? ownColor : [0, 0, 0];
           doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-          doc.text(text, px * sx, py * sy, { align: pos.anchor === 'middle' ? 'center' : pos.anchor === 'end' ? 'right' : 'left', angle: -pos.rotation });
+          doc.text(text, px * sx, py * sy, { align: pos.anchor === 'middle' ? 'center' : pos.anchor === 'end' ? 'right' : 'left', angle: -pos.rotation, lineHeightFactor:1.2 });
         };
         if (!hideLabels || comp.showLabels) {
           if (!isConnection && (!isTerminal || !comp.bmk.startsWith('comp_')))
