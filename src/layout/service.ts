@@ -75,6 +75,22 @@ export async function previewLayout(
     ),
     base = projectRevision(project),
     candidates: LayoutCandidate[] = [];
+  // Imported, already aligned drawings should not be expanded into a new graph
+  // merely to repair label positions. Keep cables and every physical contact.
+  if(topology(target)===topology(project) && page.components.length && page.components.some(c=>c.x!==0||c.y!==0) && input.edges.length &&
+      !before.issues.some(i=>i.severity==='error'&&!['text_overlap','wire_obstacle','sheet_overflow','group_overflow'].includes(i.type))){
+    const {repairExistingLabels}=await import('./labelRepair');
+    const repaired=await repairExistingLabels(target,pageId,options),next=repaired.project.pages.find(p=>p.id===pageId)!;
+    markLayoutAutoconnections(repaired.project,next);
+    if(repaired.report.valid&&!unverifiedAutoconnections(repaired.project,next).length&&topology(repaired.project)===topology(target)){
+      next.connectionMode='explicit';
+      next.layoutConstraints={...next.layoutConstraints,protectedComponentIds:next.components.map(c=>c.id)};
+      const candidate:LayoutCandidate={id:'layout-label-repair',base,pageId,page:next,profile:'minimal_change',report:repaired.report,autoconnectRequired:true};
+      sessionDiagnostics.record('layout_label_repair',{pageId,report:repaired.report});
+      sessionDiagnostics.record('layout_candidate',candidate);
+      return {pageId,before,status:'preview_ready',issues:[],candidates:[candidate]};
+    }
+  }
   // A construction grammar may already have produced a completely checked,
   // pin-aligned draft. Preserve that solution before generic graph placement.
   let preparedReport;

@@ -6,7 +6,7 @@ import type {
   Shape,
   LayoutEdge,
 } from './types';
-import { overlaps, contains, right, bottom } from './rect';
+import { overlaps, contains, right, bottom, union } from './rect';
 const eps = 1e-6;
 export const axis = (a: Point, b: Point) =>
   Math.abs(a.x - b.x) < eps || Math.abs(a.y - b.y) < eps;
@@ -208,7 +208,8 @@ export function validateLayout(s: LayoutSnapshot): LayoutReport {
       });
     for (const n of s.nodes) {
       if (member(f.id, n.id)) {
-        if (!contains(f.rect, n.rect))
+        // Port escape corridors are routing reservations, not painted contents.
+        if (!contains(f.rect, n.shapes.length ? union(n.shapes.map(shape=>shape.rect)) : n.rect))
           issues.push({
             type: 'group_overflow',
             severity: 'error',

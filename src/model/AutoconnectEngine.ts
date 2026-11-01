@@ -104,6 +104,7 @@ export class AutoconnectEngine {
    * - Horizontal: pin1.y === pin2.y (with tolerance <= 2px), pin1 points 'right', pin2 points 'left', no intermediate pins
    */
   public static findAutoconnectPairs(components: PlacedComponent[], tolerance = 2, minimumDistance = 8, project?: Project): AutoconnectPair[] {
+    const maximumDistance = project ? Math.max(this.MAX_AUTOCONNECT_DISTANCE, ...(project.pages ?? []).map(p => Math.max(p.plotFrame.width, p.plotFrame.height))) : this.MAX_AUTOCONNECT_DISTANCE;
     const allPins = this.getAllPins(components, project);
     const pairs: AutoconnectPair[] = [];
 
@@ -125,7 +126,7 @@ export class AutoconnectEngine {
         }
         for (let i = 1; i < positions.length; i++) {
           const distance = coordinate(positions[i][0]) - coordinate(positions[i - 1][0]);
-          if (distance < minimumDistance || distance > this.MAX_AUTOCONNECT_DISTANCE) continue;
+          if (distance < minimumDistance || distance > maximumDistance) continue;
           for (const a of positions[i - 1].filter(p => p.direction === forward))
             for (const b of positions[i].filter(p => p.direction === backward))
               if (a.componentId !== b.componentId) pairs.push({ pin1: a, pin2: b,
