@@ -24,7 +24,9 @@ import {
 } from './types';
 export async function computeSolutions(
   snapshot: LayoutSnapshot,
+  signal?: AbortSignal,
 ): Promise<LayoutSolution[]> {
+  if (signal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   if (typeof Worker === 'undefined') {
     const { solveLayouts } = await import('./engine');
     return solveLayouts(snapshot);
@@ -32,7 +34,7 @@ export async function computeSolutions(
   const worker = new Worker(new URL('./LayoutWorker.ts', import.meta.url), {
     type: 'module',
   });
-  return runLayoutWorker(worker, snapshot);
+  return runLayoutWorker(worker, snapshot, 15000, signal);
 }
 export async function previewLayout(
   project: Project,
@@ -40,6 +42,7 @@ export async function previewLayout(
   options: LayoutOptions = {},
   draft?: Project,
 ): Promise<LayoutPreview> {
+  if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   sessionDiagnostics.record('layout_request',{pageId,options});
   sessionDiagnostics.record('layout_input_project',draft??project);
   if (typeof document !== 'undefined') await document.fonts.ready;
@@ -111,15 +114,18 @@ export async function previewLayout(
     })]);
   }
   sessionDiagnostics.record('layout_geometry_input',input);
-  const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input);
+  if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
+  const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input, options.abortSignal);
+  if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   // Optional connector reservations must not alone force extra sheets.
   // The route compiler will still independently validate every inserted glyph.
   if(!solutions.some(s=>s.report.valid)&&input.autoconnectSpacing){
-    const compact=await computeSolutions(snapshotPage(page,target,options));
+    const compact=await computeSolutions(snapshotPage(page,target,options), options.abortSignal);
     solutions.push(...compact);
   }
   const rejections: LayoutPreview['issues'] = [];
   for (const solution of solutions) {
+    if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
     if (!solution.report.valid) continue;
     const next = clone(page),
       u = getDrawingUnitsPerMm(target);
@@ -223,6 +229,7 @@ export async function previewLayout(
   if (
     !candidates.length &&
     options.multiPage !== false &&
+    !options.abortSignal?.aborted &&
     !input.issues.some((i) => i.severity === 'error')
   ) {
     const { multiPageCandidate, multiPageBlockReason } = await import('./multipage');

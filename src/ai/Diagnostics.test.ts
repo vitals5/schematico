@@ -69,6 +69,24 @@ try {
 finally {
   globalThis.fetch = oldFetch;
 }
+// Abort during tool execution
+const slowRegistry = new McpToolRegistry();
+slowRegistry.register({ name: 'slow_tool', description: 'test', inputSchema: { type: 'object', properties: {} } }, async (_args, _m, signal) => {
+  return new Promise((_resolve, reject) => {
+    signal?.addEventListener('abort', () => reject(new Error('Ausführung durch Benutzer abgebrochen.')));
+  });
+});
+globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: null, tool_calls: [{ id: 'call-1', function: { name: 'slow_tool', arguments: '{}' } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+try {
+  const abortClient = new GeminiChatClient({ toolRegistry: slowRegistry });
+  const sendPromise = abortClient.sendMessage('Test abort', manager);
+  // Trigger abort immediately while tool is running
+  abortClient.abort();
+  const resMsg = await sendPromise;
+  assert(resMsg.text.includes('Ausführung durch Benutzer abgebrochen'));
+} finally {
+  globalThis.fetch = oldFetch;
+}
 const circular: any = { message: 'Bearer password-here', key: 'untouched', nested: { api_key: 'hidden' } };
 circular.self = circular;
 assert.doesNotThrow(() => JSON.stringify(sanitizeDiagnostic(circular)));

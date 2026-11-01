@@ -118,6 +118,7 @@ export interface DraftPreparation {
 export interface LayoutOptions extends LayoutConstraints {
   multiPage?: boolean;
   selectedIds?: string[];
+  abortSignal?: AbortSignal;
 }
 export interface LayoutSolution {
   profile: 'readability' | 'compact' | 'minimal_change' | 'lanes' | 'structured';

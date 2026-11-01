@@ -90,3 +90,28 @@ finally {
   globalThis.setTimeout = realTimer;
 }
 console.log('✓ Timed-out first attempt still produces an independently validated multi-sheet preview without changing the project');
+
+// AbortSignal cancellation tests
+const abortWorker = new TestWorker();
+const aborter = new AbortController();
+aborter.abort();
+await assert.rejects(
+  runLayoutWorker(abortWorker as any, snapshot, 1000, aborter.signal),
+  /Ausführung durch Benutzer abgebrochen/
+);
+assert.equal(abortWorker.terminated, 1);
+
+const liveWorker = new TestWorker();
+const liveAborter = new AbortController();
+const workerPromise = runLayoutWorker(liveWorker as any, snapshot, 5000, liveAborter.signal);
+liveAborter.abort();
+await assert.rejects(workerPromise, /Ausführung durch Benutzer abgebrochen/);
+assert.equal(liveWorker.terminated, 1);
+
+const abortedPreview = new AbortController();
+abortedPreview.abort();
+await assert.rejects(
+  previewLayout(project, 'p', { abortSignal: abortedPreview.signal }),
+  /Ausführung durch Benutzer abgebrochen/
+);
+console.log('✓ AbortSignal instantly cancels layout workers and preview computation');

@@ -459,6 +459,15 @@ async function runTests() {
   }
   console.log('✓ Test 21: place_macro successfully instantiated Page Macro "macro_ems_messkonzept_mk_c3" with 12 components, 4 device boxes, 6 texts, and 21 wires across full DIN A3 sheet');
 
+  // Test 22: Cancellation via AbortSignal in executeTool
+  const cancelController = new AbortController();
+  cancelController.abort();
+  const abortedRes = await registry.executeTool('create_schematic_draft', { components: [{ id: 'c1', symbolId: 'circuit_breaker_1p' }], connections: [] }, manager, cancelController.signal);
+  if (abortedRes.success !== false || !abortedRes.error?.includes('Ausführung durch Benutzer abgebrochen')) {
+    throw new Error('Test 22 failed: executeTool should fail cleanly on aborted signal: ' + JSON.stringify(abortedRes));
+  }
+  console.log('✓ Test 22: executeTool cleanly cancels with AbortSignal without mutating state');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

@@ -417,6 +417,7 @@ export async function multiPageCandidate(
     });
   });
   for (const { count, bins } of attempts) {
+    if (options.abortSignal?.aborted) return;
     const multi = buildPages(
       target,
       source,
@@ -425,6 +426,7 @@ export async function multiPageCandidate(
     let copy = projectWithPages(target, pageId, multi),
       valid = true;
     for (const page of multi.pages) {
+      if (options.abortSignal?.aborted) return;
       const key = JSON.stringify(
         snapshotPage(
           copy.pages.find((p) => p.id === page.id)!,

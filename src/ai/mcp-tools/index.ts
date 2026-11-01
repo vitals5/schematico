@@ -86,7 +86,7 @@ import {
 export * from './definitions';
 export * from './handlers';
 
-export type ToolHandler = (args: any, manager: CanvasStateManager) => Promise<any>;
+export type ToolHandler = (args: any, manager: CanvasStateManager, signal?: AbortSignal) => Promise<any>;
 
 export interface RegisteredTool {
   definition: McpToolDefinition;
@@ -171,7 +171,8 @@ export class McpToolRegistry {
   public async executeTool(
     name: string,
     args: any,
-    manager: CanvasStateManager
+    manager: CanvasStateManager,
+    signal?: AbortSignal
   ): Promise<any> {
     const started=Date.now(),callId='tool-'+started.toString(36)+'-'+Math.random().toString(36).slice(2,9);
     sessionDiagnostics.record('tool_start',{callId,tool:name,args});
@@ -184,12 +185,13 @@ export class McpToolRegistry {
       return {...result,success:false,error:sanitizeDiagnostic(error?.message??result?.error??result?.message??'Aktion fehlgeschlagen.'),diagnosticId};
     };
     try {
+      if (signal?.aborted) return failure(new Error('Ausführung durch Benutzer abgebrochen.'));
       const entry = this.tools.get(name);
       if(!entry)return failure(new Error(`Tool "${name}" is not registered. Available tools: ${Array.from(this.tools.keys()).join(', ')}`));
       stage='tool_arguments';
       const parsedArgs = typeof args === 'string' ? JSON.parse(args) : (args || {});
       stage='tool_execution';
-      const result = await entry.handler(parsedArgs, manager);
+      const result = await entry.handler(parsedArgs, manager, signal);
       if(result?.success===false){stage=result.status==='layout_invalid'?'layout_validation':'tool_execution';return failure(undefined,result);}
       sessionDiagnostics.record('tool_end',{callId,tool:name,result,durationMs:Date.now()-started});
       return result;

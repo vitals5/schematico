@@ -50,7 +50,7 @@ export const OPTIMIZE_LAYOUT_TOOL: McpToolDefinition = {
 export const CREATE_DRAFT_TOOL: McpToolDefinition = {
   name: 'create_schematic_draft',
   description:
-    'Plan a complete circuit as library components, pin connections and explicit groups WITHOUT coordinates. Computes a checked layout preview. The user applies the entire draft as one undo step. Existing page contents remain unless moved by the checked layout.',
+    'Plan a complete circuit as library components, pin connections and explicit groups WITHOUT coordinates. Computes a checked layout preview. The user applies the entire draft as one undo step. Existing page contents remain unless moved by the checked layout. Do not insert physical comb busbars (such as catalog_phase_busbar_3_gabel); connect circuit breaker supply pins directly to the source/RCD phases. Schematico automatically constructs busbars, T-junctions, and autoconnect alignments.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -183,7 +183,7 @@ function options(args: any): LayoutOptions {
     containerMembers: args.containerMembers,
   };
 }
-export async function handleOptimizeLayout(args: any, manager: CanvasStateManager) {
+export async function handleOptimizeLayout(args: any, manager: CanvasStateManager, signal?: AbortSignal) {
   const { project, page } = pageFor(args, manager),
     opts = options(args);
   const planning = clone(project);
@@ -208,7 +208,7 @@ export async function handleOptimizeLayout(args: any, manager: CanvasStateManage
       planningPage.layoutConstraints = { ...planningPage.layoutConstraints, draftPreparation: preparation };
     }
   }
-  const raw = await previewLayout(project, page.id, opts, planning);
+  const raw = await previewLayout(project, page.id, { ...opts, abortSignal: signal }, planning);
   const { preview, draft } = preferDraftAutoconnect(project, planning, raw, true);
   manager.showLayoutPreview?.(preview, draft, opts);
   return result(preview);
@@ -362,19 +362,19 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   }else if(page.layoutConstraints)delete page.layoutConstraints.draftPreparation;
   return draft;
 }
-export async function handleCreateDraft(args: any, manager: CanvasStateManager) {
+export async function handleCreateDraft(args: any, manager: CanvasStateManager, signal?: AbortSignal) {
   let phase='draft_validation';
   try {
     const {project,page}=pageFor(args,manager);
     let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
     phase='layout_computation';
-    let preview=await previewLayout(project,page.id,{},draft);
-    if(preview.status==='layout_invalid'){
+    let preview=await previewLayout(project,page.id,{ abortSignal: signal },draft);
+    if(preview.status==='layout_invalid' && !signal?.aborted){
       const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
       const preparation=draft.pages.find(p=>p.id===page.id)!.layoutConstraints?.draftPreparation;
       if(preparation){const p=fallback.pages.find(p=>p.id===page.id)!;p.layoutConstraints={...p.layoutConstraints,draftPreparation:preparation.status==='applied'?{...preparation,status:'rejected',code:'layout_rejected',message:'Das konstruierte Verteilungsmuster hat die abschließende Layoutprüfung nicht bestanden. Allgemeines Layoutverfahren wird verwendet.',issues:preview.issues.filter(i=>i.severity==='error').slice(0,20)}:preparation};}
       if(fallback.pages.find(p=>p.id===page.id)!.components.length!==draft.pages.find(p=>p.id===page.id)!.components.length){
-        const alternative=await previewLayout(project,page.id,{},fallback);
+        const alternative=await previewLayout(project,page.id,{ abortSignal: signal },fallback);
         if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}
       }
     }
