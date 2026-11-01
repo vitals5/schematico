@@ -66,6 +66,22 @@ export async function previewLayout(
     if (fixedFrameIds.length)
       page.layoutConstraints = { ...page.layoutConstraints, fixedFrameIds };
   }
+  if (
+    !page.layoutConstraints?.draftPreparation &&
+    page.layoutConstraints?.preferAutoconnect &&
+    page.components.length &&
+    page.components.every((c) => c.x === 0 && c.y === 0)
+  ) {
+    const { prepareSocketDistribution } = await import('./socketDistribution');
+    const devIds = new Set(page.components.map((c) => c.id));
+    const wireIds = new Set(page.wires.map((w) => w.id));
+    prepareSocketDistribution(target, page, devIds, wireIds, (d) => {
+      page.layoutConstraints = {
+        ...page.layoutConstraints,
+        draftPreparation: d,
+      };
+    });
+  }
   const input = snapshotPage(page, target, options),
     before = validateLayout(
       draft
@@ -97,7 +113,7 @@ export async function previewLayout(
   // A construction grammar may already have produced a completely checked,
   // pin-aligned draft. Preserve that solution before generic graph placement.
   let preparedReport;
-  if(draft){
+  if(draft || page.layoutConstraints?.draftPreparation?.status === 'applied'){
     const prepared=clone(page);
     for(const wire of prepared.wires)wire.isAutoconnect=false;
     markLayoutAutoconnections(target,prepared);
@@ -226,8 +242,11 @@ export async function previewLayout(
         profile: solution.profile,
       });
   }
+  const hasPureAutoconnect = candidates.some(
+    (c) => c.profile === 'structured' || c.page.wires.every((w) => w.isAutoconnect),
+  );
   if (
-    !candidates.length &&
+    (!candidates.length || (page.layoutConstraints?.preferAutoconnect && !hasPureAutoconnect)) &&
     options.multiPage !== false &&
     !options.abortSignal?.aborted &&
     !input.issues.some((i) => i.severity === 'error')
@@ -236,7 +255,7 @@ export async function previewLayout(
     const reason = multiPageBlockReason(target.pages.find(p => p.id === pageId)!, options);
     if (reason) rejections.push({ type: 'multi_page_unavailable', severity: 'warning', objectIds: [pageId], message: reason });
     const multi = await multiPageCandidate(project, target, pageId, options);
-    if (multi) candidates.push(multi);
+    if (multi) candidates.unshift(multi);
   }
   // A warning about an unavailable fallback must not hide why placement failed.
   const failures = [...solutions.filter(s=>!s.report.valid).flatMap(s=>s.report.issues), ...rejections];

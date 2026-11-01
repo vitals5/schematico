@@ -31,6 +31,33 @@ export function coherentBlocks(atomic: string[][], s: LayoutSnapshot): string[][
         const first = root(owner.get(a)!), second = root(owner.get(b)!);
         if (first !== second) parent[Math.max(first, second)] = Math.min(first, second);
     }
+    const blockSize = (rootIdx: number) => {
+        let count = 0;
+        for (let i = 0; i < atomic.length; i++) if (root(i) === rootIdx) count += atomic[i].length;
+        return count;
+    };
+    for (const [from, targets] of outgoing.entries()) {
+        const fromNode = nodes.get(from);
+        if (!fromNode || fromNode.fixed || fromNode.routingJunction || fromNode.handover) continue;
+        const bottomPins = fromNode.pins.filter(p => p.direction === 'bottom');
+        if (bottomPins.length >= 3 && targets.size >= 2 && targets.size <= 12) {
+            const dedicatedTargets = [...targets].filter(t => {
+                const tNode = nodes.get(t);
+                return tNode && !tNode.fixed && !tNode.routingJunction && !tNode.handover &&
+                    incoming.get(t)?.size === 1;
+            });
+            if (dedicatedTargets.length === targets.size) {
+                const first = root(owner.get(from)!);
+                const addedSize = dedicatedTargets.reduce((sum, t) => sum + (root(owner.get(t)!) !== first ? blockSize(root(owner.get(t)!)) : 0), 0);
+                if (blockSize(first) + addedSize <= 14) {
+                    for (const t of dedicatedTargets) {
+                        const second = root(owner.get(t)!);
+                        if (first !== second) parent[Math.max(first, second)] = Math.min(first, second);
+                    }
+                }
+            }
+        }
+    }
     const result = new Map<number, string[]>();
     atomic.forEach((b, i) => result.set(root(i), [...(result.get(root(i)) ?? []), ...b]));
     return [...result.values()].map(b => b.sort()).sort((a, b) => b.length - a.length || a[0].localeCompare(b[0]));

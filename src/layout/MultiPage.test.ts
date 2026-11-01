@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { PlacedComponent } from '../model/types';
 import { fixture, add } from './testing/fixture';
 import { previewLayout, applyLayout } from './service';
+import { handleCreateDraft } from './tools';
 import { snapshotPage } from './geometry';
 import { clone } from './types';
 import { referenceTargets } from '../model/CrossReferenceNavigation';
@@ -140,3 +141,68 @@ assert.equal(JSON.stringify(framed),framedBefore);
 assert.equal(framedPreview.candidates[0].page.layoutConstraints?.fixedFrameIds?.length,2);
 applyLayout(framed,framedPreview.candidates[0]);
 assert(framed.pages[0].components.filter(c=>c.deviceBox).every(c=>c.deviceBox!.width===120&&c.deviceBox!.height===40));
+
+// Large distribution board with 2 RCDs, main switch, SPD, RCBO, 16 MCBs and feed terminals
+const largeDistributionProject = fixture();
+const distDraftArgs = {
+  pageId: 'p',
+  components: [
+    { id: 'X1', symbolId: 'terminal_single', bmk: '-X1' },
+    { id: 'X2', symbolId: 'terminal_single', bmk: '-X1' },
+    { id: 'X3', symbolId: 'terminal_single', bmk: '-X1' },
+    { id: 'X4', symbolId: 'terminal_single', bmk: '-X1' },
+    { id: 'X5', symbolId: 'terminal_pe', bmk: '-X2' },
+    { id: 'Q1', symbolId: 'main_switch_4p', bmk: '-Q1' },
+    { id: 'F1', symbolId: 'catalog_spd_type_1_2_4p', bmk: '-F1' },
+    { id: 'F2', symbolId: 'catalog_rcd_4p_a_30', bmk: '-F2' },
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `F_A_${i}`, symbolId: 'catalog_mcb_1p_n_b', bmk: `-F${i + 3}` })),
+    { id: 'F11', symbolId: 'catalog_rcd_4p_a_30', bmk: '-F11' },
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `F_B_${i}`, symbolId: 'catalog_mcb_1p_b', bmk: `-F${i + 12}` })),
+    { id: 'F20', symbolId: 'catalog_rcbo_1te_b', bmk: '-F20' },
+  ],
+  connections: [
+    { id: 'w_in_1', from: { componentId: 'X1', pinId: '2' }, to: { componentId: 'Q1', pinId: '1' }, potential: 'L1' },
+    { id: 'w_in_2', from: { componentId: 'X2', pinId: '2' }, to: { componentId: 'Q1', pinId: '3' }, potential: 'L2' },
+    { id: 'w_in_3', from: { componentId: 'X3', pinId: '2' }, to: { componentId: 'Q1', pinId: '5' }, potential: 'L3' },
+    { id: 'w_in_4', from: { componentId: 'X4', pinId: '2' }, to: { componentId: 'Q1', pinId: '7' }, potential: 'N' },
+    { id: 'w_spd_1', from: { componentId: 'Q1', pinId: '2' }, to: { componentId: 'F1', pinId: 'L1' }, potential: 'L1' },
+    { id: 'w_spd_2', from: { componentId: 'Q1', pinId: '4' }, to: { componentId: 'F1', pinId: 'L2' }, potential: 'L2' },
+    { id: 'w_spd_3', from: { componentId: 'Q1', pinId: '6' }, to: { componentId: 'F1', pinId: 'L3' }, potential: 'L3' },
+    { id: 'w_spd_4', from: { componentId: 'Q1', pinId: '8' }, to: { componentId: 'F1', pinId: 'N' }, potential: 'N' },
+    { id: 'w_spd_pe', from: { componentId: 'X5', pinId: '2' }, to: { componentId: 'F1', pinId: 'PE' }, potential: 'PE' },
+    { id: 'w_rcd1_1', from: { componentId: 'Q1', pinId: '2' }, to: { componentId: 'F2', pinId: '1' }, potential: 'L1' },
+    { id: 'w_rcd1_2', from: { componentId: 'Q1', pinId: '4' }, to: { componentId: 'F2', pinId: '3' }, potential: 'L2' },
+    { id: 'w_rcd1_3', from: { componentId: 'Q1', pinId: '6' }, to: { componentId: 'F2', pinId: '5' }, potential: 'L3' },
+    { id: 'w_rcd1_4', from: { componentId: 'Q1', pinId: '8' }, to: { componentId: 'F2', pinId: 'N-in' }, potential: 'N' },
+    ...Array.from({ length: 8 }, (_, i) => ({
+      id: `w_mcb1_${i}`,
+      from: { componentId: 'F2', pinId: String((i % 3) * 2 + 2) },
+      to: { componentId: `F_A_${i}`, pinId: '1' },
+      potential: `L${(i % 3) + 1}`,
+    })),
+    { id: 'w_rcd2_1', from: { componentId: 'Q1', pinId: '2' }, to: { componentId: 'F11', pinId: '1' }, potential: 'L1' },
+    { id: 'w_rcd2_2', from: { componentId: 'Q1', pinId: '4' }, to: { componentId: 'F11', pinId: '3' }, potential: 'L2' },
+    { id: 'w_rcd2_3', from: { componentId: 'Q1', pinId: '6' }, to: { componentId: 'F11', pinId: '5' }, potential: 'L3' },
+    { id: 'w_rcd2_4', from: { componentId: 'Q1', pinId: '8' }, to: { componentId: 'F11', pinId: 'N-in' }, potential: 'N' },
+    ...Array.from({ length: 8 }, (_, i) => ({
+      id: `w_mcb2_${i}`,
+      from: { componentId: 'F11', pinId: String((i % 3) * 2 + 2) },
+      to: { componentId: `F_B_${i}`, pinId: '1' },
+      potential: `L${(i % 3) + 1}`,
+    })),
+    { id: 'w_rcbo_1', from: { componentId: 'Q1', pinId: '2' }, to: { componentId: 'F20', pinId: '1' }, potential: 'L1' },
+    { id: 'w_rcbo_n', from: { componentId: 'Q1', pinId: '8' }, to: { componentId: 'F20', pinId: 'N-in' }, potential: 'N' },
+  ],
+};
+const managerMock: any = {
+  getProject: () => largeDistributionProject,
+  getActivePage: () => largeDistributionProject.pages[0],
+  showLayoutPreview: () => {},
+};
+const draftRes = await handleCreateDraft(distDraftArgs, managerMock);
+assert.equal(draftRes.success, true);
+assert.equal(draftRes.status, 'preview_ready');
+assert(draftRes.candidates.length >= 1);
+assert.equal(draftRes.candidates[0].routedConnections, 0);
+assert(draftRes.candidates[0].autoconnectConnections > 0);
+console.log('✓ Multi-page verified autoconnect sub-distribution with 26 devices, multiple RCDs and MCBs');

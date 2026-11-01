@@ -2,6 +2,7 @@ import {sessionDiagnostics} from '../ai/SessionDiagnostics';
 import {rcdPorts,breakerPorts,socketPorts,isDistributionFeed} from './distributionRoles';
 import type { Page, Project, PlacedComponent, Wire, PinDefinition } from '../model/types';
 import { getDrawingUnitsPerMm, getSymbolById, getSymbolForComponent } from '../model/symbols';
+import { isConnectionSymbol } from '../model/ConnectionSymbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { snapshotPage } from './geometry';
@@ -60,7 +61,12 @@ function constructDistribution(project: Project, original: Page, newDevices: Set
   if (original.components.some(c => !newDevices.has(c.id) || c.rotation || c.source || c.deviceBox || c.scale && c.scale !== 1) ||
       original.wires.some(w => !newWires.has(w.id)) || original.texts?.length || original.images?.length || original.boxes?.length || original.cables?.length ||
       original.layoutConstraints?.lockedIds?.length || original.layoutConstraints?.fixedFrameIds?.length) return reject('existing_content','Das Muster benötigt einen neuen vollständigen Entwurf ohne bestehende oder fixierte Objekte.');
-  const work = clone(project), page = work.pages.find(p => p.id === original.id)!;
+  const work = clone(project);
+  let page = work.pages.find(p => p.id === original.id);
+  if (!page) {
+    page = clone(original);
+    work.pages.push(page);
+  }
   const symbol=(c:PlacedComponent)=>getSymbolForComponent(c,work);
   const rcds = page.components.filter(c => rcdPorts(symbol(c)));
   const breakers = page.components.filter(c => breakerPorts(symbol(c))).sort(byTag);
@@ -307,7 +313,11 @@ function constructGeneralCircuit(
   };
   if (
     original.components.some(
-      c => !newDevices.has(c.id) || c.rotation || c.source || c.deviceBox || (c.scale && c.scale !== 1),
+      c => {
+        const sym = getSymbolForComponent(c, project);
+        if (sym && isConnectionSymbol(sym)) return false;
+        return !newDevices.has(c.id) || c.rotation || c.source || c.deviceBox || (c.scale && c.scale !== 1);
+      },
     ) ||
     original.wires.some(w => !newWires.has(w.id)) ||
     original.texts?.length ||
@@ -324,8 +334,11 @@ function constructGeneralCircuit(
   }
 
   const work = clone(project);
-  CrossReferenceEngine.updateProjectCrossReferences(work);
-  const page = work.pages.find(p => p.id === original.id)!;
+  let page = work.pages.find(p => p.id === original.id);
+  if (!page) {
+    page = clone(original);
+    work.pages.push(page);
+  }
   const u = getDrawingUnitsPerMm(work);
   const initial = snapshotPage(page, work);
   if (initial.issues.some(i => i.severity === 'error')) {
@@ -395,6 +408,9 @@ function constructGeneralCircuit(
 
   for (const n of netList) {
     for (const ep of n.endpoints) {
+      const c = page.components.find(c => c.id === ep.componentId);
+      const sym = c && getSymbolForComponent(c, work);
+      if (sym && isConnectionSymbol(sym)) continue;
       const dir = point(ep).direction;
       if (dir !== 'top' && dir !== 'bottom') {
         return reject(
@@ -670,6 +686,16 @@ function constructGeneralCircuit(
     }
 
     currentLeftX = snapX(maxColRight + 6);
+  }
+
+  const boundsCheckSnap = snapshotPage(page, work);
+  const maxX = Math.max(currentLeftX, ...boundsCheckSnap.nodes.map(n => n.rect.x + n.rect.width));
+  const maxY = Math.max(...[...bandTrackY.values()], ...boundsCheckSnap.nodes.map(n => n.rect.y + n.rect.height));
+  if (maxX > initial.area.x + initial.area.width + 1e-3 || maxY > initial.area.y + initial.area.height + 1e-3) {
+    return reject(
+      'geometry_rejected',
+      'Die gemessenen Symbole, Beschriftungen oder Leitungszüge passen nicht kollisionsfrei in den Zeichenbereich.',
+    );
   }
 
   const used = new Set(

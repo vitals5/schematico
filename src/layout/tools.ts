@@ -355,7 +355,11 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   if(input.preferAutoconnect){
     const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
     let preparation:DraftPreparation={strategy:'generic',status:'not_applicable',code:'not_applicable',message:'Allgemeines Layoutverfahren: kein vollständiges unterstütztes Verteilungsmuster erkannt.'};
-    if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d))prepareDraftConnections(draft,page,devices,wires);
+    if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d)) {
+      if (preparation.code !== 'geometry_rejected') {
+        prepareDraftConnections(draft,page,devices,wires);
+      }
+    }
     page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true,draftPreparation:preparation};
   }else if(input.preferAutoconnect===false){
     page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:false,draftPreparation:{strategy:'generic',status:'disabled',code:'disabled',message:'Autoconnect-Konstruktionsmuster wurden für diesen Entwurf deaktiviert.'}};
