@@ -131,11 +131,22 @@ export async function previewLayout(
   }
   sessionDiagnostics.record('layout_geometry_input',input);
   if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
-  const solutions:LayoutSolution[] = preparedReport ? [{profile:'structured',snapshot:input,report:preparedReport}] : await computeSolutions(input, options.abortSignal);
+  const skipGenericOnOverflow = Boolean(
+    !preparedReport &&
+      page.layoutConstraints?.preferAutoconnect &&
+      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable'].includes(
+        page.layoutConstraints?.draftPreparation?.code ?? '',
+      ),
+  );
+  const solutions:LayoutSolution[] = preparedReport
+    ? [{profile:'structured',snapshot:input,report:preparedReport}]
+    : skipGenericOnOverflow
+      ? []
+      : await computeSolutions(input, options.abortSignal);
   if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   // Optional connector reservations must not alone force extra sheets.
   // The route compiler will still independently validate every inserted glyph.
-  if(!solutions.some(s=>s.report.valid)&&input.autoconnectSpacing){
+  if(!solutions.some(s=>s.report.valid)&&input.autoconnectSpacing&&!skipGenericOnOverflow){
     const compact=await computeSolutions(snapshotPage(page,target,options), options.abortSignal);
     solutions.push(...compact);
   }
@@ -258,7 +269,11 @@ export async function previewLayout(
     if (multi) candidates.unshift(multi);
   }
   // A warning about an unavailable fallback must not hide why placement failed.
-  const failures = [...solutions.filter(s=>!s.report.valid).flatMap(s=>s.report.issues), ...rejections];
+  const failures = [
+    ...solutions.filter(s=>!s.report.valid).flatMap(s=>s.report.issues),
+    ...(page.layoutConstraints?.draftPreparation?.issues ?? []),
+    ...rejections,
+  ];
   const issues = candidates.length ? [] : failures.length
     ? failures.filter((issue,index)=>failures.findIndex(other=>other.type===issue.type&&other.message===issue.message&&JSON.stringify(other.objectIds)===JSON.stringify(issue.objectIds))===index)
     : before.issues;

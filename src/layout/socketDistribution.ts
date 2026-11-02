@@ -481,9 +481,9 @@ function constructGeneralCircuit(
   };
 
   const numCols = profile.columns ?? 1;
-  const corridorReserve = 5 * row;
+  const corridorReserve = numCols === 1 ? 5 * row : Math.max(5, Math.min(netList.length, 14)) * row;
   const colBudget =
-    numCols === 1 ? initial.area.width - corridorReserve - 8 : (initial.area.width - corridorReserve - 12) / numCols;
+    numCols === 1 ? initial.area.width - corridorReserve - 8 : (initial.area.width - corridorReserve - 16) / numCols;
 
   const rows: PlacedComponent[][] = [];
   for (let r = 0; r <= maxBaseRank; r++) {
@@ -544,20 +544,7 @@ function constructGeneralCircuit(
   }
 
   const bandTrackY = new Map<string, number>();
-  const usedTrackYs = new Set<number>();
-  const assignBandTracks = (col: number, bandIdx: number, activeNets: IndexedNet[], startY: number): number => {
-    let trackY = snapY(startY);
-    for (const net of activeNets) {
-      while (usedTrackYs.has(Math.round(trackY * 1000))) {
-        trackY = snapY(trackY + step);
-      }
-      bandTrackY.set(`${col}:${bandIdx}:${net.id}`, trackY);
-      usedTrackYs.add(Math.round(trackY * 1000));
-      trackY = snapY(trackY + row);
-    }
-    return trackY;
-  };
-
+  const globalSpansByY = new Map<number, [number, number][]>();
   let currentLeftX = snapX(initial.area.x + 6);
   const corridorX = new Map<string, number>();
 
@@ -566,6 +553,58 @@ function constructGeneralCircuit(
     if (corridorNets.length) currentLeftX = snapX(currentLeftX + corridorNets.length * row + 6);
   }
 
+  const assignBandTracks = (col: number, bandIdx: number, activeNets: IndexedNet[], startY: number): number => {
+    const levels: { y: number; spans: [number, number][] }[] = [];
+    for (const net of activeNets) {
+      const corrX = corridorX.get(net.id);
+      const upperEps = net.endpoints.filter(e => {
+        const l = compLoc.get(e.componentId)!;
+        return l.col === col && l.row === bandIdx - 1 && point(e).direction === 'bottom';
+      });
+      const lowerEps = net.endpoints.filter(e => {
+        const l = compLoc.get(e.componentId)!;
+        return l.col === col && l.row === bandIdx && point(e).direction === 'top';
+      });
+      if (
+        corrX === undefined &&
+        upperEps.length === 1 &&
+        lowerEps.length === 1 &&
+        Math.abs(point(upperEps[0]).x - point(lowerEps[0]).x) < 1e-6
+      ) {
+        continue;
+      }
+      const xs = [
+        ...upperEps.map(e => point(e).x),
+        ...lowerEps.map(e => point(e).x),
+        ...(corrX !== undefined ? [corrX] : []),
+      ];
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const fitsAtY = (yVal: number) => {
+        const gSpans = globalSpansByY.get(Math.round(yVal * 1000)) ?? [];
+        return gSpans.every(([a, b]) => maxX + row <= a + 1e-6 || minX - row >= b - 1e-6);
+      };
+      const existing = levels.find(lvl => fitsAtY(lvl.y));
+      if (existing) {
+        existing.spans.push([minX, maxX]);
+        const keyY = Math.round(existing.y * 1000);
+        globalSpansByY.set(keyY, [...(globalSpansByY.get(keyY) ?? []), [minX, maxX]]);
+        bandTrackY.set(`${col}:${bandIdx}:${net.id}`, existing.y);
+      } else {
+        let trackY = levels.length ? snapY(levels[levels.length - 1].y + row) : snapY(startY);
+        while (!fitsAtY(trackY)) {
+          trackY = snapY(trackY + row);
+        }
+        levels.push({ y: trackY, spans: [[minX, maxX]] });
+        const keyY = Math.round(trackY * 1000);
+        globalSpansByY.set(keyY, [...(globalSpansByY.get(keyY) ?? []), [minX, maxX]]);
+        bandTrackY.set(`${col}:${bandIdx}:${net.id}`, trackY);
+      }
+    }
+    return levels.length ? snapY(levels[levels.length - 1].y + row) : snapY(startY + row);
+  };
+
+  // Pass 1: Determine X coordinates for all columns and corridors first
   for (let col = 0; col < numCols; col++) {
     if (col === 1 && corridorNets.length) {
       const baseCorr = snapX(currentLeftX + 6);
@@ -574,28 +613,10 @@ function constructGeneralCircuit(
     }
 
     const cRows = colRows[col];
-    let lastTrackY = snapY(initial.area.y + 4);
-    let hasPrevTracks = false;
     let maxColRight = currentLeftX;
-
-    const band0Nets = colBandNets[col][0];
-    if (band0Nets.length) {
-      lastTrackY = assignBandTracks(col, 0, band0Nets, lastTrackY + 2) - row;
-      hasPrevTracks = true;
-    }
 
     for (let r = 0; r < cRows.length; r++) {
       const rComps = cRows[r];
-      const topReach = Math.max(
-        ...rComps.map(c => {
-          const ep = refPin(c);
-          return point(ep).y - measured.get(c.id)!.rect.y;
-        }),
-      );
-      const rowRefY = hasPrevTracks
-        ? snapY(lastTrackY + Math.max(row, topReach + 4))
-        : snapY(lastTrackY + topReach);
-
       const prevBandPins: { x: number; netId: string; isCorridor?: boolean }[] = [];
       for (const [, cx] of corridorX) {
         prevBandPins.push({ x: cx, netId: '__corridor__', isCorridor: true });
@@ -651,12 +672,45 @@ function constructGeneralCircuit(
           }
         }
 
-        place(ep, targetX, rowRefY);
+        place(ep, targetX, point(ep).y);
         for (const cp of connectedPins) {
           placedRowPins.push({ x: targetX + cp.dx, netId: cp.netId, dir: cp.dir });
         }
         cursorX = snapX(targetX + rightReach + profile.gap);
         maxColRight = Math.max(maxColRight, targetX + rightReach);
+      }
+    }
+
+    currentLeftX = snapX(maxColRight + 6);
+  }
+
+  // Pass 2: Assign Y coordinates and interval-packed horizontal band tracks for all columns
+  for (let col = 0; col < numCols; col++) {
+    const cRows = colRows[col];
+    let lastTrackY = snapY(initial.area.y + 4);
+    let hasPrevTracks = false;
+
+    const band0Nets = colBandNets[col][0];
+    if (band0Nets.length) {
+      lastTrackY = assignBandTracks(col, 0, band0Nets, lastTrackY + 2) - row;
+      hasPrevTracks = true;
+    }
+
+    for (let r = 0; r < cRows.length; r++) {
+      const rComps = cRows[r];
+      const topReach = Math.max(
+        ...rComps.map(c => {
+          const ep = refPin(c);
+          return point(ep).y - snapshotPage(page, work).nodes.find(n => n.id === c.id)!.rect.y;
+        }),
+      );
+      const rowRefY = hasPrevTracks
+        ? snapY(lastTrackY + Math.max(row, topReach + 4))
+        : snapY(lastTrackY + topReach);
+
+      for (const c of rComps) {
+        const ep = refPin(c);
+        place(ep, point(ep).x, rowRefY);
       }
 
       const snapNow = snapshotPage(page, work);
@@ -684,12 +738,10 @@ function constructGeneralCircuit(
         hasPrevTracks = false;
       }
     }
-
-    currentLeftX = snapX(maxColRight + 6);
   }
 
   const boundsCheckSnap = snapshotPage(page, work);
-  const maxX = Math.max(currentLeftX, ...boundsCheckSnap.nodes.map(n => n.rect.x + n.rect.width));
+  const maxX = Math.max(...[...corridorX.values()], ...boundsCheckSnap.nodes.map(n => n.rect.x + n.rect.width));
   const maxY = Math.max(...[...bandTrackY.values()], ...boundsCheckSnap.nodes.map(n => n.rect.y + n.rect.height));
   if (maxX > initial.area.x + initial.area.width + 1e-3 || maxY > initial.area.y + initial.area.height + 1e-3) {
     return reject(

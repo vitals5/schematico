@@ -328,7 +328,7 @@ export function auditMultiPage(
   };
   const same = (a: Wire, b: Wire) =>
     attributes(a) === attributes(b) &&
-    endpoint(a.from) === endpoint(a.from) &&
+    endpoint(a.from) === endpoint(b.from) &&
     endpoint(a.to) === endpoint(b.to);
   const claimed = new Set<string>();
   for (const w of source.wires) {
@@ -343,29 +343,70 @@ export function auditMultiPage(
       continue;
     }
     if (!same(link.wire, w)) throw new Error('Blattverbindung verändert.');
-    const a = (onlyConnectionSymbols ? wires.find(x => x.to.componentId === link.fromArrowId) : undefined) ?? wires.find((x) => x.id === w.id),
-      b = wires.find((x) => x.from.componentId === link.toArrowId);
-    const bToComp = b ? components.find(c => c.id === b.to.componentId) : undefined;
+    const a =
+      (onlyConnectionSymbols
+        ? wires.find(
+            (x) =>
+              x.to.componentId === link.fromArrowId ||
+              x.from.componentId === link.fromArrowId,
+          )
+        : undefined) ?? wires.find((x) => x.id === w.id);
+    const b =
+      (onlyConnectionSymbols
+        ? wires.find(
+            (x) =>
+              x.from.componentId === link.toArrowId ||
+              x.to.componentId === link.toArrowId,
+          )
+        : undefined) ?? wires.find((x) => x.from.componentId === link.toArrowId);
+    const aArrowEp = a
+      ? a.to.componentId === link.fromArrowId
+        ? a.to
+        : a.from
+      : undefined;
+    const aOtherEp = a
+      ? a.to.componentId === link.fromArrowId
+        ? a.from
+        : a.to
+      : undefined;
+    const bArrowEp = b
+      ? b.from.componentId === link.toArrowId
+        ? b.from
+        : b.to
+      : undefined;
+    const bOtherEp = b
+      ? b.from.componentId === link.toArrowId
+        ? b.to
+        : b.from
+      : undefined;
+    const bToComp = bOtherEp
+      ? components.find((c) => c.id === bOtherEp.componentId)
+      : undefined;
     const bToSym = bToComp ? getSymbolForComponent(bToComp, project) : undefined;
-    const bToMatches = b && (
-      endpoint(b.to) === endpoint(w.to) ||
-      (onlyConnectionSymbols && !!bToSym && isConnectionSymbol(bToSym))
-    );
-    const aFromComp = a ? components.find(c => c.id === a.from.componentId) : undefined;
-    const aFromSym = aFromComp ? getSymbolForComponent(aFromComp, project) : undefined;
-    const aFromMatches = a && (
-      endpoint(a.from) === endpoint(w.from) ||
-      (onlyConnectionSymbols && !!aFromSym && isConnectionSymbol(aFromSym))
-    );
+    const bToMatches =
+      bOtherEp &&
+      (endpoint(bOtherEp) === endpoint(w.to) ||
+        (onlyConnectionSymbols && !!bToSym && isConnectionSymbol(bToSym)));
+    const aFromComp = aOtherEp
+      ? components.find((c) => c.id === aOtherEp.componentId)
+      : undefined;
+    const aFromSym = aFromComp
+      ? getSymbolForComponent(aFromComp, project)
+      : undefined;
+    const aFromMatches =
+      aOtherEp &&
+      (endpoint(aOtherEp) === endpoint(w.from) ||
+        (onlyConnectionSymbols && !!aFromSym && isConnectionSymbol(aFromSym)));
     if (
       !a ||
       !b ||
       attributes(a) !== attributes(w) ||
       attributes(b) !== attributes(w) ||
       !aFromMatches ||
-      a.to.componentId !== link.fromArrowId ||
-      a.to.pinId !== '1' ||
-      b.from.pinId !== '1' ||
+      aArrowEp?.componentId !== link.fromArrowId ||
+      aArrowEp?.pinId !== '1' ||
+      bArrowEp?.componentId !== link.toArrowId ||
+      bArrowEp?.pinId !== '1' ||
       !bToMatches
     ) {
       throw new Error('Anschlüsse der Blattverbindung verändert.');
@@ -378,7 +419,7 @@ export function auditMultiPage(
       if (
         !c ||
         c.symbolId !== symbol ||
-        c.rotation !== 0 ||
+        (c.rotation !== 0 && (!onlyConnectionSymbols || c.rotation !== 180)) ||
         c.bmk !== link.name ||
         c.functionText !== link.name
       )
@@ -392,7 +433,14 @@ export function auditMultiPage(
     new Set(wires.map((w) => w.id)).size !== wires.length
   )
     throw new Error('Zusätzliche oder doppelte Verbindungen.');
-  const groups = multi.pages.flatMap((p) => p.groups ?? []);
+  const extraIds = new Set(extraComponents.map((c) => c.id));
+  const groups = multi.pages.flatMap((p) =>
+    (p.groups ?? []).map((g) =>
+      onlyConnectionSymbols
+        ? { ...g, members: g.members.filter((m) => !extraIds.has(m.id)) }
+        : g,
+    ),
+  );
   if (
     JSON.stringify(groups.sort((a, b) => a.id.localeCompare(b.id))) !==
     JSON.stringify(
@@ -472,7 +520,13 @@ export async function multiPageCandidate(
         copy,
       );
       let candidate = preview.candidates[0];
-      if(!candidate&&page.layoutConstraints?.preferAutoconnect){
+      if (
+        !candidate &&
+        page.layoutConstraints?.preferAutoconnect &&
+        !['geometry_rejected', 'object_limit', 'autoconnect_unavailable'].includes(
+          preview.preparation?.code ?? '',
+        )
+      ) {
         const relaxed=clone(copy),p=relaxed.pages.find(p=>p.id===page.id)!;
         p.layoutConstraints={...p.layoutConstraints,preferAutoconnect:false};
         const compact=await previewLayout(relaxed,page.id,{...options,multiPage:false},relaxed);
@@ -490,7 +544,11 @@ export async function multiPageCandidate(
         candidate.page;
     }
     if (!valid) continue;
-    auditMultiPage(target, pageId, multi);
+    try {
+      auditMultiPage(target, pageId, multi);
+    } catch {
+      continue;
+    }
     copy = projectWithPages(target, pageId, multi);
     const reports = multi.pages.map((page) =>
       validateLayout(

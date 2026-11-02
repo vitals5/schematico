@@ -143,7 +143,7 @@ applyLayout(framed,framedPreview.candidates[0]);
 assert(framed.pages[0].components.filter(c=>c.deviceBox).every(c=>c.deviceBox!.width===120&&c.deviceBox!.height===40));
 
 // Large distribution board with 2 RCDs, main switch, SPD, RCBO, 16 MCBs and feed terminals
-const largeDistributionProject = fixture();
+const largeDistributionProject = fixture(); largeDistributionProject.pages[0].plotFrame.width = 1000; largeDistributionProject.pages[0].plotFrame.height = 700;
 const distDraftArgs = {
   pageId: 'p',
   components: [
@@ -192,6 +192,12 @@ const distDraftArgs = {
     })),
     { id: 'w_rcbo_1', from: { componentId: 'Q1', pinId: '2' }, to: { componentId: 'F20', pinId: '1' }, potential: 'L1' },
     { id: 'w_rcbo_n', from: { componentId: 'Q1', pinId: '8' }, to: { componentId: 'F20', pinId: 'N-in' }, potential: 'N' },
+  ],
+  groups: [
+    { id: 'g_in', name: 'Einspeisung', members: ['X1', 'X2', 'X3', 'X4', 'Q1'] },
+    { id: 'g_spd', name: 'Überspannungsschutz', members: ['X5', 'F1'] },
+    { id: 'g_rcd1', name: 'FI-Gruppe 1', members: ['F2', ...Array.from({ length: 4 }, (_, i) => `F_A_${i}`)] },
+    { id: 'g_rcd2', name: 'FI-Gruppe 2', members: ['F11', ...Array.from({ length: 4 }, (_, i) => `F_B_${i}`), 'F20'] },
   ],
 };
 const managerMock: any = {
