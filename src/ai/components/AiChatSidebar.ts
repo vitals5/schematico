@@ -314,17 +314,58 @@ export class AiChatSidebar {
     const fileInput=this.container.querySelector<HTMLInputElement>('#aiAttachmentInput')!;
     this.container.querySelector('#btnAiAttach')?.addEventListener('click',()=>fileInput.click());
     fileInput.addEventListener('change',async()=>{
-      if(this.isGenerating||this.readingAttachments)return;
       const files=Array.from(fileInput.files??[]);fileInput.value='';
-      this.readingAttachments=true;this.renderAttachments();
-      try{this.attachments.push(...await readAttachments(files,this.attachments));}
-      catch(error){this.appendErrorMessage(error instanceof Error?error.message:String(error));}
-      finally{this.readingAttachments=false;this.renderAttachments();}
+      await this.processIncomingFiles(files);
     });
 
-    // Input auto-grow and submit
+    // Input auto-grow, paste and submit
     const input = this.container.querySelector<HTMLTextAreaElement>('#aiPromptInput');
     const sendBtn = this.container.querySelector<HTMLButtonElement>('#btnAiSend');
+
+    input?.addEventListener('paste', async (e: ClipboardEvent) => {
+      const clipboardFiles: File[] = [];
+      if (e.clipboardData?.files?.length) {
+        for (let i = 0; i < e.clipboardData.files.length; i++) {
+          const file = e.clipboardData.files[i];
+          if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+            clipboardFiles.push(file);
+          }
+        }
+      } else if (e.clipboardData?.items?.length) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item.kind === 'file') {
+            const file = item.getAsFile();
+            if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+              clipboardFiles.push(file);
+            }
+          }
+        }
+      }
+      if (clipboardFiles.length > 0) {
+        await this.processIncomingFiles(clipboardFiles);
+      }
+    });
+
+    const dropZone = this.container.querySelector<HTMLElement>('.ai-chat-footer') ?? this.container;
+    dropZone.addEventListener('dragover', (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      dropZone.classList.add('ai-dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('ai-dragover');
+    });
+    dropZone.addEventListener('drop', async (e: DragEvent) => {
+      e.preventDefault();
+      dropZone.classList.remove('ai-dragover');
+      const files = Array.from(e.dataTransfer?.files ?? []).filter(
+        (f) => f.type.startsWith('image/') || f.type === 'application/pdf'
+      );
+      if (files.length > 0) {
+        await this.processIncomingFiles(files);
+      }
+    });
 
     input?.addEventListener('input', () => {
       input.style.height = 'auto';
@@ -499,6 +540,27 @@ export class AiChatSidebar {
 
     this.setLoadingStatus(statusText);
     this.scrollToBottom();
+  }
+
+  private async processIncomingFiles(incomingFiles: File[]): Promise<void> {
+    if (this.isGenerating || this.readingAttachments || !incomingFiles.length) return;
+    const files = incomingFiles.map((f, index) => {
+      if (!f.name.includes('.')) {
+        const ext = f.type === 'image/jpeg' ? '.jpg' : f.type === 'image/webp' ? '.webp' : f.type === 'application/pdf' ? '.pdf' : '.png';
+        return new File([f], `screenshot-${Date.now()}-${index + 1}${ext}`, { type: f.type });
+      }
+      return f;
+    });
+    this.readingAttachments = true;
+    this.renderAttachments();
+    try {
+      this.attachments.push(...(await readAttachments(files, this.attachments)));
+    } catch (error) {
+      this.appendErrorMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.readingAttachments = false;
+      this.renderAttachments();
+    }
   }
 
   private renderAttachments(): void {

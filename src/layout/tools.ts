@@ -381,6 +381,14 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager, 
   let phase='draft_validation';
   try {
     const {project,page}=pageFor(args,manager);
+    const pending = manager.getPendingPreview?.();
+    if (pending && pending.pageId !== page.id && pending.preview.status === 'preview_ready') {
+      const pendingPage = project.pages.find(p => p.id === pending.pageId);
+      const pendingTitle = pendingPage ? `Blatt ${pendingPage.pageNumber} („${pendingPage.title}“)` : pending.pageId;
+      throw new Error(
+        `Es existiert bereits ein berechneter Entwurf für ${pendingTitle}, der im Vorschaufenster auf Übernahme wartet. In einem einzelnen KI-Turn kann nur ein Entwurf zur Prüfung bereitgestellt werden. Fasse alle Stromkreise der Verteilung in einem einzigen create_schematic_draft-Aufruf auf der Startseite zusammen (Schematico teilt den Plan bei Platzmangel automatisch auf mehrere Folgeseiten auf) oder beende diesen Turn, damit der Anwender die Vorschau für ${pendingTitle} bestätigen kann.`,
+      );
+    }
     let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
     phase='layout_computation';
     let preview=await previewLayout(project,page.id,{ abortSignal: signal },draft);

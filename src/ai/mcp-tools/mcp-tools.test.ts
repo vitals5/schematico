@@ -492,6 +492,44 @@ async function runTests() {
   }
   console.log('✓ Test 23: Multi-token search_symbols and group member cleanup on delete_element verified');
 
+  // Test 24: Single draft per turn protection across different pages
+  let dummyPendingPreview: any = {
+    pageId: 'p_other',
+    preview: { status: 'preview_ready', pageId: 'p_other', candidates: [] },
+  };
+  (manager as any).getPendingPreview = () => dummyPendingPreview;
+  const multiDraftRes = await registry.executeTool(
+    'create_schematic_draft',
+    { components: [{ id: 'c_test24', symbolId: 'circuit_breaker_1p' }], connections: [] },
+    manager,
+  );
+  if (
+    multiDraftRes.success !== false ||
+    !multiDraftRes.error?.includes('In einem einzelnen KI-Turn kann nur ein Entwurf zur Prüfung bereitgestellt werden')
+  ) {
+    throw new Error(
+      'Test 24 failed: create_schematic_draft should reject when another page draft is pending: ' +
+        JSON.stringify(multiDraftRes),
+    );
+  }
+  // If getPendingPreview is for the SAME page, refinement is allowed
+  dummyPendingPreview = {
+    pageId: manager.getActivePage().id,
+    preview: { status: 'preview_ready', pageId: manager.getActivePage().id, candidates: [] },
+  };
+  // Now should proceed past draft_validation
+  const samePageRes = await registry.executeTool(
+    'create_schematic_draft',
+    { components: [{ id: 'c_test24', symbolId: 'circuit_breaker_1p' }], connections: [] },
+    manager,
+  );
+  // It shouldn't fail with the multi-draft error
+  if (samePageRes.error?.includes('In einem einzelnen KI-Turn kann nur ein Entwurf zur Prüfung bereitgestellt werden')) {
+    throw new Error('Test 24 failed: same page draft refinement should not be blocked');
+  }
+  delete (manager as any).getPendingPreview;
+  console.log('✓ Test 24: Single draft per turn protection and same-page refinement verified');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

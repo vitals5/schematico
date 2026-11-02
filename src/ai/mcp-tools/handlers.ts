@@ -30,6 +30,7 @@ import type { CadCanvas } from '../../editor/CadCanvas';
 export interface CanvasStateManager {
   getProject(): Project;
   showLayoutPreview?(preview:LayoutPreview,draft?:Project,options?:LayoutOptions):void;
+  getPendingPreview?(): { pageId: string; preview: LayoutPreview } | undefined;
   getActivePage(pageId?: string): Page;
   getCanvas?(): CadCanvas | undefined;
   switchPage?(pageId: string): void;

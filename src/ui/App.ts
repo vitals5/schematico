@@ -5104,11 +5104,32 @@ export class App {
         }
         this.deletePage(pageId);
       },
+      getPendingPreview: () => {
+        if (
+          this.pendingAiPreview?.preview?.status === 'preview_ready' &&
+          this.project.pages.some(p => p.id === this.pendingAiPreview?.preview?.pageId)
+        ) {
+          return {
+            pageId: this.pendingAiPreview.preview.pageId,
+            preview: this.pendingAiPreview.preview,
+          };
+        }
+        return undefined;
+      },
       showLayoutPreview: (preview, draft, options) => {
         if (this.aiChatSidebar?.isBusy()) {
           const prevValid =
             this.pendingAiPreview?.preview?.status === 'preview_ready' &&
             this.project.pages.some(p => p.id === this.pendingAiPreview?.preview?.pageId);
+          if (
+            prevValid &&
+            this.pendingAiPreview &&
+            this.pendingAiPreview.preview.pageId !== preview.pageId &&
+            preview.status === 'preview_ready'
+          ) {
+            // Keep the earlier valid preview so the first sheet isn't silently lost!
+            return;
+          }
           if (preview.status === 'preview_ready' || !prevValid) {
             this.pendingAiPreview = { preview, draft, options };
           }
