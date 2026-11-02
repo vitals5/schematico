@@ -468,6 +468,30 @@ async function runTests() {
   }
   console.log('✓ Test 22: executeTool cleanly cancels with AbortSignal without mutating state');
 
+  // Test 23: Multi-token search_symbols and group cleanup on delete_element
+  for (const q of [
+    'Leitungsschutzschalter MCB',
+    'RCD FI Schutzschalter 4-polig',
+    'Hauptschalter Lasttrennschalter main switch',
+    'circuit breaker',
+  ]) {
+    const sRes = await registry.executeTool('search_symbols', { query: q }, manager);
+    if (!sRes.success || sRes.returned < 1) {
+      throw new Error(`Test 23 failed: expected search_symbols matches for "${q}", got ${JSON.stringify(sRes)}`);
+    }
+  }
+  await registry.executeTool('clear_canvas', { confirm: true }, manager);
+  const compA = await registry.executeTool('add_component', { x: 100, y: 100, symbolId: 'circuit_breaker_1p', bmk: '-F1' }, manager);
+  const compB = await registry.executeTool('add_component', { x: 200, y: 100, symbolId: 'circuit_breaker_1p', bmk: '-F2' }, manager);
+  const activeP = manager.getActivePage();
+  activeP.groups = [{ id: 'g_test', name: 'Testgruppe', members: [{ kind: 'component', id: compA.component.id }, { kind: 'component', id: compB.component.id }] }];
+  await registry.executeTool('delete_element', { id: compA.component.id }, manager);
+  const valAfterDel = await registry.executeTool('validate_schematic_layout', {}, manager);
+  if (valAfterDel.issues?.some((i: any) => i.type === 'missing_group_member')) {
+    throw new Error('Test 23 failed: delete_element left dangling group member: ' + JSON.stringify(valAfterDel.issues));
+  }
+  console.log('✓ Test 23: Multi-token search_symbols and group member cleanup on delete_element verified');
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

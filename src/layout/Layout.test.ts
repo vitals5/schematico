@@ -283,16 +283,16 @@ assert(
     issues: [{ type: 'body_overlap', objectIds: ['Q1'], message: 'Kollision' }],
   }).includes('Alles fehlerfrei'),
 );
-assert(
-  checkedCompletion('Alles erstellt', [
-    {
-      name: 'create_schematic_draft',
-      args: {},
-      status: 'done',
-      result: { requiresUserApply: true, status: 'preview_ready' },
-    },
-  ]).includes('Vorschau'),
-);
+const previewCompletion = checkedCompletion('Alles erstellt', [
+  {
+    name: 'create_schematic_draft',
+    args: {},
+    status: 'done',
+    result: { requiresUserApply: true, status: 'preview_ready' },
+  },
+]);
+assert(previewCompletion.includes('Vorschau'));
+assert(previewCompletion.includes('Alles erstellt'));
 assert(!checkedCompletion('Alles fehlerfrei', [], { success: false }).includes('Alles fehlerfrei'));
 assert(overflow.splitSuggestion!.sheets!.length > 1);
 assert(overflow.splitSuggestion!.sheets!.every((s) => s.estimate));

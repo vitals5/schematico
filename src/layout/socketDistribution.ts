@@ -376,6 +376,55 @@ function constructGeneralCircuit(
     );
   }
 
+  for (const c of page.components) {
+    const rcdP = rcdPorts(getSymbolForComponent(c, work));
+    if (!rcdP) continue;
+    const nIn = endpointNet.get(key({ componentId: c.id, pinId: rcdP.neutralIn }));
+    const nOut = endpointNet.get(key({ componentId: c.id, pinId: rcdP.neutralOut }));
+    if (nIn && nOut && nIn === nOut) {
+      return reject(
+        'neutral_protective_nets',
+        'N muss hinter dem FI liegen; PE und die Phasennetze müssen davon getrennt bleiben.',
+      );
+    }
+  }
+  for (const n of netList) {
+    const hasPe =
+      n.wires.some(w => w.potential?.trim().toUpperCase() === 'PE') ||
+      n.endpoints.some(ep => {
+        const c = page.components.find(x => x.id === ep.componentId);
+        const s = c && getSymbolForComponent(c, work);
+        const p = s?.pins.find(x => x.id === ep.pinId);
+        return (
+          s?.family === 'pe_terminal' ||
+          ['terminal_pe', 'ground_pe', 'catalog_distribution_block_pe', 'potential_pe'].includes(s?.id ?? '') ||
+          /^PE$/i.test(ep.pinId) ||
+          /^PE$/i.test(p?.name ?? '')
+        );
+      });
+    const hasNeutralOrPhase =
+      n.wires.some(w => ['N', 'L1', 'L2', 'L3'].includes(w.potential?.trim().toUpperCase() ?? '')) ||
+      n.endpoints.some(ep => {
+        const c = page.components.find(x => x.id === ep.componentId);
+        const s = c && getSymbolForComponent(c, work);
+        const p = s?.pins.find(x => x.id === ep.pinId);
+        return (
+          ['catalog_distribution_block_neutral', 'potential_n', 'potential_l1', 'potential_l2', 'potential_l3'].includes(
+            s?.id ?? '',
+          ) ||
+          Boolean(rcdPorts(s)) ||
+          /^N([_-]|$)/i.test(ep.pinId) ||
+          /^N([_-]|$)/i.test(p?.name ?? '')
+        );
+      });
+    if (hasPe && hasNeutralOrPhase) {
+      return reject(
+        'neutral_protective_nets',
+        'N muss hinter dem FI liegen; PE und die Phasennetze müssen davon getrennt bleiben.',
+      );
+    }
+  }
+
   const point = (ep: Endpoint) => {
     const c = page.components.find(c => c.id === ep.componentId)!;
     const s = getSymbolForComponent(c, work)!;

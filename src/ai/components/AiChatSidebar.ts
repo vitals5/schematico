@@ -16,6 +16,7 @@ export interface AiChatSidebarOptions {
   stateManager: CanvasStateManager;
   onClose?: () => void;
   onApiKeyUpdated?: () => void;
+  onGenerationSettled?: () => void;
 }
 
 export class AiChatSidebar {
@@ -51,6 +52,10 @@ export class AiChatSidebar {
 
   public isOpen(): boolean {
     return this.isOpenState;
+  }
+
+  public isBusy(): boolean {
+    return this.isGenerating || this.readingAttachments;
   }
 
   public open(): void {
@@ -448,6 +453,7 @@ export class AiChatSidebar {
       if(err?.diagnosticId){const list=this.container.querySelector<HTMLElement>('#aiChatMessages');if(list)this.appendDiagnostic(list,err.diagnosticId);}
     } finally {
       this.setGenerating(false);
+      this.options.onGenerationSettled?.();
     }
   }
 

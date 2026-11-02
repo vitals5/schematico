@@ -31,7 +31,8 @@ export function checkedCompletion(
   const proposal = [...calls].reverse().find((c) => c.result?.requiresUserApply)?.result;
   if (proposal)
     return proposal.status === 'preview_ready'
-      ? 'Eine geprüfte Layoutvorschau wurde berechnet. Änderungen werden ausschließlich über „Übernehmen“ im Vorschaufenster übernommen. Die Berechnung selbst verändert das Projekt nicht.'
+      ? 'Eine geprüfte Layoutvorschau wurde berechnet. Änderungen werden ausschließlich über „Übernehmen“ im Vorschaufenster übernommen. Die Berechnung selbst verändert das Projekt nicht.' +
+          (text?.trim() ? '\n\n' + text : '')
       : 'Es wurde kein gültiges Layout gefunden. Der Fehlerbericht steht in der Layoutvorschau. Sofern sinnvoll, enthält er einen Vorschlag zur Blattaufteilung. Die Berechnung hat das Projekt nicht verändert.';
   const failed = calls.filter((c) => layoutActions.has(c.name) && c.status === 'error');
   if (failed.length)

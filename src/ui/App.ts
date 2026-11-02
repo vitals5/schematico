@@ -5099,19 +5099,22 @@ export class App {
         this.updateUI();
       },
       deletePage: (pageId: string) => {
+        if (this.pendingAiPreview?.preview?.pageId === pageId) {
+          this.pendingAiPreview = undefined;
+        }
         this.deletePage(pageId);
       },
       showLayoutPreview: (preview, draft, options) => {
-        const selection=this.canvas.getElementSelection();
-        new LayoutPreviewDialog({getProject:()=>this.project,preview,draft,options,selection:[...selection.componentIds,...(selection.textIds??[]),...(selection.imageIds??[]),...selection.cableIds,...(selection.boxIds??[])],onApply:(candidate,draft)=>{
-          this.canvas.finishInteraction();
-          this.history.record(this.project);
-          applyLayout(this.project,candidate,draft);
-          this.project.activePageId=candidate.pageId;
-          setProjectSymbolLibrary(this.project);
-          this.canvas.setProject(this.project,false);
-          this.notifyChange();
-        }}).show();
+        if (this.aiChatSidebar?.isBusy()) {
+          const prevValid =
+            this.pendingAiPreview?.preview?.status === 'preview_ready' &&
+            this.project.pages.some(p => p.id === this.pendingAiPreview?.preview?.pageId);
+          if (preview.status === 'preview_ready' || !prevValid) {
+            this.pendingAiPreview = { preview, draft, options };
+          }
+          return;
+        }
+        this.openLayoutPreviewModal(preview, draft, options);
       },
       notifyModified: () => {
         this.notifyChange();
@@ -5120,6 +5123,34 @@ export class App {
         this.canvas?.render();
       }
     };
+  }
+
+  private pendingAiPreview?: { preview: any; draft?: any; options?: any };
+
+  private openLayoutPreviewModal(preview: any, draft?: any, options?: any): void {
+    const selection = this.canvas.getElementSelection();
+    new LayoutPreviewDialog({
+      getProject: () => this.project,
+      preview,
+      draft,
+      options,
+      selection: [
+        ...selection.componentIds,
+        ...(selection.textIds ?? []),
+        ...(selection.imageIds ?? []),
+        ...selection.cableIds,
+        ...(selection.boxIds ?? []),
+      ],
+      onApply: (candidate, draft) => {
+        this.canvas.finishInteraction();
+        this.history.record(this.project);
+        applyLayout(this.project, candidate, draft);
+        this.project.activePageId = candidate.pageId;
+        setProjectSymbolLibrary(this.project);
+        this.canvas.setProject(this.project, false);
+        this.notifyChange();
+      },
+    }).show();
   }
 
   private initAiAssistant(): void {
@@ -5146,6 +5177,13 @@ export class App {
       },
       onApiKeyUpdated: () => {
         this.statusBadge?.refresh();
+      },
+      onGenerationSettled: () => {
+        const pending = this.pendingAiPreview;
+        this.pendingAiPreview = undefined;
+        if (pending && this.project.pages.some(p => p.id === pending.preview.pageId)) {
+          this.openLayoutPreviewModal(pending.preview, pending.draft, pending.options);
+        }
       }
     });
 

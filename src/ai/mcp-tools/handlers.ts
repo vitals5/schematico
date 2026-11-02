@@ -985,15 +985,31 @@ export async function handleDeleteElement(
   }
 
   const id = args.id.trim();
+  const cleanupDeletedIds = (deletedIds: Set<string>) => {
+    for (const c of page.components) {
+      for (const p of Object.values(c.pins ?? {})) {
+        if (p.wireIds?.length) {
+          p.wireIds = p.wireIds.filter(wid => !deletedIds.has(wid));
+        }
+      }
+    }
+    if (page.groups?.length) {
+      for (const g of page.groups) {
+        g.members = g.members.filter(m => !deletedIds.has(m.id));
+      }
+      page.groups = page.groups.filter(g => g.members.length > 0);
+    }
+  };
 
   // 1. Component
   const compIndex = page.components.findIndex(c => c.id === id);
   if (compIndex !== -1) {
     const deleted = page.components[compIndex];
     page.components.splice(compIndex, 1);
-    const wiresBefore = page.wires.length;
+    const removedWires = page.wires.filter(w => w.from.componentId === id || w.to.componentId === id);
     page.wires = page.wires.filter(w => w.from.componentId !== id && w.to.componentId !== id);
-    const wiresRemoved = wiresBefore - page.wires.length;
+    const wiresRemoved = removedWires.length;
+    cleanupDeletedIds(new Set([id, ...removedWires.map(w => w.id)]));
 
     try {
       AutoconnectEngine.updatePageAutoconnections(page);
@@ -1019,7 +1035,9 @@ export async function handleDeleteElement(
   if (wireIndex !== -1) {
     const deleted = page.wires[wireIndex];
     page.wires.splice(wireIndex, 1);
+    cleanupDeletedIds(new Set([id]));
     try {
+      AutoconnectEngine.updatePageAutoconnections(page);
       CrossReferenceEngine.updateProjectCrossReferences(project);
     } catch {
       // Non-blocking
@@ -1034,6 +1052,7 @@ export async function handleDeleteElement(
     const textIdx = page.texts.findIndex(t => t.id === id);
     if (textIdx !== -1) {
       page.texts.splice(textIdx, 1);
+      cleanupDeletedIds(new Set([id]));
       manager.notifyModified();
       manager.render();
       return { success: true, deletedType: 'text', id };
@@ -1045,6 +1064,7 @@ export async function handleDeleteElement(
     const boxIdx = page.boxes.findIndex(b => b.id === id);
     if (boxIdx !== -1) {
       page.boxes.splice(boxIdx, 1);
+      cleanupDeletedIds(new Set([id]));
       manager.notifyModified();
       manager.render();
       return { success: true, deletedType: 'box', id };
@@ -1056,6 +1076,7 @@ export async function handleDeleteElement(
     const cableIdx = page.cables.findIndex(c => c.id === id);
     if (cableIdx !== -1) {
       page.cables.splice(cableIdx, 1);
+      cleanupDeletedIds(new Set([id]));
       manager.notifyModified();
       manager.render();
       return { success: true, deletedType: 'cable', id };
@@ -1094,6 +1115,7 @@ export async function handleClearCanvas(
   page.wires = [];
   page.texts = [];
   page.boxes = [];
+  page.groups = [];
 
   try {
     CrossReferenceEngine.updateProjectCrossReferences(project);
@@ -1132,15 +1154,74 @@ export async function handleSearchSymbols(
 
   if (query) {
     const synonymTargetId = SYMBOL_SYNONYMS[query];
-    filtered = filtered.filter(
+    const queryUnderscore = query.replace(/[\s-]+/g, '_');
+    const exactMatches = filtered.filter(
       s =>
         s.id.toLowerCase().includes(query) ||
+        s.id.toLowerCase().includes(queryUnderscore) ||
         s.name.toLowerCase().includes(query) ||
         s.description?.toLowerCase().includes(query) ||
         s.keywords?.some(k => k.toLowerCase().includes(query)) ||
         s.category?.toLowerCase().includes(query) ||
         (synonymTargetId && s.id === synonymTargetId)
     );
+    const rawTokens = query
+      .split(/[\s,;+/]+/)
+      .map(t => t.trim())
+      .filter(t => t.length >= 2 || ['n', 'l1', 'l2', 'l3', 'pe', 'fi'].includes(t));
+
+    if (exactMatches.length > 0 && rawTokens.length <= 1) {
+      filtered = exactMatches;
+    } else {
+      const scored = filtered
+        .map(s => {
+          let score = 0;
+          const idL = s.id.toLowerCase();
+          const nameL = s.name.toLowerCase();
+          const descL = (s.description || '').toLowerCase();
+          const catL = (s.category || '').toLowerCase();
+          const famL = (s.family || '').toLowerCase();
+          const kwL = (s.keywords || []).map(k => k.toLowerCase());
+          if (synonymTargetId && s.id === synonymTargetId) score += 120;
+          if (idL === query || idL === queryUnderscore || nameL === query) score += 100;
+          else if (exactMatches.includes(s)) score += 60;
+
+          let matchedTokens = 0;
+          for (const tok of rawTokens) {
+            const poleAlias = tok.replace(/^(\d+)-?pol(?:ig)?$/, '$1p');
+            const synId = SYMBOL_SYNONYMS[tok] || SYMBOL_SYNONYMS[poleAlias];
+            let tokHit = false;
+            if (synId && s.id === synId) {
+              score += 35;
+              tokHit = true;
+            }
+            if (
+              idL.includes(tok) ||
+              idL.includes(poleAlias) ||
+              nameL.includes(tok) ||
+              nameL.includes(poleAlias) ||
+              famL === tok
+            ) {
+              score += 25;
+              tokHit = true;
+            } else if (
+              descL.includes(tok) ||
+              descL.includes(poleAlias) ||
+              kwL.some(k => k.includes(tok) || k.includes(poleAlias)) ||
+              catL.includes(tok)
+            ) {
+              score += 12;
+              tokHit = true;
+            }
+            if (tokHit) matchedTokens++;
+          }
+          if (matchedTokens > 1) score += matchedTokens * 15;
+          return { s, score };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+      filtered = scored.map(item => item.s);
+    }
   }
 
   const results = filtered.slice(0, limit).map(s => ({

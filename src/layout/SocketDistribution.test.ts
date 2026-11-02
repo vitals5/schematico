@@ -152,4 +152,24 @@ const aliasToleranceArgs={
 const aliasDraft=buildDraft(source(),'p',aliasToleranceArgs);
 assert.equal(aliasDraft.pages[0].wires[0].from.pinId,'N-out');
 assert.equal(aliasDraft.pages[0].wires[1].from.pinId,'N-in');
+
+// General circuit N-PE short circuit rejection (e.g. connecting terminal_pe to RCD N-out)
+const nPeMixArgs={
+ components:[
+  {id:'X4_1',symbolId:'terminal_single',bmk:'-X4:1'},
+  {id:'X4_4',symbolId:'terminal_single',bmk:'-X4:4'},
+  {id:'X4_5',symbolId:'terminal_pe',bmk:'-X4:5'},
+  {id:'F15',symbolId:'catalog_rcd_4p_a_30',bmk:'-F15'},
+  {id:'F16',symbolId:'catalog_mcb_1p_b',bmk:'-F16'},
+ ],
+ connections:[
+  {id:'c1',from:{componentId:'X4_1',pinId:'2'},to:{componentId:'F15',pinId:'1'},potential:'L1'},
+  {id:'c4',from:{componentId:'X4_4',pinId:'2'},to:{componentId:'F15',pinId:'N-in'},potential:'N'},
+  {id:'c5',from:{componentId:'X4_5',pinId:'2'},to:{componentId:'F15',pinId:'N-out'},potential:'PE'},
+  {id:'c6',from:{componentId:'F15',pinId:'2'},to:{componentId:'F16',pinId:'1'},potential:'L1'},
+ ],
+};
+const nPeMixDraft=buildDraft(source(),'p',{...nPeMixArgs,preferAutoconnect:true});
+assert.equal(nPeMixDraft.pages[0].layoutConstraints?.draftPreparation?.status,'rejected');
+assert.equal(nPeMixDraft.pages[0].layoutConstraints?.draftPreparation?.code,'neutral_protective_nets');
 console.log('✓ Complete socket distribution & general multi-tier circuits: one sheet, 100% true autoconnect segments, separated original nets, unchanged labels, groups/IDs, reversed endpoints, other branch counts, rejection isolation, refresh and undo');

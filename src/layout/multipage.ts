@@ -458,6 +458,7 @@ export function auditMultiPage(
 }
 export function multiPageBlockReason(source: Page, options: LayoutOptions): string | undefined {
   if (source.layoutConstraints?.draftPreparation?.code === 'existing_content') return 'Das Muster benötigt einen neuen vollständigen Entwurf ohne bestehende oder fixierte Objekte.';
+  if (source.layoutConstraints?.draftPreparation?.code === 'neutral_protective_nets') return 'N muss hinter dem FI liegen; PE und die Phasennetze müssen davon getrennt bleiben.';
   if (options.selectedIds?.length) return 'Mehrblattaufteilung benötigt die gesamte Seite; die aktuelle Auswahl ist begrenzt.';
   if (options.lockedIds?.length || source.layoutConstraints?.lockedIds?.length) return 'Fixierte Objekte verhindern die automatische Mehrblattaufteilung. Fixierungen prüfen.';
   if (source.boxes?.length || source.cables?.length || source.importedDrawing) return 'Diese Seite enthält Kästen, Kabeldefinitionen oder eine importierte Hintergrundzeichnung, deren automatische Blattzuordnung noch nicht unterstützt wird.';

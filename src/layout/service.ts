@@ -134,7 +134,7 @@ export async function previewLayout(
   const skipGenericOnOverflow = Boolean(
     !preparedReport &&
       page.layoutConstraints?.preferAutoconnect &&
-      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content'].includes(
+      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content', 'neutral_protective_nets'].includes(
         page.layoutConstraints?.draftPreparation?.code ?? '',
       ),
   );
