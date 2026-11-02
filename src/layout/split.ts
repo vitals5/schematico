@@ -29,7 +29,31 @@ export function suggestSplit(
         ?.bounds?.[0];
       const frame = s.frames.find((f) => f.id === id),
         node = s.nodes.find((n) => n.id === id);
-      const r = failed ??
+      const isStackedUnlaid =
+        frame &&
+        frame.members.length > 1 &&
+        frame.members.every((m) => {
+          const n = s.nodes.find((x) => x.id === m);
+          return n && n.origin.x === 0 && n.origin.y === 0;
+        });
+      const unlaidRect = isStackedUnlaid
+        ? {
+            width: frame.members.reduce(
+              (sum, m) =>
+                sum + (s.nodes.find((x) => x.id === m)?.rect.width ?? 0) + 8,
+              0,
+            ),
+            height:
+              Math.max(
+                ...frame.members.map(
+                  (m) => s.nodes.find((x) => x.id === m)?.rect.height ?? 0,
+                ),
+              ) + 8,
+          }
+        : undefined;
+      const r =
+        failed ??
+        unlaidRect ??
         frame?.rect ??
         node?.rect ?? { width: input.area.width, height: input.area.height };
       return { id, members, width: r.width + 8, height: r.height + 8 };

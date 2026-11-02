@@ -144,7 +144,9 @@ function result(preview: LayoutPreview) {
     message:
       preview.status === 'preview_ready'
         ? 'Geprüfte Vorschau bereit. Noch nicht übernommen. Im Vorschaufenster Übernehmen wählen.'
-        : 'Kein gültiges Layout gefunden. Zeichnung unverändert; Fehlerbericht prüfen.',
+        : preview.splitSuggestion?.sheets?.length
+          ? `Kein gültiges Layout gefunden: Der Schaltungsentwurf übersteigt die Blattkapazität (Aufteilungsvorschlag auf ${preview.splitSuggestion.sheets.length} Blätter in splitSuggestion vorhanden). STOPP AN DIE KI: Platziere diese Bauteile NIEMALS einzeln manuell mit add_component/draw_wire! Erkläre dem Benutzer die Überschreitung anhand des splitSuggestion-Vorschlags und biete an, getrennte Blätter mit create_page anzulegen.`
+          : 'Kein gültiges Layout gefunden. Zeichnung unverändert; Fehlerbericht prüfen. STOPP AN DIE KI: Nicht manuell mit Einzelschritten (add_component) zeichnen!',
   };
 }
 function options(args: any): LayoutOptions {

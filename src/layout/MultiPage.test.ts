@@ -233,3 +233,33 @@ assert.equal(popRes.layoutPreparation?.code, 'existing_content');
 assert(popElapsed < 5000, `Expected fast rejection on existing_content, took ${popElapsed}ms`);
 console.log('✓ Fast-fail verified when calling create_schematic_draft on a populated page');
 
+// Test that oversized multi-group drafts return informative splitSuggestion with multiple sheets and STOP guidance
+const splitTestProject = fixture();
+const oversizedDraftArgs = {
+  preferAutoconnect: true,
+  components: [
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `MCB_A_${i}`, symbolId: 'circuit_breaker_1p', bmk: `-QA${i+1}`, functionText: `Oversized Branch Circuit ${i+1}` })),
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `MCB_B_${i}`, symbolId: 'circuit_breaker_1p', bmk: `-QB${i+1}`, functionText: `Oversized Branch Circuit ${i+1}` })),
+    ...Array.from({ length: 16 }, (_, i) => ({ id: `X2_${i}`, symbolId: 'terminal_single', bmk: `-X2:${i+1}` })),
+  ],
+  connections: [
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `w_a_${i}`, from: { componentId: `MCB_A_${i}`, pinId: '2' }, to: { componentId: `X2_${i}`, pinId: '1' }, potential: 'L1' })),
+  ],
+  groups: [
+    { id: 'g_mcb_a', name: 'MCB Group A', members: Array.from({ length: 12 }, (_, i) => `MCB_A_${i}`) },
+    { id: 'g_mcb_b', name: 'MCB Group B', members: Array.from({ length: 12 }, (_, i) => `MCB_B_${i}`) },
+    { id: 'g_terminals', name: 'Large Terminal Strip', members: Array.from({ length: 16 }, (_, i) => `X2_${i}`) },
+  ],
+};
+const oversizedManagerMock: any = {
+  getProject: () => splitTestProject,
+  getActivePage: () => splitTestProject.pages[0],
+  showLayoutPreview: () => {},
+};
+const overRes = await handleCreateDraft(oversizedDraftArgs, oversizedManagerMock);
+assert.equal(overRes.success, false);
+assert(overRes.splitSuggestion?.sheets?.length && overRes.splitSuggestion.sheets.length > 1, 'Expected multiple sheets in splitSuggestion for unlaid oversized groups');
+assert(overRes.message.includes('STOPP AN DIE KI'), 'Expected STOP guidance in failure message');
+console.log('✓ Split suggestion correctly partitions stacked unlaid groups across multiple sheets with AI STOP guidance');
+
+

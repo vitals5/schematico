@@ -132,7 +132,8 @@ export async function previewLayout(
   sessionDiagnostics.record('layout_geometry_input',input);
   if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   const skipGenericOnOverflow = Boolean(
-    !preparedReport &&
+    options.multiPage !== false &&
+      !preparedReport &&
       page.layoutConstraints?.preferAutoconnect &&
       ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content', 'neutral_protective_nets'].includes(
         page.layoutConstraints?.draftPreparation?.code ?? '',
