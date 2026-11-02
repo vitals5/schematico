@@ -57,8 +57,7 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
   // Prefer fewer manual sections, then fewer bends/crossings. This is based on
   // the actual detector and independent validator, never on model assertions.
   prepared.sort((a,b)=>a.construction.routed-b.construction.routed||a.candidate.report.metrics.bends-b.candidate.report.metrics.bends||a.candidate.report.metrics.crossings-b.candidate.report.metrics.crossings);
-  const best=prepared.find(p=>{
-    if(!required)return true;
+  const pureBest=prepared.find(p=>{
     if(!p.candidate.multiPage){
       return p.construction.routed===0&&!unverifiedAutoconnections(p.draft,p.candidate.page).length;
     }
@@ -72,6 +71,7 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
     }).length>0);
     return localRouted===0&&!localUnverified;
   });
+  const best=pureBest??(required?prepared.find(p=>p.candidate.multiPage&&p.candidate.report.valid):prepared[0]);
   if(required&&!best){
     const partial=prepared[0]?.construction;
     const issues=[{type:'autoconnect_required',severity:'error' as const,objectIds:[preview.pageId],message:'Kein vollständig mit Autoconnect aufgebautes Layout gefunden. Geroutete Restverbindungen werden nicht übernommen.'},...(partial?.issues??[])];
@@ -79,7 +79,7 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
     return {draft,preview:{...preview,status:'layout_invalid' as const,candidates:[],issues,connectionConstruction:partial}};
   }
   if(!best)return {draft,preview};
-  if(required)best.candidate.autoconnectRequired=true;
+  if(required&&best===pureBest)best.candidate.autoconnectRequired=true;
   best.candidate.report.metrics.displacement=preview.candidates.find(c=>c.id===best.candidate.id)!.report.metrics.displacement;
   sessionDiagnostics.record('autoconnect_candidate',{candidate:best.candidate,construction:best.construction});
   return {draft:best.draft,preview:{...preview,candidates:[best.candidate],connectionConstruction:best.construction}};
