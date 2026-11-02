@@ -208,7 +208,28 @@ const managerMock: any = {
 const draftRes = await handleCreateDraft(distDraftArgs, managerMock);
 assert.equal(draftRes.success, true);
 assert.equal(draftRes.status, 'preview_ready');
+assert.equal(draftRes.layoutPreparation?.status, 'applied');
 assert(draftRes.candidates.length >= 1);
 assert.equal(draftRes.candidates[0].routedConnections, 0);
 assert(draftRes.candidates[0].autoconnectConnections > 0);
 console.log('✓ Multi-page verified autoconnect sub-distribution with 26 devices, multiple RCDs and MCBs');
+
+// Test fast-fail when calling create_schematic_draft on an already populated page (existing_content)
+const populatedProject = fixture();
+populatedProject.pages[0].plotFrame.width = 1000;
+populatedProject.pages[0].plotFrame.height = 700;
+add(populatedProject, 'existing_F1', 'contactor_coil', 100, 100);
+const populatedManagerMock: any = {
+  getProject: () => populatedProject,
+  getActivePage: () => populatedProject.pages[0],
+  showLayoutPreview: () => {},
+};
+const t0Pop = Date.now();
+const popRes = await handleCreateDraft(distDraftArgs, populatedManagerMock);
+const popElapsed = Date.now() - t0Pop;
+assert.equal(popRes.success, false);
+assert.equal(popRes.status, 'layout_invalid');
+assert.equal(popRes.layoutPreparation?.code, 'existing_content');
+assert(popElapsed < 5000, `Expected fast rejection on existing_content, took ${popElapsed}ms`);
+console.log('✓ Fast-fail verified when calling create_schematic_draft on a populated page');
+

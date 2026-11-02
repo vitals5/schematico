@@ -252,6 +252,19 @@ export class AiChatSidebar {
 
     const btnDistribute = this.container.querySelector<HTMLButtonElement>('#btnAiDistribute');
     btnDistribute?.addEventListener('click', async () => {
+      if (this.isGenerating || this.readingAttachments) return;
+      if (document.getElementById('layoutPreviewModal')?.dataset.hasDraftComponents === 'true') {
+        const activePage = this.stateManager.getActivePage();
+        if (
+          !activePage.components.length &&
+          !activePage.texts?.length &&
+          !activePage.boxes?.length &&
+          !activePage.images?.length &&
+          !activePage.cables?.length
+        ) {
+          return;
+        }
+      }
       btnDistribute.disabled=true;
       try {
         const { defaultToolRegistry } = await import('../mcp-tools');
@@ -269,7 +282,7 @@ export class AiChatSidebar {
       } catch (err: any) {
         this.appendErrorMessage(`Fehler bei Layout-Optimierung: ${err?.message || err}`);
       } finally {
-        btnDistribute.disabled=false;
+        btnDistribute.disabled = this.isGenerating || this.readingAttachments;
       }
     });
 
@@ -495,6 +508,8 @@ export class AiChatSidebar {
     }
     this.container.querySelector<HTMLButtonElement>('#btnAiAttach')!.disabled=busy;
     this.container.querySelector<HTMLButtonElement>('#btnAiClearHistory')!.disabled=busy;
+    const btnDist = this.container.querySelector<HTMLButtonElement>('#btnAiDistribute');
+    if (btnDist) btnDist.disabled = busy;
     this.container.querySelector<HTMLButtonElement>('#btnAiSend')!.disabled=this.readingAttachments;
     this.container.querySelector<HTMLElement>('#aiAttachmentStatus')!.textContent=this.readingAttachments?'Dateien werden eingelesen …':'';
   }

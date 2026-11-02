@@ -457,6 +457,7 @@ export function auditMultiPage(
         throw new Error('Leitung ohne lokale Anschlüsse.');
 }
 export function multiPageBlockReason(source: Page, options: LayoutOptions): string | undefined {
+  if (source.layoutConstraints?.draftPreparation?.code === 'existing_content') return 'Das Muster benötigt einen neuen vollständigen Entwurf ohne bestehende oder fixierte Objekte.';
   if (options.selectedIds?.length) return 'Mehrblattaufteilung benötigt die gesamte Seite; die aktuelle Auswahl ist begrenzt.';
   if (options.lockedIds?.length || source.layoutConstraints?.lockedIds?.length) return 'Fixierte Objekte verhindern die automatische Mehrblattaufteilung. Fixierungen prüfen.';
   if (source.boxes?.length || source.cables?.length || source.importedDrawing) return 'Diese Seite enthält Kästen, Kabeldefinitionen oder eine importierte Hintergrundzeichnung, deren automatische Blattzuordnung noch nicht unterstützt wird.';
@@ -490,6 +491,7 @@ export async function multiPageCandidate(
   });
   for (const { count, bins } of attempts) {
     if (options.abortSignal?.aborted) return;
+    if (best && best.multiPage!.pages.length < count && best.multiPage!.pages.every(p => p.wires.every(w => w.isAutoconnect))) break;
     const multi = buildPages(
       target,
       source,
@@ -523,7 +525,7 @@ export async function multiPageCandidate(
       if (
         !candidate &&
         page.layoutConstraints?.preferAutoconnect &&
-        !['geometry_rejected', 'object_limit', 'autoconnect_unavailable'].includes(
+        !['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content'].includes(
           preview.preparation?.code ?? '',
         )
       ) {
@@ -581,7 +583,7 @@ export async function multiPageCandidate(
     const splitCost = separatedAreaPenalty(geometry, new Map(multi.pages.flatMap(p=>p.components.map(c=>[c.id,p.id] as const))));
     const cost = geometryCost + splitCost + report.metrics.crossings * 100 + report.metrics.bends * 8 + report.metrics.length + multi.pages.length * 1800 + multi.links.length * 40;
     if (cost < bestCost) { best = candidate; bestCost = cost; }
-    if (report.metrics.crossings <= 30 || count >= 4) break;
+    if (report.metrics.crossings <= 30 || count >= 4 || multi.pages.every(p => p.layoutConstraints?.draftPreparation?.status === 'applied')) break;
   }
   return best;
 }

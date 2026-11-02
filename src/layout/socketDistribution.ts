@@ -544,7 +544,7 @@ function constructGeneralCircuit(
   }
 
   const bandTrackY = new Map<string, number>();
-  const globalSpansByY = new Map<number, [number, number][]>();
+  const globalSpans: { y: number; minX: number; maxX: number }[] = [];
   let currentLeftX = snapX(initial.area.x + 6);
   const corridorX = new Map<string, number>();
 
@@ -580,15 +580,17 @@ function constructGeneralCircuit(
       ];
       const minX = Math.min(...xs);
       const maxX = Math.max(...xs);
-      const fitsAtY = (yVal: number) => {
-        const gSpans = globalSpansByY.get(Math.round(yVal * 1000)) ?? [];
-        return gSpans.every(([a, b]) => maxX + row <= a + 1e-6 || minX - row >= b - 1e-6);
-      };
+      const fitsAtY = (yVal: number) =>
+        globalSpans.every(
+          s =>
+            Math.abs(s.y - yVal) >= row - 1e-6 ||
+            maxX + row <= s.minX + 1e-6 ||
+            minX - row >= s.maxX - 1e-6,
+        );
       const existing = levels.find(lvl => fitsAtY(lvl.y));
       if (existing) {
         existing.spans.push([minX, maxX]);
-        const keyY = Math.round(existing.y * 1000);
-        globalSpansByY.set(keyY, [...(globalSpansByY.get(keyY) ?? []), [minX, maxX]]);
+        globalSpans.push({ y: existing.y, minX, maxX });
         bandTrackY.set(`${col}:${bandIdx}:${net.id}`, existing.y);
       } else {
         let trackY = levels.length ? snapY(levels[levels.length - 1].y + row) : snapY(startY);
@@ -596,8 +598,7 @@ function constructGeneralCircuit(
           trackY = snapY(trackY + row);
         }
         levels.push({ y: trackY, spans: [[minX, maxX]] });
-        const keyY = Math.round(trackY * 1000);
-        globalSpansByY.set(keyY, [...(globalSpansByY.get(keyY) ?? []), [minX, maxX]]);
+        globalSpans.push({ y: trackY, minX, maxX });
         bandTrackY.set(`${col}:${bandIdx}:${net.id}`, trackY);
       }
     }
@@ -646,7 +647,7 @@ function constructGeneralCircuit(
             .filter(e => e.componentId === c.id)
             .map(e => ({ ep: e, netId: n.id, dx: point(e).x - point(ep).x, dir: point(e).direction })),
         );
-        for (let shift = 0; shift < 25; shift++) {
+        for (let shift = 0; shift < 60; shift++) {
           const tryX = targetX + shift * step;
           const conflict = connectedPins.some(cp => {
             const px = tryX + cp.dx;
@@ -701,7 +702,9 @@ function constructGeneralCircuit(
       const topReach = Math.max(
         ...rComps.map(c => {
           const ep = refPin(c);
-          return point(ep).y - snapshotPage(page, work).nodes.find(n => n.id === c.id)!.rect.y;
+          const n = measured.get(c.id)!;
+          const refP = n.pins.find(p => p.id === ep.pinId)!;
+          return refP.y - n.rect.y;
         }),
       );
       const rowRefY = hasPrevTracks
@@ -713,17 +716,20 @@ function constructGeneralCircuit(
         place(ep, point(ep).x, rowRefY);
       }
 
-      const snapNow = snapshotPage(page, work);
       const pinBottom = Math.max(
         ...rComps.map(c => {
-          const n = snapNow.nodes.find(n => n.id === c.id)!;
-          return Math.max(...n.pins.map(p => p.y));
+          const ep = refPin(c);
+          const n = measured.get(c.id)!;
+          const refP = n.pins.find(p => p.id === ep.pinId)!;
+          return rowRefY + Math.max(...n.pins.map(p => p.y - refP.y));
         }),
       );
       const shapeBottom = Math.max(
         ...rComps.map(c => {
-          const n = snapNow.nodes.find(n => n.id === c.id)!;
-          return Math.max(...n.shapes.map(s => s.rect.y + s.rect.height));
+          const ep = refPin(c);
+          const n = measured.get(c.id)!;
+          const refP = n.pins.find(p => p.id === ep.pinId)!;
+          return rowRefY + Math.max(...n.shapes.map(s => s.rect.y + s.rect.height - refP.y));
         }),
       );
       const firstTrackStart = snapY(Math.max(pinBottom + row, shapeBottom + 4));
@@ -740,9 +746,24 @@ function constructGeneralCircuit(
     }
   }
 
-  const boundsCheckSnap = snapshotPage(page, work);
-  const maxX = Math.max(...[...corridorX.values()], ...boundsCheckSnap.nodes.map(n => n.rect.x + n.rect.width));
-  const maxY = Math.max(...[...bandTrackY.values()], ...boundsCheckSnap.nodes.map(n => n.rect.y + n.rect.height));
+  const maxX = Math.max(
+    ...[...corridorX.values()],
+    ...page.components.map(c => {
+      const ep = refPin(c);
+      const n = measured.get(c.id)!;
+      const refP = n.pins.find(p => p.id === ep.pinId)!;
+      return point(ep).x + (n.rect.x + n.rect.width - refP.x);
+    }),
+  );
+  const maxY = Math.max(
+    ...[...bandTrackY.values()],
+    ...page.components.map(c => {
+      const ep = refPin(c);
+      const n = measured.get(c.id)!;
+      const refP = n.pins.find(p => p.id === ep.pinId)!;
+      return point(ep).y + (n.rect.y + n.rect.height - refP.y);
+    }),
+  );
   if (maxX > initial.area.x + initial.area.width + 1e-3 || maxY > initial.area.y + initial.area.height + 1e-3) {
     return reject(
       'geometry_rejected',

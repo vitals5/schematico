@@ -35,8 +35,15 @@ export class LayoutPreviewDialog {
     this.options = config.options ?? {};
   }
   show() {
+    const project = this.config.draft ?? this.config.getProject();
+    const page = project.pages.find((p) => p.id === this.preview.pageId);
+    const hasDraftComponents = Boolean(
+      (page?.components.length ?? 0) > 0 ||
+        this.preview.candidates.some((c) => (c.multiPage?.pages ?? [c.page]).some((p) => p.components.length > 0)),
+    );
     document.getElementById('layoutPreviewModal')?.remove();
     this.el.id = 'layoutPreviewModal';
+    this.el.dataset.hasDraftComponents = hasDraftComponents ? 'true' : 'false';
     this.el.className = 'modal-overlay';
     this.el.style.cssText =
       'position:fixed;inset:0;background:#000a;z-index:10000;display:flex;align-items:center;justify-content:center';

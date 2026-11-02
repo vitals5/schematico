@@ -27,7 +27,7 @@ export async function computeSolutions(
   signal?: AbortSignal,
 ): Promise<LayoutSolution[]> {
   if (signal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
-  if (typeof Worker === 'undefined') {
+  if (typeof Worker === 'undefined' || (!snapshot.nodes.length && !snapshot.frames.length)) {
     const { solveLayouts } = await import('./engine');
     return solveLayouts(snapshot);
   }
@@ -134,7 +134,7 @@ export async function previewLayout(
   const skipGenericOnOverflow = Boolean(
     !preparedReport &&
       page.layoutConstraints?.preferAutoconnect &&
-      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable'].includes(
+      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content'].includes(
         page.layoutConstraints?.draftPreparation?.code ?? '',
       ),
   );
@@ -277,11 +277,17 @@ export async function previewLayout(
   const issues = candidates.length ? [] : failures.length
     ? failures.filter((issue,index)=>failures.findIndex(other=>other.type===issue.type&&other.message===issue.message&&JSON.stringify(other.objectIds)===JSON.stringify(issue.objectIds))===index)
     : before.issues;
-  sessionDiagnostics.record('layout_report',{pageId,preparation:page.layoutConstraints?.draftPreparation,before,issues,rejectedAttempts:solutions.filter(s=>!s.report.valid).map(s=>({profile:s.profile,report:s.report})),storedModelRejections:rejections,candidates:candidates.map(c=>({id:c.id,profile:c.profile,report:c.report,multiPage:c.multiPage?{pages:c.multiPage.pages.map(p=>({id:p.id,title:p.title})),links:c.multiPage.links}:undefined}))});
+  const effectivePreparation = draft
+    ? page.layoutConstraints?.draftPreparation?.code === 'geometry_rejected' &&
+      candidates[0]?.multiPage?.pages.every((p) => p.layoutConstraints?.draftPreparation?.status === 'applied')
+      ? candidates[0].multiPage.pages[0].layoutConstraints?.draftPreparation
+      : page.layoutConstraints?.draftPreparation
+    : undefined;
+  sessionDiagnostics.record('layout_report',{pageId,preparation:effectivePreparation,before,issues,rejectedAttempts:solutions.filter(s=>!s.report.valid).map(s=>({profile:s.profile,report:s.report})),storedModelRejections:rejections,candidates:candidates.map(c=>({id:c.id,profile:c.profile,report:c.report,multiPage:c.multiPage?{pages:c.multiPage.pages.map(p=>({id:p.id,title:p.title})),links:c.multiPage.links}:undefined}))});
   for(const candidate of candidates)sessionDiagnostics.record('layout_candidate',candidate);
   return {
     pageId,
-    preparation:draft ? page.layoutConstraints?.draftPreparation : undefined,
+    preparation: effectivePreparation,
     status: candidates.length ? 'preview_ready' : 'layout_invalid',
     before,
     candidates,

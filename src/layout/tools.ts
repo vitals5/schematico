@@ -210,7 +210,18 @@ export async function handleOptimizeLayout(args: any, manager: CanvasStateManage
   }
   const raw = await previewLayout(project, page.id, { ...opts, abortSignal: signal }, planning);
   const { preview, draft } = preferDraftAutoconnect(project, planning, raw, true);
-  manager.showLayoutPreview?.(preview, draft, opts);
+  const isEmptyPage =
+    !page.components.length &&
+    !page.texts?.length &&
+    !page.boxes?.length &&
+    !page.images?.length &&
+    !page.cables?.length;
+  const hasActiveDraftModal =
+    typeof document !== 'undefined' &&
+    document.getElementById('layoutPreviewModal')?.dataset.hasDraftComponents === 'true';
+  if (!(isEmptyPage && hasActiveDraftModal)) {
+    manager.showLayoutPreview?.(preview, draft, opts);
+  }
   return result(preview);
 }
 interface Draft {
@@ -356,7 +367,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
     let preparation:DraftPreparation={strategy:'generic',status:'not_applicable',code:'not_applicable',message:'Allgemeines Layoutverfahren: kein vollständiges unterstütztes Verteilungsmuster erkannt.'};
     if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d)) {
-      if (preparation.code !== 'geometry_rejected') {
+      if (!['geometry_rejected', 'existing_content'].includes(preparation.code)) {
         prepareDraftConnections(draft,page,devices,wires);
       }
     }
@@ -373,7 +384,7 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager, 
     let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
     phase='layout_computation';
     let preview=await previewLayout(project,page.id,{ abortSignal: signal },draft);
-    if(preview.status==='layout_invalid' && !signal?.aborted){
+    if(preview.status==='layout_invalid' && !signal?.aborted && preview.preparation?.code !== 'existing_content'){
       const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
       const preparation=draft.pages.find(p=>p.id===page.id)!.layoutConstraints?.draftPreparation;
       if(preparation){const p=fallback.pages.find(p=>p.id===page.id)!;p.layoutConstraints={...p.layoutConstraints,draftPreparation:preparation.status==='applied'?{...preparation,status:'rejected',code:'layout_rejected',message:'Das konstruierte Verteilungsmuster hat die abschließende Layoutprüfung nicht bestanden. Allgemeines Layoutverfahren wird verwendet.',issues:preview.issues.filter(i=>i.severity==='error').slice(0,20)}:preparation};}
