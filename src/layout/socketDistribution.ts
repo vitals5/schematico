@@ -5,7 +5,8 @@ import { getDrawingUnitsPerMm, getSymbolById, getSymbolForComponent } from '../m
 import { isConnectionSymbol } from '../model/ConnectionSymbols';
 import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
-import { snapshotPage } from './geometry';
+import { snapshotPage, union } from './geometry';
+import {pinStub} from './router';
 import { clone, type DraftPreparation, type LayoutIssue } from './types';
 import { netIds, validateLayout } from './validate';
 import { markLayoutAutoconnections } from './draftConnections';
@@ -425,12 +426,19 @@ function constructGeneralCircuit(
     }
   }
 
+  const returnNet=(net:IndexedNet)=>net.wires.some(w=>/^(N|PE)$/i.test(w.potential?.trim()??''))||net.endpoints.some(ep=>{
+    const c=page.components.find(c=>c.id===ep.componentId)!,pin=getSymbolForComponent(c,work)?.pins.find(p=>p.id===ep.pinId);
+    return /^(PE|N)([-_].*)?$/i.test(pin?.name??'')||/^(PE|N)([-_].*)?$/i.test(ep.pinId);
+  });
+  type Escape={endpoint:Endpoint;net:IndexedNet;symbolId:string;distance:number;radius:number;side:'left'|'right';vertical:'top'|'bottom';adapter?:Endpoint};
+  const escapes=new Map<string,Escape>();
   const point = (ep: Endpoint) => {
     const c = page.components.find(c => c.id === ep.componentId)!;
     const s = getSymbolForComponent(c, work)!;
     const p = s.pins.find(p => p.id === ep.pinId)!;
     const q = AutoconnectEngine.getRotatedPinInfo(c, p, s);
-    return { x: q.worldX / u, y: q.worldY / u, direction: q.direction };
+    const escape=escapes.get(key(ep));
+    return escape?{x:q.worldX/u+(escape.side==='right'?1:-1)*escape.distance,y:q.worldY/u+(escape.vertical==='top'?-1:1)*escape.radius,direction:escape.vertical}:{ x: q.worldX / u, y: q.worldY / u, direction: q.direction };
   };
   const place = (ep: Endpoint, x: number, y: number) => {
     const c = page.components.find(c => c.id === ep.componentId)!;
@@ -459,6 +467,26 @@ function constructGeneralCircuit(
     }
   }
 
+  // Orient purely horizontal devices as a whole; mixed ports retain their
+  // masters and get a measured, editable library elbow at the side contact.
+  for(const c of page.components){
+    const sym=getSymbolForComponent(c,work)!;
+    const eps=netList.flatMap(n=>n.endpoints.filter(ep=>ep.componentId===c.id));
+    if(!isConnectionSymbol(sym)&&eps.length&&eps.every(ep=>['left','right'].includes(point(ep).direction)))c.rotation=((c.rotation+90)%360) as PlacedComponent['rotation'];
+  }
+  const physical=snapshotPage(page,work),escapeStep=physical.grid.spacing/2;
+  for(const net of netList)for(const ep of net.endpoints){
+    const c=page.components.find(c=>c.id===ep.componentId)!,sym=getSymbolForComponent(c,work)!,p=point(ep);
+    if(isConnectionSymbol(sym)||!['left','right'].includes(p.direction))continue;
+    const side=p.direction as 'left'|'right',vertical=returnNet(net)?'top':side==='left'?'top':'bottom';
+    const corner=getSymbolById('corner_compact_'+(side==='right'?'left':'right')+'_'+vertical,work);
+    if(!corner)return reject('junction_library','Ein passender Bibliothekswinkel für den seitlichen Anschluss fehlt.');
+    const radius=Math.max(corner.width,corner.height)/2/u,pin=physical.nodes.find(n=>n.id===c.id)!.pins.find(p=>p.id===ep.pinId)!;
+    const stub=pinStub(physical,pin,c.id),minimum=(page.grid?page.grid.spacing/4:8)/u;
+    const distance=Math.ceil((Math.abs(stub.x-pin.x)+radius+minimum-1e-8)/escapeStep)*escapeStep;
+    escapes.set(key(ep),{endpoint:ep,net,symbolId:corner.id,distance,radius,side,vertical});
+  }
+
   for (const n of netList) {
     for (const ep of n.endpoints) {
       const c = page.components.find(c => c.id === ep.componentId);
@@ -477,6 +505,7 @@ function constructGeneralCircuit(
   const rank = new Map<string, number>(page.components.map(c => [c.id, 0]));
   const edges: [string, string][] = [];
   for (const net of netList) {
+    if(returnNet(net))continue;
     const bottoms = [...new Set(net.endpoints.filter(e => point(e).direction === 'bottom').map(e => e.componentId))];
     const tops = [...new Set(net.endpoints.filter(e => point(e).direction === 'top').map(e => e.componentId))];
     for (const uComp of bottoms) {
@@ -510,6 +539,13 @@ function constructGeneralCircuit(
   if(profile.labelWidth)for(const c of page.components)for(const field of ['functionTextPosition','technicalDataPosition'] as const)c[field]={...c[field],maxWidth:Math.min(c[field]?.maxWidth??Infinity,profile.labelWidth*u)};
   const geometry = snapshotPage(page, work);
   const measured = new Map(geometry.nodes.map(n => [n.id, n]));
+  for(const escape of escapes.values()){
+    const node=measured.get(escape.endpoint.componentId)!,p=point(escape.endpoint),centerY=p.y+(escape.vertical==='top'?escape.radius:-escape.radius);
+    const body={x:p.x-escape.radius,y:centerY-escape.radius,width:2*escape.radius,height:2*escape.radius};
+    node.shapes.push({id:node.id+':side-port:'+escape.endpoint.pinId,owner:node.id,kind:'body',rect:body});
+    node.rect=union([node.rect,body]);
+    const pin=node.pins.find(p=>p.id===escape.endpoint.pinId)!;Object.assign(pin,{x:p.x,y:p.y,direction:escape.vertical});
+  }
   const step = initial.grid.spacing / 2;
   const snap = (v: number) => Math.ceil(v / step - 1e-8) * step;
   const snapX = (v: number) => snap(v - initial.grid.origin.x) + initial.grid.origin.x;
@@ -867,13 +903,24 @@ function constructGeneralCircuit(
     generated.push({
       ...n.wires[0],
       id: n.wires[index]?.id ?? allocate(n.wires[0].id + '-distribution-' + index),
-      from,
-      to,
+      from:escapes.get(key(from))?.adapter??from,
+      to:escapes.get(key(to))?.adapter??to,
       waypoints: [],
       isAutoconnect: false,
       routingMode: 'auto',
     });
   };
+  for(const escape of escapes.values()){
+    const p=point(escape.endpoint),s=getSymbolById(escape.symbolId,work)!;
+    const centerY=p.y+(escape.vertical==='top'?escape.radius:-escape.radius),id=allocate(escape.endpoint.componentId+'-side-'+escape.endpoint.pinId);
+    const c:PlacedComponent={id,symbolId:s.id,bmk:'',functionText:'',x:p.x*u-s.width/2,y:centerY*u-s.height/2,rotation:0,pinLabelPosition:{visible:false},pins:Object.fromEntries(s.pins.map(p=>[p.id,{wireIds:[]}]))};
+    const toward=escape.side==='right'?'left':'right';
+    const horizontal={componentId:id,pinId:s.pins.find(p=>p.direction===toward)!.id};
+    connect(escape.net.id,escape.endpoint,horizontal);
+    escape.adapter={componentId:id,pinId:s.pins.find(p=>p.direction===escape.vertical)!.id};
+    page.components.push(c);added.push(c);
+    for(const g of page.groups??[])if(g.members.some(m=>m.kind==='component'&&m.id===escape.endpoint.componentId))g.members.push({kind:'component',id});
+  }
   const junction = (dirs: Direction[], x: number, y: number, net: IndexedNet) => {
     const names = [
       'corner_compact_left_top',

@@ -146,9 +146,7 @@ function result(preview: LayoutPreview) {
     message:
       preview.status === 'preview_ready'
         ? 'Geprüfte Vorschau bereit. Noch nicht übernommen. Im Vorschaufenster Übernehmen wählen.'
-        : preview.splitSuggestion?.sheets?.length
-          ? `Kein gültiges Layout gefunden: Der Schaltungsentwurf übersteigt die Blattkapazität (Aufteilungsvorschlag auf ${preview.splitSuggestion.sheets.length} Blätter in splitSuggestion vorhanden). STOPP AN DIE KI: Platziere diese Bauteile NIEMALS einzeln manuell mit add_component/draw_wire! Erkläre dem Benutzer die Überschreitung anhand des splitSuggestion-Vorschlags und biete an, getrennte Blätter mit create_page anzulegen.`
-          : 'Kein gültiges Layout gefunden. Zeichnung unverändert; Fehlerbericht prüfen. STOPP AN DIE KI: Nicht manuell mit Einzelschritten (add_component) zeichnen!',
+        : `Kein gültiger Autoconnect-Aufbau gefunden. ${preview.preparation?.message??preview.issues.find(i=>i.severity==='error')?.message??'Fehlerbericht prüfen.'}${preview.splitSuggestion?.sheets?.length?' Der Aufteilungsvorschlag ist eine ungeprüfte Flächenschätzung, kein Nachweis einer Blattüberschreitung.':''} Zeichnung unverändert. STOPP AN DIE KI: Nicht durch manuelle Einzelschritte (add_component/draw_wire) umgehen; den konkreten Konstruktionsfehler erklären.`,
   };
 }
 function options(args: any): LayoutOptions {
@@ -231,6 +229,7 @@ export async function handleOptimizeLayout(args: any, manager: CanvasStateManage
 }
 interface Draft {
   preferAutoconnect?: boolean;
+  constructionOnly?:boolean;
   components: {
     id: string;
     symbolId: string;
@@ -373,7 +372,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
     const devices=new Set(input.components.map(c=>refs.get(c.id)!)),wires=new Set(input.connections.map(w=>refs.get(w.id)!));
     let preparation:DraftPreparation={strategy:'generic',status:'not_applicable',code:'not_applicable',message:'Allgemeines Layoutverfahren: kein vollständiges unterstütztes Verteilungsmuster erkannt.'};
     if(!prepareSocketDistribution(draft,page,devices,wires,d=>preparation=d)) {
-      if (!['geometry_rejected', 'existing_content', 'neutral_protective_nets'].includes(preparation.code)) {
+      if (!input.constructionOnly&&!['geometry_rejected', 'existing_content', 'neutral_protective_nets'].includes(preparation.code)) {
         prepareDraftConnections(draft,page,devices,wires);
       }
     }
@@ -395,7 +394,7 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager, 
         `Es existiert bereits ein berechneter Entwurf für ${pendingTitle}, der im Vorschaufenster auf Übernahme wartet. In einem einzelnen KI-Turn kann nur ein Entwurf zur Prüfung bereitgestellt werden. Fasse alle Stromkreise der Verteilung in einem einzigen create_schematic_draft-Aufruf auf der Startseite zusammen (Schematico teilt den Plan bei Platzmangel automatisch auf mehrere Folgeseiten auf) oder beende diesen Turn, damit der Anwender die Vorschau für ${pendingTitle} bestätigen kann.`,
       );
     }
-    let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
+    let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true,constructionOnly:true});
     phase='layout_computation';
     let preview=await previewLayout(project,page.id,{ abortSignal: signal, constructionOnly:true },draft);
     ({draft,preview}=preferDraftAutoconnect(project,draft,preview,true));

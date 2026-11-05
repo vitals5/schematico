@@ -503,11 +503,12 @@ export async function multiPageCandidate(
   if (blocks.length < 2) return;
   const geometry = snapshotPage(source, target, options);
   geometry.frames=geometry.frames.filter(f=>!source.layoutConstraints?.planningGroupIds?.includes(f.id));
+  const hinted=partitionBlocks({...source,layoutConstraints:{...source.layoutConstraints,planningGroupIds:[]}});
   const coherent = coherentBlocks(blocks, geometry);
   const functional = functionalBlocks(coherent, geometry);
   const attempts = Array.from({ length: Math.min(options.constructionOnly&&source.layoutConstraints?.planningGroupIds?.length?24:12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
     const seen = new Set<string>();
-    return [...electricalPartitions(blocks,count,geometry),...[functional, coherent, blocks].filter(units => units.length >= count).flatMap(units=>[partitionBins(units,count,geometry),balancedPartitionBins(units,count,geometry)])].flatMap(bins => {
+    return [...electricalPartitions(blocks,count,geometry),...[...(options.constructionOnly?[hinted]:[]), functional, coherent, blocks].filter(units => units.length >= count).flatMap(units=>[partitionBins(units,count,geometry),balancedPartitionBins(units,count,geometry)])].flatMap(bins => {
       // Keep sheet order: the first sheet retains source texts and images.
       const key = JSON.stringify(bins.map(b => [...b].sort()));
       if (seen.has(key)) return [];

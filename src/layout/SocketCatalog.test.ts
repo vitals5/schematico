@@ -79,7 +79,7 @@ const bad=input();bad.connections.find(w=>w.from.pinId==='N-out')!.from.pinId='N
 const rejected=buildDraft(source(),'p',{...bad,preferAutoconnect:true});assert.equal(rejected.pages[0].layoutConstraints?.draftPreparation?.status,'rejected');assert.equal(rejected.pages[0].layoutConstraints?.draftPreparation?.code,'neutral_protective_nets');
 const badProject=source(),badBefore=JSON.stringify(badProject);
 const rejectedResponse=await handleCreateDraft(bad,{...manager,getProject:()=>badProject,getActivePage:()=>badProject.pages[0],showLayoutPreview:(preview)=>assert.equal(preview.preparation?.code,'neutral_protective_nets')});
-assert.equal(rejectedResponse.layoutPreparation?.code,'neutral_protective_nets');assert.equal(JSON.stringify(badProject),badBefore);
+assert.equal(rejectedResponse.layoutPreparation?.code,'neutral_protective_nets');assert(!rejectedResponse.message.includes('übersteigt die Blattkapazität'),'A construction rejection must not be presented as proven sheet overflow');assert.equal(JSON.stringify(badProject),badBefore);
 const tiny=source();tiny.pages[0].plotFrame.width=300;
 const unfitted=buildDraft(tiny,'p',{...input(),preferAutoconnect:true});assert.equal(unfitted.pages[0].layoutConstraints?.draftPreparation?.code,'geometry_rejected');assert(unfitted.pages[0].layoutConstraints?.draftPreparation?.issues?.length);
 console.log('✓ Actual AI tool flow: catalog FI and real port names, long equipment data, shared buses, preserved nets on one page, 16 four-pole FI variants, renamed master data, catalog sockets and explicit rejection diagnostics');
