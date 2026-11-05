@@ -26,7 +26,7 @@ export interface MultiPageLayout {
   pages: Page[];
   links: PageLink[];
 }
-function partitionBlocks(page: Page, project?: Project): string[][] {
+export function partitionBlocks(page: Page): string[][] {
   const parent = new Map(page.components.map((c) => [c.id, c.id]));
   const root = (id: string): string =>
     parent.get(id) === id ? id : root(parent.get(id)!);
@@ -41,16 +41,6 @@ function partitionBlocks(page: Page, project?: Project): string[][] {
   };
   for (const group of page.groups ?? []) {
     const ids = members(group.id);
-    const comps = ids.map((id) => page.components.find((c) => c.id === id)).filter(Boolean) as PlacedComponent[];
-    const isLargeTerminalStrip =
-      comps.length > 8 &&
-      comps.every((c) => {
-        const sym = project ? getSymbolForComponent(c, project) : undefined;
-        return sym
-          ? sym.category === 'terminals' || isConnectionSymbol(sym)
-          : c.symbolId.startsWith('terminal_') || c.symbolId.includes('terminal');
-      });
-    if (isLargeTerminalStrip) continue;
     for (const id of ids.slice(1)) parent.set(root(id), root(ids[0]));
   }
   const blocks = new Map<string, string[]>();
@@ -485,7 +475,8 @@ export async function multiPageCandidate(
   let best: LayoutCandidate | undefined;
   let bestCost = Infinity;
   const failedInputs = new Set<string>();
-  const blocks = partitionBlocks(source, target);
+  const successfulInputs = new Map<string, Page>();
+  const blocks = partitionBlocks(source);
   if (blocks.length < 2) return;
   const geometry = snapshotPage(source, target, options);
   const coherent = coherentBlocks(blocks, geometry);
@@ -512,13 +503,19 @@ export async function multiPageCandidate(
       valid = true;
     for (const page of multi.pages) {
       if (options.abortSignal?.aborted) return;
-      const key = JSON.stringify(
+      const key = JSON.stringify([page,
         snapshotPage(
           copy.pages.find((p) => p.id === page.id)!,
           copy,
           options,
         ),
-      );
+      ]);
+      const cached=successfulInputs.get(key);
+      if(cached){
+        multi.pages[multi.pages.findIndex(p=>p.id===page.id)]=clone(cached);
+        copy.pages[copy.pages.findIndex(p=>p.id===page.id)]=clone(cached);
+        continue;
+      }
       if (failedInputs.has(key)) {
         valid = false;
         break;
@@ -551,6 +548,7 @@ export async function multiPageCandidate(
         valid = false;
         break;
       }
+      successfulInputs.set(key,clone(candidate.page));
       multi.pages[multi.pages.findIndex((p) => p.id === page.id)] =
         candidate.page;
       copy.pages[copy.pages.findIndex((p) => p.id === page.id)] =

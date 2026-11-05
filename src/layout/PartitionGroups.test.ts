@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {fixture,add} from './testing/fixture';
+import {partitionBlocks} from './multipage';
+const project=fixture(),page=project.pages[0];
+const strip=Array.from({length:12},(_,i)=>add(project,'X'+i,i<5?'potential_rail_source':'terminal_single').id);
+add(project,'independent');
+page.groups=[{id:'inner',members:strip.slice(0,5).map(id=>({kind:'component',id}))},{id:'strip',members:[{kind:'group',id:'inner'},...strip.slice(5).map(id=>({kind:'component' as const,id}))]}];
+const before=JSON.stringify(page),blocks=partitionBlocks(page);
+assert.equal(blocks.length,2);assert(blocks.some(block=>strip.every(id=>block.includes(id))),'Large nested terminal/connection groups must remain atomic across sheets');
+assert.equal(JSON.stringify(page),before);
+console.log('✓ Large nested terminal groups remain atomic; no stale off-sheet group members or source mutation');

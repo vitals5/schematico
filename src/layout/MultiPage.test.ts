@@ -233,7 +233,7 @@ assert.equal(popRes.layoutPreparation?.code, 'existing_content');
 assert(popElapsed < 5000, `Expected fast rejection on existing_content, took ${popElapsed}ms`);
 console.log('✓ Fast-fail verified when calling create_schematic_draft on a populated page');
 
-// Test that oversized multi-group drafts return informative splitSuggestion with multiple sheets and STOP guidance
+// Large terminal groups must be kept whole, allowing a checked multi-sheet result.
 const splitTestProject = fixture();
 const oversizedDraftArgs = {
   preferAutoconnect: true,
@@ -251,15 +251,21 @@ const oversizedDraftArgs = {
     { id: 'g_terminals', name: 'Large Terminal Strip', members: Array.from({ length: 16 }, (_, i) => `X2_${i}`) },
   ],
 };
+let oversizedShown: any;
 const oversizedManagerMock: any = {
   getProject: () => splitTestProject,
   getActivePage: () => splitTestProject.pages[0],
-  showLayoutPreview: () => {},
+  showLayoutPreview: (preview:any,draft:any) => {oversizedShown={preview,draft};},
 };
 const overRes = await handleCreateDraft(oversizedDraftArgs, oversizedManagerMock);
-assert.equal(overRes.success, false);
-assert(overRes.splitSuggestion?.sheets?.length && overRes.splitSuggestion.sheets.length > 1, 'Expected multiple sheets in splitSuggestion for unlaid oversized groups');
-assert(overRes.message.includes('STOPP AN DIE KI'), 'Expected STOP guidance in failure message');
-console.log('✓ Split suggestion correctly partitions stacked unlaid groups across multiple sheets with AI STOP guidance');
+assert.equal(overRes.status,'preview_ready');
+const oversizedCandidate=oversizedShown.preview.candidates[0];
+assert(oversizedCandidate.multiPage.pages.length>1);
+assert(oversizedCandidate.multiPage.pages.every((page:any)=>!snapshotPage(page,oversizedShown.draft).issues.some((issue:any)=>issue.type==='missing_group_member')));
+applyLayout(splitTestProject,oversizedCandidate,oversizedShown.draft);
+const stripPages=splitTestProject.pages.filter(p=>p.components.some(c=>c.id.startsWith('ai-X2_')));
+assert.equal(stripPages.length,1,'All sixteen terminals remain on their group page');
+assert.equal(stripPages[0].components.filter(c=>c.id.startsWith('ai-X2_')).length,16);
+console.log('✓ Large grouped terminal strips receive a valid multi-sheet layout without dangling group members');
 
 
