@@ -1,3 +1,4 @@
+import {GET_INSPECTION_REVIEW_TOOL} from './inspectionReview';
 import {GET_PROJECT_INDEX_TOOL} from './projectIndex';
 import {VALIDATE_ELECTRICAL_PROJECT_TOOL} from './electricalInspection';
 import {GET_ELECTRICAL_NETS_TOOL} from './electricalNets';
@@ -728,6 +729,7 @@ export const DISTRIBUTE_SHEET_LAYOUT_TOOL:McpToolDefinition={
 
 export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
   GET_PROJECT_INDEX_TOOL,
+  GET_INSPECTION_REVIEW_TOOL,
   VALIDATE_ELECTRICAL_PROJECT_TOOL,
   GET_ELECTRICAL_NETS_TOOL,
   DUPLICATE_SCHEMATIC_TOOL,

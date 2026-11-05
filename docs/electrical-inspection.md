@@ -37,3 +37,28 @@ Der Meldungsdialog zeigt die Regelkennung und den betroffenen Anschluss beziehun
 `validate_schematic_layout` behält seinen geometrischen Status. Ein getrenntes Feld `electrical` enthält die projektweite elektrische Zusammenfassung und bis zu 100 Befunde mit Bezug zur geprüften Seite. Für die vollständige Liste dient der elektrische Prüflauf. Eine gültige Geometrie bedeutet keine elektrisch geprüfte Schaltung.
 
 Der Prüfumfang benennt unbekannte interne Anschlussdaten und Anschlussrollen. Unbekannte native Verweisformate und interne Gerätefunktionen werden nicht erfunden. Der Dienst simuliert keine Schaltzustände und ersetzt weder Kurzschluss-/Lastberechnungen noch eine vollständige Normenprüfung.
+
+## Herkunftsanalyse und gruppierte Prüfung
+
+Der Bericht enthält zusätzlich `articleDataSummary` (Anzahlen von **Platzierungen**, keine Geräteanzahl) und je Befund einen optionalen `articleData`-Kontext. Dieser nennt Symbol, Rolle, Anlage, Ort und die nachweisbare Artikelherkunft:
+
+| Zustand | Aussage |
+|---|---|
+| `assigned` | Aktuell ist eine Artikelnummer eingetragen. |
+| `inherited` | Eine eindeutige Hauptfunktion trägt den verwendeten Artikel. |
+| `not_applicable` | Nach Symbolart oder ausdrücklicher Prüfvorgabe ist kein eigener Artikel erforderlich. |
+| `import_not_read` | Der Importer hat ausdrücklich vermerkt, dass Artikelangaben dieses Quellformats noch nicht ausgelesen wurden. |
+| `source_record_empty` | Das geprüfte XML-Artikelfeld des einzelnen Quelldatensatzes war leer. Keine Aussage über weitere Datensätze oder die gesamte Quelldatenbank. |
+| `imported_unassigned` | Ein gelesener Quelldatensatz enthielt eine Artikelnummer, die aktuell nicht mehr zugeordnet ist. |
+| `import_unknown` | Bei einer Importdarstellung fehlt ein belastbarer Nachweis über das Lesen der Artikelangaben. |
+| `unassigned` | Am normalen Element fehlt eine Zuordnung; eine Aussage über externe Quelldaten ist damit nicht verbunden. |
+
+Neue native Projektimporte speichern `articleImport.status: not_read`, solange der Leser die Artikelverknüpfungen nicht unterstützt. Das ist eine sichtbare Importlücke, kein Nachweis fehlender Originalartikel. Der XML-Makroleser hält den tatsächlich gelesenen Feldwert fest. Vorhandene, ältere Projekte werden nicht nachträglich mit erfundenen Herkunftsnachweisen versehen. Eine später manuell eingetragene Artikelnummer hat bei der aktuellen Zustandsanzeige Vorrang; vorhandene Importnachweise bleiben erhalten.
+
+Die Projektprüfung bietet Filter nach Regel, Schweregrad, Seite, Artikelherkunft und Suchtext. Gruppen nach Regel, Seite oder vollständigem BMK-Kontext bewahren sämtliche ursprünglichen Befund-IDs und Sprungziele. Gleiche sichtbare BMK in unterschiedlichen Anlagen/Orten bleiben getrennt. Ohne belastbaren Kennzeichnungskontext bleiben Meldungen einzeln. Eine BMK-Gruppe bestätigt keine physische Geräteidentität.
+
+Die Ansicht zeigt höchstens 30 Gruppen pro Ansicht und zunächst 50 Meldungen je Gruppe. Über **Weitere Meldungen anzeigen** und die Gruppenblätter sind alle Treffer erreichbar. Auf- und Zuklappen oder Filtern ändert keine Prüfvorgabe und keine Artikelzuordnung. Der JSON-Download enthält weiterhin den vollständigen Bericht und zusätzlich den aktuellen Filter-/Gruppierungskontext mit den passenden Befund-IDs.
+
+`get_inspection_review` stellt dieselbe rein lesende Gruppierung bereit. `groupBy` unterstützt `rule`, `designation`, `page` und `none`; Filter sind `rule`, `severity`, `pageId`, `articleState` und `search`. Ohne `groupId` werden Gruppenanzahlen und Beispiel-IDs zurückgegeben. Mit `groupId` lässt sich die vollständige Gruppe über `offset`/`limit` durchblättern (`limit` 1–200). Die Gruppen-ID gilt für den abgefragten aktuellen Projektstand und die gewählte Gruppierung.
+
+Dieser Schritt ergänzt Herkunftsnachweise und Bearbeitungsübersicht. Er liest noch keine nativen Artikeldatenbanken vollständig aus, führt keine massenhaften Zuordnungen durch und richtet keinen zentralen Katalogserver ein.

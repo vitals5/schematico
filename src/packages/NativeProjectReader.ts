@@ -177,6 +177,7 @@ export class NativeProjectReader {
       const comp: PlacedComponent = {
         id: `native_${pageId}_${r.type}_${r.id}`, symbolId: d.id,
         source: { format: 'NATIVE_CAD', objectType: r.type, objectId: r.id },
+        articleImport: {source:'native_project',status:'not_read'},
         ...(d.deviceBox?{deviceBox:geometryFromSymbol(d)}:{}),
         x: p.x - entry.origin.x, y: p.y - entry.origin.y, rotation: 0,
         bmk: r.bmk && r.type !== 0x46 ? '-' + r.bmk : '', functionText,

@@ -92,7 +92,7 @@ export function nativeXmlSymbol(node: Element, variant: Element, available: read
     functionText: text('P20011') || (interruption ? bmk : xmlTag(node) === 'O88' ? nativeXmlText(own?.getAttribute('P1700') ?? '')
       : xmlTag(node) === 'O93' ? nativeXmlText(node.getAttribute('A1691') ?? text('P33000')) : ''),
     technicalCharacteristics: text('P20027'), additionalText: text('P20025'), deviceTag: text('P20030'),
-    articleNumber: text('P20100_1'), ...positionAtInsertionPoint(point, symbol, rotation), rotation,
+    articleNumber: text('P20100_1'), articleImport:{source:'xml_macro',status:'record_read',observedArticleNumber:text('P20100_1')}, ...positionAtInsertionPoint(point, symbol, rotation), rotation,
     pins: Object.fromEntries(symbol.pins.map((pin, i) => [pin.id, { customLabel: labels?.[i] ?? pin.name, wireIds: [] }])) };
   const origin = symbol.insertionPoint ?? { x: 0, y: 0 };
   const config = (field: number, baseY: number): TextFormatConfig | undefined => {

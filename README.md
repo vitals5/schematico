@@ -67,7 +67,7 @@ The shared static conductor service follows permanent library port groups, wires
 
 ## Electrical project inspection
 
-Electrical project inspection now uses one rule service across the editor, imports and AI tools. Findings include stable rule/cause IDs and precise sheet, component, pin and wire locations. Configure required/reserve ports, fixed potential constraints and part/reference policies in component properties. The inspection dialog supports navigation, refresh and a downloadable JSON report; `validate_electrical_project` provides the same findings to AI clients. Geometry remains a separate validation result. See [electrical inspection and coverage](docs/electrical-inspection.md).
+Electrical project inspection now uses one rule service across the editor, imports and AI tools. Findings include stable rule/cause IDs and precise sheet, component, pin and wire locations. Configure required/reserve ports, fixed potential constraints and part/reference policies in component properties. The inspection dialog supports navigation, refresh and a downloadable JSON report; `validate_electrical_project` provides the same findings to AI clients. Geometry remains a separate validation result. See [electrical inspection and coverage](docs/electrical-inspection.md). The review dialog also filters and groups findings by rule, page, full designation context and article-data provenance. Import records distinguish unread article data from an inspected empty field; grouping never assigns parts or confirms device identities. AI clients can page through the same groups with `get_inspection_review`.
 
 ## About Schematico
 

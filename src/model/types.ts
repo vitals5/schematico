@@ -181,6 +181,9 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  /** Evidence about reading this placement's source record; not a claim about
+   * the contents of the source application's complete parts database. */
+  articleImport?: { source: 'native_project' | 'xml_macro'; status: 'not_read' | 'record_read'; observedArticleNumber?: string };
   articleRequirement?: 'required' | 'optional' | 'none';
   referenceRequirement?: 'required' | 'optional';
   nativeProperties?: Record<string,string>;
