@@ -619,8 +619,13 @@ export const translations = {
     plausRecMissingArticle: 'Weisen Sie im Eigenschaften-Dialog einen Herstellerartikel zu.',
     plausMsgUnwired: 'Bauteil ist vollständig unverdrahtet (alle {count} Anschlüsse unbeschaltet).',
     plausRecUnwired: 'Verbinden Sie die Anschlüsse mit Zuleitung oder Klemmen.',
-    plausMsgDuplicateBmk: 'Doppeltes Betriebsmittelkennzeichen \'{bmk}\' für eigenständige Geräte gefunden.',
-    plausRecDuplicateBmk: 'Benennen Sie eines der Geräte um (z.B. in {bmk}A).',
+    plausMsgMissingBmk: 'Das Betriebsmittelkennzeichen fehlt.',
+    plausRecMissingBmk: 'Ein Kennzeichen und den passenden Strukturkontext zuordnen.',
+    plausMsgDuplicatePageId: 'Die Seitenkennung {id} ist mehrfach vergeben.',
+    plausMsgDuplicateComponentId: 'Die Objektkennung {id} ist mehrfach vergeben.',
+    plausRecDuplicateIdentity: 'Die betroffenen Objekte prüfen; ihre Kennungen müssen eindeutig sein.',
+    plausMsgDuplicateBmk: 'Mehrdeutige Funktionszuordnung für Betriebsmittelkennzeichen \'{bmk}\'.',
+    plausRecDuplicateBmk: 'Funktionszuordnung und Strukturkennzeichen prüfen; eigenständige Geräte unterscheiden.',
 
     // Additional Properties Dialog keys
     propResetPositions: '↺ Standardpositionen',
@@ -1496,8 +1501,13 @@ export const translations = {
     plausRecMissingArticle: 'Assign a manufacturer part in the properties dialog.',
     plausMsgUnwired: 'Component is completely unwired (all {count} pins disconnected).',
     plausRecUnwired: 'Connect pins to wiring or terminal strips.',
-    plausMsgDuplicateBmk: 'Duplicate device tag \'{bmk}\' found for separate devices.',
-    plausRecDuplicateBmk: 'Rename one of the devices (e.g. to {bmk}A).',
+    plausMsgMissingBmk: 'The device tag is missing.',
+    plausRecMissingBmk: 'Assign a tag and the appropriate structure context.',
+    plausMsgDuplicatePageId: 'Page identifier {id} is used more than once.',
+    plausMsgDuplicateComponentId: 'Object identifier {id} is used more than once.',
+    plausRecDuplicateIdentity: 'Check the affected objects; their identifiers must be unique.',
+    plausMsgDuplicateBmk: 'Ambiguous function assignments for device tag \'{bmk}\'.',
+    plausRecDuplicateBmk: 'Check function assignments and structure identifiers; distinguish independent devices.',
 
     // Additional Properties Dialog keys
     propResetPositions: '↺ Reset Positions',

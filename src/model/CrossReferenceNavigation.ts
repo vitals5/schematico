@@ -3,60 +3,36 @@ import { getSymbolForComponent } from './symbols';
 import { componentInsertionPoint } from './SymbolGeometry';
 import { escapeSvg } from './ImportedDrawing';
 import { CrossReferenceEngine } from './CrossReferenceEngine';
-import { isInterruptionSymbol } from './ConnectionSymbols';
+import {ProjectIndex,projectStructure,componentIdentity} from './ProjectIndex';
 
 export type ReferenceTarget = { label: string; start: number; end: number; pageId: string;
   componentId?: string; x: number; y: number };
-const structure = (text: string) => text.replace(/^[=+]+/, '');
 
 /** Resolve each printed reference independently, including split page numbers. */
 export function referenceTargets(project: Project, source: PlacedComponent): ReferenceTarget[] {
-  const sourcePage = project.pages.find(p => p.components.some(c => c.id === source.id));
-  if (!sourcePage) return [];
+  const index=new ProjectIndex(project),sourceEntry=index.entry(source);
+  if(!sourceEntry)return [];
+  const identity=componentIdentity(sourceEntry.page,source,getSymbolForComponent(source,project));
+  const peers=new Set(index.referencesFor(source).map(e=>e.component));
   const result: ReferenceTarget[] = [];
   for (const match of (source.crossRef ?? '').matchAll(/\/([^\s,|/:]+)\.(\d+)/g)) {
     const number = match[1], col = Number(match[2]);
     const pages = project.pages.filter(p => p.pageNumber === number);
-    const sourceSymbol = getSymbolForComponent(source, project);
-    const isSourceInterruption = sourceSymbol && isInterruptionSymbol(sourceSymbol);
-    const sourceTag = isSourceInterruption
-      ? (source.bmk.trim() && !source.bmk.startsWith('PF') && source.bmk !== '/' ? source.bmk.trim() : (source.functionText?.trim() || source.bmk.trim()))
-      : source.bmk.trim();
-
-    const matchesCandidate = (c: PlacedComponent) => {
-      if (c.id === source.id) return false;
-      const targetSymbol = getSymbolForComponent(c, project);
-      if (isSourceInterruption && targetSymbol && isInterruptionSymbol(targetSymbol)) {
-        const targetTag = (c.bmk.trim() && !c.bmk.startsWith('PF') && c.bmk !== '/' ? c.bmk.trim() : (c.functionText?.trim() || c.bmk.trim()));
-        return targetTag === sourceTag;
-      }
-      return sourceTag
-        ? c.bmk.trim() === source.bmk.trim()
-          && structure(c.higherLevelFunction ?? sourcePage.higherLevel) === structure(source.higherLevelFunction ?? sourcePage.higherLevel)
-        : !!(source.functionText && c.functionText === source.functionText);
+    const sourceSymbol=sourceEntry.symbol;
+    const matchesCandidate=(c:PlacedComponent)=>{
+      if(c.id===source.id)return false;
+      if(identity.referenceKey)return peers.has(c);
+      const target=index.entry(c);
+      return !!source.functionText&&c.functionText===source.functionText&&target?.structure.plant===identity.structure.plant&&target?.structure.location===identity.structure.location;
     };
-
-    const sameStructure = (p: Page) => structure(p.higherLevel) === structure(source.higherLevelFunction ?? sourcePage.higherLevel)
-      && structure(p.location) === structure(source.mountingLocation ?? sourcePage.location);
+    const sameStructure=(p:Page)=>{const scope=projectStructure(p);return scope.plant===identity.structure.plant&&scope.location===identity.structure.location;};
     const page = pages.find(p => sameStructure(p) && p.components.some(matchesCandidate))
       ?? pages.find(p => p.components.some(matchesCandidate))
       ?? pages.find(sameStructure)
       ?? pages.find(p => p.pageType === 'schematic')
       ?? pages[0];
     if (!page || col >= page.plotFrame.columns || col < 0) continue;
-    const candidates = page.components.filter(c => {
-      if (c.id === source.id) return false;
-      const targetSymbol = getSymbolForComponent(c, project);
-      if (isSourceInterruption && targetSymbol && isInterruptionSymbol(targetSymbol)) {
-        const targetTag = (c.bmk.trim() && !c.bmk.startsWith('PF') && c.bmk !== '/' ? c.bmk.trim() : (c.functionText?.trim() || c.bmk.trim()));
-        return targetTag === sourceTag;
-      }
-      return sourceTag
-        ? c.bmk.trim() === source.bmk.trim()
-          && structure(c.higherLevelFunction ?? page.higherLevel) === structure(source.higherLevelFunction ?? sourcePage.higherLevel)
-          && structure(c.mountingLocation ?? page.location) === structure(source.mountingLocation ?? sourcePage.location)
-        : source.functionText && c.functionText === source.functionText;
-    });
+    const candidates=page.components.filter(matchesCandidate);
     const designation = (source.crossRef ?? '').slice(0, match.index).split(/[|,]/).at(-1)?.match(/([\w-]+):\s*$/)?.[1];
     const score = (c: PlacedComponent) => {
       const targetSymbol = getSymbolForComponent(c, project);

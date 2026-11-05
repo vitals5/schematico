@@ -1,21 +1,13 @@
 // src/ui/PlausibilityDialog.ts
 // Plausibility Check & Message Management ("Prüflauf / Meldungsverwaltung")
 
-import { Project, PlacedComponent } from '../model/types';
-import { getSymbolForComponent } from '../model/symbols';
+import { Project } from '../model/types';
 import { t } from '../i18n';
+import { escapeSvg } from '../model/ImportedDrawing';
 
-export interface PlausibilityMessage {
-  id: string;
-  severity: 'error' | 'warning' | 'info';
-  category: string;
-  pageId: string;
-  pageNumber: string;
-  componentId?: string;
-  bmk?: string;
-  message: string;
-  recommendation: string;
-}
+export type {PlausibilityMessage} from '../model/ProjectInspection';
+import type {PlausibilityMessage} from '../model/ProjectInspection';
+import {collectPlausibilityMessages} from '../model/ProjectInspection';
 
 export class PlausibilityDialog {
   private project: Project;
@@ -123,17 +115,17 @@ export class PlausibilityDialog {
                   </td>
                 </tr>
               ` : messages.map(m => `
-                <tr class="plaus-row" data-page-id="${m.pageId}" data-comp-id="${m.componentId || ''}" style="border-bottom: 1px solid #2d3748; cursor: pointer;">
+                <tr class="plaus-row" data-page-id="${escapeSvg(m.pageId)}" data-comp-id="${escapeSvg(m.componentId || '')}" style="border-bottom: 1px solid #2d3748; cursor: pointer;">
                   <td style="padding: 6px 8px; white-space: nowrap;">
                     ${m.severity === 'error' ? `❌ <span style="color:#fc8181;font-weight:600;">${t('plausSeverityError')}</span>` : 
                       (m.severity === 'warning' ? `⚠️ <span style="color:#f6ad55;font-weight:600;">${t('plausSeverityWarning')}</span>` : 
                       `ℹ️ <span style="color:#63b3ed;">${t('plausSeverityInfo')}</span>`)}
                   </td>
-                  <td style="padding: 6px 8px; white-space: nowrap; font-family: monospace;">${t('sheet')} ${m.pageNumber}</td>
-                  <td style="padding: 6px 8px; font-weight: bold; font-family: monospace; color: #f6e05e;">${m.bmk || '-'}</td>
+                  <td style="padding: 6px 8px; white-space: nowrap; font-family: monospace;">${t('sheet')} ${escapeSvg(m.pageNumber)}</td>
+                  <td style="padding: 6px 8px; font-weight: bold; font-family: monospace; color: #f6e05e;">${escapeSvg(m.bmk || '-')}</td>
                   <td style="padding: 6px 8px;">
-                    <div>${m.message}</div>
-                    <div style="font-size: 10px; color: #a0aec0; margin-top: 2px;">${t('plausColRecommendation')}: ${m.recommendation}</div>
+                    <div>${escapeSvg(m.message)}</div>
+                    <div style="font-size: 10px; color: #a0aec0; margin-top: 2px;">${t('plausColRecommendation')}: ${escapeSvg(m.recommendation)}</div>
                   </td>
                   <td style="padding: 6px 8px; white-space: nowrap;">
                     <button class="btn btn-jump" style="padding: 2px 8px; font-size: 10px;">${t('plausBtnNavigate')} ➔</button>
@@ -176,85 +168,5 @@ export class PlausibilityDialog {
     });
   }
 
-  private runCheck(): PlausibilityMessage[] {
-    const messages: PlausibilityMessage[] = [];
-
-    // Map of BMK to count
-    const bmkMap = new Map<string, { count: number; components: { comp: PlacedComponent; pageId: string; pageNum: string }[] }>();
-
-    for (const page of this.project.pages) {
-      for (const comp of page.components) {
-        const key = comp.bmk;
-        if (!bmkMap.has(key)) {
-          bmkMap.set(key, { count: 0, components: [] });
-        }
-        const entry = bmkMap.get(key)!;
-        entry.count++;
-        entry.components.push({ comp, pageId: page.id, pageNum: page.pageNumber });
-
-        // Check for missing manufacturer articles
-        if (!comp.articleNumber) {
-          messages.push({
-            id: 'msg_' + Math.random().toString(36).substring(2, 7),
-            severity: 'info',
-            category: 'Stammdaten',
-            pageId: page.id,
-            pageNumber: page.pageNumber,
-            componentId: comp.id,
-            bmk: comp.bmk,
-            message: t('plausMsgMissingArticle'),
-            recommendation: t('plausRecMissingArticle')
-          });
-        }
-
-        // Check open pins
-        const sym = getSymbolForComponent(comp);
-        if (sym) {
-          const connectedPins = new Set<string>();
-          for (const wire of page.wires) {
-            if (wire.from.componentId === comp.id) connectedPins.add(wire.from.pinId);
-            if (wire.to.componentId === comp.id) connectedPins.add(wire.to.pinId);
-          }
-          const unconnected = sym.pins.filter(p => !connectedPins.has(p.id));
-          if (unconnected.length > 0 && unconnected.length === sym.pins.length) {
-            messages.push({
-              id: 'msg_' + Math.random().toString(36).substring(2, 7),
-              severity: 'warning',
-              category: 'Verdrahtung',
-              pageId: page.id,
-              pageNumber: page.pageNumber,
-              componentId: comp.id,
-              bmk: comp.bmk,
-              message: t('plausMsgUnwired', { count: sym.pins.length }),
-              recommendation: t('plausRecUnwired')
-            });
-          }
-        }
-      }
-    }
-
-    // Check duplicate BMK conflicts (e.g. two separate motors with same BMK)
-    for (const [bmk, entry] of bmkMap.entries()) {
-      if (entry.count > 1) {
-        const firstSym = getSymbolForComponent(entry.components[0].comp);
-        // If not contactor coil + contacts, warn about duplicate
-        const isNormalContactSet = firstSym?.isMaster || firstSym?.isContact;
-        if (!isNormalContactSet) {
-          messages.push({
-            id: 'msg_' + Math.random().toString(36).substring(2, 7),
-            severity: 'error',
-            category: 'Betriebsmittel',
-            pageId: entry.components[1].pageId,
-            pageNumber: entry.components[1].pageNum,
-            componentId: entry.components[1].comp.id,
-            bmk: bmk,
-            message: t('plausMsgDuplicateBmk', { bmk }),
-            recommendation: t('plausRecDuplicateBmk', { bmk })
-          });
-        }
-      }
-    }
-
-    return messages;
-  }
+  private runCheck(): PlausibilityMessage[] {return collectPlausibilityMessages(this.project);}
 }

@@ -4,7 +4,8 @@
 import { Project, PlacedComponent, Page } from './types';
 import { getSymbolForComponent } from './symbols';
 import { componentInsertionPoint } from './SymbolGeometry';
-import { isInterruptionSymbol } from './ConnectionSymbols';
+import { ProjectIndex } from './ProjectIndex';
+import {isInterruptionSymbol} from './ConnectionSymbols';
 
 export interface ContactMirrorItem {
   type: 'PowerNO' | 'NO' | 'NC' | 'Changeover';
@@ -49,40 +50,12 @@ export class CrossReferenceEngine {
    * Recalculates all cross-references across all pages in the project
    */
   public static updateProjectCrossReferences(project: Project): void {
-    // Collect all components across all pages
-    const componentLocations: {
-      comp: PlacedComponent;
-      page: Page;
-      col: number;
-    }[] = [];
-
-    for (const page of project.pages) {
-      for (const comp of page.components) {
-        const col = this.componentPath(comp, page, project);
-        componentLocations.push({ comp, page, col });
-      }
-    }
-
-    // Group by BMK (or interruption name for interruption points)
-    const bmkGroups = new Map<string, typeof componentLocations>();
-    for (const item of componentLocations) {
-      const sym = getSymbolForComponent(item.comp, project);
-      const isInterruption = sym && isInterruptionSymbol(sym);
-      const bmk = isInterruption
-        ? (item.comp.bmk.trim() && !item.comp.bmk.startsWith('PF') && item.comp.bmk !== '/' ? item.comp.bmk.trim() : (item.comp.functionText?.trim() || item.comp.bmk.trim()))
-        : item.comp.bmk.trim();
-      if (!bmk) continue;
-      const key = isInterruption
-        ? `__interruption__:${item.comp.higherLevelFunction ?? ''}:${bmk}`
-        : `${item.comp.higherLevelFunction ?? item.page.higherLevel}${item.comp.mountingLocation ?? item.page.location}${bmk}`;
-      if (!bmkGroups.has(key)) {
-        bmkGroups.set(key, []);
-      }
-      bmkGroups.get(key)!.push(item);
-    }
+    const index=new ProjectIndex(project);
+    const bmkGroups=new Map([...index.referenceGroups].map(([key,entries])=>[key,entries.map(entry=>({comp:entry.component,page:entry.page,col:this.componentPath(entry.component,entry.page,project)}))]));
+    for(const entry of index.components)if(!entry.referenceKey&&!entry.nativeRepresentation)entry.component.crossRef='';
 
     // Process each BMK group (e.g. all components named "-K1")
-    for (const [bmk, items] of bmkGroups.entries()) {
+    for (const items of bmkGroups.values()) {
       // Find masters (e.g. coils) and slaves (e.g. contacts)
       const masters = items.filter(i => {
         const sym = getSymbolForComponent(i.comp, project);
@@ -94,6 +67,10 @@ export class CrossReferenceEngine {
         return sym?.isContact === true;
       });
 
+      if(masters.length>1){
+        for(const item of items)if(!index.entry(item.comp)?.nativeRepresentation)item.comp.crossRef='';
+        continue; // Identity is ambiguous; do not choose an arbitrary coil.
+      }
       if (masters.length > 0) {
         const primaryMaster = masters[0];
         
@@ -165,26 +142,14 @@ export class CrossReferenceEngine {
     if (!sym?.isMaster) return [];
 
     const mirror: ContactMirrorItem[] = [];
-    const bmk = masterComp.bmk.trim();
 
-    for (const page of project.pages) {
-      for (const comp of page.components) {
-        if (comp.id === masterComp.id) continue;
-        if (comp.bmk.trim() !== bmk) continue;
-
-        const compSym = getSymbolForComponent(comp, project);
-        if (compSym?.isContact) {
-          const pinNames = compSym.pins.map(p => comp.pins[p.id]?.customLabel ?? p.name).join('-');
-          const col = this.componentPath(comp, page, project);
-          mirror.push({
-            type: compSym.contactType || 'NO',
-            pinNames,
-            targetPageNumber: page.pageNumber,
-            targetCol: col,
-            slaveId: comp.id
-          });
-        }
-      }
+    const index=new ProjectIndex(project);
+    const peers=index.referencesFor(masterComp);
+    if(peers.filter(e=>e.symbol?.isMaster).length!==1)return [];
+    for(const entry of peers){
+      const {component:comp,page,symbol:compSym}=entry;
+      if(comp.id===masterComp.id||!compSym?.isContact)continue;
+      mirror.push({type:compSym.contactType||'NO',pinNames:compSym.pins.map(p=>comp.pins[p.id]?.customLabel??p.name).join('-'),targetPageNumber:page.pageNumber,targetCol:this.componentPath(comp,page,project),slaveId:comp.id});
     }
 
     return mirror;

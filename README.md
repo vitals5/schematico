@@ -57,6 +57,12 @@ Existing circuits can also be copied exactly to another page using `duplicate_sc
 
 Only **Übernehmen / Apply** changes a layout proposal, as one undo step. Infeasible layouts return explicit issues and a proposed group split instead of shrinking symbols or fonts. Full-sheet utilization alone is not a quality guarantee. See [layout workflow, MCP tools and limitations](docs/layout.md).
 
+## Shared project identity index
+
+BMK plausibility checks, contact mirrors, reference navigation and terminal reports use a common derived index of pages, placements, ports, structure designations and article assignments. Identical tags in different plant/location contexts remain separate; blank tags do not create a device group. The read-only MCP tool `get_project_index` returns the same inspection messages as the UI.
+
+Existing project JSON files need no migration. Designation groups are candidate identities, not verified physical-device counts. Imported device parts are treated conservatively. This is a foundation for the planned net and device model, not a complete electrical check. See [project index and limitations](docs/project-index.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

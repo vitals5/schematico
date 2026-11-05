@@ -1,3 +1,4 @@
+import {GET_PROJECT_INDEX_TOOL,handleGetProjectIndex} from './projectIndex';
 import {sessionDiagnostics} from '../SessionDiagnostics';
 import { rememberDiagnostic, sanitizeDiagnostic } from '../Diagnostics';
 import {DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic} from '../../layout/tools';
@@ -122,6 +123,7 @@ export class McpToolRegistry {
 
     // 2. Project & Pages
     this.register(GET_PROJECT_INFO_TOOL, handleGetProjectInfo);
+    this.register(GET_PROJECT_INDEX_TOOL,handleGetProjectIndex);
     this.register(UPDATE_PROJECT_INFO_TOOL, handleUpdateProjectInfo);
     this.register(LIST_PAGES_TOOL, handleListPages);
     this.register(CREATE_PAGE_TOOL, handleCreatePage);

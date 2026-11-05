@@ -1,8 +1,8 @@
 // src/reports/TerminalDiagram.ts
 // Generates terminal diagrams (Klemmenplan) according to DIN EN 81346 standards
 
-import { Project, PlacedComponent, Wire } from '../model/types';
-import { getSymbolForComponent } from '../model/symbols';
+import { Project } from '../model/types';
+import {ProjectIndex,scopedDesignation,displayDesignation,type ProjectStructure} from '../model/ProjectIndex';
 
 export interface TerminalEntry {
   terminalStrip: string;      // e.g. "-X1"
@@ -10,6 +10,7 @@ export interface TerminalEntry {
   internalTarget: string;     // e.g. "-K1:2"
   externalTarget: string;     // e.g. "-M1:U1"
   functionText: string;
+  pageId?:string; componentId?:string; numberSource?:'designation'|'legacy_text'|'sequence';
   wireColor?: string;
   crossSection?: string;
 }
@@ -79,67 +80,37 @@ export function layoutTerminalDiagramPdf(
 
 export class TerminalDiagramGenerator {
   public static generateTerminalReport(project: Project): Map<string, TerminalEntry[]> {
-    const strips = new Map<string, TerminalEntry[]>();
-
-    for (const page of project.pages) {
-      let lastStripName = '-X1';
-      // Find all terminal components
-      for (const comp of page.components) {
-        const sym = getSymbolForComponent(comp, project);
-        if (sym?.category !== 'terminals' || comp.bmk === 'PE') continue;
-
-        const rawBmk = comp.bmk?.trim() || '';
-        if (rawBmk) {
-          lastStripName = rawBmk;
-        }
-        const stripName = rawBmk || lastStripName;
-        if (!strips.has(stripName)) {
-          strips.set(stripName, []);
-        }
-
-        // Determine targets via connected wires
-        let internalTarget = '-';
-        let externalTarget = '-';
-        let wireColor = '';
-        let wireSection = '';
-
-        for (const wire of page.wires) {
-          if (wire.from.componentId === comp.id) {
-            const targetComp = page.components.find(c => c.id === wire.to.componentId);
-            if (targetComp) {
-              const label = `${targetComp.bmk}:${wire.to.pinId}`;
-              if (wire.from.pinId === '1') internalTarget = label;
-              else externalTarget = label;
-            }
-            wireColor = wire.color || '';
-            wireSection = wire.crossSection || '';
-          } else if (wire.to.componentId === comp.id) {
-            const sourceComp = page.components.find(c => c.id === wire.from.componentId);
-            if (sourceComp) {
-              const label = `${sourceComp.bmk}:${wire.from.pinId}`;
-              if (wire.to.pinId === '1') internalTarget = label;
-              else externalTarget = label;
-            }
-            wireColor = wire.color || '';
-            wireSection = wire.crossSection || '';
-          }
-        }
-
-        const terminalNumber = comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0] 
-          || (strips.get(stripName)!.length + 1).toString();
-
-        strips.get(stripName)!.push({
-          terminalStrip: stripName,
-          terminalNumber,
-          internalTarget,
-          externalTarget,
-          functionText: comp.functionText || 'Durchgangsklemme',
-          wireColor,
-          crossSection: wireSection
-        });
+    const index=new ProjectIndex(project);
+    const records=new Map<string,{tag:string;structure:ProjectStructure;entries:TerminalEntry[]}>(),lastStrip=new Map<string,string>();
+    for(const entry of index.components){
+      if(entry.symbol?.category!=='terminals')continue;
+      const {component:comp,page,structure}=entry,scope=JSON.stringify([page.id,structure]);
+      const colon=entry.tag.indexOf(':'),tag=entry.tag?(colon>0?entry.tag.slice(0,colon):entry.tag):lastStrip.get(scope)??'-X1';
+      if(entry.tag)lastStrip.set(scope,tag);
+      const key=scopedDesignation(structure,tag);
+      const record=records.get(key)??{tag,structure,entries:[]};records.set(key,record);
+      const internal=new Set<string>(),external=new Set<string>(),colors=new Set<string>(),sections=new Set<string>();
+      for(const connection of index.connectionsFor(entry)){
+        const own=connection.from?.owner===entry?connection.from:connection.to;
+        const other=connection.from?.owner===entry?connection.to:connection.from;
+        if(!own||!other)continue;
+        const targetScope=other.owner.structure;
+        const targetTag=targetScope.plant===structure.plant&&targetScope.location===structure.location?other.owner.tag:displayDesignation(targetScope,other.owner.tag);
+        const target=(targetTag||'-')+':'+other.label;
+        (own.id==='1'?internal:external).add(target);
+        if(connection.wire.color)colors.add(connection.wire.color);
+        if(connection.wire.crossSection)sections.add(connection.wire.crossSection);
       }
+      const designation=colon>0?entry.tag.slice(colon+1).trim():'',legacy=comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0];
+      record.entries.push({terminalStrip:tag,terminalNumber:designation||legacy||String(record.entries.length+1),numberSource:designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:comp.functionText||'Durchgangsklemme',wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
     }
-
+    const strips=new Map<string,TerminalEntry[]>();
+    for(const record of records.values()){
+      const repeated=[...records.values()].filter(r=>r.tag===record.tag).length>1;
+      const name=repeated?displayDesignation(record.structure,record.tag):record.tag;
+      for(const entry of record.entries)entry.terminalStrip=name;
+      strips.set(name,record.entries);
+    }
     return strips;
   }
 }
