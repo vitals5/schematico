@@ -28,7 +28,12 @@ export function wrapLabelText(text:string,size:number,width?:number):string {
   const measure=(s:string)=>[...s].reduce((n,c)=>n+size*(/[MW@%]/.test(c) ? 0.95 : /[ilI., :/]/.test(c) ? 0.33 : 0.63),0);
   return text.split(/\r?\n/).flatMap(line=>{
     const rows:string[]=[];let current='';
-    for(const word of line.split(/\s+/)){if(current&&measure(current+' '+word)>width){rows.push(current);current=word;}else current=current?current+' '+word:word;}
+    for(const word of line.split(/\s+/)){
+      if(measure(word)>width){
+        if(current){rows.push(current);current='';}
+        for(const char of word){if(current&&measure(current+char)>width){rows.push(current);current='';}current+=char;}
+      }else if(current&&measure(current+' '+word)>width){rows.push(current);current=word;}else current=current?current+' '+word:word;
+    }
     return [...rows,current];
   }).join('\n');
 }

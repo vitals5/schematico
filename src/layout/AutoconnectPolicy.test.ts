@@ -43,6 +43,15 @@ const altered=clone(reopened.preview.candidates[0]);altered.multiPage!.pages[1].
 assert.throws(()=>applyLayout(empty,altered,reopened.draft),/Autoconnect/);assert.equal(empty.pages.length,1);
 applyLayout(empty,reopened.preview.candidates[0],reopened.draft);assert.equal(empty.pages.length,2);
 assert(empty.pages.every(p=>unverifiedAutoconnections(empty,p).length===0));
+// A geometrically valid multi-sheet route must not bypass mandatory Autoconnect.
+const tightLeft=example(16),tightRight=example(16),emptySource=fixture();
+tightRight.p.pages[0].id='other';tightRight.p.pages[0].pageNumber='2';
+for(const c of tightRight.p.pages[0].components)c.id+='-other';
+for(const w of tightRight.p.pages[0].wires){w.id+='-other';w.from.componentId+='-other';w.to.componentId+='-other';}
+const tightDraft=clone(tightLeft.p);tightDraft.pages[0].components.push(...clone(tightRight.p.pages[0].components));tightDraft.pages[0].wires.push(...clone(tightRight.p.pages[0].wires));
+const mixedPreview:LayoutPreview={...tightLeft.preview,candidates:[{...tightLeft.preview.candidates[0],base:projectRevision(emptySource),multiPage:{pages:[tightLeft.p.pages[0],tightRight.p.pages[0]],links:[]}}]};
+const blocked=preferDraftAutoconnect(emptySource,tightDraft,mixedPreview,true);
+assert.equal(blocked.preview.status,'layout_invalid');assert.equal(blocked.preview.candidates.length,0);assert(blocked.preview.issues.some(i=>i.type==='autoconnect_required'));
 const source=fixture();let captured:any;
 const result=await handleCreateDraft({preferAutoconnect:false,components:[{id:'a',symbolId:'contactor_coil',functionText:''},{id:'b',symbolId:'contactor_coil',functionText:''}],connections:[{id:'edge',from:{componentId:'a',pinId:'A1'},to:{componentId:'b',pinId:'A1'},potential:'L1'}]}, {getProject:()=>source,showLayoutPreview:(preview:any,draft:any)=>captured={preview,draft}} as any);
 assert.equal(result.status,'preview_ready');assert.equal(result.connectionConstruction?.routed,0);assert(captured.preview.candidates[0].autoconnectRequired,'Legacy false option cannot disable mandatory Autoconnect');

@@ -264,8 +264,10 @@ assert(oversizedCandidate.multiPage.pages.length>1);
 assert(oversizedCandidate.multiPage.pages.every((page:any)=>!snapshotPage(page,oversizedShown.draft).issues.some((issue:any)=>issue.type==='missing_group_member')));
 applyLayout(splitTestProject,oversizedCandidate,oversizedShown.draft);
 const stripPages=splitTestProject.pages.filter(p=>p.components.some(c=>c.id.startsWith('ai-X2_')));
-assert.equal(stripPages.length,1,'All sixteen terminals remain on their group page');
-assert.equal(stripPages[0].components.filter(c=>c.id.startsWith('ai-X2_')).length,16);
-console.log('✓ Large grouped terminal strips receive a valid multi-sheet layout without dangling group members');
+const terminals=stripPages.flatMap(p=>p.components.filter(c=>c.id.startsWith('ai-X2_')));
+assert.equal(terminals.length,16);assert.equal(new Set(terminals.map(c=>c.id)).size,16);
+const memberships=stripPages.flatMap(p=>(p.groups??[]).filter(g=>g.id==='ai-g_terminals'||g.layoutOriginId==='ai-g_terminals').flatMap(g=>g.members.filter(m=>m.id.startsWith('ai-X2_'))));
+assert.equal(memberships.length,16);assert.equal(new Set(memberships.map(m=>m.id)).size,16);
+console.log('✓ AI terminal planning groups retain all members across audited sheet-local fragments');
 
 

@@ -1,7 +1,8 @@
+import {contactPartition} from './autoconnectRoutes';
 import { functionalBlocks } from './functionalBlocks';
 import { separatedAreaPenalty } from './areaQuality';
 import { handoverSymbol } from './handoverSymbol';
-import { coherentBlocks, partitionBins, electricalPartitions } from './coherentBlocks';
+import { coherentBlocks, partitionBins, balancedPartitionBins, electricalPartitions } from './coherentBlocks';
 import { designPenalty } from './structured';
 import type { Project, Page, Wire, PlacedComponent } from '../model/types';
 import { getSymbolById, getSymbolForComponent } from '../model/symbols';
@@ -40,6 +41,7 @@ export function partitionBlocks(page: Page): string[][] {
     return group.members.flatMap((m) => members(m.id, new Set([...seen, id])));
   };
   for (const group of page.groups ?? []) {
+    if(!group.source&&page.layoutConstraints?.planningGroupIds?.includes(group.id)&&group.members.every(m=>m.kind==='component'))continue;
     const ids = members(group.id);
     for (const id of ids.slice(1)) parent.set(root(id), root(ids[0]));
   }
@@ -50,7 +52,7 @@ export function partitionBlocks(page: Page): string[][] {
     (a, b) => b.length - a.length || a[0].localeCompare(b[0]),
   );
 }
-function buildPages(
+export function buildPages(
   project: Project,
   source: Page,
   bins: string[][],
@@ -192,9 +194,14 @@ function buildPages(
     return undefined;
   };
   for (const p of pages) {
-    p.groups = clone(
-      (source.groups ?? []).filter((g) => (groupOwner(g.id) ?? pages[0]) === p),
-    );
+    p.groups = (source.groups??[]).flatMap(g=>{
+      if(!g.source&&source.layoutConstraints?.planningGroupIds?.includes(g.id)&&g.members.every(m=>m.kind==='component')){
+        const members=g.members.filter(m=>owner.get(m.id)===p);
+        if(!members.length)return [];
+        return [{...clone(g),id:members.length===g.members.length?g.id:fresh(g.id+'-sheet-'+p.id),...(members.length===g.members.length?{}:{layoutOriginId:g.id}),members:clone(members)}];
+      }
+      return (groupOwner(g.id)??pages[0])===p?[clone(g)]:[];
+    });
     for (const c of p.components)
       for (const [id, pin] of Object.entries(c.pins))
         pin.wireIds = p.wires
@@ -239,7 +246,7 @@ export function auditMultiPage(
   multi: MultiPageLayout,
 ): void {
   const source = project.pages.find((p) => p.id === sourceId)!;
-  if (!source || !multi.pages.length || multi.pages.length > 12)
+  if (!source || !multi.pages.length || multi.pages.length > (source.layoutConstraints?.planningGroupIds?.length?24:12))
     throw new Error('Ungültiger Mehrseitenvorschlag.');
   const pageNumbers = new Set<string>();
   for (const p of multi.pages) {
@@ -289,6 +296,7 @@ export function auditMultiPage(
     delete (x as any).y;
     delete (x as any).rotation;
     delete x.crossRef;
+    for(const field of ['functionTextPosition','technicalDataPosition'] as const){if(x[field]){delete x[field]!.maxWidth;if(!Object.keys(x[field]!).length)delete x[field];}}
     if (x.deviceBox && !fixedFrames.has(x.id)) {
       delete (x.deviceBox as any).width;
       delete (x.deviceBox as any).height;
@@ -419,7 +427,7 @@ export function auditMultiPage(
       if (
         !c ||
         c.symbolId !== symbol ||
-        (c.rotation !== 0 && (!onlyConnectionSymbols || c.rotation !== 180)) ||
+        (c.rotation !== 0 && (!onlyConnectionSymbols || ![90,180,270].includes(c.rotation))) ||
         c.bmk !== link.name ||
         c.functionText !== link.name
       )
@@ -441,6 +449,16 @@ export function auditMultiPage(
         : g,
     ),
   );
+  for(const originalGroup of source.groups??[]){
+    const parts=groups.filter(g=>g.layoutOriginId===originalGroup.id);
+    if(!parts.length)continue;
+    if(originalGroup.source||!source.layoutConstraints?.planningGroupIds?.includes(originalGroup.id)||!originalGroup.members.every(m=>m.kind==='component'))throw new Error('Unzulässige Gruppenaufteilung.');
+    const all=parts.flatMap(g=>g.members),ids=all.map(m=>m.id);
+    if(new Set(ids).size!==ids.length||ids.length!==originalGroup.members.length||originalGroup.members.some(m=>!all.some(n=>n.id===m.id&&n.kind===m.kind)))throw new Error('Gruppeninhalt verändert.');
+    for(const part of parts){const normalized={...part,id:originalGroup.id,members:originalGroup.members};delete normalized.layoutOriginId;if(JSON.stringify(normalized)!==JSON.stringify(originalGroup))throw new Error('Gruppendaten verändert.');}
+    for(const part of parts)groups.splice(groups.indexOf(part),1);
+    groups.push(clone(originalGroup));
+  }
   if (
     JSON.stringify(groups.sort((a, b) => a.id.localeCompare(b.id))) !==
     JSON.stringify(
@@ -448,6 +466,11 @@ export function auditMultiPage(
     )
   )
     throw new Error('Gruppen verändert.');
+  const originals=new Set(source.components.map(c=>c.id));
+  const expected=snapshotPage(source,project);
+  const expanded=projectWithPages(project,sourceId,multi),snapshots=multi.pages.map(p=>snapshotPage(p,expanded));
+  const actual={...expected,nodes:snapshots.flatMap(s=>s.nodes),edges:[...snapshots.flatMap(s=>s.edges),...multi.links.map(l=>({id:'audit-'+l.fromArrowId,from:{componentId:l.fromArrowId,pinId:'1'},to:{componentId:l.toArrowId,pinId:'1'},potential:l.wire.potential??'',points:[]}))]};
+  if(contactPartition(actual,originals)!==contactPartition(expected,originals))throw new Error('Elektrische Netzstruktur der Blattaufteilung verändert.');
   for (const p of multi.pages)
     for (const w of p.wires)
       if (
@@ -479,11 +502,12 @@ export async function multiPageCandidate(
   const blocks = partitionBlocks(source);
   if (blocks.length < 2) return;
   const geometry = snapshotPage(source, target, options);
+  geometry.frames=geometry.frames.filter(f=>!source.layoutConstraints?.planningGroupIds?.includes(f.id));
   const coherent = coherentBlocks(blocks, geometry);
   const functional = functionalBlocks(coherent, geometry);
-  const attempts = Array.from({ length: Math.min(12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
+  const attempts = Array.from({ length: Math.min(options.constructionOnly&&source.layoutConstraints?.planningGroupIds?.length?24:12, blocks.length) - 1 }, (_, i) => i + 2).flatMap(count => {
     const seen = new Set<string>();
-    return [...electricalPartitions(blocks,count,geometry),...[functional, coherent, blocks].filter(units => units.length >= count).map(units=>partitionBins(units,count,geometry))].flatMap(bins => {
+    return [...electricalPartitions(blocks,count,geometry),...[functional, coherent, blocks].filter(units => units.length >= count).flatMap(units=>[partitionBins(units,count,geometry),balancedPartitionBins(units,count,geometry)])].flatMap(bins => {
       // Keep sheet order: the first sheet retains source texts and images.
       const key = JSON.stringify(bins.map(b => [...b].sort()));
       if (seen.has(key)) return [];
@@ -492,6 +516,7 @@ export async function multiPageCandidate(
     });
   });
   for (const { count, bins } of attempts) {
+    if(typeof document!=='undefined')await new Promise(resolve=>setTimeout(resolve,0));
     if (options.abortSignal?.aborted) return;
     if (best && best.multiPage!.pages.length < count && best.multiPage!.pages.every(p => p.wires.every(w => w.isAutoconnect))) break;
     const multi = buildPages(
@@ -502,6 +527,7 @@ export async function multiPageCandidate(
     let copy = projectWithPages(target, pageId, multi),
       valid = true;
     for (const page of multi.pages) {
+      if(typeof document!=='undefined')await new Promise(resolve=>setTimeout(resolve,0));
       if (options.abortSignal?.aborted) return;
       const key = JSON.stringify([page,
         snapshotPage(
@@ -529,9 +555,10 @@ export async function multiPageCandidate(
         },
         copy,
       );
-      let candidate = preview.candidates[0];
+      let candidate:LayoutCandidate|undefined = preview.candidates[0];
       if (
         !candidate &&
+        !options.constructionOnly &&
         page.layoutConstraints?.preferAutoconnect &&
         !['existing_content', 'neutral_protective_nets'].includes(
           preview.preparation?.code ?? '',
@@ -542,6 +569,10 @@ export async function multiPageCandidate(
         const compact=await previewLayout(relaxed,page.id,{...options,multiPage:false},relaxed);
         candidate=compact.candidates[0];
         if(candidate)candidate.page.layoutConstraints={...candidate.page.layoutConstraints,preferAutoconnect:true};
+      }
+      if(candidate&&options.constructionOnly){
+        const {unverifiedAutoconnections}=await import('./autoconnectPolicy');
+        if(unverifiedAutoconnections(copy,candidate.page).length)candidate=undefined;
       }
       if (!candidate) {
         failedInputs.add(key);

@@ -314,6 +314,8 @@ export interface PageImage {
 /** Persistent, page-local groups keep their members as ordinary editable objects.
  * Child groups allow an outer group to be dissolved without losing inner groups. */
 export interface ElementGroup {
+  /** Identity of an explicitly splittable AI planning group across sheet-local fragments. */
+  layoutOriginId?: string;
   id: string;
   name?: string;
   members: { kind: 'component' | 'cable' | 'image' | 'box' | 'wire' | 'text' | 'group'; id: string }[];

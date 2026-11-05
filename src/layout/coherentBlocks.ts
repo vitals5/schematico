@@ -101,3 +101,17 @@ export function electricalPartitions(blocks:string[][],count:number,s:LayoutSnap
   visit(0,0);choices.sort((a,b)=>a.score-b.score||JSON.stringify(a.bins).localeCompare(JSON.stringify(b.bins)));
   return choices.slice(0,1).map(c=>c.bins);
 }
+
+/** Keep highly connected tails from accumulating on the first sheet. This is a
+ * planning alternative; complete construction/validation still decides fit. */
+export function balancedPartitionBins(blocks:string[][],count:number,s:LayoutSnapshot):string[][] {
+ const bins:string[][]=Array.from({length:count},()=>[]),total=blocks.reduce((n,b)=>n+b.length,0);
+ const limit=Math.max(...blocks.map(b=>b.length),Math.ceil(total/count));
+ for(const block of blocks){
+  const eligible=bins.filter(bin=>bin.length+block.length<=limit);
+  const affinity=(bin:string[])=>s.edges.filter(e=>block.includes(e.from.componentId)&&bin.includes(e.to.componentId)||block.includes(e.to.componentId)&&bin.includes(e.from.componentId)).length;
+  const bin=[...(eligible.length?eligible:bins)].sort((a,b)=>eligible.length?affinity(b)-affinity(a)||a.length-b.length:a.length-b.length)[0];
+  bin.push(...block);
+ }
+ return bins.filter(b=>b.length);
+}

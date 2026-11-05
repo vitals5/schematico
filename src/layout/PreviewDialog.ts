@@ -32,7 +32,7 @@ export class LayoutPreviewDialog {
     const checked=preferDraftAutoconnect(config.getProject(),config.draft??config.getProject(),config.preview,true);
     config.draft=checked.draft;
     this.preview = checked.preview;
-    this.options = config.options ?? {};
+    this.options = {...config.options,constructionOnly:true};
   }
   show() {
     const project = this.config.draft ?? this.config.getProject();

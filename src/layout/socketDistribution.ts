@@ -44,7 +44,7 @@ export function prepareSocketDistribution(project: Project, original: Page, newD
     { row: 10, gap: 6, columns: 2 },
     { row: 8, gap: 4, columns: 2 },
     { row: 8, gap: 2, columns: 2 },
-  ]) {
+  ].flatMap(profile=>[undefined,20,16].map(labelWidth=>({...profile,labelWidth})))) {
     if (constructGeneralCircuit(project, original, newDevices, newWires, profile, d => (last = d))) {
       if (last) diagnose?.(last);
       return true;
@@ -297,10 +297,10 @@ function constructGeneralCircuit(
   original: Page,
   newDevices: Set<string>,
   newWires: Set<string>,
-  profile: { row: number; gap: number; columns?: number },
+  profile: { row: number; gap: number; columns?: number; labelWidth?:number },
   diagnose?: (result: DraftPreparation) => void,
 ): boolean {
-  if (original.components.length < 2 || original.wires.length < 2) return false;
+  if (original.components.length < 2 || original.wires.length < 1) return false;
   const reject = (code: string, message: string, issues?: LayoutIssue[]) => {
     diagnose?.({
       strategy: 'socket_distribution',
@@ -358,7 +358,7 @@ function constructGeneralCircuit(
     }
     nets.set(id, net);
   }
-  if (nets.size < 2) return false;
+  if (nets.size < 1) return false;
 
   const netList = [...nets.values()];
   if (page.components.some(c => !netList.some(n => n.endpoints.some(e => e.componentId === c.id)))) {
@@ -441,17 +441,21 @@ function constructGeneralCircuit(
 
   for (const c of page.components) {
     const sym = getSymbolForComponent(c, work);
-    if (!isDistributionFeed(sym)) continue;
+    if (!isDistributionFeed(sym) && !(sym && isConnectionSymbol(sym))) continue;
     const connected = netList.flatMap(n => n.endpoints.filter(e => e.componentId === c.id));
     if (connected.length !== 1) continue;
     const ep = connected[0];
     const net = nets.get(endpointNet.get(key(ep))!)!;
     const others = net.endpoints.filter(e => e.componentId !== c.id);
     if (!others.length) continue;
-    if (others.every(o => point(o).direction === 'top') && point(ep).direction === 'top') {
-      c.rotation = 180;
-    } else if (others.every(o => point(o).direction === 'bottom') && point(ep).direction === 'bottom') {
-      c.rotation = 180;
+    let desired:Direction|undefined = others.some(o => point(o).direction === 'bottom') ? 'top'
+      : others.some(o => point(o).direction === 'top') ? 'bottom' : undefined;
+    if(!desired&&others.every(other=>{const sym=getSymbolForComponent(page.components.find(c=>c.id===other.componentId)!,work);return sym&&(isDistributionFeed(sym)||isConnectionSymbol(sym));})){
+      desired=key(ep)===key([...net.endpoints].sort((a,b)=>key(a).localeCompare(key(b)))[0])?'bottom':'top';
+    }
+    if(desired){
+      const dirs:Direction[]=['top','right','bottom','left'];
+      c.rotation=((c.rotation+(dirs.indexOf(desired)-dirs.indexOf(point(ep).direction)+4)*90)%360) as PlacedComponent['rotation'];
     }
   }
 
@@ -503,6 +507,7 @@ function constructGeneralCircuit(
     for (const [id, r] of rank) rank.set(id, r - minRank);
   }
 
+  if(profile.labelWidth)for(const c of page.components)for(const field of ['functionTextPosition','technicalDataPosition'] as const)c[field]={...c[field],maxWidth:Math.min(c[field]?.maxWidth??Infinity,profile.labelWidth*u)};
   const geometry = snapshotPage(page, work);
   const measured = new Map(geometry.nodes.map(n => [n.id, n]));
   const step = initial.grid.spacing / 2;
@@ -530,7 +535,7 @@ function constructGeneralCircuit(
   };
 
   const numCols = profile.columns ?? 1;
-  const corridorReserve = numCols === 1 ? 5 * row : Math.max(5, Math.min(netList.length, 14)) * row;
+  const corridorReserve = numCols === 1 ? 5 * row : Math.max(5, Math.min(netList.length, 8)) * row;
   const colBudget =
     numCols === 1 ? initial.area.width - corridorReserve - 8 : (initial.area.width - corridorReserve - 16) / numCols;
 
@@ -583,6 +588,16 @@ function constructGeneralCircuit(
   }
 
   const corridorNets = netList.filter(n => netBandSet.get(n.id)!.size > 1);
+  const corridorSlots:number[][]=[];
+  const corridorSlot=new Map<string,number>();
+  const extents=new Map(corridorNets.map(n=>{const bands=[...netBandSet.get(n.id)!].map(code=>Number(code.split(':')[1]));return[n.id,{min:Math.min(...bands),max:Math.max(...bands)}] as const;}));
+  for(const n of corridorNets){
+    const span=extents.get(n.id)!;
+    let slot=corridorSlots.findIndex(indices=>indices.every(index=>{const other=extents.get(corridorNets[index].id)!;return span.min>other.max+1||other.min>span.max+1;}));
+    if(slot<0){slot=corridorSlots.length;corridorSlots.push([]);}
+    corridorSlots[slot].push(corridorNets.indexOf(n));corridorSlot.set(n.id,slot);
+  }
+
   const colBandNets: IndexedNet[][][] = colRows.map(cRows => Array.from({ length: cRows.length + 1 }, () => []));
   for (const net of netList) {
     const set = netBandSet.get(net.id)!;
@@ -598,8 +613,8 @@ function constructGeneralCircuit(
   const corridorX = new Map<string, number>();
 
   if (numCols === 1) {
-    corridorNets.forEach((n, i) => corridorX.set(n.id, currentLeftX + i * row));
-    if (corridorNets.length) currentLeftX = snapX(currentLeftX + corridorNets.length * row + 6);
+    corridorNets.forEach((n, i) => corridorX.set(n.id, currentLeftX + corridorSlot.get(n.id)! * row));
+    if (corridorNets.length) currentLeftX = snapX(currentLeftX + corridorSlots.length * row + 6);
   }
 
   const assignBandTracks = (col: number, bandIdx: number, activeNets: IndexedNet[], startY: number): number => {
@@ -658,8 +673,8 @@ function constructGeneralCircuit(
   for (let col = 0; col < numCols; col++) {
     if (col === 1 && corridorNets.length) {
       const baseCorr = snapX(currentLeftX + 6);
-      corridorNets.forEach((n, i) => corridorX.set(n.id, baseCorr + i * row));
-      currentLeftX = snapX(baseCorr + corridorNets.length * row + 6);
+      corridorNets.forEach((n, i) => corridorX.set(n.id, baseCorr + corridorSlot.get(n.id)! * row));
+      currentLeftX = snapX(baseCorr + corridorSlots.length * row + 6);
     }
 
     const cRows = colRows[col];
@@ -814,6 +829,7 @@ function constructGeneralCircuit(
     }),
   );
   if (maxX > initial.area.x + initial.area.width + 1e-3 || maxY > initial.area.y + initial.area.height + 1e-3) {
+    sessionDiagnostics.record('autoconnect_capacity',{pageId:page.id,profile,maxX,maxY,area:initial.area,rows:colRows.map(rows=>rows.map(r=>r.map(c=>c.id))),corridors:corridorNets.length});
     return reject(
       'geometry_rejected',
       'Die gemessenen Symbole, Beschriftungen oder Leitungszüge passen nicht kollisionsfrei in den Zeichenbereich.',

@@ -95,11 +95,13 @@ export const CREATE_DRAFT_TOOL: McpToolDefinition = {
       },
       groups: {
         type: 'array',
+        description:'Functional planning groups may receive sheet-local fragments with a shared origin. Set keepTogether for a group that must remain on one sheet.',
         items: {
           type: 'object',
           properties: {
             id: { type: 'string' },
             name: { type: 'string' },
+            keepTogether: {type:'boolean',description:'Keep the complete group on one sheet even if that prevents a valid layout.'},
             members: { type: 'array', items: { type: 'string' } },
           },
           required: ['id', 'members'],
@@ -183,6 +185,7 @@ function options(args: any): LayoutOptions {
     lockedIds: args.lockedIds,
     selectedIds: args.selectedIds,
     containerMembers: args.containerMembers,
+    constructionOnly:true,
   };
 }
 export async function handleOptimizeLayout(args: any, manager: CanvasStateManager, signal?: AbortSignal) {
@@ -243,7 +246,7 @@ interface Draft {
     to: { componentId: string; pinId: string };
     potential: string;
   }[];
-  groups?: { id: string; name?: string; members: string[] }[];
+  groups?: { id: string; name?: string; keepTogether?:boolean; members: string[] }[];
 }
 export function buildDraft(project: Project, pageId: string, input: Draft): Project {
   if (
@@ -348,6 +351,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
   }
   for (const g of input.groups ?? []) {
     if (!Array.isArray(g.members)) throw new Error('Gruppenmitglieder fehlen.');
+    if(g.keepTogether!==undefined&&typeof g.keepTogether!=='boolean')throw new Error('keepTogether muss ein Wahrheitswert sein.');
     (page.groups ??= []).push({
       id: refs.get(g.id)!,
       name: g.name,
@@ -373,7 +377,7 @@ export function buildDraft(project: Project, pageId: string, input: Draft): Proj
         prepareDraftConnections(draft,page,devices,wires);
       }
     }
-    page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true,draftPreparation:preparation};
+    page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:true,draftPreparation:preparation,planningGroupIds:(page.groups??[]).filter(g=>(input.groups??[]).some(group=>!group.keepTogether&&refs.get(group.id)===g.id)&&g.members.length>0&&g.members.every(m=>m.kind==='component')).map(g=>g.id)};
   }else if(input.preferAutoconnect===false){
     page.layoutConstraints={...page.layoutConstraints,preferAutoconnect:false,draftPreparation:{strategy:'generic',status:'disabled',code:'disabled',message:'Autoconnect-Konstruktionsmuster wurden für diesen Entwurf deaktiviert.'}};
   }else if(page.layoutConstraints)delete page.layoutConstraints.draftPreparation;
@@ -393,19 +397,10 @@ export async function handleCreateDraft(args: any, manager: CanvasStateManager, 
     }
     let draft=buildDraft(project,page.id,{...args,preferAutoconnect:true});
     phase='layout_computation';
-    let preview=await previewLayout(project,page.id,{ abortSignal: signal },draft);
-    if(preview.status==='layout_invalid' && !signal?.aborted && !['existing_content', 'neutral_protective_nets'].includes(preview.preparation?.code ?? '')){
-      const fallback=buildDraft(project,page.id,{...args,preferAutoconnect:false});
-      const preparation=draft.pages.find(p=>p.id===page.id)!.layoutConstraints?.draftPreparation;
-      if(preparation){const p=fallback.pages.find(p=>p.id===page.id)!;p.layoutConstraints={...p.layoutConstraints,draftPreparation:preparation.status==='applied'?{...preparation,status:'rejected',code:'layout_rejected',message:'Das konstruierte Verteilungsmuster hat die abschließende Layoutprüfung nicht bestanden. Allgemeines Layoutverfahren wird verwendet.',issues:preview.issues.filter(i=>i.severity==='error').slice(0,20)}:preparation};}
-      if(fallback.pages.find(p=>p.id===page.id)!.components.length!==draft.pages.find(p=>p.id===page.id)!.components.length){
-        const alternative=await previewLayout(project,page.id,{ abortSignal: signal },fallback);
-        if(alternative.status==='preview_ready'){draft=fallback;preview=alternative;}
-      }
-    }
+    let preview=await previewLayout(project,page.id,{ abortSignal: signal, constructionOnly:true },draft);
     ({draft,preview}=preferDraftAutoconnect(project,draft,preview,true));
     phase='preview_presentation';
-    manager.showLayoutPreview?.(preview,draft,{});
+    manager.showLayoutPreview?.(preview,draft,{constructionOnly:true});
     return result(preview);
   } catch(error){
     const err=error instanceof Error?error:new Error(String(error));

@@ -67,7 +67,7 @@ export async function previewLayout(
       page.layoutConstraints = { ...page.layoutConstraints, fixedFrameIds };
   }
   if (
-    !page.layoutConstraints?.draftPreparation &&
+    page.layoutConstraints?.draftPreparation?.status!=='applied' &&
     page.layoutConstraints?.preferAutoconnect &&
     page.components.length &&
     page.components.every((c) => c.x === 0 && c.y === 0)
@@ -132,12 +132,12 @@ export async function previewLayout(
   sessionDiagnostics.record('layout_geometry_input',input);
   if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
   const skipGenericOnOverflow = Boolean(
-    options.multiPage !== false &&
+    input.edges.length>0 && (options.constructionOnly || options.multiPage !== false) &&
       !preparedReport &&
       page.layoutConstraints?.preferAutoconnect &&
-      ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content', 'neutral_protective_nets'].includes(
+      (options.constructionOnly || ['geometry_rejected', 'object_limit', 'autoconnect_unavailable', 'existing_content', 'neutral_protective_nets'].includes(
         page.layoutConstraints?.draftPreparation?.code ?? '',
-      ),
+      )),
   );
   const solutions:LayoutSolution[] = preparedReport
     ? [{profile:'structured',snapshot:input,report:preparedReport}]
@@ -152,6 +152,7 @@ export async function previewLayout(
     solutions.push(...compact);
   }
   const rejections: LayoutPreview['issues'] = [];
+  if(options.constructionOnly&&!preparedReport)rejections.push({type:'autoconnect_construction_failed',severity:'error',objectIds:[pageId],message:page.layoutConstraints?.draftPreparation?.message??'Für diese Schaltung konnte keine vollständige Autoconnect-Konstruktion berechnet werden.'});
   for (const solution of solutions) {
     if (options.abortSignal?.aborted) throw new Error('Ausführung durch Benutzer abgebrochen.');
     if (!solution.report.valid) continue;

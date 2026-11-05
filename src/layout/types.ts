@@ -101,6 +101,8 @@ export interface LayoutReport {
   };
 }
 export interface LayoutConstraints {
+  /** Fresh AI functional groups may form local fragments when a net-first layout needs more sheets. */
+  planningGroupIds?: string[];
   preferAutoconnect?: boolean;
   draftPreparation?: DraftPreparation;
   protectedComponentIds?: string[];
@@ -119,6 +121,7 @@ export interface LayoutOptions extends LayoutConstraints {
   multiPage?: boolean;
   selectedIds?: string[];
   abortSignal?: AbortSignal;
+  constructionOnly?: boolean;
 }
 export interface LayoutSolution {
   profile: 'readability' | 'compact' | 'minimal_change' | 'lanes' | 'structured';

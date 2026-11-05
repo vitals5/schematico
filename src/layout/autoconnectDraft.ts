@@ -1,5 +1,5 @@
 import {sessionDiagnostics} from '../ai/SessionDiagnostics';
-import type {Project, Wire} from '../model/types';
+import type {Project} from '../model/types';
 import {clone,type LayoutPreview,type LayoutCandidate,type LayoutReport} from './types';
 import {snapshotPage} from './geometry';
 import {validateLayout} from './validate';
@@ -57,21 +57,7 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
   // Prefer fewer manual sections, then fewer bends/crossings. This is based on
   // the actual detector and independent validator, never on model assertions.
   prepared.sort((a,b)=>a.construction.routed-b.construction.routed||a.candidate.report.metrics.bends-b.candidate.report.metrics.bends||a.candidate.report.metrics.crossings-b.candidate.report.metrics.crossings);
-  const pureBest=prepared.find(p=>{
-    if(!p.candidate.multiPage){
-      return p.construction.routed===0&&!unverifiedAutoconnections(p.draft,p.candidate.page).length;
-    }
-    const virtual=p.draft.pages.find(pg=>pg.id===p.candidate.pageId);
-    const originals=virtual?new Set(virtual.components.map(c=>c.id)):new Set<string>();
-    const isLocalWire=(w:Wire)=>originals.has(w.from.componentId)&&originals.has(w.to.componentId);
-    const localRouted=p.candidate.multiPage.pages.flatMap(pg=>pg.wires).filter(w=>isLocalWire(w)&&!w.isAutoconnect).length;
-    const localUnverified=p.candidate.multiPage.pages.some(pg=>unverifiedAutoconnections(p.draft,pg).filter(id=>{
-      const w=pg.wires.find(wire=>wire.id===id);
-      return w&&isLocalWire(w);
-    }).length>0);
-    return localRouted===0&&!localUnverified;
-  });
-  const best=pureBest??(required?prepared.find(p=>p.candidate.multiPage&&p.candidate.report.valid):prepared[0]);
+  const best=prepared.find(p=>!required||p.construction.routed===0&&!(p.candidate.multiPage?.pages??[p.candidate.page]).some(page=>unverifiedAutoconnections(p.draft,page).length));
   if(required&&!best){
     const partial=prepared[0]?.construction;
     const issues=[{type:'autoconnect_required',severity:'error' as const,objectIds:[preview.pageId],message:'Kein vollständig mit Autoconnect aufgebautes Layout gefunden. Geroutete Restverbindungen werden nicht übernommen.'},...(partial?.issues??[])];
@@ -79,7 +65,7 @@ export function preferDraftAutoconnect(project:Project,draft:Project,preview:Lay
     return {draft,preview:{...preview,status:'layout_invalid' as const,candidates:[],issues,connectionConstruction:partial}};
   }
   if(!best)return {draft,preview};
-  if(required&&best===pureBest)best.candidate.autoconnectRequired=true;
+  if(required)best.candidate.autoconnectRequired=true;
   best.candidate.report.metrics.displacement=preview.candidates.find(c=>c.id===best.candidate.id)!.report.metrics.displacement;
   sessionDiagnostics.record('autoconnect_candidate',{candidate:best.candidate,construction:best.construction});
   return {draft:best.draft,preview:{...preview,candidates:[best.candidate],connectionConstruction:best.construction}};

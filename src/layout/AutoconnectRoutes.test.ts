@@ -85,6 +85,6 @@ const distinct=await handleCreatePage({pageNumber:'1',location:'+Other'},manager
 // two upward ports need a U-shaped path with two real library corners.
 const general=fixture();let captured:any;
 const response=await handleCreateDraft({components:[{id:'a',symbolId:'contactor_coil',functionText:''},{id:'b',symbolId:'contactor_coil',functionText:''}],connections:[{id:'link',from:{componentId:'a',pinId:'A1'},to:{componentId:'b',pinId:'A1'},potential:'L1'}]}, {getProject:()=>general,showLayoutPreview:(preview:any,draft:any)=>{captured={preview,draft};}} as any);
-assert.equal(response.connectionConstruction?.status,'complete');assert.equal(response.connectionConstruction?.addedSymbols,2);assert.equal(response.candidates[0].routedConnections,0);
+assert.equal(response.connectionConstruction?.status,'complete');assert.equal(response.connectionConstruction?.routed,0);assert.equal(response.candidates[0].routedConnections,0);
 applyLayout(general,captured.preview.candidates[0],captured.draft);assert.equal(general.pages[0].components.filter(c=>c.symbolId.startsWith('corner_compact')).length,2);
 console.log('✓ General checked route-to-library compilation: merged tees/corners, unrelated crossings, rotations/reversal, original net partition/IDs/data, multi-sheet Apply, undo and collision-safe aliases/page numbering');

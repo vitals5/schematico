@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {fixture,add} from './testing/fixture';
+import {buildPages,auditMultiPage,partitionBlocks} from './multipage';
+import {balancedPartitionBins} from './coherentBlocks';
+import {snapshotPage} from './geometry';
+import {clone} from './types';
+import {buildDraft} from './tools';
+const project=fixture(),page=project.pages[0];
+for(const id of ['a','b','c','d'])add(project,id,'contactor_coil',100,100);
+page.groups=[{id:'functional',name:'Circuit',members:page.components.map(c=>({kind:'component',id:c.id}))}];
+page.wires=[{id:'ab',from:{componentId:'a',pinId:'A2'},to:{componentId:'b',pinId:'A1'},potential:'L1'},{id:'cd',from:{componentId:'c',pinId:'A2'},to:{componentId:'d',pinId:'A1'},potential:'L1'}];
+assert.equal(partitionBlocks(page).length,1,'Manual grouping remains atomic');
+page.layoutConstraints={planningGroupIds:['functional']};
+assert.equal(partitionBlocks(page).length,4,'Explicit planning groups can form local fragments');
+const before=JSON.stringify(project),multi=buildPages(project,page,[['a','b','c'],['d']]);
+auditMultiPage(project,'p',multi);assert.equal(JSON.stringify(project),before);
+assert(multi.pages.every(p=>p.groups?.every(g=>g.layoutOriginId==='functional'&&g.members.every(m=>p.components.some(c=>c.id===m.id)))));
+const missing=clone(multi);missing.pages[0].groups![0].members.pop();assert.throws(()=>auditMultiPage(project,'p',missing),/Gruppeninhalt/);
+const shorted=clone(multi);
+const helper=clone(project.pages[0].components[0]);helper.id='corner';helper.symbolId='corner_compact_left_top';helper.pins={'1':{},'2':{}};shorted.pages[0].components.push(helper);
+shorted.pages[0].wires.find(w=>w.id==='ab')!.to={componentId:'c',pinId:'A1'};
+assert.throws(()=>auditMultiPage(project,'p',shorted),/Elektrische Netzstruktur/,'Same potential labels cannot hide a shortcut across distinct original nets');
+const groupedArgs={components:[{id:'a',symbolId:'contactor_coil',functionText:''},{id:'b',symbolId:'contactor_coil',functionText:''}],connections:[{id:'wire',from:{componentId:'a',pinId:'A1'},to:{componentId:'b',pinId:'A1'},potential:'L1'}],groups:[{id:'must-stay',keepTogether:true,members:['a','b']}]};
+assert(!buildDraft(fixture(),'p',{...groupedArgs,preferAutoconnect:true}).pages[0].layoutConstraints?.planningGroupIds?.length);
+// High affinity must not keep an entire tail on one sheet when more sheets were requested.
+const nodes=fixture();for(let i=0;i<12;i++)add(nodes,'n'+i);
+const geometry=snapshotPage(nodes.pages[0],nodes);geometry.edges=Array.from({length:11},(_,i)=>({id:'w'+i,from:{componentId:'n0',pinId:'1'},to:{componentId:'n'+(i+1),pinId:'1'},potential:'L1',points:[]}));
+const bins=balancedPartitionBins(nodes.pages[0].components.map(c=>[c.id]),4,geometry);
+assert.equal(bins.length,4);assert(bins.every(bin=>bin.length===3));
+console.log('✓ Planning-group fragments preserve identity and membership; manual/keepTogether groups stay atomic; cross-net shortcuts rejected; balanced net-driven sheet packing');
+
+const emptyGroup=buildDraft(fixture(),'p',{components:[{id:'spare',symbolId:'contactor_coil',functionText:''}],connections:[],groups:[{id:'empty',members:[]}],preferAutoconnect:true});
+assert.deepEqual(emptyGroup.pages[0].layoutConstraints?.planningGroupIds,[],'Empty groups must not disappear through fragmentation');
