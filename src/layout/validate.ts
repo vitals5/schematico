@@ -7,6 +7,7 @@ import type {
   LayoutEdge,
 } from './types';
 import { overlaps, contains, right, bottom, union } from './rect';
+import {PortGraph} from '../model/PortGraph';
 const eps = 1e-6;
 export const axis = (a: Point, b: Point) =>
   Math.abs(a.x - b.x) < eps || Math.abs(a.y - b.y) < eps;
@@ -45,34 +46,18 @@ export function endpointExemption(
   );
 }
 export function netIds(snapshot: LayoutSnapshot): Map<string, string> {
-  const parent = new Map<string, string>();
-  const root = (s: string): string => {
-    const p = parent.get(s);
-    if (!p) {
-      parent.set(s, s);
-      return s;
-    }
-    if (p === s) return s;
-    const r = root(p);
-    parent.set(s, r);
-    return r;
-  };
+  const graph=new PortGraph();
   const key = (e: LayoutEdge['from']) =>
     JSON.stringify([e.componentId, e.pinId]);
   for (const node of snapshot.nodes)
     for (const pins of node.joinedPins ?? []) {
       for (const pin of pins.slice(1))
-        parent.set(
-          root(JSON.stringify([node.id, pin])),
-          root(JSON.stringify([node.id, pins[0]])),
-        );
+        graph.join(JSON.stringify([node.id, pin]),JSON.stringify([node.id, pins[0]]));
     }
   for (const e of snapshot.edges) {
-    const a = root(key(e.from)),
-      b = root(key(e.to));
-    parent.set(a, b);
+    graph.join(key(e.from),key(e.to));
   }
-  return new Map(snapshot.edges.map((e) => [e.id, root(key(e.from))]));
+  return new Map(snapshot.edges.map((e) => [e.id, graph.root(key(e.from))]));
 }
 export function parallelOverlap(
   a: Point,

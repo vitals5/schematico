@@ -1,4 +1,5 @@
 import {wrapLabelText} from '../model/LabelLayout';
+import {electricalPinGroups} from '../model/ElectricalDefinition';
 import { pinStub } from './router';
 import { componentInsertionPoint } from '../model/SymbolGeometry';
 import { boxDrawing } from '../model/DeviceBox';
@@ -385,6 +386,8 @@ export function snapshotPage(
         direction: p.direction,
       };
     });
+    const electrical=electricalPinGroups(sym);
+    for(const invalid of electrical.invalid) snapshot.issues.push({type:'invalid_internal_group',severity:'error',objectIds:[comp.id],message:'Ungültige interne Anschlussgruppe im Bibliothekssymbol.'});
     snapshot.nodes.push({
       id: comp.id,
       kind: 'component',
@@ -396,12 +399,7 @@ export function snapshotPage(
       } : undefined,
       handover: isInterruptionSymbol(sym),
       routingJunction: ['corners', 'tees', 'crossings'].includes(connectionFamily(sym)),
-      joinedPins:
-        ['corners', 'tees', 'interruptions'].includes(connectionFamily(sym)) ||
-        sym.id === 'terminal_single' ||
-        (sym.id === 'cross_junction' || sym.id.startsWith('cross_junction_bus_'))
-          ? [pins.map((p) => p.id)]
-          : undefined,
+      joinedPins: electrical.permanent.length ? electrical.permanent : undefined,
       insertion: {
         x: componentInsertionPoint(comp, sym).x / u,
         y: componentInsertionPoint(comp, sym).y / u,

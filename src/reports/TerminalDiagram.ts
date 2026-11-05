@@ -3,6 +3,7 @@
 
 import { Project } from '../model/types';
 import {ProjectIndex,scopedDesignation,displayDesignation,type ProjectStructure} from '../model/ProjectIndex';
+import {ElectricalNetService} from '../model/ElectricalNetService';
 
 export interface TerminalEntry {
   terminalStrip: string;      // e.g. "-X1"
@@ -81,6 +82,7 @@ export function layoutTerminalDiagramPdf(
 export class TerminalDiagramGenerator {
   public static generateTerminalReport(project: Project): Map<string, TerminalEntry[]> {
     const index=new ProjectIndex(project);
+    const nets=new ElectricalNetService(index);
     const records=new Map<string,{tag:string;structure:ProjectStructure;entries:TerminalEntry[]}>(),lastStrip=new Map<string,string>();
     for(const entry of index.components){
       if(entry.symbol?.category!=='terminals')continue;
@@ -90,16 +92,18 @@ export class TerminalDiagramGenerator {
       const key=scopedDesignation(structure,tag);
       const record=records.get(key)??{tag,structure,entries:[]};records.set(key,record);
       const internal=new Set<string>(),external=new Set<string>(),colors=new Set<string>(),sections=new Set<string>();
-      for(const connection of index.connectionsFor(entry)){
-        const own=connection.from?.owner===entry?connection.from:connection.to;
-        const other=connection.from?.owner===entry?connection.to:connection.from;
-        if(!own||!other)continue;
+      for(const own of index.pinsFor(entry)){
+        const trace=nets.traceTargets(own);
+        for(const other of trace.targets){
         const targetScope=other.owner.structure;
         const targetTag=targetScope.plant===structure.plant&&targetScope.location===structure.location?other.owner.tag:displayDesignation(targetScope,other.owner.tag);
         const target=(targetTag||'-')+':'+other.label;
         (own.id==='1'?internal:external).add(target);
+        }
+        for(const connection of trace.connections){
         if(connection.wire.color)colors.add(connection.wire.color);
         if(connection.wire.crossSection)sections.add(connection.wire.crossSection);
+        }
       }
       const designation=colon>0?entry.tag.slice(colon+1).trim():'',legacy=comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0];
       record.entries.push({terminalStrip:tag,terminalNumber:designation||legacy||String(record.entries.length+1),numberSource:designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:comp.functionText||'Durchgangsklemme',wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});

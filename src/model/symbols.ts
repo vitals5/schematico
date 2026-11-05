@@ -1,4 +1,5 @@
 import { CONNECTION_VARIANTS } from './ConnectionVariants';
+import { electricalDefinition, registerStandardElectricalDefinition } from './ElectricalDefinition';
 import { migrateLegacyData } from './LegacyCompatibility';
 import { DEVICE_BOX_SYMBOL, componentFromBox, deviceBoxDefinition, geometryFromSymbol, isDeviceBoxDefinition } from './DeviceBoxElement';
 // src/model/symbols.ts
@@ -1453,6 +1454,18 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
 ];
 
 SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...INSTALLATION_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, ...CONNECTION_VARIANTS, DEVICE_BOX_SYMBOL);
+
+// Portable library semantics. Project-owned/imported definitions are never changed here.
+for (const symbol of SYMBOL_DEFINITIONS) {
+  symbol.electrical ??= electricalDefinition(symbol).definition ?? {
+    permanentConnections: [],
+    ...(symbol.isContact ? { conditionalConnections: [symbol.pins.map(p => p.id)] } : {}),
+  };
+  for (const pin of symbol.pins) pin.electricalRole ??=
+    pin.name === 'PE' || symbol.id === 'terminal_pe' ? 'protective_earth' : pin.name === 'N' ? 'neutral'
+      : symbol.layoutRole === 'power' || /^L[123]?$/.test(pin.name) ? 'power' : 'unknown';
+  registerStandardElectricalDefinition(symbol);
+}
 
 for (const symbol of SYMBOL_DEFINITIONS) {
   symbol.unitsPerMm = 2;

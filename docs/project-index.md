@@ -19,10 +19,10 @@ Der Plausibilitätsdialog und das MCP-Werkzeug `get_project_index` verwenden die
 
 Gleich benannte Leisten in unterschiedlichen Strukturkontexten bleiben getrennt und werden bei Bedarf mit Anlage/Ort bezeichnet. Ein explizites BMK `-X1:7` liefert Leiste `-X1` und Nummer `7`. Für ältere Daten bleiben die bisherigen Ersatznummern aus Funktionstext oder Reihenfolge erhalten; `numberSource` kennzeichnet ihre Herkunft.
 
-Direkte lokale und logische Verbindungsziele verwenden denselben Anschlussindex. Mehrere Ziele werden aufgelistet. Ziele in einem anderen Strukturkontext erhalten Anlage/Ort zur Unterscheidung. Der Bericht verfolgt noch keine vollständigen Netze durch T-Stücke oder interne Geräteverbindungen; die bisherige Innen-/Außenzuordnung über Anschluss `1` bleibt bestehen.
+Lokale und logische Verbindungsziele verwenden denselben Anschlussindex und den [gemeinsamen Netzservice](electrical-nets.md). Der Bericht verfolgt eine Klemmenseite durch Verbindungselemente und Blattübergänge bis zum nächsten Betriebsmittel oder zur nächsten Klemme. Mehrere Ziele werden aufgelistet. Ziele in einem anderen Strukturkontext erhalten Anlage/Ort zur Unterscheidung. Die bisherige Innen-/Außenzuordnung über Anschluss `1` bleibt bis zum expliziten Klemmenmodell bestehen.
 
 ## MCP-Abfrage
 
 `get_project_index({offset: 0, limit: 100})` liefert Zähler, Identitätsbefunde, Kennzeichnungsgruppen und Plausibilitätsmeldungen. `offset` gilt für beide Ergebnislisten; `limit` liegt zwischen 1 und 500. `total` ermöglicht das seitenweise Nachladen. Identitätsbefunde bleiben vollständig enthalten. Der Aufruf verändert das Projekt nicht.
 
-`physicalDeviceCountKnown: false` macht ausdrücklich kenntlich, dass Kennzeichnungsgruppen keine geprüfte Geräteanzahl darstellen. Ein vollständiger Netzservice, stabile fachliche Geräte-/Funktions-IDs, unplatzierte Geräte und ein Klemmenleistenkonfigurator sind weitere Ausbauschritte.
+`physicalDeviceCountKnown: false` macht ausdrücklich kenntlich, dass Kennzeichnungsgruppen keine geprüfte Geräteanzahl darstellen. Der statische Netzservice ist inzwischen verfügbar. Stabile fachliche Geräte-/Funktions-IDs, unplatzierte Geräte und ein Klemmenleistenkonfigurator bleiben weitere Ausbauschritte.

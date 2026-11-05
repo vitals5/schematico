@@ -1,6 +1,7 @@
 import type { Project, Page, PlacedComponent, SymbolDefinition, PinDefinition, Wire } from './types';
 import { getSymbolForComponent } from './symbols';
 import { isConnectionSymbol, isInterruptionSymbol } from './ConnectionSymbols';
+import {electricalPinRole} from './ElectricalDefinition';
 export interface ProjectStructure {
     plant: string;
     location: string;
@@ -20,6 +21,7 @@ export interface IndexedPin {
     id: string;
     definition?: PinDefinition;
     label: string;
+    role: NonNullable<PinDefinition['electricalRole']>;
 }
 export interface IndexedConnection {
     wire: Wire;
@@ -95,7 +97,7 @@ export class ProjectIndex {
                 const pins = new Map<string, IndexedPin>();
                 for (const id of new Set([...(symbol?.pins.map(p => p.id) ?? []), ...Object.keys(component.pins ?? {})])) {
                     const definition = symbol?.pins.find(p => p.id === id);
-                    pins.set(id, { owner: entry, id, definition, label: component.pins?.[id]?.customLabel ?? definition?.name ?? id });
+                    pins.set(id, { owner: entry, id, definition, role: symbol?electricalPinRole(symbol,id):'unknown', label: component.pins?.[id]?.customLabel ?? definition?.name ?? id });
                 }
                 this.pins.set(entry, pins);
                 this.incident.set(entry, []);

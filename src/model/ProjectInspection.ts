@@ -2,6 +2,7 @@ import type { Project } from './types';
 import { ProjectIndex } from './ProjectIndex';
 import { isConnectionSymbol } from './ConnectionSymbols';
 import { t } from '../i18n';
+import { ElectricalNetService } from './ElectricalNetService';
 export interface PlausibilityMessage {
     id: string;
     severity: 'error' | 'warning' | 'info';
@@ -14,7 +15,7 @@ export interface PlausibilityMessage {
     recommendation: string;
 }
 /** Shared, read-only inspection; the dialog adds presentation and navigation. */
-export function collectPlausibilityMessages(project: Project, index = new ProjectIndex(project)): PlausibilityMessage[] {
+export function collectPlausibilityMessages(project: Project, index = new ProjectIndex(project), nets = new ElectricalNetService(index)): PlausibilityMessage[] {
     const messages: PlausibilityMessage[] = [];
     for (const entry of index.components) {
         const { component: comp, page, symbol: sym } = entry;
@@ -24,7 +25,7 @@ export function collectPlausibilityMessages(project: Project, index = new Projec
         if (!comp.articleNumber?.trim())
             messages.push({ ...base, id: JSON.stringify(['missing_article', page.id, comp.id]), severity: 'info', category: 'Stammdaten', message: t('plausMsgMissingArticle'), recommendation: t('plausRecMissingArticle') });
         if (sym?.pins.length) {
-            const connected = new Set(index.connectionsFor(entry).flatMap(connection => [connection.from, connection.to].filter(pin => pin?.owner === entry).map(pin => pin!.id)));
+            const connected = new Set(index.pinsFor(entry).filter(pin=>nets.hasConnection(pin)).map(pin=>pin.id));
             if (!sym.pins.some(pin => connected.has(pin.id)))
                 messages.push({ ...base, id: JSON.stringify(['unwired', page.id, comp.id]), severity: 'warning', category: 'Verdrahtung', message: t('plausMsgUnwired', { count: sym.pins.length }), recommendation: t('plausRecUnwired') });
         }
@@ -43,6 +44,14 @@ export function collectPlausibilityMessages(project: Project, index = new Projec
             continue;
         }
         messages.push({ id: issue.id, severity: 'error', category: 'Betriebsmittel', pageId: entry.page.id, pageNumber: entry.page.pageNumber, componentId: entry.component.id, bmk: entry.tag, message: t('plausMsgDuplicateBmk', { bmk: entry.tag }), recommendation: t('plausRecDuplicateBmk', { bmk: entry.tag }) });
+    }
+    for(const issue of nets.issues){
+        const page=index.pagesById.get(issue.pageId)?.[0];
+        const comp=issue.componentId?index.component(issue.componentId):undefined;
+        const key=issue.code==='invalid_endpoint'?'plausMsgInvalidEndpoint':issue.code==='invalid_internal_group'?'plausMsgInvalidInternalGroup':'plausMsgNeutralPeConnection';
+        messages.push({id:issue.id,severity:issue.code==='neutral_pe_connection'?'warning':'error',category:'Verdrahtung',
+            pageId:issue.pageId,pageNumber:page?.pageNumber??'',componentId:issue.componentId,bmk:comp?.tag,
+            message:t(key,{id:issue.wireId??issue.componentId??''}),recommendation:t('plausRecElectricalTopology')});
     }
     return messages;
 }

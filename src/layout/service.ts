@@ -1,4 +1,5 @@
 import {sessionDiagnostics} from '../ai/SessionDiagnostics';
+import {sameConductorTopology} from '../model/ElectricalNetService';
 import {unverifiedAutoconnections} from './autoconnectPolicy';
 import {projectWithPages} from './multipage';
 import {pinStub} from './router';
@@ -326,7 +327,7 @@ export function applyLayout(
   copy.pages[index] = clone(candidate.page);
   CrossReferenceEngine.updateProjectCrossReferences(copy);
   const report = validateLayout(snapshotPage(copy.pages[index], copy));
-  if (!report.valid || topology(copy) !== topology(target))
+  if (!report.valid || topology(copy) !== topology(target) || !sameConductorTopology(target,copy))
     throw new Error(
       'Layoutprüfung fehlgeschlagen; es wurden keine Änderungen übernommen.',
     );

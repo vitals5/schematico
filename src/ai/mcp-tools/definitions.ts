@@ -1,4 +1,5 @@
 import {GET_PROJECT_INDEX_TOOL} from './projectIndex';
+import {GET_ELECTRICAL_NETS_TOOL} from './electricalNets';
 import {DUPLICATE_SCHEMATIC_TOOL} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL } from '../../layout/tools';
 // src/ai/mcp-tools/definitions.ts
@@ -726,6 +727,7 @@ export const DISTRIBUTE_SHEET_LAYOUT_TOOL:McpToolDefinition={
 
 export const SCHEMATICO_MCP_TOOLS: McpToolDefinition[] = [
   GET_PROJECT_INDEX_TOOL,
+  GET_ELECTRICAL_NETS_TOOL,
   DUPLICATE_SCHEMATIC_TOOL,
   VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL,
   // Core Elements

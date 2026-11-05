@@ -118,10 +118,10 @@ add(junctions, 'bridge', 'cross_bridge');
 const geometry = snapshotPage(junctions.pages[0], junctions);
 assert(geometry.nodes.find((n) => n.id === 'corner')!.joinedPins?.[0].length);
 assert(geometry.nodes.find((n) => n.id === 'junction')!.joinedPins?.[0].length);
-assert.equal(
+assert.deepEqual(
   geometry.nodes.find((n) => n.id === 'bridge')!.joinedPins,
-  undefined,
-  'A crossing bridge must not join its circuits',
+  [['1','2'],['3','4']],
+  'A crossing bridge has two separate through paths',
 );
 
 // Loading a coordinate-free draft materializes its library frames as device boxes.

@@ -1,7 +1,7 @@
 import type { DrawingPrimitive as G, PinDefinition as Pin, SymbolDefinition as Symbol } from './types';
 import { drawingToSvg } from './ImportedDrawing';
 
-type Shape = { width: number; height: number; pins: Pin[]; graphics: G[] };
+type Shape = { width: number; height: number; pins: Pin[]; graphics: G[]; electrical?: Symbol['electrical'] };
 const ink = 'currentColor';
 const line = (x1:number,y1:number,x2:number,y2:number,dash?:number[]):G => ({kind:'line',x1,y1,x2,y2,color:ink,width:.8,...(dash?{dash}:{})});
 const rect = (x:number,y:number,width:number,height:number):G => ({kind:'rect',x,y,width,height,color:ink,lineWidth:.8});
@@ -103,7 +103,9 @@ function terminal(levels:number,pe=false,disconnect=false,fused=false):Shape {
     else if(disconnect)graphics.push(line(x,26,x+6,36));else graphics.push(line(x,26,x,38));
     if(pe)graphics.push(...ground(x,46));
   }
-  return {width,height,pins,graphics};
+  const groups=Array.from({length:levels},(_,i)=>[`${i+1}.1`,`${i+1}.2`]);
+  return {width,height,pins,graphics,electrical:{permanentConnections:disconnect||fused?[]:groups,
+    ...(disconnect||fused?{conditionalConnections:groups}:{})}};
 }
 function sockets(names:string[]):Shape {
   const width=Math.max(64,16*(names.length+1)),height=64,pins=names.map((n,i)=>pin(n,16+i*16,0,'top'));
@@ -152,7 +154,7 @@ function add(family:string,id:string,name:string,category:Symbol['category'],pre
   const key=id.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\+/g,'plus').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
   symbols.push({id:`catalog_${family}_${key}`,name,category,standard:meta.standard??'DIN EN 60617',defaultBmkPrefix:prefix,
     defaultFunctionText:meta.functionText??name.split(' – ')[0],description:name,unitsPerMm:2,width:shape.width,height:shape.height,
-    insertionPoint:shape.pins[0]?{x:shape.pins[0].x,y:shape.pins[0].y}:{x:0,y:0},pins:shape.pins,importedGraphics:shape.graphics,svgContent:drawingToSvg(shape.graphics),
+    insertionPoint:shape.pins[0]?{x:shape.pins[0].x,y:shape.pins[0].y}:{x:0,y:0},pins:shape.pins,electrical:shape.electrical,importedGraphics:shape.graphics,svgContent:drawingToSvg(shape.graphics),
     family,keywords:[...FAMILY_KEYWORDS[family]??[],...meta.keywords??[]],bmkPrefixes:[prefix,...meta.alternatives??[]].filter(Boolean),variantProperties:meta.properties??{},
     technicalCharacteristics:meta.technical??Object.values(meta.properties??{}).join(' | '),...(meta.master?{isMaster:true}:{})});
 }
@@ -221,7 +223,8 @@ for(const poles of [3,4])add('isolator',`repair_${poles}p`,`Reparaturschalter �
 for(const technology of ['Federzug','Schraube','Push-in'])for(const levels of [1,2,3])add('feed_terminal',technology+'_'+levels,`Durchgangsklemme – ${technology}, ${levels}-stöckig`,'terminals','-X',terminal(levels),{properties:{Anschlusstechnik:technology,Etagen:String(levels)}});
 for(const technology of ['Federzug','Schraube','Push-in'])for(const kind of ['L/L/PE','L/N/PE']) {
   const s=terminal(3);s.pins.forEach((p,i)=>p.name=kind.split('/')[Math.floor(i/2)]);s.graphics.push(...ground(48,46));
-  if(kind.includes('N')){s.graphics=s.graphics.filter(g=>!(g.kind==='line'&&g.x1===32&&g.y1===26));s.graphics.push(line(32,26,38,36));}
+  if(kind.includes('N')){s.graphics=s.graphics.filter(g=>!(g.kind==='line'&&g.x1===32&&g.y1===26));s.graphics.push(line(32,26,38,36));
+    s.electrical={permanentConnections:[['1.1','1.2'],['3.1','3.2']],conditionalConnections:[['2.1','2.2']]};}
   add('installation_terminal',technology+'_'+kind.replaceAll('/','_'),`Installations-Etagenklemme – ${kind}, ${technology}`,'terminals','-X',s,{properties:{Belegung:kind,Anschlusstechnik:technology,...(kind.includes('N')?{Neutralleiter:'N-Sammeltrennschieber'}:{})}});
 }
 for(const technology of ['Federzug','Schraube','Push-in'])add('pe_terminal',technology,`PE-Schutzleiterklemme – ${technology}`,'terminals','-X',terminal(1,true),{properties:{Anschlusstechnik:technology,Tragschienenkontakt:'PE'},keywords:['grüngelb','Schutzleiter']});
@@ -238,7 +241,9 @@ for(const phases of [1,3])for(const style of ['Gabel','Stift']) {
   const count=phases===1?6:9,width=(count+1)*16,pins:Pin[]=[],graphics:G[]=[];
   for(let k=0;k<phases;k++)graphics.push(line(16,24+k*16,width-16,24+k*16));
   for(let i=0;i<count;i++){const x=16+i*16,y=24+(i%phases)*16;pins.push(pin(`L${i%phases+1}.${Math.floor(i/phases)+1}`,x,0,'top'));graphics.push(line(x,0,x,y),circle(x,y,1.5,ink));if(style==='Gabel')graphics.push(line(x-3,0,x-3,8),line(x-3,8,x+3,8),line(x+3,8,x+3,0));}
-  add('phase_busbar',`${phases}_${style}`,`Phasenschiene / Sammelschienenkamm – ${phases}-phasig, ${style}`,'terminals','-W',{width,height:80,pins,graphics},{alternatives:['-X'],properties:{Phasen:String(phases),Ausführung:style}});
+  pins.forEach(p=>p.electricalRole='power');
+  add('phase_busbar',`${phases}_${style}`,`Phasenschiene / Sammelschienenkamm – ${phases}-phasig, ${style}`,'terminals','-W',{width,height:80,pins,graphics,
+    electrical:{permanentConnections:Array.from({length:phases},(_,i)=>pins.filter(p=>p.id.startsWith(`L${i+1}.`)).map(p=>p.id))}},{alternatives:['-X'],properties:{Phasen:String(phases),Ausführung:style}});
 }
 for(const [id,label,count,prefix]of [['ptfix6','PTFIX-Potenzialverteiler 6-fach',6,'P'],['ptfix12','PTFIX-Potenzialverteiler 12-fach',12,'P'],['ptfix18','PTFIX-Potenzialverteiler 18-fach',18,'P'],['neutral','N-Verteilerblock / N-Sammelschiene',8,'N'],['pe','PE-Verteilerblock / PE-Sammelschiene',8,'PE'],['copper','Cu-Sammelschienensystem 60 mm',9,'L']]as const) {
   const copper=id==='copper';
@@ -259,6 +264,9 @@ for(const [id,label,count,prefix]of [['ptfix6','PTFIX-Potenzialverteiler 6-fach'
     }
   }
   if(id==='pe')s.graphics.push(...ground(s.width/2,s.height-24));
+  if(id==='pe'||id==='neutral')s.pins.forEach(p=>p.electricalRole=id==='pe'?'protective_earth':'neutral');
+  if(copper)s.pins.forEach(p=>p.electricalRole='power');
+  s.electrical={permanentConnections:copper?[1,2,3].map(phase=>s.pins.filter(p=>p.id.startsWith(`L${phase}.`)||p.id===`L${phase}-IN`).map(p=>p.id)):[s.pins.map(p=>p.id)]};
   add('distribution_block',id,label,'terminals','-X',s,{properties:{Abgänge:String(count),System:id==='copper'?'60 mm':prefix},keywords:['Potenzialverteiler','Potentialverteiler','Verteilerblock']});
 }
 

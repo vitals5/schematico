@@ -67,7 +67,7 @@ assert.equal(junctionPlacement(chainChildren, chain, 6, padding, () => { throw n
 const roles = fixture();
 add(roles, 'cross', 'cross_bridge'); add(roles, 'terminal', 'terminal_single'); add(roles, 'arrow', 'potential_arrow_up');
 const roleSnapshot = snapshotPage(roles.pages[0], roles);
-assert.equal(roleSnapshot.nodes.find(n => n.id === 'cross')!.joinedPins, undefined);
+assert.deepEqual(roleSnapshot.nodes.find(n => n.id === 'cross')!.joinedPins, [['1','2'],['3','4']]);
 assert(!roleSnapshot.nodes.find(n => n.id === 'terminal')!.routingJunction);
 assert(!roleSnapshot.nodes.find(n => n.id === 'arrow')!.routingJunction);
 

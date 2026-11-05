@@ -1,4 +1,5 @@
 import {contactPartition} from './autoconnectRoutes';
+import {sameConductorTopology} from '../model/ElectricalNetService';
 import { functionalBlocks } from './functionalBlocks';
 import { separatedAreaPenalty } from './areaQuality';
 import { handoverSymbol } from './handoverSymbol';
@@ -469,6 +470,7 @@ export function auditMultiPage(
   const originals=new Set(source.components.map(c=>c.id));
   const expected=snapshotPage(source,project);
   const expanded=projectWithPages(project,sourceId,multi),snapshots=multi.pages.map(p=>snapshotPage(p,expanded));
+  if(!sameConductorTopology(project,expanded))throw new Error('Elektrische Netzstruktur der Blattaufteilung projektweit verändert.');
   const actual={...expected,nodes:snapshots.flatMap(s=>s.nodes),edges:[...snapshots.flatMap(s=>s.edges),...multi.links.map(l=>({id:'audit-'+l.fromArrowId,from:{componentId:l.fromArrowId,pinId:'1'},to:{componentId:l.toArrowId,pinId:'1'},potential:l.wire.potential??'',points:[]}))]};
   if(contactPartition(actual,originals)!==contactPartition(expected,originals))throw new Error('Elektrische Netzstruktur der Blattaufteilung verändert.');
   for (const p of multi.pages)

@@ -61,7 +61,9 @@ Only **Übernehmen / Apply** changes a layout proposal, as one undo step. Infeas
 
 BMK plausibility checks, contact mirrors, reference navigation and terminal reports use a common derived index of pages, placements, ports, structure designations and article assignments. Identical tags in different plant/location contexts remain separate; blank tags do not create a device group. The read-only MCP tool `get_project_index` returns the same inspection messages as the UI.
 
-Existing project JSON files need no migration. Designation groups are candidate identities, not verified physical-device counts. Imported device parts are treated conservatively. This is a foundation for the planned net and device model, not a complete electrical check. See [project index and limitations](docs/project-index.md).
+Existing project JSON files need no migration. Designation groups are candidate identities, not verified physical-device counts. Imported device parts are treated conservatively. See [project index and limitations](docs/project-index.md).
+
+The shared static conductor service follows permanent library port groups, wires and named sheet continuations. Separate phases and crossing paths remain distinct; equal potential names alone do not connect nets. Terminal reports trace routing pieces to their actual equipment targets, and layout application checks the original project-wide conductor partition. `get_electrical_nets` exposes the same topology and inspection messages to the assistant. Conditional contacts are not simulated; unknown import semantics remain unknown. See [electrical net service](docs/electrical-nets.md).
 
 ## About Schematico
 

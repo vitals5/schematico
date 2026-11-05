@@ -99,6 +99,8 @@ export interface PinDefinition {
   y: number;
   direction: 'top' | 'bottom' | 'left' | 'right';
   description?: string;
+  /** Electrical meaning, independent of the printed/custom label. Missing means unknown. */
+  electricalRole?: 'power' | 'neutral' | 'protective_earth' | 'signal' | 'unknown';
   /** Optional source label position in symbol-local editor coordinates. */
   labelPosition?: { x: number; y: number; fontSize: number; alignment: 'start' | 'middle' | 'end';
     rotation?: 0 | 90 | 180 | 270; visible?: boolean };
@@ -113,6 +115,12 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  /** Only permanent groups form a conductor net. Conditional paths are never joined
+   * by the static net service (switch state / removable links are not simulated). */
+  electrical?: {
+    permanentConnections: string[][];
+    conditionalConnections?: string[][];
+  };
   /** Optional drawing role; does not describe current direction or connectivity. */
   layoutRole?: 'power' | 'control';
   unresolved?: boolean;
