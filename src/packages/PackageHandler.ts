@@ -1,4 +1,5 @@
 import { migrateLegacyData, normalizeLegacyProjectXml } from '../model/LegacyCompatibility';
+import {inspectElectricalProject,type ElectricalInspectionReport} from '../model/ElectricalInspection';
 import { convertAnnotationComponentsToTexts } from '../model/PresentationNaming';
 // src/packages/PackageHandler.ts
 // Parser and generator for CAD project archive files:
@@ -24,6 +25,7 @@ export interface PackageEntry {
 }
 
 export interface PackageInspectionResult {
+  electricalInspection?: ElectricalInspectionReport;
   filename: string;
   projectName: string;
   format: 'ZW1_PROJECT_BACKUP' | 'EDZ_PART_PACKAGE' | 'PROJECT_XML' | 'UNKNOWN';
@@ -73,6 +75,12 @@ export class PackageHandler {
    * Inspects and opens any project file (.zw1, .zip, .edz, .xml, .elk, .json)
    */
   public static async inspectFile(file: File): Promise<PackageInspectionResult> {
+    const result=await this.inspectFileContents(file);
+    if(result.extractedProject)result.electricalInspection=inspectElectricalProject(result.extractedProject);
+    return result;
+  }
+
+  private static async inspectFileContents(file: File): Promise<PackageInspectionResult> {
     const filename = file.name;
     const lowerName = filename.toLowerCase();
 

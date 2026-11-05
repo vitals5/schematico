@@ -77,7 +77,8 @@ export class ElectricalNetService {
     }
     for (const connection of index.connections) {
       const { from, to, wire } = connection;
-      if (!from || !to || this.ports.get(portIdentity(from)) !== from || this.ports.get(portIdentity(to)) !== to) {
+      const undeclared=(pin:IndexedPin|undefined)=>pin?.owner.symbol&&!pin.owner.symbol.unresolved&&!pin.definition;
+      if (!from || !to || undeclared(from) || undeclared(to) || this.ports.get(portIdentity(from)) !== from || this.ports.get(portIdentity(to)) !== to) {
         const owner = from?.owner ?? to?.owner;
         this.issues.push({ id: JSON.stringify(['invalid_endpoint', connection.page?.id, wire.id, wire.from, wire.to]),
           code: 'invalid_endpoint', pageId: connection.page?.id ?? owner?.page.id ?? index.project.pages[0]?.id ?? '',
@@ -130,6 +131,11 @@ export class ElectricalNetService {
   }
   hasConnection(pin: IndexedPin): boolean {
     return this.adjacency.get(portIdentity(pin))?.some(link => link.kind === 'wire') ?? false;
+  }
+  /** A permanent terminal bridge can make another port of this same conductor
+   * usable; an isolated internal group alone is not an external connection. */
+  hasConductiveConnection(pin: IndexedPin): boolean {
+    return !!this.netForPin(pin)?.connections.length;
   }
 
   /** Follow one terminal side through routing pieces and sheet continuations.

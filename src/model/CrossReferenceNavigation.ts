@@ -9,8 +9,8 @@ export type ReferenceTarget = { label: string; start: number; end: number; pageI
   componentId?: string; x: number; y: number };
 
 /** Resolve each printed reference independently, including split page numbers. */
-export function referenceTargets(project: Project, source: PlacedComponent): ReferenceTarget[] {
-  const index=new ProjectIndex(project),sourceEntry=index.entry(source);
+export function referenceTargets(project: Project, source: PlacedComponent, index=new ProjectIndex(project)): ReferenceTarget[] {
+  const sourceEntry=index.entry(source);
   if(!sourceEntry)return [];
   const identity=componentIdentity(sourceEntry.page,source,getSymbolForComponent(source,project));
   const peers=new Set(index.referencesFor(source).map(e=>e.component));

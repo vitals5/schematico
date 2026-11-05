@@ -9,6 +9,7 @@ import { StatusBadge } from '../ai/components/StatusBadge';
 import { defaultBridgeClient } from '../ai/bridge/bridgeClient';
 import type { CanvasStateManager } from '../ai/mcp-tools';
 import { loadLastProject, saveLastProject, isAutoLoadProjectEnabled, setAutoLoadProjectEnabled } from '../model/ProjectStorage';
+import {sessionDiagnostics} from '../ai/SessionDiagnostics';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { UpdateDialog } from './UpdateDialog';
 import { AboutDialog } from './AboutDialog';
@@ -1280,6 +1281,7 @@ export class App {
     // Projektdaten
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
+        onNavigateToFinding:(finding)=>{this.canvas.focusInspection(finding.location);this.updateUI();},
         onNavigateToPage: (pageId) => {
           this.canvas.setPage(pageId);
           this.updateUI();
@@ -4766,6 +4768,7 @@ export class App {
     const selectedFiles=Array.from(files);
     try {
       const result: PackageInspectionResult = await PackageHandler.inspectFiles(selectedFiles);
+      if(result.electricalInspection)sessionDiagnostics.record('electrical_inspection',{origin:'import',report:result.electricalInspection});
       
       if (result.extractedProject) {
         this.project = result.extractedProject;

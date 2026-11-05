@@ -1,4 +1,5 @@
 import {isDistributionFeed,socketPorts} from './distributionRoles';
+import {inspectElectricalProject} from '../model/ElectricalInspection';
 import { prepareSocketDistribution } from './socketDistribution';
 import { preferDraftAutoconnect } from './autoconnectDraft';
 import { prepareDraftConnections } from './draftConnections';
@@ -38,7 +39,7 @@ const optionsSchema = {
 export const VALIDATE_LAYOUT_TOOL: McpToolDefinition = {
   name: 'validate_schematic_layout',
   description:
-    'Independently check schematic bodies, measured labels, obstacles, wire directions, crossings and sheet limits. Does not change the drawing.',
+    'Check geometry: schematic bodies, measured labels, obstacles, wire directions, crossings and sheet limits. Includes a separate electrical summary and up to 100 page-related electrical findings. Geometric validity does not imply electrical validity. Use validate_electrical_project for the complete paginated electrical report. Does not change the drawing.',
   inputSchema: { type: 'object', properties: { pageId: { type: 'string' } } },
 };
 export const OPTIMIZE_LAYOUT_TOOL: McpToolDefinition = {
@@ -121,7 +122,9 @@ export async function handleValidateLayout(args: any, manager: CanvasStateManage
   const { project, page } = pageFor(args, manager);
   if (typeof document !== 'undefined') await document.fonts.ready;
   const report = validateLayout(snapshotPage(page, project));
-  return { success: true, status: report.valid ? 'layout_valid' : 'layout_invalid', ...report };
+  const electrical=inspectElectricalProject(project),findings=electrical.messages.filter(m=>m.pageId===page.id||m.relatedLocations.some(l=>l.pageId===page.id));
+  return { success: true,domain:'geometry', status: report.valid ? 'layout_valid' : 'layout_invalid', ...report,
+    electrical:{domain:electrical.domain,status:electrical.status,summary:electrical.summary,coverage:electrical.coverage,pageId:page.id,total:findings.length,messages:findings.slice(0,100)} };
 }
 function result(preview: LayoutPreview) {
   return {

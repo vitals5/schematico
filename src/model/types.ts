@@ -93,6 +93,9 @@ export interface FloorPlanData {
 }
 
 export interface PinDefinition {
+  connectionRequirement?: 'required' | 'optional' | 'reserve';
+  /** Explicit nominal potential identity; never inferred from the printed label. */
+  potentialConstraint?: string;
   id: string;
   name: string;
   x: number;
@@ -115,6 +118,8 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  articleRequirement?: 'required' | 'optional' | 'none';
+  referenceRequirement?: 'required' | 'optional';
   /** Only permanent groups form a conductor net. Conditional paths are never joined
    * by the static net service (switch state / removable links are not simulated). */
   electrical?: {
@@ -176,6 +181,8 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  articleRequirement?: 'required' | 'optional' | 'none';
+  referenceRequirement?: 'required' | 'optional';
   nativeProperties?: Record<string,string>;
   deviceBox?: DeviceBoxGeometry;
   id: string;
@@ -201,6 +208,8 @@ export interface PlacedComponent {
   pins: {
     [pinId: string]: {
       wireIds?: string[];
+      connectionRequirement?: PinDefinition['connectionRequirement'];
+      potentialConstraint?: string;
       customLabel?: string;
       /** Per-placement source override; the shared pin geometry stays in the library. */
       labelPosition?: PinDefinition['labelPosition'];

@@ -1,4 +1,5 @@
 import {GET_PROJECT_INDEX_TOOL,handleGetProjectIndex} from './projectIndex';
+import {VALIDATE_ELECTRICAL_PROJECT_TOOL,handleValidateElectricalProject} from './electricalInspection';
 import {GET_ELECTRICAL_NETS_TOOL,handleGetElectricalNets} from './electricalNets';
 import {sessionDiagnostics} from '../SessionDiagnostics';
 import { rememberDiagnostic, sanitizeDiagnostic } from '../Diagnostics';
@@ -125,6 +126,7 @@ export class McpToolRegistry {
     // 2. Project & Pages
     this.register(GET_PROJECT_INFO_TOOL, handleGetProjectInfo);
     this.register(GET_PROJECT_INDEX_TOOL,handleGetProjectIndex);
+    this.register(VALIDATE_ELECTRICAL_PROJECT_TOOL,handleValidateElectricalProject);
     this.register(GET_ELECTRICAL_NETS_TOOL,handleGetElectricalNets);
     this.register(UPDATE_PROJECT_INFO_TOOL, handleUpdateProjectInfo);
     this.register(LIST_PAGES_TOOL, handleListPages);

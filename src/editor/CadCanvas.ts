@@ -1,4 +1,5 @@
 import {wrapLabelText} from '../model/LabelLayout';
+import type {InspectionLocation} from '../model/ElectricalInspection';
 import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
 import { boxDrawing, boxSvg } from '../model/DeviceBox';
@@ -296,6 +297,13 @@ export class CadCanvas {
     if (status) {
       status.textContent = `🔗 Sprung zu Gegenstück: ${targetComp?.bmk || source.bmk} auf Blatt ${targetPage?.pageNumber || '?'}${targets.length > 1 ? ` (${index + 1}/${targets.length})` : ''}`;
     }
+  }
+
+  public focusInspection(location:InspectionLocation):void {
+    if(!this.project.pages.some(p=>p.id===location.pageId))return;
+    this.focusReference({...location,label:'',start:0,end:0});
+    const wire=this.activePage.wires.find(w=>w.id===location.wireId);
+    if(wire){this.selectedComponentId=null;this.selectedWireId=wire.id;this.callbacks.onSelectComponent(null);this.callbacks.onSelectWire(wire);this.render();}
   }
 
   public focusReference(target: ReferenceTarget): void {

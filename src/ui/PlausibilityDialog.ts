@@ -7,18 +7,20 @@ import { escapeSvg } from '../model/ImportedDrawing';
 
 export type {PlausibilityMessage} from '../model/ProjectInspection';
 import type {PlausibilityMessage} from '../model/ProjectInspection';
-import {collectPlausibilityMessages} from '../model/ProjectInspection';
+import {inspectElectricalProject} from '../model/ElectricalInspection';
 
 export class PlausibilityDialog {
   private project: Project;
   private onNavigate: (pageId: string, componentId?: string) => void;
+  private onFinding?: (finding:PlausibilityMessage)=>void;
 
-  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onNavigateToPage: (pageId: string, componentId?: string) => void }) {
+  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onNavigateToPage: (pageId: string, componentId?: string) => void; onNavigateToFinding?:(finding:PlausibilityMessage)=>void }) {
     this.project = project;
     if (typeof onNavigateOrOptions === 'function') {
       this.onNavigate = onNavigateOrOptions;
     } else {
       this.onNavigate = onNavigateOrOptions.onNavigateToPage;
+      this.onFinding=onNavigateOrOptions.onNavigateToFinding;
     }
   }
 
@@ -26,7 +28,7 @@ export class PlausibilityDialog {
     const existing = document.getElementById('plausibilityModal');
     if (existing) existing.remove();
 
-    const messages = this.runCheck();
+    const report=inspectElectricalProject(this.project),messages=report.messages;
 
     const modal = document.createElement('div');
     modal.id = 'plausibilityModal';
@@ -114,8 +116,8 @@ export class PlausibilityDialog {
                     ${t('plausEmpty')}
                   </td>
                 </tr>
-              ` : messages.map(m => `
-                <tr class="plaus-row" data-page-id="${escapeSvg(m.pageId)}" data-comp-id="${escapeSvg(m.componentId || '')}" style="border-bottom: 1px solid #2d3748; cursor: pointer;">
+              ` : messages.map((m,index) => `
+                <tr class="plaus-row" data-finding-index="${index}" data-page-id="${escapeSvg(m.pageId)}" data-comp-id="${escapeSvg(m.componentId || '')}" style="border-bottom: 1px solid #2d3748; cursor: pointer;">
                   <td style="padding: 6px 8px; white-space: nowrap;">
                     ${m.severity === 'error' ? `❌ <span style="color:#fc8181;font-weight:600;">${t('plausSeverityError')}</span>` : 
                       (m.severity === 'warning' ? `⚠️ <span style="color:#f6ad55;font-weight:600;">${t('plausSeverityWarning')}</span>` : 
@@ -125,6 +127,7 @@ export class PlausibilityDialog {
                   <td style="padding: 6px 8px; font-weight: bold; font-family: monospace; color: #f6e05e;">${escapeSvg(m.bmk || '-')}</td>
                   <td style="padding: 6px 8px;">
                     <div>${escapeSvg(m.message)}</div>
+                    <div style="font-family:monospace;color:#90cdf4;font-size:10px">${escapeSvg(m.ruleId)} ${escapeSvg(m.location.pinId??m.location.wireId??'')}</div>
                     <div style="font-size: 10px; color: #a0aec0; margin-top: 2px;">${t('plausColRecommendation')}: ${escapeSvg(m.recommendation)}</div>
                   </td>
                   <td style="padding: 6px 8px; white-space: nowrap;">
@@ -144,6 +147,9 @@ export class PlausibilityDialog {
           display: flex;
           justify-content: flex-end;
         ">
+          <span style="font-size:10px;flex:1">${escapeSvg(t('plausCoverage',{count:report.coverage.unknownInternalConnections}))}</span>
+          <button id="btnRerunPlaus" class="btn">${t('plausRerun')}</button>
+          <button id="btnExportPlaus" class="btn">${t('plausExport')}</button>
           <button id="btnConfirmPlaus" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px;">${t('close')}</button>
         </div>
       </div>
@@ -152,6 +158,12 @@ export class PlausibilityDialog {
     document.body.appendChild(modal);
 
     const closeModal = () => modal.remove();
+    modal.querySelector('#btnRerunPlaus')?.addEventListener('click',()=>this.show());
+    modal.querySelector('#btnExportPlaus')?.addEventListener('click',()=>{
+      const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+      const a=document.createElement('a');a.href=url;a.download='schematico-electrical-inspection.json';a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
     modal.querySelector('#btnClosePlausModal')?.addEventListener('click', closeModal);
     modal.querySelector('#btnConfirmPlaus')?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
@@ -162,11 +174,11 @@ export class PlausibilityDialog {
       row.addEventListener('click', (e) => {
         const pageId = (e.currentTarget as HTMLElement).dataset.pageId!;
         const compId = (e.currentTarget as HTMLElement).dataset.compId;
-        this.onNavigate(pageId, compId);
+        const finding=messages[Number((e.currentTarget as HTMLElement).dataset.findingIndex)];
+        if(this.onFinding)this.onFinding(finding);else this.onNavigate(pageId, compId);
         closeModal();
       });
     });
   }
 
-  private runCheck(): PlausibilityMessage[] {return collectPlausibilityMessages(this.project);}
 }

@@ -1,4 +1,5 @@
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
+import {renderInspectionFields,collectInspectionFields,applyInspectionFields} from './InspectionFields';
 // src/ui/PropertiesDialog.ts
 // Component properties modal ("Eigenschaften (Schaltzeichen)")
 
@@ -430,6 +431,7 @@ export class PropertiesDialog {
               }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? 'Keine gemeinsamen Anschlüsse auf allen Elementen' : escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
+          ${renderInspectionFields(this.component,this.components,this.project,this.dirtyFields)}
         </div>
       `;
     }
@@ -1070,6 +1072,7 @@ export class PropertiesDialog {
     // Apply dirty fields across all components
     const units = getDrawingUnitsPerMm(this.project);
     for (const c of this.components) {
+      applyInspectionFields(this.component,c,this.dirtyFields);
       const sym = getSymbolForComponent(c, this.project);
       const isInterruption = sym && isInterruptionSymbol(sym);
 
@@ -1630,6 +1633,7 @@ export class PropertiesDialog {
   }
 
   private collectFormData(modal: HTMLElement): boolean | void {
+    collectInspectionFields(modal,this.component,this.dirtyFields);
     const sym = getSymbolForComponent(this.component, this.project);
     const isInterruption = sym && isInterruptionSymbol(sym);
 

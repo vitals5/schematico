@@ -65,6 +65,10 @@ Existing project JSON files need no migration. Designation groups are candidate 
 
 The shared static conductor service follows permanent library port groups, wires and named sheet continuations. Separate phases and crossing paths remain distinct; equal potential names alone do not connect nets. Terminal reports trace routing pieces to their actual equipment targets, and layout application checks the original project-wide conductor partition. `get_electrical_nets` exposes the same topology and inspection messages to the assistant. Conditional contacts are not simulated; unknown import semantics remain unknown. See [electrical net service](docs/electrical-nets.md).
 
+## Electrical project inspection
+
+Electrical project inspection now uses one rule service across the editor, imports and AI tools. Findings include stable rule/cause IDs and precise sheet, component, pin and wire locations. Configure required/reserve ports, fixed potential constraints and part/reference policies in component properties. The inspection dialog supports navigation, refresh and a downloadable JSON report; `validate_electrical_project` provides the same findings to AI clients. Geometry remains a separate validation result. See [electrical inspection and coverage](docs/electrical-inspection.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.
