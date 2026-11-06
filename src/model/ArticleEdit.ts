@@ -1,3 +1,4 @@
+import {CrossReferenceEngine} from './CrossReferenceEngine';
 import type { AssignedArticle, ComponentAddress } from './ArticleTypes';
 import type { Project } from './types';
 import { projectRevision } from '../layout/types';
@@ -68,6 +69,7 @@ export class ArticleEditPlan {
           c.articleFunctionType = edit.functionType.trim();
         }
     }
+    if(edit.kind==='link'||edit.kind==='unlink')CrossReferenceEngine.updateDeviceCrossReferences(result);
     const afterRegistry = new DeviceRegistry(result);
     // Assignment changes must not silently invalidate an existing verified device.
     if (edit.kind === 'assign' || edit.kind === 'function') {

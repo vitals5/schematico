@@ -39,7 +39,7 @@ export function cableDrawing(cable: CableDefinition, page: Page, project: Projec
   const crosses=cableCrossings(cable,page,project);
   for(const point of crosses) {
     if(cable.markStyle!=='none') graphics.push({kind:'line',x1:point.x-.8*units,y1:point.y-.8*units,x2:point.x+.8*units,y2:point.y+.8*units,color:ink,width:.25*units});
-    const core=cable.cores.find(c=>c.wireIds?.some(id=>point.wireIds.includes(id))) ?? cable.cores.find(c=>Math.abs(c.t-point.t)<1e-5);
+    const core=cable.cores.find(c=>!c.reserve&&c.wireIds?.some(id=>point.wireIds.includes(id))) ?? cable.cores.find(c=>!c.reserve&&Math.abs(c.t-point.t)<1e-5);
     const text=core?.designation || core?.color;
     if(text && cable.showCoreLabels!==false) graphics.push({kind:'text',x:point.x+1.5*units,y:point.y-.657*units,size:cable.coreFontSize ?? 1.6146*units,text,color:'#ff0000'});
   }

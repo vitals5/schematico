@@ -824,6 +824,8 @@ export class PdfExporter {
 
       // SMART PDF: Interactive Cross-References (Kontaktspiegel & Querverweise)
       const refPos = computeCrossReferencePosition(comp, sym, project);
+      const hasDeviceRecord = (project.physicalDevices ?? []).some(d =>
+        d.members.some(a => a.componentId === comp.id));
       let targetPdfPage: number | undefined;
 
       if (options.interactiveCrossReferences) {
@@ -837,7 +839,7 @@ export class PdfExporter {
             }
           }
         }
-        if (!targetPdfPage && comp.crossRef) {
+        if (!targetPdfPage && comp.crossRef && !hasDeviceRecord) {
           for (const m of comp.crossRef.matchAll(/\/([^\s,|/:]+)\.(\d+)/g)) {
             const num = pageMapping.get(m[1]);
             if (num) {
@@ -846,7 +848,7 @@ export class PdfExporter {
             }
           }
         }
-        if (!targetPdfPage && comp.bmk?.trim()) {
+        if (!targetPdfPage && !hasDeviceRecord && comp.bmk?.trim()) {
           const bmk = comp.bmk.trim();
           if (bmk !== '?' && bmk !== '/') {
             for (const otherPage of project.pages) {
@@ -872,7 +874,10 @@ export class PdfExporter {
         doc.setFontSize(refPos.fontSize * sy * 72 / 25.4);
         doc.setTextColor(options.colorMode === 'color' ? 200 : 50, 50, 0);
 
+        let refSearchFrom = 0;
         refLines.forEach((line, lineIndex) => {
+          const lineStart = comp.crossRef!.indexOf(line, refSearchFrom);
+          refSearchFrom = lineStart + line.length;
           const lineOffset = lineIndex * refPos.fontSize * 1.25;
           const lineLocal = lineIndex === 0
             ? refPos
@@ -883,16 +888,16 @@ export class PdfExporter {
 
           let lineTargetPdfPage: number | undefined;
           if (options.interactiveCrossReferences) {
-            const target = targets[lineIndex];
+            const target = targets.find(t => t.start >= lineStart && t.end <= refSearchFrom);
             if (target) {
               const targetPage = project.pages.find(p => p.id === target.pageId);
               lineTargetPdfPage = pageIdMapping?.get(target.pageId) ?? (targetPage && pageMapping.get(targetPage.pageNumber));
             }
-            if (!lineTargetPdfPage) {
+            if (!lineTargetPdfPage && !hasDeviceRecord) {
               const m = line.match(/\/([^\s,|/:]+)\.(\d+)/);
               if (m) lineTargetPdfPage = pageMapping.get(m[1]);
             }
-            lineTargetPdfPage ??= targetPdfPage;
+            if (!hasDeviceRecord) lineTargetPdfPage ??= targetPdfPage;
           }
 
           // Add PDF Hyperlink on text if interactive cross-references are enabled
@@ -1186,8 +1191,8 @@ export class PdfExporter {
   }
 
   private static getPotentialRgb(potential: string, color?: string): { r: number; g: number; b: number } {
-    const pot = (potential || '').toUpperCase();
-    const col = (color || '').toUpperCase();
+    const pot = (potential || '').trim().toUpperCase();
+    const col = (color || '').trim().toUpperCase();
     if (col === 'BU' || pot === 'N' || pot.startsWith('N')) return { r: 37, g: 99, b: 235 };
     if (col === 'GNYE' || pot === 'PE' || pot === 'PEN' || pot.startsWith('PE')) return { r: 22, g: 163, b: 74 };
     if (col === 'RD' || pot === '+24V') return { r: 220, g: 38, b: 38 };

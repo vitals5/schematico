@@ -8,7 +8,7 @@ export type ArticleDataState = typeof ARTICLE_DATA_STATES[number];
 export interface ArticleDataContext {
     state: ArticleDataState;
     articleNumbers?: string[];
-    role: 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown';
+    role: 'auxiliary' | 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown';
     symbolId: string;
     plant: string;
     location: string;
@@ -24,7 +24,8 @@ export interface ArticleDataContext {
 /** Classify evidence; never infer that missing destination fields prove an empty source database. */
 export function articleDataContext(entry: IndexedComponent, index: ProjectIndex): ArticleDataContext {
     const { component: c, symbol: s } = entry, policy = c.articleRequirement ?? s?.articleRequirement;
-    const role: ArticleDataContext['role'] = !s ? 'unknown' : s.annotationKind ? 'annotation' : isConnectionSymbol(s) ? 'connection' : s.category === 'structure' ? 'structure' : s.isMaster ? 'main' : s.isContact ? 'contact' : s.category === 'terminals' ? 'terminal' : entry.nativeRepresentation ? 'native_part' : 'component';
+    const device=index.confirmedDeviceFor(c);
+    const role: ArticleDataContext['role'] = device?(device.main.componentId===c.id?'main':'auxiliary'): !s ? 'unknown' : s.annotationKind ? 'annotation' : isConnectionSymbol(s) ? 'connection' : s.category === 'structure' ? 'structure' : s.isMaster ? 'main' : s.isContact ? 'contact' : s.category === 'terminals' ? 'terminal' : entry.nativeRepresentation ? 'native_part' : 'component';
     const base = { role, symbolId: c.symbolId, plant: entry.structure.plant, location: entry.structure.location, designationKey: entry.deviceKey,
         source: c.articleImport?.source, readStatus: c.articleImport?.status, observedArticleNumber: c.articleImport?.observedArticleNumber,
         sourceObjectType: c.source?.objectType };
@@ -35,7 +36,7 @@ export function articleDataContext(entry: IndexedComponent, index: ProjectIndex)
     if(references)return {...base,state:'assigned',articleNumber:c.articleNumber,articleNumbers:references.map(r=>r.articleNumber),manufacturer:c.manufacturer};
     if (c.articleNumber?.trim())
         return { ...base, state: 'assigned', articleNumber: c.articleNumber.trim(), manufacturer: c.manufacturer?.trim() };
-    const masters = s?.isContact ? index.referencesFor(c).filter(e => e.symbol?.isMaster) : [];
+    const masters = s?.isContact ? index.mainReferencesFor(c) : [];
     if (masters.length === 1 && masters[0].component.articleNumber?.trim())
         return { ...base, state: 'inherited', articleNumber: masters[0].component.articleNumber!.trim(), manufacturer: masters[0].component.manufacturer, inheritedFromComponentId: masters[0].component.id };
     if (policy === 'none' || policy === 'optional' || policy !== 'required' && ['connection', 'structure', 'annotation'].includes(role))

@@ -1,3 +1,4 @@
+import {CableRepairDialog} from './CableRepairDialog';
 import type { Project } from '../model/types';
 import { ProjectIndex } from '../model/ProjectIndex';
 import {
@@ -146,7 +147,7 @@ export class WiringDialog {
       );
     const field = (id: string, label: string, value: string) =>
       `<label>${esc(label)}<input class="form-input" data-${id} value="${esc(value)}"></label>`;
-    this.el.innerHTML = `<section role="dialog" aria-modal="true" style="width:min(1200px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:20px;border:1px solid #526170;border-radius:8px"><h2>${t('wiringManage')}</h2><div role="alert" style="color:#fca5a5">${esc(this.error)}</div><fieldset><legend>${t('wiringTerminals')}</legend><select class="form-input" data-terminal><option value="">—</option>${terminalOptions.map((o) => `<option value="${esc(o.value)}" ${o.value === this.terminal ? 'selected' : ''}>${esc(o.e.page.pageNumber + ' · ' + o.e.component.bmk + ' · ' + o.e.component.functionText)}</option>`).join('')}</select>
+    this.el.innerHTML = `<section role="dialog" aria-modal="true" style="width:min(1200px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:20px;border:1px solid #526170;border-radius:8px"><h2>${t('wiringManage')}</h2><button class="btn" data-repairs>${t('repairTitle')}</button><div role="alert" style="color:#fca5a5">${esc(this.error)}</div><fieldset><legend>${t('wiringTerminals')}</legend><select class="form-input" data-terminal><option value="">—</option>${terminalOptions.map((o) => `<option value="${esc(o.value)}" ${o.value === this.terminal ? 'selected' : ''}>${esc(o.e.page.pageNumber + ' · ' + o.e.component.bmk + ' · ' + o.e.component.functionText)}</option>`).join('')}</select>
  ${
    selected && settings
      ? `${field('strip', t('wiringStrip'), settings.strip)}${field('number', t('wiringNumber'), settings.number)}${field('level', t('wiringLevel'), settings.level)}<div style="display:flex;gap:8px;flex-wrap:wrap">${this.index
@@ -409,6 +410,7 @@ export class WiringDialog {
             true;
           this.el.querySelector('[data-preview]')?.remove();
         });
+    this.el.querySelector('[data-repairs]')?.addEventListener('click',()=>new CableRepairDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
     focusArticleModal(this.el);
   }
 }

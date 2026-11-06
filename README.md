@@ -75,6 +75,8 @@ The article workbench edits main/accessory assignments, stores a local IndexedDB
 
 The device navigator manages planned devices and links to placed main/secondary representations. Terminal/cable tools correct sides, levels, bridges, reserve cores and wire assignments, and export manufacturing CSV lists. Function specifications use a table editor. See [device and wiring workflows](docs/device-and-wiring-tools.md). An optional [team catalog service](docs/team-catalog.md) adds personal read/write access, immutable SQLite revisions and conflict-aware synchronization; local operation remains available.
 
+Evidence-based cable repair proposals, BMEcat manufacturer imports and exact article-function suggestions help resolve inspection findings. Confirmed device identities govern cross-references and PDF links. Central potential definitions preview controlled propagation of conductor names, colors and cross-sections without changing net connectivity. Each applied proposal supports undo. See [engineering review assistants](docs/engineering-assistants.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

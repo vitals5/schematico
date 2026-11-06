@@ -20,7 +20,7 @@ Der Katalog liegt in **IndexedDB**, Datenbank `schematico-articles`, im aktuelle
 
 - Eigene Artikel lassen sich anlegen, bearbeiten und löschen. **Speichern vorbereiten** und die anschließende Vorschau zeigen neue und abweichende Einträge vor dem Schreiben.
 - **Projektartikel übernehmen** liest eingebettete Stammsätze und aktuell verwendete Zuordnungen. Die im Programm enthaltene kleine Startliste ist zusätzlich auswählbar; ihre Funktionsdaten werden nicht als geprüft ausgegeben.
-- CSV und JSON können importiert und exportiert werden. Der exakte Schlüssel besteht aus Hersteller, Artikelnummer und Variante. Nummern bleiben Zeichenfolgen, auch mit führenden Nullen. Unterschiedliche Varianten werden nicht zusammengelegt.
+- CSV und JSON können importiert und exportiert werden; BMEcat-XML kann als Herstellerdatenquelle importiert werden. Der exakte Schlüssel besteht aus Hersteller, Artikelnummer und Variante. Nummern bleiben Zeichenfolgen, auch mit führenden Nullen. Unterschiedliche Varianten werden nicht zusammengelegt.
 - Änderungen und Importe verwenden eine gemeinsame Schreibtransaktion. Hat sich der Katalog seit der Vorschau geändert, ist neu zu laden. Konflikte und Speicherfehler bestätigen keinen erfolgreichen Speichervorgang.
 - Eine Änderung des Schlüssels legt einen neuen Artikel an; ein bisheriger Eintrag kann anschließend getrennt entfernt werden.
 
@@ -61,3 +61,5 @@ Artikeländerungen dürfen bestätigte Gerätezuordnungen nicht unbemerkt ungül
 Fehlende Mitglieder, doppelte Mitgliedschaften, geänderte Kennzeichnungskontexte oder abweichende Nebenartikel machen eine gespeicherte Zuordnung ungültig. Der Prüflauf meldet dies mit `invalid_physical_device`; eine ungültige Zuordnung wird nicht für die Geräte-Zusammenfassung verwendet. Betroffene Stücklistenmengen erhalten `~` als Kennzeichnung einer vorläufigen Platzierungssumme, beispielsweise `~2x`; das ist keine bestätigte physische Geräteanzahl.
 
 Der optionale [Teamkatalogdienst](team-catalog.md) ergänzt persönliche Benutzerrechte, Versionshistorie und Synchronisation mit Konfliktvorschau. Die lokale Bearbeitung benötigt diesen Dienst nicht.
+
+Die [Assistenten zur Projektbereinigung](engineering-assistants.md) ergänzen Herstellerimport, genaue Funktionsplatzvorschläge und identitätsgebundene Querverweise. Eine Funktionszuordnung lässt den Prüfstatus der Artikel-Spezifikation unverändert.

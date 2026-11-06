@@ -186,7 +186,9 @@ export interface TextFormatConfig {
 export interface PlacedComponent {
   terminal?:import('./WiringManagement').TerminalSettings;
   articleAssignment?:{mode:'manual';items:AssignedArticle[]};
+  deviceReference?:{deviceId:string;originalCrossRef?:string;generatedText:string;targets:import('./ArticleTypes').ComponentAddress[]};
   articleFunctionId?:string;
+  articleFunctionEvidence?:{method:'user_confirmed'|'exact_type_and_pins';article:string;functionId:string;pins:string[]};
   articleFunctionType?:string;
   articleReferences?: ImportedArticleReference[];
   /** Evidence about reading this placement's source record; not a claim about
@@ -266,7 +268,9 @@ export interface Wire {
   routingMode?: 'auto' | 'manual'; // Explicitly edited bends survive subsequent device moves.
 }
 
+export interface CableRepairRecord {kind:string;confirmed:true;evidence:unknown;at:string}
 export interface CableDefinition {
+  repairHistory?:CableRepairRecord[];
   id: string;
   symbolId?: string;
   source?: PlacedComponent['source'];
@@ -284,7 +288,7 @@ export interface CableDefinition {
   showLabel?: boolean;
   showCoreLabels?: boolean;
   markStyle?: 'slash' | 'none';
-  cores: { reserve?:boolean; id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
+  cores: { repairHistory?:CableRepairRecord[]; reserve?:boolean; id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
 }
 
 export interface TitleBlock {
@@ -401,6 +405,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  potentialDefinitions?:import('./PotentialDefinitions').PotentialDefinition[];
   plannedDevices?:PlannedDevice[];
   physicalDevices?:PhysicalDevice[];
   nativeSourceIdentity?: {algorithm:'sha256-native-tables-v1';digest:string};

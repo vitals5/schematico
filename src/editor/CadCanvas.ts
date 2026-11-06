@@ -3714,6 +3714,7 @@ export class CadCanvas {
   }
 
   private getWireColor(potential: string, customColor?: string): string {
+    potential=potential.trim().toUpperCase();customColor=customColor?.trim().toUpperCase();
     if (customColor) {
       if (customColor === 'RD') return '#fc8181';
       if (customColor === 'BU') return '#63b3ed';

@@ -1,3 +1,4 @@
+import {manufacturerArticles} from '../model/ManufacturerImport';
 import {TeamCatalogDialog} from './TeamCatalogDialog';
 import {FunctionEditor} from './FunctionEditor';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
@@ -40,6 +41,7 @@ export class ArticleCatalogDialog {
   private search = '';
   private page = 0;
   private error = '';
+  private importHint='';
   private message = '';
   private busy = false;
   private closed = false;
@@ -99,9 +101,10 @@ export class ArticleCatalogDialog {
     for (const a of this.rows) map.set(catalogKey(a), a);
     return [...map.values()];
   }
-  private prepare(items: CatalogArticle[]) {
+  private prepare(items: CatalogArticle[], importHint = '') {
     planCatalogMerge(this.rows, items);
     this.pending = structuredClone(items);
+    this.importHint = importHint;
     this.deletion = undefined;
     this.replace = false;
     this.error = '';
@@ -120,8 +123,8 @@ export class ArticleCatalogDialog {
     const merge = this.pending
       ? planCatalogMerge(this.rows, this.pending)
       : undefined;
-    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
- <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('articlesImport')}</button><input type="file" data-file accept=".csv,.json" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
+    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
+ <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><input type="file" data-file accept=".csv,.json,.xml" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
  <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
@@ -231,12 +234,13 @@ export class ArticleCatalogDialog {
         void this.work(async () => {
           if (f.size > 20 * 1024 * 1024)
             throw new Error('articlesCatalogInvalid');
-          this.prepare(
-            parseCatalogFile(
-              await f.text(),
-              f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json',
-            ),
-          );
+          const text = await f.text();
+          if (f.name.toLowerCase().endsWith('.xml')) {
+            const imported = manufacturerArticles(text);
+            this.prepare(imported.articles, t('manufacturerHint', { count: imported.withoutFunctions.length }));
+          } else {
+            this.prepare(parseCatalogFile(text, f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json'));
+          }
         });
     });
     this.el

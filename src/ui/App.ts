@@ -1,3 +1,4 @@
+import {PotentialDialog} from './PotentialDialog';
 import {DeviceNavigatorDialog} from './DeviceNavigatorDialog';
 import {WiringDialog} from './WiringDialog';
 import {ArticleWorkbenchDialog} from './ArticleWorkbenchDialog';
@@ -518,6 +519,7 @@ export class App {
   }
 
   private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
+  private openPotentialDefinitions(id?:string){this.canvas.finishInteraction();this.history.record(this.project);new PotentialDialog(()=>this.project,p=>this.applyProjectTransaction(p),id).show();}
   private openWiringWorkbench(initial?:import('../model/ElectricalInspection').InspectionLocation){this.canvas.finishInteraction();this.history.record(this.project);new WiringDialog(()=>this.project,p=>this.applyProjectTransaction(p),initial).show();}
   private openDeviceNavigator(){this.canvas.finishInteraction();this.history.record(this.project);new DeviceNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(c)this.canvas.focusInspection({pageId:a.pageId,pageNumber:page!.pageNumber,componentId:c.id,x:c.x,y:c.y});this.updateUI();},a=>this.openArticleWorkbench(a)).show();}
   private openArticleWorkbench(initial:ComponentAddress[]=[]):void {
@@ -1190,6 +1192,7 @@ export class App {
     });
     bindMenuOpt('menuProjectSettings', () => this.openProjectSettings());
     bindMenuOpt('menuDeviceNavigator',()=>this.openDeviceNavigator());
+    bindMenuOpt('menuPotentialDefinitions',()=>this.openPotentialDefinitions());
     bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
     bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
@@ -1306,6 +1309,7 @@ export class App {
       new PlausibilityDialog(this.project, {
         onManageArticles:addresses=>this.openArticleWorkbench(addresses),
         onManageWiring:location=>this.openWiringWorkbench(location),
+        onManagePotential:id=>this.openPotentialDefinitions(id),
         onNavigateToFinding:(finding)=>{this.canvas.focusInspection(finding.location);this.updateUI();},
         onNavigateToPage: (pageId) => {
           this.canvas.setPage(pageId);

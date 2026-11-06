@@ -151,12 +151,15 @@ export class ProjectIndex {
     pin(entry: IndexedComponent, id: string): IndexedPin | undefined { return this.pins.get(entry)?.get(id); }
     pinsFor(entry: IndexedComponent): IndexedPin[] { return [...(this.pins.get(entry)?.values() ?? [])]; }
     connectionsFor(entry: IndexedComponent): readonly IndexedConnection[] { return this.incident.get(entry) ?? []; }
+    hasDeviceRecord(component:PlacedComponent):boolean{return (this.project.physicalDevices??[]).some(d=>d.members.some(a=>a.componentId===component.id));}
+    confirmedDeviceFor(component:PlacedComponent){const entry=this.entry(component);if(!entry)return;const current=componentIdentity(entry.page,component,getSymbolForComponent(component,this.project));if(current.deviceKey!==entry.deviceKey)return;return this.devices.forComponent(componentAddress(entry.page,entry.component));}
+    mainReferencesFor(component:PlacedComponent):readonly IndexedComponent[]{const d=this.confirmedDeviceFor(component);if(this.hasDeviceRecord(component)){const main=d&&this.component(d.main.componentId,d.main.pageId);return main?[main]:[];}return this.referencesFor(component).filter(e=>e.symbol?.isMaster);}
     referencesFor(component: PlacedComponent): readonly IndexedComponent[] {
-        const entry = this.entry(component);
-        if (!entry) return [];
-        // Property dialogs pass a copy, which may already carry an edited tag.
+        const entry = this.entry(component);if(!entry)return [];
+        const device=this.confirmedDeviceFor(component);
+        if(this.hasDeviceRecord(component))return device?device.members.map(a=>this.component(a.componentId,a.pageId)).filter((e):e is IndexedComponent=>!!e):[];
         const { referenceKey } = componentIdentity(entry.page, component, getSymbolForComponent(component, this.project));
-        return referenceKey ? this.referenceGroups.get(referenceKey) ?? [] : [];
+        return referenceKey ? (this.referenceGroups.get(referenceKey)??[]).filter(e=>!this.hasDeviceRecord(e.component)):[];
     }
     private addConnection(wire: Wire, logical: boolean, page?: Page) {
         const resolve = (ep: Wire['from']) => { const entry = this.component(ep.componentId, page?.id); return entry ? this.pin(entry, ep.pinId) : undefined; };

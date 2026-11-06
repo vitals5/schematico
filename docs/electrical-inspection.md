@@ -62,3 +62,7 @@ Die Ansicht zeigt höchstens 30 Gruppen pro Ansicht und zunächst 50 Meldungen j
 `get_inspection_review` stellt dieselbe rein lesende Gruppierung bereit. `groupBy` unterstützt `rule`, `designation`, `page` und `none`; Filter sind `rule`, `severity`, `pageId`, `articleState` und `search`. Ohne `groupId` werden Gruppenanzahlen und Beispiel-IDs zurückgegeben. Mit `groupId` lässt sich die vollständige Gruppe über `offset`/`limit` durchblättern (`limit` 1–200). Die Gruppen-ID gilt für den abgefragten aktuellen Projektstand und die gewählte Gruppierung.
 
 Das [Artikelwerkzeug](article-workbench.md) ergänzt die Bearbeitung gefilterter Befunde, mehrteilige Artikelzuordnungen, einen lokalen Katalog und bestätigte physische Betriebsmittel. `article_incompatible` meldet Widersprüche zu erfassten Funktions-/Anschlussdaten; `article_spec_unknown` kennzeichnet fehlende oder ungeprüfte Spezifikationen. `invalid_article_assignment` und `invalid_physical_device` machen ungültige Zuordnungen sichtbar. Ein gemeinsamer Katalogserver ist davon unabhängig.
+
+## Potenzialdefinitionen und Reparaturwerkzeuge
+
+Zentrale Definitionen ergänzen die Regeln `potential_anchor_invalid`, `potential_definition_collision` und `potential_policy_mismatch`. Sie prüfen Anschlussanker, konkurrierende Vorgaben und Abweichungen der Leiterattribute. Die Aktion am Befund öffnet die betreffende Definition. Kabel- und Artikelbefunde lassen sich mit den [Assistenten zur Projektbereinigung](engineering-assistants.md) bearbeiten; jede bestätigte Übernahme bleibt rückgängig machbar.

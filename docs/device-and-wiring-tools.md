@@ -39,3 +39,7 @@ Die Regeln `terminal_number_duplicate`, `cable_core_duplicate`, `cable_wire_miss
 Die Prüfung mit 48 Seiten und 4.724 Platzierungen hat den Import, eine gleichwertige Sammelzuordnung, Stücklistenberechnung und Rückgängig-Funktion bestätigt. 134 Artikelpositionen bleiben bei dieser Sammelbearbeitung erhalten. Der Test speichert keine privaten Projektdateien im Repository.
 
 Der Prüflauf findet in diesem Bestand unter anderem 351 Artikelzuordnungen ohne strukturierte Funktionsspezifikation, 102 Adern ohne aktive Zuordnung oder ausdrückliche Reservekennzeichnung und 21 Kabel mit unterschiedlichen deklarierten und definierten Aderzahlen. Diese Hinweise werden durch die neuen Werkzeuge bearbeitbar; sie wurden im Referenzprojekt nicht automatisch beseitigt. Fehlende Artikelmeldungen müssen zunächst nach Importnachweis und Symbolrolle eingeordnet werden und entsprechen nicht unmittelbar einer Zahl fehlender physischer Geräte. Die nächste fachliche Arbeit ist daher die Klärung der Ader-/Reservedaten und der erfassten Artikel-Funktionsdaten.
+
+## Geführte Bereinigung
+
+[Reparaturvorschläge und Potenzialdefinitionen](engineering-assistants.md) ergänzen den manuellen Dialog: eindeutige Kabelkreuzungen mit Netzprüfung, ausdrücklich bestätigte Reserve- und Aderzahländerungen sowie kontrollierte Übernahme von Leiterattributen. Bestätigte Haupt-/Nebendarstellungen bestimmen außerdem Verweisziele und Kontaktspiegel.
