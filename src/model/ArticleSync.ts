@@ -194,6 +194,7 @@ function rowsFor(target: Project, source: Project): ArticleSyncRow[] {
         return row;
       }
     }
+    if(c.articleAssignment){row.status='conflict';row.reasons.push('manual_assignment');return row;}
     const observed = c.articleImport?.observedArticleNumber;
     if (observed !== undefined && normal(c.articleNumber) !== normal(observed))
       row.reasons.push('manual_assignment');

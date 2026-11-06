@@ -1,3 +1,4 @@
+import type {ComponentAddress} from '../model/ArticleTypes';
 // src/ui/PlausibilityDialog.ts
 // Plausibility Check & Message Management ("Prüflauf / Meldungsverwaltung")
 
@@ -12,19 +13,20 @@ import {reviewInspection,type ReviewFilters,type ReviewGrouping} from '../model/
 import {ARTICLE_DATA_STATES,type ArticleDataState} from '../model/ArticleDataAnalysis';
 
 export class PlausibilityDialog {
+  private onArticles?:(addresses:ComponentAddress[])=>void;
   private filters:ReviewFilters={};
   private grouping:ReviewGrouping='rule';
   private project: Project;
   private onNavigate: (pageId: string, componentId?: string) => void;
   private onFinding?: (finding:PlausibilityMessage)=>void;
 
-  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onNavigateToPage: (pageId: string, componentId?: string) => void; onNavigateToFinding?:(finding:PlausibilityMessage)=>void }) {
+  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onManageArticles?:(addresses:ComponentAddress[])=>void; onNavigateToPage: (pageId: string, componentId?: string) => void; onNavigateToFinding?:(finding:PlausibilityMessage)=>void }) {
     this.project = project;
     if (typeof onNavigateOrOptions === 'function') {
       this.onNavigate = onNavigateOrOptions;
     } else {
       this.onNavigate = onNavigateOrOptions.onNavigateToPage;
-      this.onFinding=onNavigateOrOptions.onNavigateToFinding;
+      this.onFinding=onNavigateOrOptions.onNavigateToFinding;this.onArticles=onNavigateOrOptions.onManageArticles;
     }
   }
 
@@ -140,6 +142,7 @@ export class PlausibilityDialog {
           justify-content: flex-end;flex-wrap:wrap;gap:4px;
         ">
           <span style="font-size:10px;flex:1">${escapeSvg(t('plausCoverage',{count:report.coverage.unknownInternalConnections}))}</span>
+          ${this.onArticles?`<button id="btnArticlesPlaus" class="btn">${t('articlesReviewFiltered')}</button>`:''}
           <button id="btnRerunPlaus" class="btn">${t('plausRerun')}</button>
           <button id="btnExportPlaus" class="btn">${t('plausExport')}</button>
           <button id="btnConfirmPlaus" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px;">${t('close')}</button>
@@ -157,13 +160,15 @@ export class PlausibilityDialog {
       <td style="padding:6px">${escapeSvg(t(({error:'plausSeverityError',warning:'plausSeverityWarning',info:'plausSeverityInfo'} as const)[m.severity]))}</td><td>${escapeSvg(m.pageNumber)}</td><td>${escapeSvg(m.bmk||'-')}</td>
       <td style="padding:6px"><div>${escapeSvg(m.message)}</div><div style="font-size:10px;color:#90cdf4">${escapeSvg(m.ruleId)} · ${escapeSvg(m.location.pinId??m.location.wireId??'')}</div>
       <div style="font-size:10px">${escapeSvg(originLabel(m))} · ${escapeSvg(t(('articleRole_'+(m.articleData?.role??'unknown')) as any))} · ${escapeSvg(m.articleData?.symbolId??'')}</div>
-      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button></td></tr>`;
+      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${this.onArticles&&['missing_article','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device'].includes(m.ruleId)?`<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>`:''}</td></tr>`;
+    const addressesFor=(findings:PlausibilityMessage[])=>[...new Map(findings.filter(m=>['missing_article','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device'].includes(m.ruleId)).flatMap(m=>[m.location,...m.relatedLocations]).filter(l=>l.componentId).map(l=>[JSON.stringify([l.pageId,l.componentId]),{pageId:l.pageId,componentId:l.componentId!}])).values()];
     const render=()=>{
       const view=reviewInspection(messages,this.filters,this.grouping),pages=Math.max(1,Math.ceil(view.groups.length/30));page=Math.min(page,pages-1);
       modal.querySelector('#reviewCount')!.textContent=t('reviewCount',{shown:view.filtered.length,total:messages.length});
       modal.querySelector('#reviewPagination')!.textContent=`${page+1} / ${pages}`;
       (modal.querySelector('#reviewPrevious') as HTMLButtonElement).disabled=page===0;
       (modal.querySelector('#reviewNext') as HTMLButtonElement).disabled=page>=pages-1;
+      const articlesButton=modal.querySelector<HTMLButtonElement>('#btnArticlesPlaus');if(articlesButton)articlesButton.disabled=!addressesFor(view.filtered).length;
       body.innerHTML=view.groups.slice(page*30,(page+1)*30).map(group=>{
         const limit=limits.get(group.id)??50;
         return `${this.grouping==='none'?'':`<tr><td colspan="5"><button class="btn" data-group-toggle="${escapeSvg(group.id)}">${collapsed.has(group.id)?'▸':'▾'} ${escapeSvg(group.label)} (${group.messageIds.length})</button></td></tr>`}`+
@@ -184,9 +189,11 @@ export class PlausibilityDialog {
       if(more){const id=more.dataset.groupMore!;limits.set(id,(limits.get(id)??50)+50);render();return;}
       const selected=el.closest<HTMLElement>('.plaus-row');if(!selected)return;
       const finding=messages[Number(selected.dataset.findingIndex)];
+      if(el.closest('[data-edit-article]')){this.onArticles?.(addressesFor([finding]));closeModal();return;}
       if(this.onFinding)this.onFinding(finding);else this.onNavigate(finding.pageId,finding.componentId);closeModal();
     });
     render();
+    modal.querySelector('#btnArticlesPlaus')?.addEventListener('click',()=>{const addresses=addressesFor(reviewInspection(messages,this.filters,this.grouping).filtered);if(addresses.length){closeModal();this.onArticles?.(addresses);}});
     modal.querySelector('#btnRerunPlaus')?.addEventListener('click',()=>this.show());
     modal.querySelector('#btnExportPlaus')?.addEventListener('click',()=>{
       const url=URL.createObjectURL(new Blob([JSON.stringify({...report,review:{filters:this.filters,grouping:this.grouping,matchingMessageIds:reviewInspection(messages,this.filters,this.grouping).filtered.map(m=>m.id)}},null,2)],{type:'application/json'}));

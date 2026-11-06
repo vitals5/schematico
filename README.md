@@ -71,6 +71,8 @@ Electrical project inspection now uses one rule service across the editor, impor
 
 Native project imports can also preserve embedded part masters and source references, linking them by original function identity. Variants, additional parts, zero/unknown quantities and unplaced references remain available; properties and BOM/PDF use the preserved data. The Project menu can reconcile missing article data from an original archive into an edited drawing, with scoped source identities, a conflict preview, explicit confirmation for older source records and a single undo step. See [imported articles and quantity limitations](docs/imported-articles.md).
 
+The article workbench edits main/accessory assignments, stores a local IndexedDB catalog with CSV/JSON exchange, opens filtered inspection findings for batch correction, and checks recorded function/pin specifications. Explicitly confirmed main/secondary device links prevent duplicate BOM counting; used catalog snapshots travel with the project. See [article workbench and device counting](docs/article-workbench.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

@@ -1,3 +1,4 @@
+import {DeviceRegistry,componentAddress} from './DeviceRegistry';
 import type { Project, Page, PlacedComponent, SymbolDefinition, PinDefinition, Wire } from './types';
 import { getSymbolForComponent } from './symbols';
 import { isConnectionSymbol, isInterruptionSymbol } from './ConnectionSymbols';
@@ -62,6 +63,7 @@ export function componentIdentity(page: Page, component: PlacedComponent, symbol
  * deliberately NOT a cache key. Keys describe candidate identity, not proof that
  * multiple placements are one physical device. No persisted schema is changed. */
 export class ProjectIndex {
+    readonly devices:DeviceRegistry;
     readonly components: IndexedComponent[] = [];
     readonly pagesById = new Map<string, Page[]>();
     readonly componentsById = new Map<string, IndexedComponent[]>();
@@ -74,6 +76,7 @@ export class ProjectIndex {
     private pins = new Map<IndexedComponent, Map<string, IndexedPin>>();
     private incident = new Map<IndexedComponent, IndexedConnection[]>();
     constructor(readonly project: Project) {
+        this.devices=new DeviceRegistry(project);
         const push = <T>(map: Map<string, T[]>, key: string, value: T) => {
             const group = map.get(key);
             if (group) group.push(value);
@@ -120,6 +123,8 @@ export class ProjectIndex {
                 issue('duplicate_component_id', id, entries);
         for (const [key, entries] of this.deviceGroups) {
             const meaningful = entries.filter(e => !e.symbol || !isConnectionSymbol(e.symbol) && e.symbol.category !== 'structure');
+            const deviceIds=meaningful.map(e=>this.devices.forComponent(componentAddress(e.page,e.component))?.id);
+            if(deviceIds.length>1&&deviceIds[0]&&deviceIds.every(id=>id===deviceIds[0]))continue;
             if (meaningful.length < 2 || meaningful.some(e => e.nativeRepresentation))
                 continue;
             const masters = meaningful.filter(e => e.symbol?.isMaster);

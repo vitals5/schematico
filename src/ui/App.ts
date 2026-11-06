@@ -1,3 +1,5 @@
+import {ArticleWorkbenchDialog} from './ArticleWorkbenchDialog';
+import type {ComponentAddress} from '../model/ArticleTypes';
 import {RecentFiles,type RecentEntry,type RecentHandle} from '../model/RecentFiles';
 import {ArticleSyncDialog} from './ArticleSyncDialog';
 import {RecentFilesDialog} from './RecentFilesDialog';
@@ -513,8 +515,14 @@ export class App {
     this.canvas.setPage(this.project.activePageId || this.project.pages[0].id);
   }
 
+  private openArticleWorkbench(initial:ComponentAddress[]=[]):void {
+    this.canvas.finishInteraction();this.history.record(this.project);
+    new ArticleWorkbenchDialog(()=>this.project,next=>{this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);},initial,address=>{this.canvas.setPage(address.pageId);const c=this.project.pages.find(p=>p.id===address.pageId)?.components.find(c=>c.id===address.componentId);if(c)this.canvas.focusInspection({pageId:address.pageId,pageNumber:this.project.pages.find(p=>p.id===address.pageId)?.pageNumber??'',componentId:c.id,x:c.x,y:c.y});this.updateUI();}).show();
+  }
+
   public openPropertiesDialog(comp: PlacedComponent): void {
     new PropertiesDialog(comp, this.project, {
+      onManageArticles:()=>this.openArticleWorkbench(this.project.pages.flatMap(p=>p.components.filter(c=>c.id===comp.id).map(c=>({pageId:p.id,componentId:c.id})))),
       onNavigateToReference: (index) => this.canvas.followReference(comp, index),
       onSave: (updated) => {
         // 1. Mutate the original comp in-place so all references stay updated
@@ -1176,6 +1184,7 @@ export class App {
       }
     });
     bindMenuOpt('menuProjectSettings', () => this.openProjectSettings());
+    bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
       this.canvas.finishInteraction();this.history.record(this.project);
       new ArticleSyncDialog(()=>this.project, next=>{
@@ -1288,6 +1297,7 @@ export class App {
     // Projektdaten
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
+        onManageArticles:addresses=>this.openArticleWorkbench(addresses),
         onNavigateToFinding:(finding)=>{this.canvas.focusInspection(finding.location);this.updateUI();},
         onNavigateToPage: (pageId) => {
           this.canvas.setPage(pageId);
@@ -2882,6 +2892,7 @@ export class App {
       if (selection.componentIds.length > 1 && !selection.cableIds.length && !selection.boxIds?.length && !selection.imageIds?.length && !selection.wireIds?.length && !selection.textIds?.length) {
         const comps = page.components.filter(c => selection.componentIds.includes(c.id));
         new PropertiesDialog(comps, this.project, {
+          onManageArticles:()=>this.openArticleWorkbench(comps.map(c=>({pageId:page.id,componentId:c.id}))),
           onSave: (updated) => {
             const idx = page.components.findIndex(c => c.id === updated.id);
             if (idx >= 0) page.components[idx] = updated;

@@ -1,3 +1,4 @@
+import type {AssignedArticle,PhysicalDevice} from './ArticleTypes';
 // src/model/types.ts
 import type { DeviceBoxGeometry } from './DeviceBoxElement';
 import type { PlotFrameTemplate } from './PlotFrame';
@@ -118,6 +119,7 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  functionDefinition?:string;
   articleRequirement?: 'required' | 'optional' | 'none';
   referenceRequirement?: 'required' | 'optional';
   /** Only permanent groups form a conductor net. Conditional paths are never joined
@@ -181,6 +183,9 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  articleAssignment?:{mode:'manual';items:AssignedArticle[]};
+  articleFunctionId?:string;
+  articleFunctionType?:string;
   articleReferences?: ImportedArticleReference[];
   /** Evidence about reading this placement's source record; not a claim about
    * the contents of the source application's complete parts database. */
@@ -393,6 +398,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  physicalDevices?:PhysicalDevice[];
   nativeSourceIdentity?: {algorithm:'sha256-native-tables-v1';digest:string};
   importedArticleLibrary?: ImportedArticleMaster[];
   sourceArticleReferences?: ImportedArticleReference[];

@@ -1,3 +1,6 @@
+import {invalidArticleAssignment} from './ArticleAssignments';
+import {articleCompatibility} from './ArticleCompatibility';
+import {componentAddress,addressKey} from './DeviceRegistry';
 import type { Project } from './types';
 import { ProjectIndex, interruptionTag, type IndexedComponent } from './ProjectIndex';
 import { ElectricalNetService, portIdentity } from './ElectricalNetService';
@@ -6,7 +9,7 @@ import { referenceTargets } from './CrossReferenceNavigation';
 import { componentInsertionPoint, rotatedLocalPoint } from './SymbolGeometry';
 import { t } from '../i18n';
 import {articleDataContext,ARTICLE_DATA_STATES,type ArticleDataContext} from './ArticleDataAnalysis';
-export const ELECTRICAL_RULES = ['missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
+export const ELECTRICAL_RULES = ['invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
 export type ElectricalRule = typeof ELECTRICAL_RULES[number];
 export interface InspectionLocation {
     pageId: string;
@@ -76,13 +79,17 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
         const entry = location.componentId ? index.component(location.componentId, location.pageId) : undefined;
         messages.push({ id: JSON.stringify([ruleId, key]), ruleId, domain: 'electrical', severity, category: ruleId.includes('article') ? 'Stammdaten' : ruleId.includes('reference') ? 'Verweise' : ruleId.includes('device') || ruleId.includes('duplicate') ? 'Identität' : 'Verdrahtung', pageId: location.pageId, pageNumber: location.pageNumber, componentId: location.componentId, bmk: entry?.tag, articleData:entry?articles.get(entry):undefined, message, recommendation, cause: { code: ruleId, details }, location, relatedLocations });
     };
+    for(const issue of index.devices.issues){const entries=issue.members.map(a=>index.component(a.componentId,a.pageId)).filter((e):e is IndexedComponent=>!!e);add('invalid_physical_device',[issue.deviceId,issue.code],'warning',inspectionLocation(index,entries[0]),t('articlesDeviceIssue',{code:issue.code}),t('articlesDeviceFix'),{deviceId:issue.deviceId,code:issue.code},entries.slice(1).map(e=>inspectionLocation(index,e)));}
     for (const entry of index.components) {
         const { component: comp, symbol } = entry, exempt = !!symbol && (isConnectionSymbol(symbol) || symbol.category === 'structure' || !!symbol.annotationKind);
         const requirement = comp.articleRequirement ?? symbol?.articleRequirement;
         const masters = index.referencesFor(comp).filter(e => e.symbol?.isMaster);
-        const inheritedArticle = !!symbol?.isContact && masters.length === 1 && !!masters[0].component.articleNumber?.trim();
+        const inheritedArticle = articles.get(entry)?.state==='inherited'||!!symbol?.isContact && masters.length === 1 && !!masters[0].component.articleNumber?.trim();
         if ((!exempt || requirement === 'required') && articles.get(entry)?.state!=='assigned' && !comp.articleNumber?.trim() && !inheritedArticle && requirement !== 'optional' && requirement !== 'none')
             add('missing_article', comp.id, requirement === 'required' ? 'warning' : 'info', inspectionLocation(index, entry), t(articles.get(entry)?.state==='import_not_read'?'plausMsgArticleNotRead':'plausMsgMissingArticle'), t(['import_not_read','import_unknown','imported_unassigned'].includes(articles.get(entry)!.state)?'plausRecArticleImport':'plausRecMissingArticle'), { requirement: requirement ?? 'legacy',articleState:articles.get(entry)!.state });
+        if(invalidArticleAssignment(comp))add('invalid_article_assignment',comp.id,'warning',inspectionLocation(index,entry),t('articlesInvalid'),t('articlesCompatibilityFix'));
+        const address=componentAddress(entry.page,comp),device=index.devices.forComponent(address);
+        if(articles.get(entry)?.state==='assigned'&&(!device||addressKey(device.main)===addressKey(address))){const compatibility=articleCompatibility(project,address,index.devices);if(compatibility.status==='incompatible'||compatibility.status==='unknown')add(compatibility.status==='incompatible'?'article_incompatible':'article_spec_unknown',comp.id,compatibility.status==='incompatible'?'warning':'info',inspectionLocation(index,entry),t(compatibility.status==='incompatible'?'articlesIncompatible':'articlesSpecificationUnknown'),t('articlesCompatibilityFix'),{issues:compatibility.issues});}
         const pins = index.pinsFor(entry), explicit = pins.filter(p => (comp.pins[p.id]?.connectionRequirement ?? p.definition?.connectionRequirement) !== undefined);
         for (const pin of explicit) {
             const policy = comp.pins[pin.id]?.connectionRequirement ?? pin.definition?.connectionRequirement, connected = nets.hasConnection(pin);

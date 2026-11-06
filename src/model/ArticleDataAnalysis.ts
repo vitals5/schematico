@@ -1,3 +1,5 @@
+import {effectiveArticles} from './ArticleAssignments';
+import {componentAddress} from './DeviceRegistry';
 import type { IndexedComponent, ProjectIndex } from './ProjectIndex';
 import { isConnectionSymbol } from './ConnectionSymbols';
 import {activeImportedArticles} from './ImportedArticles';
@@ -26,6 +28,9 @@ export function articleDataContext(entry: IndexedComponent, index: ProjectIndex)
     const base = { role, symbolId: c.symbolId, plant: entry.structure.plant, location: entry.structure.location, designationKey: entry.deviceKey,
         source: c.articleImport?.source, readStatus: c.articleImport?.status, observedArticleNumber: c.articleImport?.observedArticleNumber,
         sourceObjectType: c.source?.objectType };
+    const own=effectiveArticles(c,index.project),owner=index.devices.owner(componentAddress(entry.page,c));
+    if(!own.length&&owner&&owner.component!==c){const inherited=effectiveArticles(owner.component,index.project);if(inherited.length)return {...base,state:'inherited',articleNumber:owner.component.articleNumber,articleNumbers:inherited.map(a=>a.articleNumber),manufacturer:owner.component.manufacturer,inheritedFromComponentId:owner.component.id};}
+    if(c.articleAssignment)return {...base,state:own.length?'assigned':'unassigned',articleNumber:c.articleNumber,articleNumbers:own.map(a=>a.articleNumber),manufacturer:c.manufacturer};
     const references=activeImportedArticles(c);
     if(references)return {...base,state:'assigned',articleNumber:c.articleNumber,articleNumbers:references.map(r=>r.articleNumber),manufacturer:c.manufacturer};
     if (c.articleNumber?.trim())

@@ -18,6 +18,7 @@ import { ElementSelection, selectionCount } from '../model/ElementSelection';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
 
 export interface PropertiesDialogCallbacks {
+  onManageArticles?:()=>void;
   onSave: (updated: PlacedComponent) => void;
   onSaveMultiple?: (updatedList: PlacedComponent[]) => void;
   components?: PlacedComponent[];
@@ -616,6 +617,7 @@ export class PropertiesDialog {
 
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${this.callbacks.onManageArticles?`<button class="btn" data-manage-articles>${escapeSvg(t('articlesOpenFromProperties'))}</button>`:''}
           ${importedArticleFields(this.component)}
           <div style="background: #1c212c; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -1565,6 +1567,7 @@ export class PropertiesDialog {
   }
 
   private bindTabInternalEvents(modal: HTMLElement): void {
+    modal.querySelector('[data-manage-articles]')?.addEventListener('click',()=>{if(this.saveChanges(modal)===false)return;modal.remove();this.callbacks.onManageArticles?.();});
     // Article quick select
     const quickPart = modal.querySelector('#quickPartSelect') as HTMLSelectElement;
     quickPart?.addEventListener('change', () => {
