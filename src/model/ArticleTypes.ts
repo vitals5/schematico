@@ -7,7 +7,7 @@ export interface CatalogArticle {
   description: string;
   origin: 'user' | 'project_import' | 'starter';
   verification: 'unverified' | 'user_checked';
-  functions?: { id: string; type: string; pins: string[] }[];
+  functions?: { id: string; type: string; pins: string[]; required?: boolean }[];
 }
 export interface AssignedArticle {
   articleNumber: string;

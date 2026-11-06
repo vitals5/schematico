@@ -188,6 +188,7 @@ export interface PlacedComponent {
   articleAssignment?:{mode:'manual';items:AssignedArticle[]};
   deviceReference?:{deviceId:string;originalCrossRef?:string;generatedText:string;targets:import('./ArticleTypes').ComponentAddress[]};
   articleFunctionId?:string;
+  articleFunctionRepresentation?: { primary: import('./ArticleTypes').ComponentAddress };
   articleFunctionEvidence?:{method:'user_confirmed'|'exact_type_and_pins';article:string;functionId:string;pins:string[]};
   articleFunctionType?:string;
   articleReferences?: ImportedArticleReference[];
@@ -268,6 +269,12 @@ export interface Wire {
   routingMode?: 'auto' | 'manual'; // Explicitly edited bends survive subsequent device moves.
 }
 
+export interface CableConnectionHint {
+  wireId: string;
+  from: Wire['from'];
+  to: Wire['to'];
+  source: { format: 'NATIVE_CAD'; connectionId: number; coreObjectType: number; coreObjectId: number };
+}
 export interface CableRepairRecord {kind:string;confirmed:true;evidence:unknown;at:string}
 export interface CableDefinition {
   repairHistory?:CableRepairRecord[];
@@ -288,7 +295,7 @@ export interface CableDefinition {
   showLabel?: boolean;
   showCoreLabels?: boolean;
   markStyle?: 'slash' | 'none';
-  cores: { repairHistory?:CableRepairRecord[]; reserve?:boolean; id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
+  cores: { connectionHints?:CableConnectionHint[]; repairHistory?:CableRepairRecord[]; reserve?:boolean; id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
 }
 
 export interface TitleBlock {
@@ -405,6 +412,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  inspectionWorkflow?: import('./InspectionWorkflow').InspectionWorkflow;
   potentialDefinitions?:import('./PotentialDefinitions').PotentialDefinition[];
   plannedDevices?:PlannedDevice[];
   physicalDevices?:PhysicalDevice[];

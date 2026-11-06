@@ -1,3 +1,4 @@
+import { ArticleMaintenanceDialog } from './ArticleMaintenanceDialog';
 import {ArticleFunctionDialog} from './ArticleFunctionDialog';
 import { ProjectIndex } from '../model/ProjectIndex';
 import { articleDataContext } from '../model/ArticleDataAnalysis';
@@ -191,7 +192,7 @@ export class ArticleWorkbenchDialog {
               ? 'articlesUnassigned'
               : 'articlesSpecificationUnknown',
       );
-    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="articleWorkbenchTitle" style="width:min(1250px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:18px;border:1px solid #526170;border-radius:8px"><style>#articleWorkbenchDialog td,#articleWorkbenchDialog th{padding:5px 7px;vertical-align:top}#articleWorkbenchDialog fieldset{border:1px solid #526170;border-radius:5px;padding:10px}#articleWorkbenchDialog summary{cursor:pointer}#articleWorkbenchDialog p{margin:8px 0}</style><h2 id="articleWorkbenchTitle">${t('articlesManage')}</h2><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input data-search class="form-input" style="flex:1;min-width:180px" placeholder="${t('articlesSearch')}" value="${esc(this.search)}"><label><input type="checkbox" data-missing ${this.missing ? 'checked' : ''}> ${t('articlesMissingOnly')}</label><label><input type="checkbox" data-selected-only ${this.selectionOnly ? 'checked' : ''}> ${t('articlesSelectionOnly')}</label><button class="btn" data-all>${t('articlesSelectVisible')}</button><button class="btn" data-clear>${t('articlesClearSelection')}</button><span>${t('articlesSelected', { count: this.selected.size })}</span><button class="btn" data-functions>${t('functionSuggestions')}</button><button class="btn" data-catalog>${t('articlesCatalog')}</button></div>
+    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="articleWorkbenchTitle" style="width:min(1250px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:18px;border:1px solid #526170;border-radius:8px"><style>#articleWorkbenchDialog td,#articleWorkbenchDialog th{padding:5px 7px;vertical-align:top}#articleWorkbenchDialog fieldset{border:1px solid #526170;border-radius:5px;padding:10px}#articleWorkbenchDialog summary{cursor:pointer}#articleWorkbenchDialog p{margin:8px 0}</style><h2 id="articleWorkbenchTitle">${t('articlesManage')}</h2><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input data-search class="form-input" style="flex:1;min-width:180px" placeholder="${t('articlesSearch')}" value="${esc(this.search)}"><label><input type="checkbox" data-missing ${this.missing ? 'checked' : ''}> ${t('articlesMissingOnly')}</label><label><input type="checkbox" data-selected-only ${this.selectionOnly ? 'checked' : ''}> ${t('articlesSelectionOnly')}</label><button class="btn" data-all>${t('articlesSelectVisible')}</button><button class="btn" data-clear>${t('articlesClearSelection')}</button><span>${t('articlesSelected', { count: this.selected.size })}</span><button class="btn" data-maintenance>${t('articleMaintenance')}</button><button class="btn" data-functions>${t('functionSuggestions')}</button><button class="btn" data-catalog>${t('articlesCatalog')}</button></div>
  <div style="max-height:23vh;overflow:auto;margin:8px 0"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th></th><th>BMK</th><th>${t('reviewPage')}</th><th>${t('articlesItems')}</th><th>${t('articlesDeviceMain')}</th><th></th></tr></thead><tbody>${visible
    .map((e, i) => {
      const d = this.registry.forComponent(e.address);
@@ -398,6 +399,7 @@ export class ArticleWorkbenchDialog {
       }
     });
     this.el.querySelector('[data-functions]')?.addEventListener('click',()=>{try{new ArticleFunctionDialog(this.getProject,p=>{this.onApply(p);this.el.remove();},this.addresses()).show();}catch(e){this.error=articleError(e);this.render();}});
+    this.el.querySelector('[data-maintenance]')?.addEventListener('click',()=>new ArticleMaintenanceDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
     focusArticleModal(this.el);
   }
 }

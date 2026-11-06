@@ -5,6 +5,7 @@ import { DeviceRegistry, addressKey } from './DeviceRegistry';
 import { effectiveArticles, primaryArticle } from './ArticleAssignments';
 import { functionType } from './FunctionDefinitions';
 import { getSymbolForComponent } from './symbols';
+import { articleCompatibility } from './ArticleCompatibility';
 import { projectRevision } from '../layout/types';
 export interface FunctionSuggestion {
   address: ComponentAddress;
@@ -13,6 +14,8 @@ export interface FunctionSuggestion {
   actualType?: string;
   actualPins: string[];
   current?: string;
+  sameFunctionAs?: ComponentAddress;
+  devicePeers: { address: ComponentAddress; pageNumber: string; bmk: string }[];
   candidates: {
     id: string;
     type: string;
@@ -44,6 +47,17 @@ export function articleFunctions(
       actualType: type,
       actualPins: pins,
       current: e.component.articleFunctionId,
+      sameFunctionAs: e.component.articleFunctionRepresentation?.primary,
+      devicePeers: (registry.forComponent(address)?.members ?? [])
+        .filter((a) => addressKey(a) !== addressKey(address))
+        .map((a) => {
+          const peer = registry.placement(a)!;
+          return {
+            address: { ...a },
+            pageNumber: peer.page.pageNumber,
+            bmk: peer.component.bmk,
+          };
+        }),
       candidates:
         (!s?.unresolved && pins.length
           ? article?.snapshot?.functions?.filter(
@@ -78,7 +92,11 @@ export class ArticleFunctionPlan {
   }
   apply(
     project: Project,
-    choices: { address: ComponentAddress; functionId: string }[],
+    choices: {
+      address: ComponentAddress;
+      functionId: string;
+      sameFunctionAs?: ComponentAddress;
+    }[],
     confirmType = false,
     confirmReplace = false,
   ) {
@@ -109,6 +127,11 @@ export class ArticleFunctionPlan {
         throw new Error('repairConfirmation');
       const c = registry.placement(choice.address)!.component;
       c.articleFunctionId = candidate.id;
+      if (choice.sameFunctionAs)
+        c.articleFunctionRepresentation = {
+          primary: structuredClone(choice.sameFunctionAs),
+        };
+      else delete c.articleFunctionRepresentation;
       if (candidate.needsTypeConfirmation)
         c.articleFunctionType = candidate.type;
       c.articleFunctionEvidence = {
@@ -120,6 +143,22 @@ export class ArticleFunctionPlan {
         pins: [...row.actualPins],
       };
     }
+    for (const choice of choices)
+      if (choice.sameFunctionAs) {
+        const review = articleCompatibility(
+          result,
+          choice.address,
+          new DeviceRegistry(result),
+        );
+        if (
+          review.issues.some(
+            (i) =>
+              i.code === 'function_representation_invalid' &&
+              i.componentId === choice.address.componentId,
+          )
+        )
+          throw new Error('functionRepresentationInvalid');
+      }
     CrossReferenceEngine.updateDeviceCrossReferences(result);
     result.activePageId = project.activePageId;
     result.modified = new Date().toISOString();

@@ -43,11 +43,7 @@ export function cableWires(project: Project, pageId: string, wireId: string) {
     physical = page?.wires.filter((w) => w.id === wireId) ?? [];
   return physical.length
     ? physical
-    : (project.logicalConnections ?? []).filter(
-        (w) =>
-          w.id === wireId &&
-          page?.components.some((c) => c.id === w.from.componentId),
-      );
+    : (project.logicalConnections ?? []).filter((w) => w.id === wireId);
 }
 export function inspectWiring(
   project: Project,

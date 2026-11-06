@@ -22,16 +22,18 @@ export class FunctionEditor {
       const row = this.rows[Number(input.dataset.functionRow)],
         key = input.dataset.functionField!;
       (row as any)[key] =
-        key === 'pins'
-          ? input.value
-              .split(/[,;\n]/)
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : input.value;
+        key === 'required'
+          ? input.checked
+          : key === 'pins'
+            ? input.value
+                .split(/[,;\n]/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : input.value;
     }
   }
   private render() {
-    this.el.innerHTML = `<table style="width:100%;text-align:left"><tr><th>${t('functionSlot')}</th><th>${t('articlesFunctionType')}</th><th>${t('functionPins')}</th><th></th></tr>${this.rows.map((f, i) => `<tr>${(['id', 'type', 'pins'] as const).map((k) => `<td><input class="form-input" data-function-row="${i}" data-function-field="${k}" ${k === 'type' ? 'list="knownFunctions"' : ''} value="${esc(k === 'pins' ? f.pins.join(', ') : f[k])}"></td>`).join('')}<td><button class="btn" data-remove-function="${i}">${t('articlesRemove')}</button></td></tr>`).join('')}</table><datalist id="knownFunctions">${knownFunctionTypes()
+    this.el.innerHTML = `<table style="width:100%;text-align:left"><tr><th>${t('functionSlot')}</th><th>${t('articlesFunctionType')}</th><th>${t('functionPins')}</th><th>${t('functionRequired')}</th><th></th></tr>${this.rows.map((f, i) => `<tr>${(['id', 'type', 'pins'] as const).map((k) => `<td><input class="form-input" data-function-row="${i}" data-function-field="${k}" ${k === 'type' ? 'list="knownFunctions"' : ''} value="${esc(k === 'pins' ? f.pins.join(', ') : f[k])}"></td>`).join('')}<td><input type="checkbox" data-function-row="${i}" data-function-field="required" ${f.required ? 'checked' : ''}></td><td><button class="btn" data-remove-function="${i}">${t('articlesRemove')}</button></td></tr>`).join('')}</table><datalist id="knownFunctions">${knownFunctionTypes()
       .map((s) => `<option value="${esc(s)}">`)
       .join(
         '',

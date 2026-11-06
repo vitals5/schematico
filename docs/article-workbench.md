@@ -63,3 +63,5 @@ Fehlende Mitglieder, doppelte Mitgliedschaften, geänderte Kennzeichnungskontext
 Der optionale [Teamkatalogdienst](team-catalog.md) ergänzt persönliche Benutzerrechte, Versionshistorie und Synchronisation mit Konfliktvorschau. Die lokale Bearbeitung benötigt diesen Dienst nicht.
 
 Die [Assistenten zur Projektbereinigung](engineering-assistants.md) ergänzen Herstellerimport, genaue Funktionsplatzvorschläge und identitätsgebundene Querverweise. Eine Funktionszuordnung lässt den Prüfstatus der Artikel-Spezifikation unverändert.
+
+**Artikelweise Stammdaten aktualisieren…** ergänzt die genaue Sammelaktualisierung eingebetteter Artikel-Snapshots über alle Verwendungen. Funktionsspezifikationen unterstützen ausdrücklich erforderliche Darstellungen (`required: true`); zusätzliche Ansichten derselben Funktion werden separat bestätigt. Einzelheiten und Grenzen stehen bei den [Projektbereinigungs-Assistenten](engineering-assistants.md).

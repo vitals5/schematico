@@ -60,3 +60,33 @@ Die Regeln `potential_anchor_invalid`, `potential_definition_collision` und `pot
 Die unveränderte private Referenz mit 48 Seiten und 4.724 Platzierungen wurde erneut eingelesen. Die Analyse erzeugt 102 Kandidaten zur ausdrücklichen Reserveklärung, vier Vorschläge zur Ergänzung fehlender Reservepositionen und 20 alternative Vorschläge zur Anpassung einer deklarierten Aderzahl. Diese Vorschläge wurden nicht automatisch übernommen. Es ergab sich keine ausreichend eindeutige neue geometrische Leitungszuordnung.
 
 351 Artikelzuordnungen bleiben ohne strukturierte Funktionsspezifikation ungeprüft. Die Werkzeuge machen diese Arbeit bearbeitbar; fehlende Herstellerdaten werden dadurch nicht nachträglich bewiesen. Private Projekt- und Herstellerdateien werden nicht im Repository gespeichert.
+
+## Artikelweise Stammdaten aktualisieren
+
+Im Artikelwerkzeug öffnet **Artikelweise Stammdaten aktualisieren…** eine Übersicht aller verwendeten Kombinationen aus Hersteller, Artikelnummer und Variante. Anzahl der Verwendungen, fehlende Funktionsdaten und ungeprüfte Datensätze werden getrennt gezählt. Die Gruppierung bestätigt keine physische Geräteidentität.
+
+Eine Gruppe auswählen und **Katalog bearbeiten / Stammsatz auswählen…** öffnen. Dort kann der Artikel einmal gepflegt oder aus Herstellerdaten übernommen werden. Nur ein exakt passender Katalogschlüssel wird akzeptiert. Die anschließende Vorschau zeigt jede betroffene Verwendung, einschließlich Zubehörpositionen. Sie aktualisiert ausschließlich den jeweiligen Stammdaten-Snapshot; Mengen, Rollen, andere Artikel und ursprüngliche Importnachweise bleiben erhalten. Bestehende Snapshots werden erst nach ausdrücklicher Bestätigung ersetzt. Der Prüfstatus stammt aus dem gewählten Katalogsatz und wird nicht automatisch auf „selbst geprüft“ gesetzt.
+
+## Kabel: ausdrückliche Quellbeziehungen
+
+Beim erneuten Import eines unterstützten nativen Projekts werden zusätzlich die ausdrücklichen Aderverweise der Verbindungsdatensätze (`EB33`) mit den tatsächlichen elektrischen Endpunkten gespeichert (`connectionHints`). Diese Daten ersetzen keine vorhandene Leitungszuordnung beim Import. Bei einer fehlenden oder defekten Zuordnung kann der Reparaturassistent daraus einen vorrangigen Vorschlag erzeugen.
+
+Der Vorschlag benötigt eindeutige vorhandene Quellverbindungen und auflösbare Anschlüsse desselben Leiternetzes. Widersprüchliche Endpunkte, verschiedene Netze und anderweitig belegte Leitungen desselben Kabels werden abgelehnt. Bei einer vorhandenen, aber nicht auflösbaren Quellbeziehung wird nicht auf eine geometrische Vermutung ausgewichen und keine Reserve vorgeschlagen. Ausdrücklich zugeordnete logische Leitungen werden projektweit aufgelöst, auch über Blattgrenzen hinweg. Der Vorschlag und seine Übernahme ändern keine elektrische Verbindung oder Zeichnungsgeometrie.
+
+Im privaten Referenzprojekt liegen für 309 Adern solche Quellbeziehungen vor. Eine testweise gelöschte Zuordnung konnte daraus wiederhergestellt werden. Die 102 bereits offenen Adern besitzen keinen solchen Nachweis; sie bleiben zur Klärung offen. Gespeicherte ältere JSON-Projekte ohne diese Daten erhalten durch bloßes Öffnen keinen nachträglichen Quellnachweis.
+
+## Funktionsbelegung und Zusatzdarstellungen
+
+In der Funktionsspezifikation eines Artikels kann **Pflichtdarstellung** (`required: true`) ausdrücklich gesetzt werden. Die Prüfung meldet einen solchen Funktionsplatz, wenn er nicht dargestellt ist. Ohne diese Vorgabe dürfen Funktionen unbenutzt bleiben. Dies prüft die Dokumentation, nicht das tatsächliche Vorhandensein eines realen Kontakts.
+
+Mehrere unabhängige Darstellungen desselben Funktionsplatzes eines bestätigten Geräts erzeugen einen Klärungshinweis. Sind dies tatsächlich Ansichten derselben Funktion, lässt sich unter **Artikelfunktionen zuordnen… → Zusatzdarstellung derselben Funktion von** eine eigenständige Hauptdarstellung dieser Funktion auswählen. Die Beziehung wird unter `articleFunctionRepresentation` gespeichert. Funktionstyp und Anschlüsse müssen passen; zyklische, gerätefremde und widersprüchliche Beziehungen werden abgelehnt. Die physische Geräte-Hauptdarstellung und die Hauptdarstellung einer einzelnen Funktion sind unterschiedliche Zuordnungen.
+
+## Gespeicherte Prüf-Arbeitsliste
+
+Im Prüfdialog lassen sich aktuelle Befunde einzeln oder über **Gefilterte Befunde auswählen / abwählen** bearbeiten. Die Zustände sind **Offen**, **In Bearbeitung** und **Begründete Ausnahme**. Eine Ausnahme verlangt eine Begründung. Die Angaben liegen zusammen mit dem Projekt in `inspectionWorkflow` und sind rückgängig machbar. Sie werden nicht nur im Browserprofil gespeichert.
+
+Bewertungen unterdrücken keine elektrischen Meldungen und ändern deren Schweregrad oder Gesamtzahlen nicht. Eine Bewertung ist an die beim Prüfen betroffenen Daten gebunden. Ändern sich diese, erscheint der Befund erneut offen mit einem Hinweis auf die ungültig gewordene frühere Bewertung. „Offen“ entfernt eine bisherige Bewertung. Es gibt keinen manuellen Zustand, der einen weiterhin gemeldeten Befund als behoben erklärt.
+
+**Aktuellen Prüflauf als Vergleich speichern** legt ausdrücklich einen Vergleichsstand an. Danach können neue, weiterhin gemeldete und nicht mehr gemeldete Befunde getrennt betrachtet werden. **Nicht mehr gemeldet** bedeutet, dass der Befund im aktuellen Prüfergebnis fehlt; auch gelöschte Objekte, geänderte Daten oder geänderte Prüfregeln können die Ursache sein. Es ist keine Bestätigung einer elektrisch korrekten Reparatur. Der Vergleichsstand wird erst durch erneutes Speichern ersetzt.
+
+Der JSON-Prüfexport enthält weiterhin die vollständigen aktuellen Meldungen und zusätzlich Arbeitslistenstatus, Begründungen und Vergleichsinformationen. `get_inspection_review` bietet dieselben optionalen Filter `taskStatus` und `change`; die elektrische Zusammenfassung bleibt unverändert. Nicht mehr gemeldete Befunde werden nur mit `change: "resolved"` abgefragt und sind ausdrücklich als historische Einträge gekennzeichnet.

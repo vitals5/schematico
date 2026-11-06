@@ -66,3 +66,5 @@ Das [Artikelwerkzeug](article-workbench.md) ergänzt die Bearbeitung gefilterter
 ## Potenzialdefinitionen und Reparaturwerkzeuge
 
 Zentrale Definitionen ergänzen die Regeln `potential_anchor_invalid`, `potential_definition_collision` und `potential_policy_mismatch`. Sie prüfen Anschlussanker, konkurrierende Vorgaben und Abweichungen der Leiterattribute. Die Aktion am Befund öffnet die betreffende Definition. Kabel- und Artikelbefunde lassen sich mit den [Assistenten zur Projektbereinigung](engineering-assistants.md) bearbeiten; jede bestätigte Übernahme bleibt rückgängig machbar.
+
+Die [gespeicherte Prüf-Arbeitsliste](engineering-assistants.md#gespeicherte-prüf-arbeitsliste) verwaltet Bearbeitungsstatus und begründete Ausnahmen im Projekt. Ein ausdrücklich gespeicherter Vergleichsstand erlaubt die Sicht auf neue und nicht mehr gemeldete Befunde. Bewertungen verändern weder die aktuellen elektrischen Ergebnisse noch deren Schweregrade.

@@ -2,7 +2,7 @@ import {nativeSourceIdentity} from '../model/SourceIdentity';
 import { readNativeGroups } from './NativeGroups';
 import {NativeArticles} from './NativeArticles';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
-import { nativeCableKind, readNativeCables, bindImportedCableCores } from './NativeCables';
+import { nativeCableKind, readNativeCables, bindImportedCableCores, captureNativeCableEvidence } from './NativeCables';
 import JSZip from 'jszip';
 import { readNativePlotFrame } from './NativePlotFrame';
 import { readNativeCoverPage } from './NativeCoverPage';
@@ -92,6 +92,7 @@ export class NativeProjectReader {
         from: { componentId: from.id, pinId: fromPin }, to: { componentId: to.id, pinId: toPin },
         potential: 'Signal', color: r.string(0x791c, 4) || undefined, crossSection: r.string(0x791a, 4) || undefined });
     }
+    captureNativeCableEvidence(this.tables.Connection, project);
     this.messages.push(`${project.logicalConnections.length} elektrische Quellverbindungen separat von den sichtbaren Leitungsabschnitten übernommen.`);
   }
 

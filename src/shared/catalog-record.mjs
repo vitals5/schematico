@@ -27,6 +27,7 @@ export function validateCatalogArticle(a) {
           !f.id.trim() ||
           typeof f.type !== 'string' ||
           !f.type.trim() ||
+          (f.required !== undefined && typeof f.required !== 'boolean') ||
           !Array.isArray(f.pins) ||
           !f.pins.length ||
           f.pins.length > 500 ||
@@ -48,6 +49,7 @@ export function validateCatalogArticle(a) {
             id: f.id.trim(),
             type: f.type.trim(),
             pins: f.pins.map((n) => n.trim()),
+            ...(f.required !== undefined ? { required: f.required } : {}),
           })),
         }
       : {}),

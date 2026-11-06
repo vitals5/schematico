@@ -56,7 +56,8 @@ export class ArticleCatalogDialog {
   constructor(
     private project: Project,
     private onChoose?: (article: CatalogArticle) => void,
-  ) {}
+    initialSearch = '',
+  ) { this.search = initialSearch; }
   show() {
     if (document.getElementById('articleCatalogDialog')) return;
     this.el.id = 'articleCatalogDialog';

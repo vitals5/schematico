@@ -17,6 +17,7 @@ export interface CableRepair {
   count?: number;
   evidence: {
     method:
+      | 'native_connection'
       | 'drawing_intersection'
       | 'manual_reserve'
       | 'declared_count'
@@ -24,6 +25,10 @@ export interface CableRepair {
     distance?: number;
     position?: number;
     source?: unknown;
+    endpoints?: {
+      from: import('./types').Wire['from'];
+      to: import('./types').Wire['to'];
+    }[];
     before: unknown;
     after: unknown;
   };
@@ -77,7 +82,79 @@ export function cableRepairs(project: Project): CableRepair[] {
             new Set(ids).size === ids.length)
         )
           continue;
+        // Source endpoint relations outrank proximity, but are never applied
+        // implicitly and never join disconnected conductor nets.
+        const hints = core.connectionHints ?? [];
+        const sourceConnections = hints.map((h) =>
+          index.connections.filter(
+            (c) =>
+              c.logical &&
+              c.wire.id === h.wireId &&
+              c.wire.from.componentId === h.from.componentId &&
+              c.wire.from.pinId === h.from.pinId &&
+              c.wire.to.componentId === h.to.componentId &&
+              c.wire.to.pinId === h.to.pinId,
+          ),
+        );
+        const sourceNetIds = new Set(
+          sourceConnections.flatMap((matches) =>
+            matches.length === 1 && matches[0].from
+              ? [nets.netForPin(matches[0].from)?.id]
+              : [],
+          ),
+        );
+        const sourceIds = [...new Set(hints.map((h) => h.wireId))];
+        const sourceSupported =
+          core.source?.format === 'NATIVE_CAD' &&
+          hints.length > 0 &&
+          sourceConnections.every(
+            (c) =>
+              c.length === 1 &&
+              !!c[0].from &&
+              !!c[0].to &&
+              !!c[0].from.definition &&
+              !!c[0].to.definition &&
+              !c[0].from.owner.symbol?.unresolved &&
+              !c[0].to.owner.symbol?.unresolved,
+          ) &&
+          hints.every(
+            (h) =>
+              h.source.format === 'NATIVE_CAD' &&
+              h.wireId === `native_logical_${h.source.connectionId}` &&
+              h.source.coreObjectType === core.source?.objectType &&
+              h.source.coreObjectId === core.source?.objectId,
+          ) &&
+          sourceNetIds.size === 1 &&
+          !sourceNetIds.has(undefined) &&
+          sourceIds.every(
+            (id) =>
+              cableWires(project, page.id, id).length === 1 &&
+              !cable.cores.some(
+                (other) => other.id !== core.id && other.wireIds?.includes(id),
+              ),
+          );
+        if (sourceSupported)
+          add({
+            kind: 'bind',
+            coreId: core.id,
+            label: core.designation ?? core.id,
+            wireIds: sourceIds,
+            evidence: {
+              method: 'native_connection',
+              source: structuredClone(hints.map((h) => h.source)),
+              endpoints: hints.map((h) => ({
+                from: { ...h.from },
+                to: { ...h.to },
+              })),
+              before: ids,
+              after: sourceIds,
+            },
+            requiresReserve: false,
+            requiresCount: false,
+            requiresOverwrite: ids.length > 0,
+          });
         if (
+          !hints.length &&
           Number.isFinite(core.t) &&
           core.t >= 0 &&
           core.t <= 1 &&
@@ -142,7 +219,7 @@ export function cableRepairs(project: Project): CableRepair[] {
             });
           }
         }
-        if (!valid.length)
+        if (!valid.length && !hints.length)
           add({
             kind: 'reserve',
             coreId: core.id,

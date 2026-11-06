@@ -43,7 +43,7 @@ export class CableRepairDialog {
       .slice(this.page * 40, this.page * 40 + 40)
       .map(
         (r, i) =>
-          `<tr><td><input type="checkbox" data-row="${i + this.page * 40}" ${this.selected.has(r.id) ? 'checked' : ''}></td><td>${esc(this.pageLabels.get(r.pageId) ?? r.pageId)}</td><td>${esc(r.bmk)} · ${esc(r.label)}</td><td>${t(('repair_' + r.kind) as TranslationKey)}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.before) ?? '—')}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.after))}</td><td>${t(('repair_evidence_' + r.evidence.method) as TranslationKey)}${r.evidence.distance !== undefined ? ' · Δ ' + r.evidence.distance.toFixed(3) : ''}<small style="display:block;overflow-wrap:anywhere">${esc(JSON.stringify(r.evidence.source ?? ''))}</small></td></tr>`,
+          `<tr><td><input type="checkbox" data-row="${i + this.page * 40}" ${this.selected.has(r.id) ? 'checked' : ''}></td><td>${esc(this.pageLabels.get(r.pageId) ?? r.pageId)}</td><td>${esc(r.bmk)} · ${esc(r.label)}</td><td>${t(('repair_' + r.kind) as TranslationKey)}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.before) ?? '—')}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.after))}</td><td>${t(('repair_evidence_' + r.evidence.method) as TranslationKey)}${r.evidence.distance !== undefined ? ' · Δ ' + r.evidence.distance.toFixed(3) : ''}<small style="display:block;overflow-wrap:anywhere">${esc(JSON.stringify(r.evidence.endpoints ? { source: r.evidence.source, endpoints: r.evidence.endpoints } : (r.evidence.source ?? '')))}</small></td></tr>`,
       )
       .join(
         '',

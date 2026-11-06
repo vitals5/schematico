@@ -1307,6 +1307,8 @@ export class App {
     // Projektdaten
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
+        getProject:()=>this.project,
+        onApply:next=>this.applyProjectTransaction(next),
         onManageArticles:addresses=>this.openArticleWorkbench(addresses),
         onManageWiring:location=>this.openWiringWorkbench(location),
         onManagePotential:id=>this.openPotentialDefinitions(id),
