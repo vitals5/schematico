@@ -43,7 +43,7 @@ export function renderAppHeader(projectName:string):string {
       <div class="main-menu-list" id="mainMenuList">
         ${menu('menuProjectTrigger',t('menuProject'),
           opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuRecentFiles',t('menuRecentFiles'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+opt('menuSaveAs',t('menuSaveAs'),t('keyCtrlShiftS'))+
-          separator+opt('menuProjectSettings',t('menuProjectSettings'))+
+          separator+opt('menuProjectSettings',t('menuProjectSettings'))+opt('menuSyncArticles',t('menuSyncArticles'))+
           separator+opt('menuLoadDemo',t('menuLoadDemo'))+
           separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuExportFloorPlanPage',t('menuExportFloorPlanPage'))+
           separator+opt('menuSettings',t('menuSettings')),'menu-item')}

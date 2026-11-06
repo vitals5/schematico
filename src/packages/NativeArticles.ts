@@ -90,7 +90,7 @@ export class NativeArticles {
         refs: ImportedArticleReference[];
     }>();
     private constructor() { }
-    static async read(zip: JSZip, root: string): Promise<NativeArticles> {
+    static async read(zip: JSZip, root: string,datasetId?:string): Promise<NativeArticles> {
         const reader = new NativeArticles();
         const load = async (name: keyof typeof layouts) => {
             const data = zip.file(root + name + '.eod'), index = zip.file(root + name + '.eox');
@@ -128,7 +128,7 @@ export class NativeArticles {
                     continue;
                 }
                 const code = field(r, 0x55f7, 4, true), description = field(r, 0x55f4, 4, true);
-                reader.library.push({ id: `native-article-${r.type}-${r.id}`, sourceId: r.id, articleNumber: number, variant, manufacturerCode: code,
+                reader.library.push({ sourceDatasetId:datasetId,id: `native-article-${r.type}-${r.id}`, sourceId: r.id, articleNumber: number, variant, manufacturerCode: code,
                     manufacturer: code ? (manufacturers.get(code) ?? code) : undefined, description: description ? nativeText(description) : undefined, partial: r.partial });
             }
         const masters = new Map<string, ImportedArticleMaster[]>();
@@ -167,7 +167,7 @@ export class NativeArticles {
             const master = variant === undefined ? undefined : masters.get(key(number, variant));
             const exact = master?.length === 1 ? master[0] : undefined;
             const quantity = integer(r, 0xef5b, 4), position = integer(r, 0xef58, 2);
-            const ref: ImportedArticleReference = { sourceId: r.id, ownerType, ownerId, articleNumber: number, variant: variant ?? '', position,
+            const ref: ImportedArticleReference = { sourceDatasetId:datasetId,sourceId: r.id, ownerType, ownerId, articleNumber: number, variant: variant ?? '', position,
                 quantity, manufacturer: exact?.manufacturer, masterDataId: exact?.id };
             group.refs.push(ref);
             reader.references.push(ref);

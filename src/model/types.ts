@@ -192,6 +192,7 @@ export interface PlacedComponent {
   id: string;
   symbolId: string;
   source?: { format: 'NATIVE_CAD'; objectType: number; objectId: number;
+    datasetId?: string; datasetVerification?: 'parser' | 'user_confirmed';
     /** Auto-routing records without any drawn source connection remain editable helpers. */
     routingUsed?: boolean };
   importedSymbol?: SymbolDefinition;
@@ -381,15 +382,18 @@ export interface Page {
 }
 
 export interface ImportedArticleReference {
+  sourceDatasetId?: string;
   sourceId: number; ownerType: number; ownerId: number;
   articleNumber: string; variant: string; position?: number; quantity?: number;
   manufacturer?: string; masterDataId?: string;
 }
 export interface ImportedArticleMaster {
+  sourceDatasetId?: string;
   id: string; sourceId: number; articleNumber: string; variant: string;
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  nativeSourceIdentity?: {algorithm:'sha256-native-tables-v1';digest:string};
   importedArticleLibrary?: ImportedArticleMaster[];
   sourceArticleReferences?: ImportedArticleReference[];
   articleImportDiagnostics?: string[];

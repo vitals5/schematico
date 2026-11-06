@@ -1,4 +1,5 @@
 import {RecentFiles,type RecentEntry,type RecentHandle} from '../model/RecentFiles';
+import {ArticleSyncDialog} from './ArticleSyncDialog';
 import {RecentFilesDialog} from './RecentFilesDialog';
 import { showProviderSettings } from '../ai/components/ProviderSettings';
 import { applyLayout } from '../layout/service';
@@ -1175,6 +1176,12 @@ export class App {
       }
     });
     bindMenuOpt('menuProjectSettings', () => this.openProjectSettings());
+    bindMenuOpt('menuSyncArticles', () => {
+      this.canvas.finishInteraction();this.history.record(this.project);
+      new ArticleSyncDialog(()=>this.project, next=>{
+        this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);
+      }).show();
+    });
 
     const menuFileInput = document.getElementById('menuFileInput') as HTMLInputElement;
     menuFileInput?.addEventListener('change', async (e) => {

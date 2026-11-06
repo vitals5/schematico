@@ -1,7 +1,7 @@
 import type { PlacedComponent } from '../model/types';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
 import { t } from '../i18n';
-export function importedArticleFields(component: PlacedComponent): string {
+export function importedArticleFields(component: Pick<PlacedComponent,'articleReferences'>): string {
     const refs = component.articleReferences;
     if (!refs?.length)
         return '';

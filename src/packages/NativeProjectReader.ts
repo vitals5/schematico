@@ -1,3 +1,4 @@
+import {nativeSourceIdentity} from '../model/SourceIdentity';
 import { readNativeGroups } from './NativeGroups';
 import {NativeArticles} from './NativeArticles';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
@@ -26,6 +27,7 @@ type Tables = Record<keyof typeof EOD_LAYOUTS, EodRecord[]>;
 export class NativeProjectReader {
   readonly messages: string[] = [];
   private articles?: NativeArticles;
+  private sourceIdentity?: Project['nativeSourceIdentity'];
   private plotFrameTemplate?: PlotFrameTemplate;
   private coverPageTemplate?: CoverPageTemplate;
   private graphics = new Map<string, LibraryEntry>();
@@ -70,6 +72,7 @@ export class NativeProjectReader {
   }
 
   finalize(project: Project): void {
+    if(this.sourceIdentity)project.nativeSourceIdentity={...this.sourceIdentity};
     this.articles?.finalize(project);
     this.messages.push(...this.articles?.messages??[]);
     if (this.plotFrameTemplate) project.plotFrameTemplate = this.plotFrameTemplate;
@@ -104,7 +107,9 @@ export class NativeProjectReader {
     const library = await NativeSymbolLibrary.create(zip, root);
     await library.prepare([...tables.Function, ...tables.IPoint, ...tables.Potential, ...tables.Instance]);
     const importer = new NativeProjectReader(tables, library);
-    importer.articles=await NativeArticles.read(zip,root);
+    const [pageData,functionData,pageIndex,functionIndex]=await Promise.all(['Page.eod','Function.eod','Page.eox','Function.eox'].map(name=>zip.file(root+name)!.async('uint8array')));
+    importer.sourceIdentity=await nativeSourceIdentity(pageData,functionData,pageIndex,functionIndex);
+    importer.articles=await NativeArticles.read(zip,root,importer.sourceIdentity.digest);
     importer.images = await readNativePageImages(zip, root,
       [...tables.Instance, ...tables.Function, ...tables.IPoint, ...tables.Potential], message => importer.messages.push(message));
     importer.plotFrameTemplate = await readNativePlotFrame(zip, root, tables.Instance, library);
@@ -181,7 +186,7 @@ export class NativeProjectReader {
       const functionText = nativeText(r.string(0x4e2b, 4) || r.string(0xeb1a));
       const comp: PlacedComponent = {
         id: `native_${pageId}_${r.type}_${r.id}`, symbolId: d.id,
-        source: { format: 'NATIVE_CAD', objectType: r.type, objectId: r.id },
+        source: { format: 'NATIVE_CAD', objectType: r.type, objectId: r.id,datasetId:this.sourceIdentity?.digest,datasetVerification:'parser' },
         articleImport: {source:'native_project',status:'not_read'},
         ...(d.deviceBox?{deviceBox:geometryFromSymbol(d)}:{}),
         x: p.x - entry.origin.x, y: p.y - entry.origin.y, rotation: 0,
