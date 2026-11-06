@@ -302,6 +302,7 @@ export class CadCanvas {
   public focusInspection(location:InspectionLocation):void {
     if(!this.project.pages.some(p=>p.id===location.pageId))return;
     this.focusReference({...location,label:'',start:0,end:0});
+    const cable=this.activePage.cables?.find(c=>c.id===location.cableId);if(cable){this.selectedCableId=cable.id;this.selectedComponentId=null;this.selectedWireId=null;this.callbacks.onSelectCable?.(cable);this.render();}
     const wire=this.activePage.wires.find(w=>w.id===location.wireId);
     if(wire){this.selectedComponentId=null;this.selectedWireId=wire.id;this.callbacks.onSelectComponent(null);this.callbacks.onSelectWire(wire);this.render();}
   }

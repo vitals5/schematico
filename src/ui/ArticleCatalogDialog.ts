@@ -1,3 +1,5 @@
+import {TeamCatalogDialog} from './TeamCatalogDialog';
+import {FunctionEditor} from './FunctionEditor';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import type { CatalogArticle } from '../model/ArticleTypes';
 import type { Project } from '../model/types';
@@ -43,6 +45,7 @@ export class ArticleCatalogDialog {
   private closed = false;
   private available = false;
   private editing?: CatalogArticle;
+  private functionEditor?:FunctionEditor;
   private pending?: CatalogArticle[];
   private deletion?: CatalogArticle;
   private replace = false;
@@ -118,7 +121,7 @@ export class ArticleCatalogDialog {
       ? planCatalogMerge(this.rows, this.pending)
       : undefined;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
- <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('articlesImport')}</button><input type="file" data-file accept=".csv,.json" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('articlesImport')}</button><input type="file" data-file accept=".csv,.json" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
  <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
@@ -129,7 +132,7 @@ export class ArticleCatalogDialog {
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><label>${t('articlesFunctions')}<textarea class="form-input" data-functions rows="3" placeholder='[{"id":"coil","type":"relay_coil","pins":["A1","A2"]}]'>${esc(this.editing.functions ? JSON.stringify(this.editing.functions, null, 2) : '')}</textarea></label><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><button class="btn" data-save>${t('articlesSave')}</button></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><button class="btn" data-save>${t('articlesSave')}</button></fieldset>` : ''}
  ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(JSON.stringify(this.rows.find((r) => catalogKey(r) === catalogKey(a)) ?? null, null, 2))}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(a, null, 2))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
@@ -152,6 +155,7 @@ export class ArticleCatalogDialog {
         next.focus();
         next.setSelectionRange(pos, pos);
       });
+    this.el.querySelector('[data-team]')?.addEventListener('click',()=>new TeamCatalogDialog(()=>void this.work(()=>this.reload())).show());
     this.el.querySelector('[data-new]')?.addEventListener('click', () => {
       this.editing = {
         id: '',
@@ -188,6 +192,7 @@ export class ArticleCatalogDialog {
       this.page++;
       this.render();
     });
+    const functionsEl=this.el.querySelector<HTMLElement>('[data-functions-editor]');if(functionsEl)this.functionEditor=new FunctionEditor(functionsEl,this.editing?.functions);
     this.el.querySelector('[data-save]')?.addEventListener('click', () => {
       try {
         const a = { ...this.editing! };
@@ -195,16 +200,14 @@ export class ArticleCatalogDialog {
           '[data-field]',
         ))
           (a as any)[input.dataset.field!] = input.value;
-        const raw =
-          this.el.querySelector<HTMLTextAreaElement>('[data-functions]')!.value;
-        a.functions = raw.trim() ? JSON.parse(raw) : undefined;
+        a.functions=this.functionEditor?.value();
         a.origin = 'user';
         a.verification = this.el.querySelector<HTMLInputElement>(
           '[data-verified]',
         )!.checked
           ? 'user_checked'
           : 'unverified';
-        this.prepare([validateCatalogArticle(a)]);
+        this.editing=a;this.prepare([validateCatalogArticle(a)]);
       } catch (e) {
         this.error = articleError(e);
         this.render();

@@ -209,14 +209,15 @@ export class ArticleCatalog {
     if (typeof indexedDB === 'undefined')
       throw new Error('articlesStorageUnavailable');
     return new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open('schematico-articles', 1);
-      r.onupgradeneeded = () =>
-        r.result.createObjectStore('articles', { keyPath: 'id' });
+      const r = indexedDB.open('schematico-articles', 2);
+      r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('articles'))r.result.createObjectStore('articles',{keyPath:'id'});if(!r.result.objectStoreNames.contains('sync'))r.result.createObjectStore('sync');};
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
       r.onblocked = () => reject(new Error('articlesStorageUnavailable'));
     });
   }
+  async syncState(key:string):Promise<import('./TeamCatalog').TeamState|undefined>{const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('sync','readonly'),r=tx.objectStore('sync').get(key);tx.oncomplete=()=>{db.close();resolve(r.result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};});}
+  async replaceForSync(articles:CatalogArticle[],expected:string,key:string,state:import('./TeamCatalog').TeamState){const rows=articles.map(validateCatalogArticle);if(new Set(rows.map(catalogKey)).size!==rows.length)throw new Error('articlesCatalogDuplicate');const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['articles','sync'],'readwrite'),store=tx.objectStore('articles'),read=store.getAll();let error:unknown;read.onsuccess=()=>{if(catalogRevision(read.result)!==expected){error=new Error('articlesCatalogStale');tx.abort();return;}store.clear();rows.forEach(r=>store.put(r));tx.objectStore('sync').put(state,key);};tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(error??tx.error);};});}
   async list(): Promise<CatalogArticle[]> {
     const db = await this.open();
     return new Promise((resolve, reject) => {

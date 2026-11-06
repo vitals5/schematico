@@ -1,3 +1,4 @@
+import {registerFunctionDefinition} from './FunctionDefinitions';
 import { CONNECTION_VARIANTS } from './ConnectionVariants';
 import { electricalDefinition, registerStandardElectricalDefinition } from './ElectricalDefinition';
 import { migrateLegacyData } from './LegacyCompatibility';
@@ -1465,6 +1466,7 @@ for (const symbol of SYMBOL_DEFINITIONS) {
     pin.name === 'PE' || symbol.id === 'terminal_pe' ? 'protective_earth' : pin.name === 'N' ? 'neutral'
       : symbol.layoutRole === 'power' || /^L[123]?$/.test(pin.name) ? 'power' : 'unknown';
   registerStandardElectricalDefinition(symbol);
+  registerFunctionDefinition(symbol);
 }
 
 for (const symbol of SYMBOL_DEFINITIONS) {

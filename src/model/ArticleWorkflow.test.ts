@@ -227,7 +227,7 @@ assert(
   ),
 );
 const unknownType = structuredClone(assigned);
-delete unknownType.pages[0].components[0].articleFunctionType;
+delete unknownType.pages[0].components[0].articleFunctionType;unknownType.symbolLibrary=[{...structuredClone(sym),functionDefinition:undefined,source:{library:'CUSTOM',number:1,variant:0}}];
 assert.equal(articleCompatibility(unknownType, ca).status, 'unknown');
 const unknownVerified = structuredClone(assigned);
 unknownVerified.pages[0].components[0].articleAssignment!.items[0].snapshot!.verification =

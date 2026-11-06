@@ -1,3 +1,4 @@
+import type {PlannedDevice} from './DeviceNavigator';
 import type {AssignedArticle,PhysicalDevice} from './ArticleTypes';
 // src/model/types.ts
 import type { DeviceBoxGeometry } from './DeviceBoxElement';
@@ -183,6 +184,7 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  terminal?:import('./WiringManagement').TerminalSettings;
   articleAssignment?:{mode:'manual';items:AssignedArticle[]};
   articleFunctionId?:string;
   articleFunctionType?:string;
@@ -244,6 +246,7 @@ export interface PlacedComponent {
 }
 
 export interface Wire {
+  terminalBridge?:'plug'|'wire';
   id: string;
   from: {
     componentId: string;
@@ -281,7 +284,7 @@ export interface CableDefinition {
   showLabel?: boolean;
   showCoreLabels?: boolean;
   markStyle?: 'slash' | 'none';
-  cores: { id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
+  cores: { reserve?:boolean; id: string; symbolId?: string; t: number; color?: string; designation?: string; crossSection?: string; wireIds?: string[]; source?: PlacedComponent['source'] }[];
 }
 
 export interface TitleBlock {
@@ -398,6 +401,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  plannedDevices?:PlannedDevice[];
   physicalDevices?:PhysicalDevice[];
   nativeSourceIdentity?: {algorithm:'sha256-native-tables-v1';digest:string};
   importedArticleLibrary?: ImportedArticleMaster[];

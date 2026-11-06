@@ -1,3 +1,4 @@
+import {inspectWiring} from './WiringManagement';
 import {invalidArticleAssignment} from './ArticleAssignments';
 import {articleCompatibility} from './ArticleCompatibility';
 import {componentAddress,addressKey} from './DeviceRegistry';
@@ -9,11 +10,12 @@ import { referenceTargets } from './CrossReferenceNavigation';
 import { componentInsertionPoint, rotatedLocalPoint } from './SymbolGeometry';
 import { t } from '../i18n';
 import {articleDataContext,ARTICLE_DATA_STATES,type ArticleDataContext} from './ArticleDataAnalysis';
-export const ELECTRICAL_RULES = ['invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
+export const ELECTRICAL_RULES = ['terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
 export type ElectricalRule = typeof ELECTRICAL_RULES[number];
 export interface InspectionLocation {
     pageId: string;
     pageNumber: string;
+    cableId?:string;coreId?:string;
     componentId?: string;
     pinId?: string;
     wireId?: string;
@@ -79,6 +81,7 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
         const entry = location.componentId ? index.component(location.componentId, location.pageId) : undefined;
         messages.push({ id: JSON.stringify([ruleId, key]), ruleId, domain: 'electrical', severity, category: ruleId.includes('article') ? 'Stammdaten' : ruleId.includes('reference') ? 'Verweise' : ruleId.includes('device') || ruleId.includes('duplicate') ? 'Identität' : 'Verdrahtung', pageId: location.pageId, pageNumber: location.pageNumber, componentId: location.componentId, bmk: entry?.tag, articleData:entry?articles.get(entry):undefined, message, recommendation, cause: { code: ruleId, details }, location, relatedLocations });
     };
+    for(const issue of inspectWiring(project,index)){const entry=issue.componentId?index.component(issue.componentId,issue.pageId):undefined,page=project.pages.find(p=>p.id===issue.pageId),cable=page?.cables?.find(c=>c.id===issue.cableId);const location={...inspectionLocation(index,entry),pageId:issue.pageId,pageNumber:page?.pageNumber??'',...(cable?{x:(cable.start.x+cable.end.x)/2,y:(cable.start.y+cable.end.y)/2,cableId:cable.id,coreId:issue.coreId}:{})};add(issue.code,[issue.pageId,issue.componentId,issue.cableId,issue.coreId,issue.details],issue.code==='cable_core_unassigned'?'info':'warning',location,t(issue.code as any),t('wiringFix'),{details:issue.details,cableId:issue.cableId,coreId:issue.coreId});}
     for(const issue of index.devices.issues){const entries=issue.members.map(a=>index.component(a.componentId,a.pageId)).filter((e):e is IndexedComponent=>!!e);add('invalid_physical_device',[issue.deviceId,issue.code],'warning',inspectionLocation(index,entries[0]),t('articlesDeviceIssue',{code:issue.code}),t('articlesDeviceFix'),{deviceId:issue.deviceId,code:issue.code},entries.slice(1).map(e=>inspectionLocation(index,e)));}
     for (const entry of index.components) {
         const { component: comp, symbol } = entry, exempt = !!symbol && (isConnectionSymbol(symbol) || symbol.category === 'structure' || !!symbol.annotationKind);

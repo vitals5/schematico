@@ -28,7 +28,7 @@ CSV-Dateien verwenden die Spalten `articleNumber`, `manufacturer`, `variant`, `d
 
 ## Artikelkompatibilität
 
-Eine Spezifikation kann mehrere einzeln benannte Gerätefunktionen enthalten, beispielsweise:
+Die Tabellenfelder im Katalog erfassen Funktionsplatz, Funktionstyp und Anschlussbezeichnungen. Das Austauschformat kann mehrere einzeln benannte Gerätefunktionen enthalten, beispielsweise:
 
 ```json
 [
@@ -60,4 +60,4 @@ Artikeländerungen dürfen bestätigte Gerätezuordnungen nicht unbemerkt ungül
 
 Fehlende Mitglieder, doppelte Mitgliedschaften, geänderte Kennzeichnungskontexte oder abweichende Nebenartikel machen eine gespeicherte Zuordnung ungültig. Der Prüflauf meldet dies mit `invalid_physical_device`; eine ungültige Zuordnung wird nicht für die Geräte-Zusammenfassung verwendet. Betroffene Stücklistenmengen erhalten `~` als Kennzeichnung einer vorläufigen Platzierungssumme, beispielsweise `~2x`; das ist keine bestätigte physische Geräteanzahl.
 
-Ein gemeinsamer Katalogserver mit Anmeldung, Teamrechten und Synchronisation ist ein separater Ausbau. Die fünf beschriebenen Funktionen arbeiten lokal und ohne diesen Server.
+Der optionale [Teamkatalogdienst](team-catalog.md) ergänzt persönliche Benutzerrechte, Versionshistorie und Synchronisation mit Konfliktvorschau. Die lokale Bearbeitung benötigt diesen Dienst nicht.

@@ -1,3 +1,4 @@
+import {deviceNavigator} from '../../model/DeviceNavigator';
 import type { McpToolDefinition } from './definitions';
 import type { CanvasStateManager } from './handlers';
 import { ProjectIndex } from '../../model/ProjectIndex';
@@ -12,6 +13,6 @@ export async function handleGetProjectIndex(args: any, manager: CanvasStateManag
         throw new Error('Ungültiger Indexbereich.');
     const index = new ProjectIndex(manager.getProject()), messages = collectPlausibilityMessages(index.project, index);
     const designations = [...index.deviceGroups].map(([key, entries]) => ({ key, tag: entries[0].tag, structure: entries[0].structure, placements: entries.map(e => ({ pageId: e.page.id, pageNumber: e.page.pageNumber, componentId: e.component.id, symbolId: e.component.symbolId, role: e.symbol?.isMaster ? 'master' : e.symbol?.isContact ? 'contact' : 'unspecified', nativeRepresentation: e.nativeRepresentation })) }));
-    return { success: true, schemaVersion: 1, derived: true, physicalDeviceCountKnown: false, counts: { pages: index.project.pages.length, placements: index.components.length, designationGroups: index.deviceGroups.size, articleGroups: index.articleGroups.size, connections: index.connections.length, verifiedDevices:index.devices.valid.size, identityIssues: index.identityIssues.length }, identityIssues: index.identityIssues, deviceIssues:index.devices.issues, verifiedDevices:{total:index.devices.valid.size,offset,items:[...index.devices.valid.values()].slice(offset,offset+limit)},
+    return { success: true, schemaVersion: 1, derived: true, physicalDeviceCountKnown: false, counts: { pages: index.project.pages.length, placements: index.components.length, designationGroups: index.deviceGroups.size, articleGroups: index.articleGroups.size, connections: index.connections.length, verifiedDevices:index.devices.valid.size, identityIssues: index.identityIssues.length }, identityIssues: index.identityIssues, deviceNavigator:{total:deviceNavigator(index.project,index.devices).length,offset,items:deviceNavigator(index.project,index.devices).slice(offset,offset+limit)}, deviceIssues:index.devices.issues, verifiedDevices:{total:index.devices.valid.size,offset,items:[...index.devices.valid.values()].slice(offset,offset+limit)},
         designations: { total: designations.length, offset, items: designations.slice(offset, offset + limit) }, messages: { total: messages.length, offset, items: messages.slice(offset, offset + limit) } };
 }

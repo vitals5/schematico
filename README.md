@@ -73,6 +73,8 @@ Native project imports can also preserve embedded part masters and source refere
 
 The article workbench edits main/accessory assignments, stores a local IndexedDB catalog with CSV/JSON exchange, opens filtered inspection findings for batch correction, and checks recorded function/pin specifications. Explicitly confirmed main/secondary device links prevent duplicate BOM counting; used catalog snapshots travel with the project. See [article workbench and device counting](docs/article-workbench.md).
 
+The device navigator manages planned devices and links to placed main/secondary representations. Terminal/cable tools correct sides, levels, bridges, reserve cores and wire assignments, and export manufacturing CSV lists. Function specifications use a table editor. See [device and wiring workflows](docs/device-and-wiring-tools.md). An optional [team catalog service](docs/team-catalog.md) adds personal read/write access, immutable SQLite revisions and conflict-aware synchronization; local operation remains available.
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

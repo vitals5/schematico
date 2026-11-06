@@ -133,6 +133,7 @@ export class ProjectIndex {
                 continue;
             }
             if (meaningful.every(e => e.symbol?.category === 'terminals')) {
+                if(meaningful.every(e=>e.component.terminal)&&new Set(meaningful.map(e=>JSON.stringify([e.component.terminal!.strip,e.component.terminal!.number,e.component.terminal!.level]))).size===meaningful.length)continue;
                 if (meaningful[0].tag.includes(':'))
                     issue('duplicate_terminal', key, meaningful);
                 continue; // Multiple unnumbered placements can be members of one strip.

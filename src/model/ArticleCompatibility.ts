@@ -1,3 +1,4 @@
+import {functionType} from './FunctionDefinitions';
 import type { ComponentAddress } from './ArticleTypes';
 import type { Project } from './types';
 import { DeviceRegistry } from './DeviceRegistry';
@@ -67,7 +68,7 @@ export function articleCompatibility(
         .map((p) => c.pins[p.id]?.customLabel ?? p.name)
         .map((n) => n.trim())
         .sort(),
-      type = c.articleFunctionType ?? s.functionDefinition;
+      type = c.articleFunctionType ?? functionType(s);
     const candidates = c.articleFunctionId
       ? spec.functions.filter((f) => f.id === c.articleFunctionId)
       : spec.functions.length === 1

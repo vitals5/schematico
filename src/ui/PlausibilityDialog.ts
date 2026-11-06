@@ -13,6 +13,7 @@ import {reviewInspection,type ReviewFilters,type ReviewGrouping} from '../model/
 import {ARTICLE_DATA_STATES,type ArticleDataState} from '../model/ArticleDataAnalysis';
 
 export class PlausibilityDialog {
+  private onWiring?:(location:import('../model/ElectricalInspection').InspectionLocation)=>void;
   private onArticles?:(addresses:ComponentAddress[])=>void;
   private filters:ReviewFilters={};
   private grouping:ReviewGrouping='rule';
@@ -20,13 +21,13 @@ export class PlausibilityDialog {
   private onNavigate: (pageId: string, componentId?: string) => void;
   private onFinding?: (finding:PlausibilityMessage)=>void;
 
-  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onManageArticles?:(addresses:ComponentAddress[])=>void; onNavigateToPage: (pageId: string, componentId?: string) => void; onNavigateToFinding?:(finding:PlausibilityMessage)=>void }) {
+  constructor(project: Project, onNavigateOrOptions: ((pageId: string, componentId?: string) => void) | { onManageWiring?:(location:import('../model/ElectricalInspection').InspectionLocation)=>void; onManageArticles?:(addresses:ComponentAddress[])=>void; onNavigateToPage: (pageId: string, componentId?: string) => void; onNavigateToFinding?:(finding:PlausibilityMessage)=>void }) {
     this.project = project;
     if (typeof onNavigateOrOptions === 'function') {
       this.onNavigate = onNavigateOrOptions;
     } else {
       this.onNavigate = onNavigateOrOptions.onNavigateToPage;
-      this.onFinding=onNavigateOrOptions.onNavigateToFinding;this.onArticles=onNavigateOrOptions.onManageArticles;
+      this.onFinding=onNavigateOrOptions.onNavigateToFinding;this.onArticles=onNavigateOrOptions.onManageArticles;this.onWiring=onNavigateOrOptions.onManageWiring;
     }
   }
 
@@ -160,7 +161,7 @@ export class PlausibilityDialog {
       <td style="padding:6px">${escapeSvg(t(({error:'plausSeverityError',warning:'plausSeverityWarning',info:'plausSeverityInfo'} as const)[m.severity]))}</td><td>${escapeSvg(m.pageNumber)}</td><td>${escapeSvg(m.bmk||'-')}</td>
       <td style="padding:6px"><div>${escapeSvg(m.message)}</div><div style="font-size:10px;color:#90cdf4">${escapeSvg(m.ruleId)} · ${escapeSvg(m.location.pinId??m.location.wireId??'')}</div>
       <div style="font-size:10px">${escapeSvg(originLabel(m))} · ${escapeSvg(t(('articleRole_'+(m.articleData?.role??'unknown')) as any))} · ${escapeSvg(m.articleData?.symbolId??'')}</div>
-      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${this.onArticles&&['missing_article','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device'].includes(m.ruleId)?`<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>`:''}</td></tr>`;
+      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${this.onArticles&&['missing_article','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device'].includes(m.ruleId)?`<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>`:''}${this.onWiring&&(m.ruleId.startsWith('cable_')||m.ruleId==='terminal_number_duplicate')?`<button class="btn" data-edit-wiring>${t('wiringManage')}</button>`:''}</td></tr>`;
     const addressesFor=(findings:PlausibilityMessage[])=>[...new Map(findings.filter(m=>['missing_article','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device'].includes(m.ruleId)).flatMap(m=>[m.location,...m.relatedLocations]).filter(l=>l.componentId).map(l=>[JSON.stringify([l.pageId,l.componentId]),{pageId:l.pageId,componentId:l.componentId!}])).values()];
     const render=()=>{
       const view=reviewInspection(messages,this.filters,this.grouping),pages=Math.max(1,Math.ceil(view.groups.length/30));page=Math.min(page,pages-1);
@@ -189,6 +190,7 @@ export class PlausibilityDialog {
       if(more){const id=more.dataset.groupMore!;limits.set(id,(limits.get(id)??50)+50);render();return;}
       const selected=el.closest<HTMLElement>('.plaus-row');if(!selected)return;
       const finding=messages[Number(selected.dataset.findingIndex)];
+      if(el.closest('[data-edit-wiring]')){this.onWiring?.(finding.location);closeModal();return;}
       if(el.closest('[data-edit-article]')){this.onArticles?.(addressesFor([finding]));closeModal();return;}
       if(this.onFinding)this.onFinding(finding);else this.onNavigate(finding.pageId,finding.componentId);closeModal();
     });

@@ -1,3 +1,5 @@
+import {DeviceNavigatorDialog} from './DeviceNavigatorDialog';
+import {WiringDialog} from './WiringDialog';
 import {ArticleWorkbenchDialog} from './ArticleWorkbenchDialog';
 import type {ComponentAddress} from '../model/ArticleTypes';
 import {RecentFiles,type RecentEntry,type RecentHandle} from '../model/RecentFiles';
@@ -515,6 +517,9 @@ export class App {
     this.canvas.setPage(this.project.activePageId || this.project.pages[0].id);
   }
 
+  private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
+  private openWiringWorkbench(initial?:import('../model/ElectricalInspection').InspectionLocation){this.canvas.finishInteraction();this.history.record(this.project);new WiringDialog(()=>this.project,p=>this.applyProjectTransaction(p),initial).show();}
+  private openDeviceNavigator(){this.canvas.finishInteraction();this.history.record(this.project);new DeviceNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(c)this.canvas.focusInspection({pageId:a.pageId,pageNumber:page!.pageNumber,componentId:c.id,x:c.x,y:c.y});this.updateUI();},a=>this.openArticleWorkbench(a)).show();}
   private openArticleWorkbench(initial:ComponentAddress[]=[]):void {
     this.canvas.finishInteraction();this.history.record(this.project);
     new ArticleWorkbenchDialog(()=>this.project,next=>{this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);},initial,address=>{this.canvas.setPage(address.pageId);const c=this.project.pages.find(p=>p.id===address.pageId)?.components.find(c=>c.id===address.componentId);if(c)this.canvas.focusInspection({pageId:address.pageId,pageNumber:this.project.pages.find(p=>p.id===address.pageId)?.pageNumber??'',componentId:c.id,x:c.x,y:c.y});this.updateUI();}).show();
@@ -1184,6 +1189,8 @@ export class App {
       }
     });
     bindMenuOpt('menuProjectSettings', () => this.openProjectSettings());
+    bindMenuOpt('menuDeviceNavigator',()=>this.openDeviceNavigator());
+    bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
     bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
       this.canvas.finishInteraction();this.history.record(this.project);
@@ -1298,6 +1305,7 @@ export class App {
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
         onManageArticles:addresses=>this.openArticleWorkbench(addresses),
+        onManageWiring:location=>this.openWiringWorkbench(location),
         onNavigateToFinding:(finding)=>{this.canvas.focusInspection(finding.location);this.updateUI();},
         onNavigateToPage: (pageId) => {
           this.canvas.setPage(pageId);
