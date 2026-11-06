@@ -181,9 +181,10 @@ export interface TextFormatConfig {
 }
 
 export interface PlacedComponent {
+  articleReferences?: ImportedArticleReference[];
   /** Evidence about reading this placement's source record; not a claim about
    * the contents of the source application's complete parts database. */
-  articleImport?: { source: 'native_project' | 'xml_macro'; status: 'not_read' | 'record_read'; observedArticleNumber?: string };
+  articleImport?: { source: 'native_project' | 'xml_macro'; status: 'not_read' | 'record_read'; observedArticleNumber?: string; referenceIds?: number[] };
   articleRequirement?: 'required' | 'optional' | 'none';
   referenceRequirement?: 'required' | 'optional';
   nativeProperties?: Record<string,string>;
@@ -379,7 +380,19 @@ export interface Page {
   };
 }
 
+export interface ImportedArticleReference {
+  sourceId: number; ownerType: number; ownerId: number;
+  articleNumber: string; variant: string; position?: number; quantity?: number;
+  manufacturer?: string; masterDataId?: string;
+}
+export interface ImportedArticleMaster {
+  id: string; sourceId: number; articleNumber: string; variant: string;
+  manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
+}
 export interface Project {
+  importedArticleLibrary?: ImportedArticleMaster[];
+  sourceArticleReferences?: ImportedArticleReference[];
+  articleImportDiagnostics?: string[];
   id: string;
   name: string;
   description: string;

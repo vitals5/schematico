@@ -42,7 +42,7 @@ import { CadCanvas } from '../editor/CadCanvas';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { PackageHandler, PackageInspectionResult } from '../packages/PackageHandler';
 import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
-import { PartsListGenerator } from '../reports/PartsList';
+import { PartsListGenerator,partQuantityLabel } from '../reports/PartsList';
 import { PdfExportDialog } from './PdfExportDialog';
 import { PartCatalogue, MANUFACTURER_PARTS, ManufacturerPart } from '../model/PartCatalogue';
 import { MobileConnectDialog } from './MobileConnectDialog';
@@ -2839,11 +2839,11 @@ export class App {
     for (const part of parts) {
       html += `
         <tr>
-          <td style="font-weight: bold; color: var(--warning);">${part.quantity}x</td>
-          <td style="font-family: monospace; color: var(--accent-bright);">${part.articleNumber}</td>
-          <td>${part.description}</td>
-          <td>${part.manufacturer}</td>
-          <td style="font-family: monospace; color: #a0aec0;">${part.bmkList.join(', ')}</td>
+          <td style="font-weight: bold; color: var(--warning);">${partQuantityLabel(part)}</td>
+          <td style="font-family: monospace; color: var(--accent-bright);">${escapeSvg(part.articleNumber)}${part.variant?` [${escapeSvg(part.variant)}]`:''}</td>
+          <td>${escapeSvg(part.description)}</td>
+          <td>${escapeSvg(part.manufacturer)}</td>
+          <td style="font-family: monospace; color: #a0aec0;">${escapeSvg(part.bmkList.join(', '))}</td>
         </tr>
       `;
     }

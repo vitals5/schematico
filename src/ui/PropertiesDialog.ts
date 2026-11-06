@@ -1,3 +1,4 @@
+import {importedArticleFields} from './ImportedArticleFields';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 import {renderInspectionFields,collectInspectionFields,applyInspectionFields} from './InspectionFields';
 // src/ui/PropertiesDialog.ts
@@ -615,6 +616,7 @@ export class PropertiesDialog {
 
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${importedArticleFields(this.component)}
           <div style="background: #1c212c; border: 1px solid #3e4656; border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
               <div style="font-size: 12px; font-weight: 600; color: #63b3ed;">${escapeSvg(t('propPartHeading'))}</div>

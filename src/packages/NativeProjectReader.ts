@@ -1,4 +1,5 @@
 import { readNativeGroups } from './NativeGroups';
+import {NativeArticles} from './NativeArticles';
 import { geometryFromSymbol } from '../model/DeviceBoxElement';
 import { nativeCableKind, readNativeCables, bindImportedCableCores } from './NativeCables';
 import JSZip from 'jszip';
@@ -24,6 +25,7 @@ type Tables = Record<keyof typeof EOD_LAYOUTS, EodRecord[]>;
 /** Page-independent importer: source placements reference the embedded master data. */
 export class NativeProjectReader {
   readonly messages: string[] = [];
+  private articles?: NativeArticles;
   private plotFrameTemplate?: PlotFrameTemplate;
   private coverPageTemplate?: CoverPageTemplate;
   private graphics = new Map<string, LibraryEntry>();
@@ -68,6 +70,8 @@ export class NativeProjectReader {
   }
 
   finalize(project: Project): void {
+    this.articles?.finalize(project);
+    this.messages.push(...this.articles?.messages??[]);
     if (this.plotFrameTemplate) project.plotFrameTemplate = this.plotFrameTemplate;
     if (this.coverPageTemplate) project.coverPageTemplate = this.coverPageTemplate;
     for (const page of project.pages) bindImportedCableCores(page,project);
@@ -100,6 +104,7 @@ export class NativeProjectReader {
     const library = await NativeSymbolLibrary.create(zip, root);
     await library.prepare([...tables.Function, ...tables.IPoint, ...tables.Potential, ...tables.Instance]);
     const importer = new NativeProjectReader(tables, library);
+    importer.articles=await NativeArticles.read(zip,root);
     importer.images = await readNativePageImages(zip, root,
       [...tables.Instance, ...tables.Function, ...tables.IPoint, ...tables.Potential], message => importer.messages.push(message));
     importer.plotFrameTemplate = await readNativePlotFrame(zip, root, tables.Instance, library);
@@ -188,6 +193,7 @@ export class NativeProjectReader {
       };
       for (const [id, label] of nativePinLabelOverrides(r, d.pins, this.library.layers))
         comp.pins[id].labelPosition = { ...label, x: entry.origin.x + label.x, y: entry.origin.y + label.y };
+      this.articles?.bind(comp);
       const overrides = propertyPositions(r.data);
       const nativeLayouts = entry.variantData ? nativePropertyLayouts(entry.variantData, r, this.library.layers) : new Map();
       const propertyLabel = (field: number) => {

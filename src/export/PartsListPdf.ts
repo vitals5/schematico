@@ -1,5 +1,5 @@
 import type { jsPDF } from 'jspdf';
-import type { PartEntry } from '../reports/PartsList';
+import {partQuantityLabel,type PartEntry} from '../reports/PartsList';
 
 export function getBomColumns(lang: 'de' | 'en' = 'de') {
   return [
@@ -28,7 +28,7 @@ export function layoutPartsListPdf(doc: jsPDF, parts: PartEntry[], pageHeight: n
   const next = () => { pages.push([]); y = BOM_ROWS_TOP; };
   try {
     for (const part of parts) {
-      const values = [`${part.quantity}x`, part.articleNumber, part.description, part.manufacturer, part.bmkList.join(', ')];
+      const values = [partQuantityLabel(part), part.articleNumber+(part.variant?' ['+part.variant+']':''), part.description, part.manufacturer, part.bmkList.join(', ')];
       const cells = values.map((text, i) => {
         const column = columns[i] ?? BOM_COLUMNS[i];
         doc.setFont(column.font, column.style); doc.setFontSize(BOM_FONT_SIZE);

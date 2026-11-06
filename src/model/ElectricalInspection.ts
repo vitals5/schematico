@@ -81,7 +81,7 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
         const requirement = comp.articleRequirement ?? symbol?.articleRequirement;
         const masters = index.referencesFor(comp).filter(e => e.symbol?.isMaster);
         const inheritedArticle = !!symbol?.isContact && masters.length === 1 && !!masters[0].component.articleNumber?.trim();
-        if ((!exempt || requirement === 'required') && !comp.articleNumber?.trim() && !inheritedArticle && requirement !== 'optional' && requirement !== 'none')
+        if ((!exempt || requirement === 'required') && articles.get(entry)?.state!=='assigned' && !comp.articleNumber?.trim() && !inheritedArticle && requirement !== 'optional' && requirement !== 'none')
             add('missing_article', comp.id, requirement === 'required' ? 'warning' : 'info', inspectionLocation(index, entry), t(articles.get(entry)?.state==='import_not_read'?'plausMsgArticleNotRead':'plausMsgMissingArticle'), t(['import_not_read','import_unknown','imported_unassigned'].includes(articles.get(entry)!.state)?'plausRecArticleImport':'plausRecMissingArticle'), { requirement: requirement ?? 'legacy',articleState:articles.get(entry)!.state });
         const pins = index.pinsFor(entry), explicit = pins.filter(p => (comp.pins[p.id]?.connectionRequirement ?? p.definition?.connectionRequirement) !== undefined);
         for (const pin of explicit) {

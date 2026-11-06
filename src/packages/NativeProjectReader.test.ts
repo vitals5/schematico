@@ -88,7 +88,7 @@ for (const [terminal, fusePin] of [[0xab, 0], [0xac, 2], [0xad, 4]]) {
   assert(project.logicalConnections!.some(w => w.from.componentId === component(terminal).id && w.to.componentId === component(0x8988).id && w.to.pinId === String(fusePin)), 'Phase-specific native netlist is retained independently of drawn runs');
 }
 assert.equal(component(0x89e4).functionText, 'Tarifsteuergerät');
-assert(page.components.some(c => c.functionText === 'Heizung'), 'Free texts are regular editable elements');
+assert(page.texts?.some(text => text.text === 'Heizung'), 'Free texts are regular editable page text objects');
 assert.equal(component(0x2d4, 70).crossRef, '/1-2.7');
 assert.equal(component(0x2da, 70).crossRef, '/1-2.8');
 CrossReferenceEngine.updateProjectCrossReferences(project);

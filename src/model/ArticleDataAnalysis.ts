@@ -1,9 +1,11 @@
 import type { IndexedComponent, ProjectIndex } from './ProjectIndex';
 import { isConnectionSymbol } from './ConnectionSymbols';
+import {activeImportedArticles} from './ImportedArticles';
 export const ARTICLE_DATA_STATES = ['assigned', 'inherited', 'not_applicable', 'import_not_read', 'source_record_empty', 'imported_unassigned', 'import_unknown', 'unassigned'] as const;
 export type ArticleDataState = typeof ARTICLE_DATA_STATES[number];
 export interface ArticleDataContext {
     state: ArticleDataState;
+    articleNumbers?: string[];
     role: 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown';
     symbolId: string;
     plant: string;
@@ -24,6 +26,8 @@ export function articleDataContext(entry: IndexedComponent, index: ProjectIndex)
     const base = { role, symbolId: c.symbolId, plant: entry.structure.plant, location: entry.structure.location, designationKey: entry.deviceKey,
         source: c.articleImport?.source, readStatus: c.articleImport?.status, observedArticleNumber: c.articleImport?.observedArticleNumber,
         sourceObjectType: c.source?.objectType };
+    const references=activeImportedArticles(c);
+    if(references)return {...base,state:'assigned',articleNumber:c.articleNumber,articleNumbers:references.map(r=>r.articleNumber),manufacturer:c.manufacturer};
     if (c.articleNumber?.trim())
         return { ...base, state: 'assigned', articleNumber: c.articleNumber.trim(), manufacturer: c.manufacturer?.trim() };
     const masters = s?.isContact ? index.referencesFor(c).filter(e => e.symbol?.isMaster) : [];
