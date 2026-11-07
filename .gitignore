@@ -14,3 +14,8 @@ artifacts/
 *.zip.[0-9][0-9][0-9]
 *.zw1
 test-data/private/
+
+# Local submission-service runtime state and secrets
+.wrangler/
+workers/**/.dev.vars*
+workers/**/.env*

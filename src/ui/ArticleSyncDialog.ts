@@ -1,3 +1,4 @@
+import { finishEngineeringDialog } from './EngineeringDialog';
 import { projectRevision } from '../layout/types';
 import { importedArticleFields } from './ImportedArticleFields';
 import type { Project } from '../model/types';
@@ -284,5 +285,6 @@ export class ArticleSyncDialog {
         HTMLInputElement | HTMLButtonElement | HTMLSelectElement
       >('button,input,select'))
         control.disabled = true;
+    finishEngineeringDialog(this.el, {kind:'review',description:t('engineeringSyncHint'),wide:true});
   }
 }

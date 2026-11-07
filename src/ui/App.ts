@@ -1,3 +1,4 @@
+import { refreshSharedCatalog } from '../model/GitHubCatalog';
 import {PotentialDialog} from './PotentialDialog';
 import {DeviceNavigatorDialog} from './DeviceNavigatorDialog';
 import {WiringDialog} from './WiringDialog';
@@ -109,6 +110,7 @@ export class App {
   private statusBadge!: StatusBadge;
 
   constructor() {
+    void refreshSharedCatalog();
     const savedLeftW = readAppSetting('left_w');
     if (savedLeftW) this.leftSidebarWidth = parseInt(savedLeftW, 10) || 280;
     const savedRightW = readAppSetting('right_w');

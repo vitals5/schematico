@@ -1,6 +1,16 @@
-import {manufacturerArticles} from '../model/ManufacturerImport';
-import {TeamCatalogDialog} from './TeamCatalogDialog';
-import {FunctionEditor} from './FunctionEditor';
+import {
+  sharedCatalogState,
+  refreshSharedCatalog,
+  onSharedCatalogChange,
+} from '../model/GitHubCatalog';
+import { openCatalogPublication } from './CatalogPublicationDialog';
+import {
+  finishEngineeringDialog,
+  formatCatalogSummary,
+} from './EngineeringDialog';
+import { manufacturerArticles } from '../model/ManufacturerImport';
+import { TeamCatalogDialog } from './TeamCatalogDialog';
+import { FunctionEditor } from './FunctionEditor';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import type { CatalogArticle } from '../model/ArticleTypes';
 import type { Project } from '../model/types';
@@ -41,13 +51,16 @@ export class ArticleCatalogDialog {
   private search = '';
   private page = 0;
   private error = '';
-  private importHint='';
+  private importHint = '';
+  private shared = sharedCatalogState();
+  private candidateCache?: CatalogArticle[];
+  private stopShared?: () => void;
   private message = '';
   private busy = false;
   private closed = false;
   private available = false;
   private editing?: CatalogArticle;
-  private functionEditor?:FunctionEditor;
+  private functionEditor?: FunctionEditor;
   private pending?: CatalogArticle[];
   private deletion?: CatalogArticle;
   private replace = false;
@@ -57,7 +70,9 @@ export class ArticleCatalogDialog {
     private project: Project,
     private onChoose?: (article: CatalogArticle) => void,
     initialSearch = '',
-  ) { this.search = initialSearch; }
+  ) {
+    this.search = initialSearch;
+  }
   show() {
     if (document.getElementById('articleCatalogDialog')) return;
     this.el.id = 'articleCatalogDialog';
@@ -68,16 +83,30 @@ export class ArticleCatalogDialog {
     bindArticleModalKeys(this.el, () => {
       if (!this.busy) this.close();
     });
+    this.stopShared = onSharedCatalogChange(() => {
+      this.shared = sharedCatalogState();
+      this.candidateCache = undefined;
+      if (
+        !this.busy &&
+        !this.closed &&
+        !document.getElementById('catalogPublicationDialog') &&
+        !document.getElementById('catalogDesktopTransfer')
+      )
+        this.render();
+    });
     this.render();
+    void refreshSharedCatalog();
     void this.work(() => this.reload());
   }
   private close() {
     this.closed = true;
+    this.stopShared?.();
     this.el.remove();
     if (this.restore?.isConnected) this.restore.focus();
   }
   private async reload() {
     this.rows = await this.store.list();
+    this.candidateCache = undefined;
     this.expected = catalogRevision(this.rows);
     this.available = true;
     this.pending = undefined;
@@ -98,9 +127,28 @@ export class ArticleCatalogDialog {
     }
   }
   private candidates() {
+    if (this.candidateCache) return this.candidateCache;
     const map = new Map(starterArticles().map((a) => [catalogKey(a), a]));
+    for (const a of this.shared.articles) map.set(catalogKey(a), a);
     for (const a of this.rows) map.set(catalogKey(a), a);
-    return [...map.values()];
+    return (this.candidateCache = [...map.values()]);
+  }
+  private originLabel(article: CatalogArticle) {
+    const local = this.rows.some((a) => a.id === article.id),
+      shared = this.shared.articles.some((a) => a.id === article.id);
+    return t(
+      local
+        ? shared
+          ? 'githubCatalogLocalCopy'
+          : 'githubCatalogLocal'
+        : shared
+          ? 'githubCatalogSource'
+          : 'githubCatalogStarter',
+    );
+  }
+  private sharedHas(article: CatalogArticle) {
+    const key = catalogKey(article);
+    return this.shared.articles.some((a) => a.id === key);
   }
   private prepare(items: CatalogArticle[], importHint = '') {
     planCatalogMerge(this.rows, items);
@@ -125,19 +173,20 @@ export class ArticleCatalogDialog {
       ? planCatalogMerge(this.rows, this.pending)
       : undefined;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
+ <div class="eng-shared-catalog"><div><strong>${t('githubCatalogTitle')} · ${this.shared.articles.length} ${t('githubCatalogArticles')}</strong><span>${t(('githubCatalogState_' + this.shared.status) as any)}${!this.shared.submission ? ' · ' + t('githubCatalogNotConfigured') : ''}</span></div><button class="btn" data-shared-refresh>${t('articlesRefresh')}</button></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><input type="file" data-file accept=".csv,.json,.xml" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
- <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><tbody>${candidates
+ <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th>${t('articlesManufacturer')}</th><th>${t('articlesNumber')}</th><th>${t('articlesDescription')}</th><th>${t('engineeringStatus')}</th><th>${t('plausColAction')}</th></tr></thead><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
    .map(
      (a, i) =>
-       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)} [${esc(a.variant)}]</td><td>${esc(a.description)}</td><td>${a.verification === 'user_checked' ? t('articlesChecked') : t('articlesUnverified')}</td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.rows.some((r) => r.id === a.id) ? `<button class="btn" data-delete="${i}">${t('articlesDelete')}</button>` : ''}</td></tr>`,
+       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.rows.some((r) => r.id === a.id) ? `<button class="btn" data-delete="${i}">${t('articlesDelete')}</button>` : ''}</td></tr>`,
    )
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><button class="btn" data-save>${t('articlesSave')}</button></fieldset>` : ''}
- ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(JSON.stringify(this.rows.find((r) => catalogKey(r) === catalogKey(a)) ?? null, null, 2))}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(a, null, 2))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
+ ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
     const slice = candidates.slice(this.page * 50, this.page * 50 + 50);
@@ -159,7 +208,36 @@ export class ArticleCatalogDialog {
         next.focus();
         next.setSelectionRange(pos, pos);
       });
-    this.el.querySelector('[data-team]')?.addEventListener('click',()=>new TeamCatalogDialog(()=>void this.work(()=>this.reload())).show());
+    this.el.querySelector('[data-shared-refresh]')?.addEventListener(
+      'click',
+      () =>
+        void this.work(async () => {
+          this.shared = await refreshSharedCatalog();
+        }),
+    );
+    this.el.querySelector('[data-publish]')?.addEventListener('click', () => {
+      try {
+        const article = validateCatalogArticle(syncDraft());
+        if (this.sharedHas(article)) throw new Error('githubCatalogConflict');
+        void openCatalogPublication(article, () => {
+          this.message = t('githubCatalogSubmitted');
+          this.shared = sharedCatalogState();
+          this.render();
+          void refreshSharedCatalog();
+        }).catch((error) => {
+          this.error = articleError(error);
+          this.render();
+        });
+      } catch (error) {
+        this.error = articleError(error);
+        this.render();
+      }
+    });
+    this.el
+      .querySelector('[data-team]')
+      ?.addEventListener('click', () =>
+        new TeamCatalogDialog(() => void this.work(() => this.reload())).show(),
+      );
     this.el.querySelector('[data-new]')?.addEventListener('click', () => {
       this.editing = {
         id: '',
@@ -196,7 +274,62 @@ export class ArticleCatalogDialog {
       this.page++;
       this.render();
     });
-    const functionsEl=this.el.querySelector<HTMLElement>('[data-functions-editor]');if(functionsEl)this.functionEditor=new FunctionEditor(functionsEl,this.editing?.functions);
+    const functionsEl = this.el.querySelector<HTMLElement>(
+      '[data-functions-editor]',
+    );
+    if (functionsEl)
+      this.functionEditor = new FunctionEditor(
+        functionsEl,
+        this.editing?.functions,
+      );
+    const syncDraft = () => {
+      const article = { ...this.editing! };
+      for (const input of this.el.querySelectorAll<HTMLInputElement>(
+        '[data-field]',
+      ))
+        (article as any)[input.dataset.field!] = input.value;
+      article.functions = this.functionEditor?.value();
+      article.origin = 'user';
+      article.verification = this.el.querySelector<HTMLInputElement>(
+        '[data-verified]',
+      )?.checked
+        ? 'user_checked'
+        : 'unverified';
+      this.editing = article;
+      return article;
+    };
+    const invalidateEditor = () => {
+      const article = syncDraft();
+      this.pending = undefined;
+      this.el.querySelector('[data-preview]')?.remove();
+      const publish =
+        this.el.querySelector<HTMLButtonElement>('[data-publish]');
+      if (publish)
+        publish.disabled =
+          !this.shared.submission ||
+          !article.articleNumber.trim() ||
+          !article.manufacturer.trim() ||
+          this.sharedHas(article);
+    };
+    const editor = functionsEl?.closest('fieldset');
+    editor?.addEventListener('input', invalidateEditor);
+    editor?.addEventListener('click', (event) => {
+      if (
+        (event.target as Element).closest(
+          '[data-add-function],[data-remove-function]',
+        )
+      )
+        invalidateEditor();
+    });
+    const publishButton =
+      this.el.querySelector<HTMLButtonElement>('[data-publish]');
+    if (publishButton && this.editing)
+      publishButton.disabled =
+        !this.shared.submission ||
+        !this.editing.articleNumber.trim() ||
+        !this.editing.manufacturer.trim() ||
+        this.sharedHas(this.editing!);
+
     this.el.querySelector('[data-save]')?.addEventListener('click', () => {
       try {
         const a = { ...this.editing! };
@@ -204,14 +337,15 @@ export class ArticleCatalogDialog {
           '[data-field]',
         ))
           (a as any)[input.dataset.field!] = input.value;
-        a.functions=this.functionEditor?.value();
+        a.functions = this.functionEditor?.value();
         a.origin = 'user';
         a.verification = this.el.querySelector<HTMLInputElement>(
           '[data-verified]',
         )!.checked
           ? 'user_checked'
           : 'unverified';
-        this.editing=a;this.prepare([validateCatalogArticle(a)]);
+        this.editing = a;
+        this.prepare([validateCatalogArticle(a)]);
       } catch (e) {
         this.error = articleError(e);
         this.render();
@@ -238,9 +372,19 @@ export class ArticleCatalogDialog {
           const text = await f.text();
           if (f.name.toLowerCase().endsWith('.xml')) {
             const imported = manufacturerArticles(text);
-            this.prepare(imported.articles, t('manufacturerHint', { count: imported.withoutFunctions.length }));
+            this.prepare(
+              imported.articles,
+              t('manufacturerHint', {
+                count: imported.withoutFunctions.length,
+              }),
+            );
           } else {
-            this.prepare(parseCatalogFile(text, f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json'));
+            this.prepare(
+              parseCatalogFile(
+                text,
+                f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json',
+              ),
+            );
           }
         });
     });
@@ -248,7 +392,7 @@ export class ArticleCatalogDialog {
       .querySelector('[data-json]')
       ?.addEventListener('click', () =>
         downloadArticleFile(
-          catalogToJson(this.rows),
+          catalogToJson(this.candidates()),
           'schematico-articles.json',
           'application/json',
         ),
@@ -257,7 +401,7 @@ export class ArticleCatalogDialog {
       .querySelector('[data-csv]')
       ?.addEventListener('click', () =>
         downloadArticleFile(
-          catalogToCsv(this.rows),
+          catalogToCsv(this.candidates()),
           'schematico-articles.csv',
           'text/csv;charset=utf-8',
         ),
@@ -295,6 +439,11 @@ export class ArticleCatalogDialog {
         | HTMLTextAreaElement
       >('button,input,select,textarea'))
         input.disabled = true;
+    finishEngineeringDialog(this.el, {
+      kind: 'catalog',
+      description: t('engineeringCatalogHint'),
+      wide: true,
+    });
     focusArticleModal(this.el);
   }
 }

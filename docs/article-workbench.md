@@ -16,7 +16,7 @@ Eine leere manuelle Liste entfernt die aktive Zuordnung. Die ursprünglichen Fel
 
 ## Lokaler Katalog
 
-Der Katalog liegt in **IndexedDB**, Datenbank `schematico-articles`, im aktuellen Browserprofil und Ursprung. Die Webversion besitzt dadurch keinen gemeinsamen Serverkatalog. Browserwechsel, ein anderer Ursprung und das Löschen der Websitedaten betreffen diesen Speicher. Die Desktopversion verwendet den Speicher ihres Anwendungsprofils. Für Übertragung und Sicherung dienen die Exportdateien.
+Der Katalog liegt in **IndexedDB**, Datenbank `schematico-articles`, im aktuellen Browserprofil und Ursprung. Zusätzlich lädt die App beim Start den [gemeinsamen JSON-Katalog auf GitHub](github-catalog.md). Dafür wird kein Datenbankserver benötigt. Browserwechsel, ein anderer Ursprung und das Löschen der Websitedaten betreffen diesen Speicher. Die Desktopversion verwendet den Speicher ihres Anwendungsprofils. Für Übertragung und Sicherung dienen die Exportdateien.
 
 - Eigene Artikel lassen sich anlegen, bearbeiten und löschen. **Speichern vorbereiten** und die anschließende Vorschau zeigen neue und abweichende Einträge vor dem Schreiben.
 - **Projektartikel übernehmen** liest eingebettete Stammsätze und aktuell verwendete Zuordnungen. Die im Programm enthaltene kleine Startliste ist zusätzlich auswählbar; ihre Funktionsdaten werden nicht als geprüft ausgegeben.
@@ -65,3 +65,5 @@ Der optionale [Teamkatalogdienst](team-catalog.md) ergänzt persönliche Benutze
 Die [Assistenten zur Projektbereinigung](engineering-assistants.md) ergänzen Herstellerimport, genaue Funktionsplatzvorschläge und identitätsgebundene Querverweise. Eine Funktionszuordnung lässt den Prüfstatus der Artikel-Spezifikation unverändert.
 
 **Artikelweise Stammdaten aktualisieren…** ergänzt die genaue Sammelaktualisierung eingebetteter Artikel-Snapshots über alle Verwendungen. Funktionsspezifikationen unterstützen ausdrücklich erforderliche Darstellungen (`required: true`); zusätzliche Ansichten derselben Funktion werden separat bestätigt. Einzelheiten und Grenzen stehen bei den [Projektbereinigungs-Assistenten](engineering-assistants.md).
+
+Die überarbeitete [Verwaltungsoberfläche](management-ui.md) bündelt weiterführende Aktionen unter **Werkzeuge** und kennzeichnet lokale Kopien und gemeinsame GitHub-Daten.

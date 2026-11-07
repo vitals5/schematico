@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+const {catalogPublicationUrl,publicationArticle}=require('./catalog-links.cjs');
+const record={manufacturer:'Maker',articleNumber:'001',variant:'',description:'Text with ä and https://other.invalid/#value'};
+const url=new URL(catalogPublicationUrl(JSON.stringify(record)));assert.equal(url.origin,'https://vitals5.github.io');assert.equal(url.pathname,'/schematico/catalog-submit.html');assert.equal(url.search,'');assert.deepEqual(JSON.parse(Buffer.from(new URLSearchParams(url.hash.slice(1)).get('article'),'base64url').toString('utf8')),record);
+assert.throws(()=>catalogPublicationUrl('javascript:bad'));assert.throws(()=>catalogPublicationUrl('{}'));assert.throws(()=>catalogPublicationUrl('x'.repeat(32769)));
+assert.throws(()=>catalogPublicationUrl(JSON.stringify({...record,description:'x'.repeat(3000)})),/clipboard/);assert.equal(JSON.parse(publicationArticle(JSON.stringify({...record,description:'x'.repeat(3000)}))).description.length,3000);
+console.log('✓ Desktop catalogue publication opens only the fixed HTTPS Schematico page with a bounded data fragment');

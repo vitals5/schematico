@@ -1,0 +1,57 @@
+name: Deploy Catalog Submission Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_url:
+        description: HTTPS Worker origin, e.g. https://schematico-catalog-submissions.YOUR-SUBDOMAIN.workers.dev
+        required: true
+        type: string
+      site_key:
+        description: Public Turnstile site key (not its secret)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted service
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check required configuration
+        run: node -e 'for(const name of ["CF_API_TOKEN","CF_ACCOUNT_ID","GITHUB_DISPATCH_TOKEN","TURNSTILE_SECRET"])if(!process.env[name])throw new Error("Missing repository secret for "+name)'
+        env:
+          CF_API_TOKEN: ${{ secrets.CATALOG_CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CATALOG_CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_DISPATCH_TOKEN: ${{ secrets.CATALOG_DISPATCH_TOKEN }}
+          TURNSTILE_SECRET: ${{ secrets.CATALOG_TURNSTILE_SECRET }}
+      - name: Deploy submission Worker and server secrets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CATALOG_CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CATALOG_CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/catalog-submissions
+          wranglerVersion: '4.158.0'
+          command: deploy
+          secrets: |
+            GITHUB_DISPATCH_TOKEN
+            TURNSTILE_SECRET
+        env:
+          GITHUB_DISPATCH_TOKEN: ${{ secrets.CATALOG_DISPATCH_TOKEN }}
+          TURNSTILE_SECRET: ${{ secrets.CATALOG_TURNSTILE_SECRET }}
+      - name: Publish public catalogue service configuration
+        run: node scripts/configure-catalog-service.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CATALOG_SERVICE_URL: ${{ inputs.worker_url }}
+          CATALOG_SITE_KEY: ${{ inputs.site_key }}

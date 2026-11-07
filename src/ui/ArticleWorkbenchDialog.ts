@@ -1,3 +1,4 @@
+import { finishEngineeringDialog } from './EngineeringDialog';
 import { ArticleMaintenanceDialog } from './ArticleMaintenanceDialog';
 import {ArticleFunctionDialog} from './ArticleFunctionDialog';
 import { ProjectIndex } from '../model/ProjectIndex';
@@ -400,6 +401,7 @@ export class ArticleWorkbenchDialog {
     });
     this.el.querySelector('[data-functions]')?.addEventListener('click',()=>{try{new ArticleFunctionDialog(this.getProject,p=>{this.onApply(p);this.el.remove();},this.addresses()).show();}catch(e){this.error=articleError(e);this.render();}});
     this.el.querySelector('[data-maintenance]')?.addEventListener('click',()=>new ArticleMaintenanceDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
+    finishEngineeringDialog(this.el, { kind: 'articles', description: t('engineeringArticlesHint'), wide: true });
     focusArticleModal(this.el);
   }
 }

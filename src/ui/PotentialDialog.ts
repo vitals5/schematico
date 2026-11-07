@@ -1,3 +1,4 @@
+import { finishEngineeringDialog } from './EngineeringDialog';
 import type { Project } from '../model/types';
 import {
   PotentialIndex,
@@ -215,6 +216,7 @@ export class PotentialDialog {
         this.render();
       }
     });
+    finishEngineeringDialog(this.el, { kind: 'potential', description: t('engineeringPotentialHint'), wide: false });
     focusArticleModal(this.el);
   }
 }

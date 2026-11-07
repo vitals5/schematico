@@ -1,3 +1,4 @@
+import { finishEngineeringDialog } from './EngineeringDialog';
 import type { Project } from '../model/types';
 import type { ComponentAddress } from '../model/ArticleTypes';
 import { ArticleFunctionPlan } from '../model/ArticleFunctions';
@@ -130,6 +131,7 @@ export class ArticleFunctionDialog {
         this.render();
       }
     });
+    finishEngineeringDialog(this.el, { kind: 'review', description: t('engineeringFunctionsHint'), wide: false });
     focusArticleModal(this.el);
   }
 }

@@ -4,12 +4,14 @@ export function bindArticleModalKeys(el: HTMLElement, onEscape: () => void) {
     e.stopPropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
+      const menu=el.querySelector<HTMLDetailsElement>('.eng-tools-menu[open]');
+      if(menu){menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();return;}
       onEscape();
     }
     if (e.key === 'Tab') {
       const controls = [
         ...el.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),input:not(:disabled):not([type=hidden]),select:not(:disabled),textarea:not(:disabled),summary',
+          'button:not(:disabled):not([tabindex="-1"]),input:not(:disabled):not([type=hidden]),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]',
         ),
       ].filter((c) => c.getClientRects().length);
       const first = controls[0],

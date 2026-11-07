@@ -1,3 +1,4 @@
+import { finishEngineeringDialog, formatCatalogSummary, formatEngineeringDate } from './EngineeringDialog';
 import {
   TeamCatalogClient,
   TeamSyncPlan,
@@ -58,7 +59,7 @@ export class TeamCatalogDialog {
       this.plan?.rows.filter((r) => r.conflict && !this.choices[r.key])
         .length ?? 0;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" style="background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px;padding:20px;width:min(1100px,100%);max-height:90vh;overflow:auto"><h2>${t('teamCatalog')}</h2><p>${t('teamHint')}</p><div role="alert" style="color:#fca5a5">${esc(this.error)}</div><label>${t('teamUrl')}<input class="form-input" data-url value="${esc(this.url)}"></label><label>${t('teamToken')}<input class="form-input" type="password" autocomplete="off" data-token></label><button class="btn" data-connect>${t('teamConnect')}</button>${this.snapshot ? `<p>${esc(this.snapshot.teamId)} · ${esc(this.snapshot.user.id)} (${esc(this.snapshot.user.role)}) · v${this.snapshot.revision}</p><label><input type="checkbox" data-pull ${this.pullOnly ? 'checked' : ''}> ${t('teamPullOnly')}</label>` : ''}
- ${this.plan ? `<div style="max-height:42vh;overflow:auto"><table style="width:100%;text-align:left"><tr><th>${t('teamLocal')}</th><th>${t('teamRemote')}</th><th></th></tr>${this.plan.rows.map((r, i) => `<tr><td style="white-space:pre-wrap">${esc(r.local ? JSON.stringify(r.local, null, 2) : '—')}</td><td style="white-space:pre-wrap">${esc(r.remote ? JSON.stringify(r.remote, null, 2) : '—')}</td><td>${r.conflict ? `<select data-choice="${i}"><option value="">${t('teamChoose')}</option><option value="local" ${this.choices[r.key] === 'local' ? 'selected' : ''}>${t('teamLocal')}</option><option value="remote" ${this.choices[r.key] === 'remote' ? 'selected' : ''}>${t('teamRemote')}</option></select>` : ''}</td></tr>`).join('')}</table></div><details><summary>${t('teamHistory')}</summary>${this.history.map((r) => `<div>v${r.revision} · ${esc(r.author)} · ${esc(r.created)} <button class="btn" data-history="${r.revision}">${t('teamVersionDownload')}</button></div>`).join('')}</details>` : ''}
+ ${this.plan ? `<div style="max-height:42vh;overflow:auto"><table style="width:100%;text-align:left"><tr><th>${t('teamLocal')}</th><th>${t('teamRemote')}</th><th></th></tr>${this.plan.rows.map((r, i) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(r.local))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(r.remote))}</td><td>${r.conflict ? `<select data-choice="${i}"><option value="">${t('teamChoose')}</option><option value="local" ${this.choices[r.key] === 'local' ? 'selected' : ''}>${t('teamLocal')}</option><option value="remote" ${this.choices[r.key] === 'remote' ? 'selected' : ''}>${t('teamRemote')}</option></select>` : ''}</td></tr>`).join('')}</table></div><details><summary>${t('teamHistory')}</summary>${this.history.map((r) => `<div>v${r.revision} · ${esc(r.author)} · ${esc(formatEngineeringDate(r.created))} <button class="btn" data-history="${r.revision}">${t('teamVersionDownload')}</button></div>`).join('')}</details>` : ''}
  <footer style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-close>${t('close')}</button><button class="btn" data-apply ${!this.plan || count ? 'disabled' : ''}>${t('articlesApply')}</button></footer></section>`;
     const token = this.el.querySelector<HTMLInputElement>('[data-token]')!;
     token.value = this.token;
@@ -160,6 +161,7 @@ export class TeamCatalogDialog {
         HTMLInputElement | HTMLButtonElement | HTMLSelectElement
       >('button,input,select'))
         c.disabled = true;
+    finishEngineeringDialog(this.el, { kind: 'team', description: t('engineeringTeamHint'), wide: false });
     focusArticleModal(this.el);
   }
 }

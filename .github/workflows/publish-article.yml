@@ -1,0 +1,32 @@
+name: Publish Shared Article
+
+on:
+  repository_dispatch:
+    types: [schematico.article.submitted]
+  workflow_dispatch:
+    inputs:
+      article:
+        description: New article as JSON
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted publisher
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate and append new article
+        run: node scripts/publish-catalog-article.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

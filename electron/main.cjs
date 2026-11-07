@@ -1,5 +1,6 @@
 // electron/main.cjs
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, clipboard } = require('electron');
+const { catalogPublicationUrl, publicationArticle, PUBLICATION_PAGE } = require('./catalog-links.cjs');
 const { githubReleaseUrl } = require('./release-links.cjs');
 const path = require('path');
 const fs = require('fs');
@@ -50,6 +51,19 @@ function createWindow() {
 
 ipcMain.handle('updates:openRelease', async (_event, tag) => {
   await shell.openExternal(githubReleaseUrl(tag));
+  return true;
+});
+
+ipcMain.handle('catalog:openPublication', async (event, serialized) => {
+  if(!mainWindow || event.sender!==mainWindow.webContents)throw new Error('Invalid sender');
+  await shell.openExternal(catalogPublicationUrl(serialized));
+  return true;
+});
+
+ipcMain.handle('catalog:copyAndOpenPublication', async (event, serialized) => {
+  if(!mainWindow || event.sender!==mainWindow.webContents)throw new Error('Invalid sender');
+  clipboard.writeText(publicationArticle(serialized));
+  await shell.openExternal(PUBLICATION_PAGE+'#paste=1');
   return true;
 });
 

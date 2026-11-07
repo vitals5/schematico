@@ -1,9 +1,20 @@
+import { finishEngineeringDialog } from './EngineeringDialog';
 import type { Project } from '../model/types';
 import { CableRepairPlan } from '../model/CableRepairs';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import { articleError } from './ArticleCatalogDialog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
 import { t, type TranslationKey } from '../i18n';
+function repairValue(value:unknown):string {
+  if(value===undefined||value===null)return '—';
+  if(Array.isArray(value))return value.length?value.map(v=>String(v)).join('\n'):'—';
+  if(typeof value==='object'){
+    const details=value as {reserve?:boolean;wireIds?:string[]};
+    if(details.reserve)return t('wiringReserve');
+    if(details.wireIds)return repairValue(details.wireIds);
+  }
+  return String(value);
+}
 export class CableRepairDialog {
   private el = document.createElement('div');
   private plan: CableRepairPlan;
@@ -43,7 +54,7 @@ export class CableRepairDialog {
       .slice(this.page * 40, this.page * 40 + 40)
       .map(
         (r, i) =>
-          `<tr><td><input type="checkbox" data-row="${i + this.page * 40}" ${this.selected.has(r.id) ? 'checked' : ''}></td><td>${esc(this.pageLabels.get(r.pageId) ?? r.pageId)}</td><td>${esc(r.bmk)} · ${esc(r.label)}</td><td>${t(('repair_' + r.kind) as TranslationKey)}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.before) ?? '—')}</td><td style="white-space:pre-wrap">${esc(JSON.stringify(r.evidence.after))}</td><td>${t(('repair_evidence_' + r.evidence.method) as TranslationKey)}${r.evidence.distance !== undefined ? ' · Δ ' + r.evidence.distance.toFixed(3) : ''}<small style="display:block;overflow-wrap:anywhere">${esc(JSON.stringify(r.evidence.endpoints ? { source: r.evidence.source, endpoints: r.evidence.endpoints } : (r.evidence.source ?? '')))}</small></td></tr>`,
+          `<tr><td><input type="checkbox" data-row="${i + this.page * 40}" ${this.selected.has(r.id) ? 'checked' : ''}></td><td>${esc(this.pageLabels.get(r.pageId) ?? r.pageId)}</td><td>${esc(r.bmk)} · ${esc(r.label)}</td><td>${t(('repair_' + r.kind) as TranslationKey)}</td><td style="white-space:pre-wrap">${esc(repairValue(r.evidence.before))}</td><td style="white-space:pre-wrap">${esc(repairValue(r.evidence.after))}</td><td>${t(('repair_evidence_' + r.evidence.method) as TranslationKey)}${r.evidence.distance !== undefined ? ' · Δ ' + r.evidence.distance.toFixed(3) : ''}${r.evidence.source||r.evidence.endpoints?`<details><summary>${t('engineeringEvidence')}</summary><pre style="white-space:pre-wrap">${esc(JSON.stringify({source:r.evidence.source,endpoints:r.evidence.endpoints},null,2))}</pre></details>`:''}</td></tr>`,
       )
       .join(
         '',
@@ -93,6 +104,7 @@ export class CableRepairDialog {
         this.render();
       }
     });
+    finishEngineeringDialog(this.el, { kind: 'wiring', description: t('engineeringRepairHint'), wide: false });
     focusArticleModal(this.el);
   }
 }

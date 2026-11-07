@@ -1,0 +1,12 @@
+name = "schematico-catalog-submissions"
+main = "index.mjs"
+compatibility_date = "2025-04-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://vitals5.github.io"
+
+[[ratelimits]]
+name = "SUBMISSION_LIMITER"
+namespace_id = "121296"
+simple = { limit = 10, period = 60 }

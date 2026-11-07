@@ -1,3 +1,7 @@
+import {
+  finishEngineeringDialog,
+  formatEngineeringDate,
+} from './EngineeringDialog';
 import { DeviceRegistry } from '../model/DeviceRegistry';
 import { bindArticleModalKeys } from './ArticleModal';
 import {
@@ -14,7 +18,7 @@ import type { ComponentAddress } from '../model/ArticleTypes';
 // Plausibility Check & Message Management ("Prüflauf / Meldungsverwaltung")
 
 import { Project } from '../model/types';
-import { t } from '../i18n';
+import { t, translations, type TranslationKey } from '../i18n';
 import { escapeSvg } from '../model/ImportedDrawing';
 
 export type { PlausibilityMessage } from '../model/ProjectInspection';
@@ -30,6 +34,10 @@ import {
   type ArticleDataState,
 } from '../model/ArticleDataAnalysis';
 
+const ruleLabel = (id: string) => {
+  const key = ('inspectionRule_' + id) as TranslationKey;
+  return key in translations.de ? t(key) : id;
+};
 export class PlausibilityDialog {
   private onPotential?: (id?: string) => void;
   private onWiring?: (
@@ -164,15 +172,15 @@ export class PlausibilityDialog {
         ">
           <div>${t('plausStatusDone')}</div>
           <div style="display: flex; gap: 12px; margin-left: auto;">
-            <span style="color: #fc8181;">❌ ${t('plausErrors', { count: errors })}</span>
-            <span style="color: #f6ad55;">⚠️ ${t('plausWarnings', { count: warnings })}</span>
-            <span style="color: #63b3ed;">ℹ️ ${t('plausInfos', { count: infos })}</span>
+            <span style="color: #fc8181;">${t('plausErrors', { count: errors })}</span>
+            <span style="color: #f6ad55;">${t('plausWarnings', { count: warnings })}</span>
+            <span style="color: #63b3ed;">${t('plausInfos', { count: infos })}</span>
           </div>
         </div>
 
         <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px">
           <input id="reviewSearch" class="form-input" style="flex:1;min-width:180px" placeholder="${escapeSvg(t('reviewSearch'))}">
-          <select style="max-width:230px;min-width:0" id="reviewRule" aria-label="${t('reviewRule')}">${options([...new Set(messages.map((m) => m.ruleId))], this.filters.rule, (v) => v, t('reviewRule'))}</select>
+          <select style="max-width:230px;min-width:0" id="reviewRule" aria-label="${t('reviewRule')}">${options([...new Set(messages.map((m) => m.ruleId))], this.filters.rule, (v) => ruleLabel(v), t('reviewRule'))}</select>
           <select style="max-width:230px;min-width:0" id="reviewSeverity" aria-label="${t('plausColSeverity')}">${options(['error', 'warning', 'info'], this.filters.severity, (v) => t(({ error: 'plausSeverityError', warning: 'plausSeverityWarning', info: 'plausSeverityInfo' } as const)[v as 'error' | 'warning' | 'info']), t('plausColSeverity'))}</select>
           <select style="max-width:230px;min-width:0" id="reviewPage" aria-label="${t('reviewPage')}">${options(
             this.project.pages.map((p) => p.id),
@@ -198,7 +206,7 @@ export class PlausibilityDialog {
           <input class="form-input" id="reviewReason" maxlength="4000" style="flex:1;min-width:160px" placeholder="${t('worklistReason')}" value="${escapeSvg(this.taskReason)}">
           <button class="btn" id="reviewApplyStatus" disabled>${t('worklistApply')}</button>
           <button class="btn" id="reviewBaseline" ${this.onApply ? '' : 'disabled'}>${t('worklistBaseline')}</button>
-          <span style="width:100%;font-size:11px">${t('worklistHint')} ${escapeSvg(this.project.inspectionWorkflow?.baseline?.at ?? t('worklistNoBaseline'))}</span>
+          <span style="width:100%;font-size:11px">${t('worklistHint')} ${escapeSvg(this.project.inspectionWorkflow?.baseline ? formatEngineeringDate(this.project.inspectionWorkflow.baseline.at) : t('worklistNoBaseline'))}</span>
           <span style="color:#fca5a5" id="reviewWorkflowError" role="alert"></span>
         </div>
         <!-- Messages Table -->
@@ -330,7 +338,7 @@ export class PlausibilityDialog {
           .map((group) => {
             const limit = limits.get(group.id) ?? 50;
             return (
-              `${this.grouping === 'none' ? '' : `<tr><td colspan="5"><button class="btn" data-group-toggle="${escapeSvg(group.id)}">${collapsed.has(group.id) ? '▸' : '▾'} ${escapeSvg(group.label)} (${group.messageIds.length})</button></td></tr>`}` +
+              `${this.grouping === 'none' ? '' : `<tr><td colspan="5"><button class="btn" data-group-toggle="${escapeSvg(group.id)}">${collapsed.has(group.id) ? '▸' : '▾'} ${escapeSvg(this.grouping === 'rule' ? ruleLabel(group.label) : group.label)} (${group.messageIds.length})</button></td></tr>`}` +
               (collapsed.has(group.id)
                 ? ''
                 : group.messageIds
@@ -545,6 +553,13 @@ export class PlausibilityDialog {
       ?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
+    });
+    finishEngineeringDialog(modal, {
+      kind: 'inspection',
+      title: t('engineeringInspectionTitle'),
+      description: t('engineeringInspectionHint'),
+      wide: true,
+      closeSelector: '#btnConfirmPlaus',
     });
   }
 }

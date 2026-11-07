@@ -1,3 +1,4 @@
+import { finishEngineeringDialog, formatArticleFunctions } from './EngineeringDialog';
 import type { Project } from '../model/types';
 import {
   articleUsageGroups,
@@ -53,7 +54,7 @@ export class ArticleMaintenanceDialog {
       )
       .join(
         '',
-      )}</table></div><div style="display:flex;gap:10px;margin:8px 0"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button>${this.page + 1} / ${pages}<button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button><button class="btn" data-catalog ${group ? '' : 'disabled'}>${t('articleMaintenanceChoose')}</button></div>${this.preview ? `<h3>${t('articlesPreview')} (${this.preview.changes.length})</h3><div style="max-height:25vh;overflow:auto"><table><tr><th>${t('reviewPage')}</th><th>BMK</th><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${this.preview.changes.map((c) => `<tr><td>${esc(c.pageNumber)}</td><td>${esc(c.bmk)} · #${c.position + 1}</td><td>${esc(JSON.stringify(c.before.snapshot?.functions ?? []))}</td><td>${esc(JSON.stringify(c.after.snapshot?.functions ?? []))}<br>${c.after.snapshot?.verification === 'user_checked' ? t('articlesChecked') : t('functionUnverified')}</td></tr>`).join('')}</table></div>${this.preview.requiresConfirmation ? `<label><input type="checkbox" data-confirm ${this.confirm ? 'checked' : ''}> ${t('articleMaintenanceConfirm')}</label>` : ''}` : ''}<footer style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" data-close>${t('close')}</button><button class="btn" data-apply ${!this.preview?.changes.length || (this.preview.requiresConfirmation && !this.confirm) ? 'disabled' : ''}>${t('articlesApply')}</button></footer></section>`;
+      )}</table></div><div style="display:flex;gap:10px;margin:8px 0"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button>${this.page + 1} / ${pages}<button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button><button class="btn" data-catalog ${group ? '' : 'disabled'}>${t('articleMaintenanceChoose')}</button></div>${this.preview ? `<h3>${t('articlesPreview')} (${this.preview.changes.length})</h3><div style="max-height:25vh;overflow:auto"><table><tr><th>${t('reviewPage')}</th><th>BMK</th><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${this.preview.changes.map((c) => `<tr><td>${esc(c.pageNumber)}</td><td>${esc(c.bmk)} · #${c.position + 1}</td><td>${esc(formatArticleFunctions(c.before.snapshot?.functions))}</td><td>${esc(formatArticleFunctions(c.after.snapshot?.functions))}<br>${c.after.snapshot?.verification === 'user_checked' ? t('articlesChecked') : t('functionUnverified')}</td></tr>`).join('')}</table></div>${this.preview.requiresConfirmation ? `<label><input type="checkbox" data-confirm ${this.confirm ? 'checked' : ''}> ${t('articleMaintenanceConfirm')}</label>` : ''}` : ''}<footer style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" data-close>${t('close')}</button><button class="btn" data-apply ${!this.preview?.changes.length || (this.preview.requiresConfirmation && !this.confirm) ? 'disabled' : ''}>${t('articlesApply')}</button></footer></section>`;
     this.el
       .querySelector('[data-close]')
       ?.addEventListener('click', () => this.el.remove());
@@ -123,6 +124,7 @@ export class ArticleMaintenanceDialog {
         this.render();
       }
     });
+    finishEngineeringDialog(this.el, { kind: 'review', description: t('engineeringMaintenanceHint'), wide: true });
     focusArticleModal(this.el);
   }
 }
