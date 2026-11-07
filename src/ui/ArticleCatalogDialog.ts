@@ -1,3 +1,4 @@
+import type {ArticlePackageAssets} from '../model/ArticlePackageAssets';
 import { importArticlePackage } from '../model/ArticlePackageImport';
 import { SymbolSelectionDialog } from './SymbolSelectionDialog';
 import { getSymbolById } from '../model/symbols';
@@ -52,6 +53,7 @@ export class ArticleCatalogDialog {
   private el = document.createElement('div');
   private store = new ArticleCatalog();
   private rows: CatalogArticle[] = [];
+  private packageRows: ArticlePackageAssets[] = [];
   private search = '';
   private page = 0;
   private error = '';
@@ -66,6 +68,7 @@ export class ArticleCatalogDialog {
   private editing?: CatalogArticle;
   private functionEditor?: FunctionEditor;
   private pending?: CatalogArticle[];
+  private pendingAssets: ArticlePackageAssets[]=[];
   private deletion?: CatalogArticle;
   private replace = false;
   private expected = '';
@@ -109,7 +112,8 @@ export class ArticleCatalogDialog {
         if(this.initialPackages.length>20)throw new Error('manufacturerInvalid');
         const imported=[];
         for(const file of this.initialPackages)imported.push(await importArticlePackage(file,getUiLanguage()));
-        this.prepare(imported.flatMap(r=>r.articles),t('articlePackageHint',{count:imported.reduce((n,r)=>n+r.embeddedSymbols,0)}));
+        this.prepare(imported.flatMap(r=>r.articles),this.packageHint(imported));
+        this.pendingAssets=imported.flatMap(r=>r.assets);
       }
     });
   }
@@ -120,7 +124,7 @@ export class ArticleCatalogDialog {
     if (this.restore?.isConnected) this.restore.focus();
   }
   private async reload() {
-    this.rows = await this.store.list();
+    [this.rows,this.packageRows] = await Promise.all([this.store.list(),this.store.packageAssets()]);
     this.candidateCache = undefined;
     this.expected = catalogRevision(this.rows);
     this.available = true;
@@ -162,8 +166,13 @@ export class ArticleCatalogDialog {
     const key = catalogKey(article);
     return this.shared.articles.some((a) => a.id === key);
   }
+  private packageHint(results:Awaited<ReturnType<typeof importArticlePackage>>[]) {
+    const assets=results.flatMap(r=>r.assets), macros=new Set(assets.flatMap(a=>a.macros.map(m=>m.id)));
+    return t('articlePackageHint',{count:macros.size})+'\n'+[...new Set(assets.flatMap(a=>a.diagnostics))].join('\n');
+  }
   private prepare(items: CatalogArticle[], importHint = '') {
     planCatalogMerge(this.rows, items);
+    this.pendingAssets=[];
     this.pending = structuredClone(items);
     this.importHint = importHint;
     this.deletion = undefined;
@@ -192,7 +201,7 @@ export class ArticleCatalogDialog {
    .slice(this.page * 50, this.page * 50 + 50)
    .map(
      (a, i) =>
-       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.rows.some((r) => r.id === a.id) ? `<button class="btn" data-delete="${i}">${t('articlesDelete')}</button>` : ''}</td></tr>`,
+       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.packageRows.some(p=>p.id===a.id)?`<button class="btn" data-package-download="${i}">${t('articlePackageSources')}</button>`:''}${this.rows.some((r) => r.id === a.id) ? `<button class="btn" data-delete="${i}">${t('articlesDelete')}</button>` : ''}</td></tr>`,
    )
    .join(
      '',
@@ -272,6 +281,13 @@ export class ArticleCatalogDialog {
         this.onChoose?.(structuredClone(slice[Number(b.dataset.choose)]));
         this.close();
       });
+    for(const b of this.el.querySelectorAll<HTMLElement>('[data-package-download]'))b.addEventListener('click',()=>void this.work(async()=>{
+      const article=slice[Number(b.dataset.packageDownload)], asset=this.packageRows.find(p=>p.id===article.id);if(!asset)return;
+      const {default:JSZip}=await import('jszip'),zip=new JSZip();
+      zip.file('article.json',catalogToJson([article]));
+      asset.sources.forEach((source,i)=>zip.file(`${i+1}-${source.path.split(/[\\/]/).pop()||'source.bin'}`,source.data));
+      const blob=await zip.generateAsync({type:'blob'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='schematico-article-sources.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }));
     for (const b of this.el.querySelectorAll<HTMLElement>('[data-delete]'))
       b.addEventListener('click', () => {
         this.deletion = structuredClone(slice[Number(b.dataset.delete)]);
@@ -402,7 +418,8 @@ export class ArticleCatalogDialog {
             throw new Error('articlesCatalogInvalid');
           if (/\.(wspak|edz)$/i.test(f.name)) {
             const result=await importArticlePackage(f,getUiLanguage());
-            this.prepare(result.articles,t('articlePackageHint',{count:result.embeddedSymbols}));
+            this.prepare(result.articles,this.packageHint([result]));
+            this.pendingAssets=result.assets;
             return;
           }
           const text = await f.text();
@@ -452,7 +469,7 @@ export class ArticleCatalogDialog {
       'click',
       () =>
         void this.work(async () => {
-          await this.store.merge(this.pending!, this.replace, this.expected);
+          await this.store.merge(this.pending!, this.replace, this.expected, this.pendingAssets);
           await this.reload();
           this.editing = undefined;
           this.message = t('articlesStored');

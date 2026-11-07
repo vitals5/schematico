@@ -18,6 +18,7 @@ import { remapNativeMacroData } from './NativeMacroData';
 import type { NativeMacroData } from './NativeMacroData';
 
 export interface WindowMacro {
+  isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
   importDiagnostics?: string[];
   id: string;
@@ -44,6 +45,7 @@ export interface WindowMacro {
 }
 
 export interface PageMacro {
+  isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
   importDiagnostics?: string[];
   pages?: Page[];
@@ -858,6 +860,8 @@ export const BUILTIN_MACROS: MacroItem[] = [
 export class MacroManager {
   public static forPlacement(macro: MacroItem): WindowMacro { return macroForPlacement(macro); }
 
+  private static articlePackageMacros: MacroItem[] = [];
+  public static setArticlePackageMacros(macros:MacroItem[]):void {this.articlePackageMacros=macros;}
   private static externalMacros: MacroItem[] = [];
   public static setExternalMacros(macros: MacroItem[]): void { this.externalMacros = macros; }
 
@@ -866,7 +870,7 @@ export class MacroManager {
    */
   public static getAllMacros(): MacroItem[] {
     const userMacros = this.getUserMacros();
-    return [...BUILTIN_MACROS, ...userMacros, ...this.externalMacros];
+    return [...BUILTIN_MACROS, ...userMacros, ...this.articlePackageMacros.map(m=>({...m,isArticlePackage:true})), ...this.externalMacros];
   }
 
   /**

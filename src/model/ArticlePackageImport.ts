@@ -1,3 +1,6 @@
+import {getSymbolById} from './symbols';
+import {MacroManager, type WindowMacro} from './MacroManager';
+import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import { DOMParser } from '@xmldom/xmldom';
 import { readProjectArchive } from '../packages/ProjectArchive';
 import { validateCatalogArticle, catalogKey } from './CatalogRecord';
@@ -15,7 +18,7 @@ function localized(text:string,language:string) {
   return entries.find(e=>e[1].toLowerCase().startsWith(language.toLowerCase()))?.[2] ?? entries.find(e=>e[1].startsWith('en'))?.[2] ?? entries[0]?.[2] ?? text;
 }
 /** Structured article data only. Embedded proprietary symbol files are never guessed. */
-export async function importArticlePackage(file:File,language='de'):Promise<{articles:CatalogArticle[];embeddedSymbols:number}> {
+export async function importArticlePackage(file:File,language='de'):Promise<{articles:CatalogArticle[];embeddedSymbols:number;assets:ArticlePackageAssets[]}> {
   if(file.size>LIMIT)throw new Error('manufacturerInvalid');
   const archive=await readProjectArchive(file), entries=Object.entries(archive.zip.files).filter(([,e])=>!e.dir);
   if(entries.length>10000 || [...archive.sizes.values()].some(n=>n>64*1024*1024) || [...archive.sizes.values()].reduce((a,b)=>a+b,0)>256*1024*1024)throw new Error('manufacturerInvalid');
@@ -60,5 +63,29 @@ export async function importArticlePackage(file:File,language='de'):Promise<{art
     }
   }
   if(!articles.length || articles.length>10000 || new Set(articles.map(catalogKey)).size!==articles.length)throw new Error('manufacturerInvalid');
-  return {articles,embeddedSymbols:entries.filter(([p])=>/\.(?:ema|ems|wslib)$/i.test(p)).length};
+  const sources:ArticlePackageAssets['sources']=[], macros:WindowMacro[]=[], diagnostics:string[]=[];
+  let sourceBytes=0;
+  for(const [path,entry]of entries)if(/\.(?:ema|ems|wslib)$/i.test(path)) {
+    const data=await entry.async('uint8array');sourceBytes+=data.byteLength;
+    if(sourceBytes>64*1024*1024)throw new Error('manufacturerInvalid');
+    sources.push({path,data});
+    if(/\.wslib$/i.test(path)){diagnostics.push(`${path}: Binäre Symbolbibliothek gesichert; noch nicht als editierbare Geometrie lesbar.`);continue;}
+    if(/(?:^|[_/\\-])3d(?:[_/\\.-]|$)/i.test(path)){diagnostics.push(`${path}: 3D-Original gesichert; keine Umwandlung in ein 2D-Schaltzeichen.`);continue;}
+    try {
+      const parsed=await MacroManager.parseMacroFile(new File([new Uint8Array(data)],path),{allowHeuristic:false,allowMissingDependencies:false});
+      const macro=MacroManager.forPlacement(parsed);
+      if(!macro.components.length)throw new Error('Keine platzierbaren Elemente');
+      const digest=await crypto.subtle.digest('SHA-256',new Uint8Array(data));
+      macro.id='article-macro:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');macro.name=path.split(/[\\/]/).pop()??path;
+      macro.category='Artikelpakete';macro.isBuiltIn=false;
+      macro.description='Importierte Originalgeometrie aus '+path;
+      if(!macro.components.some(c=>(macro.symbolLibrary?.find(s=>s.id===c.symbolId)??getSymbolById(c.symbolId))?.pins.length)) {
+        macro.description+=' · Grafik-/Montagemakro ohne elektrische Anschlüsse';
+        diagnostics.push(`${path}: Lesbares Grafik-/Montagemakro ohne elektrische Anschlüsse.`);
+      }
+      diagnostics.push(...(macro.importDiagnostics??[]).map(message=>`${path}: ${message}`));
+      if(!macros.some(m=>m.id===macro.id))macros.push(macro);
+    }catch(error){diagnostics.push(`${path}: Original gesichert; Makro noch nicht lesbar (${error instanceof Error?error.message:String(error)}).`);}
+  }
+  return {articles,embeddedSymbols:sources.length,assets:articles.map(a=>({id:a.id,sources,macros,diagnostics}))};
 }

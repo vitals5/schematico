@@ -1,3 +1,4 @@
+import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import type { CatalogArticle } from './ArticleTypes';
 import type { Project } from './types';
 import { effectiveArticles } from './ArticleAssignments';
@@ -231,8 +232,8 @@ export class ArticleCatalog {
     if (typeof indexedDB === 'undefined')
       throw new Error('articlesStorageUnavailable');
     return new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open('schematico-articles', 2);
-      r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('articles'))r.result.createObjectStore('articles',{keyPath:'id'});if(!r.result.objectStoreNames.contains('sync'))r.result.createObjectStore('sync');};
+      const r = indexedDB.open('schematico-articles', 3);
+      r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('packageAssets'))r.result.createObjectStore('packageAssets',{keyPath:'id'});if(!r.result.objectStoreNames.contains('articles'))r.result.createObjectStore('articles',{keyPath:'id'});if(!r.result.objectStoreNames.contains('sync'))r.result.createObjectStore('sync');};
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
       r.onblocked = () => reject(new Error('articlesStorageUnavailable'));
@@ -259,11 +260,16 @@ export class ArticleCatalog {
       };
     });
   }
-  async merge(incoming: CatalogArticle[], replace: boolean, expected: string) {
+  async packageAssets(): Promise<ArticlePackageAssets[]> {
+    const db=await this.open();
+    return new Promise((resolve,reject)=>{const tx=db.transaction('packageAssets','readonly'),read=tx.objectStore('packageAssets').getAll();tx.oncomplete=()=>{db.close();resolve(read.result);};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error);};});
+  }
+  async merge(incoming: CatalogArticle[], replace: boolean, expected: string, assets: ArticlePackageAssets[] = []) {
+    if(assets.some(a=>!incoming.some(r=>catalogKey(r)===a.id)||a.sources.reduce((n,s)=>n+s.data.byteLength,0)>64*1024*1024))throw new Error('articlesCatalogInvalid');
     const normalized = incoming.map(validateCatalogArticle),
       db = await this.open();
     return new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('articles', 'readwrite'),
+      const tx = db.transaction(['articles','packageAssets'], 'readwrite'),
         store = tx.objectStore('articles'),
         read = store.getAll();
       let failure: unknown;
@@ -275,6 +281,7 @@ export class ArticleCatalog {
           if (plan.conflicts.length && !replace)
             throw new Error('articlesCatalogConflict');
           for (const a of [...plan.added, ...plan.conflicts]) store.put(a);
+          for(const asset of assets)tx.objectStore('packageAssets').put(asset);
         } catch (e) {
           failure = e;
           tx.abort();
@@ -294,7 +301,7 @@ export class ArticleCatalog {
   async remove(id: string, expected: string) {
     const db = await this.open();
     return new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('articles', 'readwrite'),
+      const tx = db.transaction(['articles','packageAssets'], 'readwrite'),
         store = tx.objectStore('articles'),
         r = store.getAll();
       let error: unknown;
@@ -302,7 +309,7 @@ export class ArticleCatalog {
         if (catalogRevision(r.result) !== expected) {
           error = new Error('articlesCatalogStale');
           tx.abort();
-        } else store.delete(id);
+        } else {store.delete(id);tx.objectStore('packageAssets').delete(id);}
       };
       tx.oncomplete = () => {
         db.close();

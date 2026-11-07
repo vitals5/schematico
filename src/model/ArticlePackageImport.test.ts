@@ -1,3 +1,7 @@
+import 'fake-indexeddb/auto';
+import {ArticleCatalog,catalogRevision} from './ArticleCatalog';
+import {MacroManager} from './MacroManager';
+import {loadLocalEditorArticles,editorArticles} from './EditorArticles';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 import {importArticlePackage} from './ArticlePackageImport';
@@ -10,3 +14,24 @@ const parts=await importArticlePackage(await file(ed,'test.edz'),'en');assert.eq
 await assert.rejects(()=>importArticlePackage(new File(['not an archive'],'bad.edz')));
 await assert.rejects(async()=>importArticlePackage(await file(new JSZip().file('x.xml','<!DOCTYPE a><partsmanagement/>'),'bad.edz')));
 console.log('✓ Structured article packages: ZIP, leading zeros, localized data, variants, manufacturer lookup, opaque-symbol disclosure and invalid XML/archive rejection');
+
+const catalog=new ArticleCatalog();
+assert.equal((await catalog.packageAssets()).length,0,'Preview does not persist package files');
+await catalog.merge(imported.articles,false,catalogRevision(await catalog.list()),imported.assets);
+const stored=await new ArticleCatalog().packageAssets();
+assert.deepEqual(stored[0].sources[0].data,new TextEncoder().encode('opaque'));
+assert.equal(stored[0].macros.length,0,'An opaque library must not turn into a guessed symbol');
+assert(stored[0].diagnostics.length);
+await assert.rejects(()=>catalog.merge(parts.articles,false,'stale',parts.assets));
+assert.equal((await catalog.packageAssets()).length,1,'Stale imports do not write attachments');
+const macroJson={id:'test-embedded',name:'Original',type:'ema',category:'test',description:'',width:32,height:48,components:[{id:'coil',symbolId:'contactor_coil',bmk:'-K1',functionText:'',x:0,y:0,rotation:0,pins:{}}]};
+ed.file('items/diagram_2D.ema',JSON.stringify(macroJson));
+const withMacro=await importArticlePackage(await file(ed,'with-symbol.edz'));
+assert.equal(withMacro.assets[0].macros.length,1);
+await catalog.merge(withMacro.articles,false,catalogRevision(await catalog.list()),withMacro.assets);
+await loadLocalEditorArticles();
+assert.equal(editorArticles().find(e=>e.article.articleNumber==='001')!.packageMacros!.length,1);
+assert(MacroManager.getAllMacros().some(m=>m.id===withMacro.assets[0].macros[0].id));
+await catalog.remove(imported.articles[0].id,catalogRevision(await catalog.list()));
+assert(!(await catalog.packageAssets()).some(p=>p.id===imported.articles[0].id));
+console.log('✓ Atomic article/source storage, opaque-library preservation, stale rejection, embedded macro linkage, reload and deletion');

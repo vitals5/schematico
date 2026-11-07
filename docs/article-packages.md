@@ -10,12 +10,20 @@ Unter **Artikelkatalog → Importieren** lassen sich `.wspak` und `.edz` auswäh
 
 Die geprüften Anwenderbeispiele ergeben `Busch-Jaeger / 2CKA001011A0928` und `Siemens AG / 5SL6116-6 / Variante 1`. Private Originalpakete sind nicht Teil des Repositorys.
 
-## Grenzen
+## Symbole, Makros und Originaldateien
 
-Der Import betrifft Artikeldaten. Binäre `.wsLIB`-Bibliotheken, `.mdb`-Datenbanken, eingebettete Makros, Bilder, PDF-Datenblätter und 3D-Geometrien werden hier nicht als Zeichenelemente oder Artikelanhänge übernommen. Die Vorschau weist auf eingebettete Symbol-/Makrodateien hin. Ältere Pakete ohne lesbare Artikel-JSON beziehungsweise Artikel-XML werden abgelehnt. Funktionsdefinitionen werden nicht aus Produkttexten oder unbekannten numerischen Vorlagen geraten. Ein Standardsymbol kann nach dem Import über **Symbol zuordnen…** ausgewählt werden.
+Artikel und Paketdateien werden gemeinsam in einer lokalen IndexedDB-Transaktion gespeichert. Vor dem Übernehmen der Vorschau wird nichts in die Bibliothek geschrieben. Ein veralteter oder fehlgeschlagener Import darf auch keine Makrodateien hinterlassen.
+
+Lesbare 2D-Makros werden mit dem vorhandenen Makroimporter ohne heuristische Ersatzsymbole gelesen. Sie erscheinen anschließend bei dem zugehörigen Artikel und in der Makrobibliothek. Im Editorbereich **Artikel** lässt sich das gewünschte Paketmakro auswählen und über **Originalmakro platzieren** einsetzen. Seine Symboldefinitionen werden in der Projektbibliothek gespeichert; die platzierten Elemente unterstützen Eigenschaften, Verschieben, Löschen und Rückgängig/Wiederholen. Die Artikelzuweisung wird am größten Hauptelement des gewählten Makros hinterlegt.
+
+Das geprüfte EDZ enthält ein lesbares 2D-Geräte-/Montagemakro mit zwei Elementen. Es besitzt keine elektrischen Anschlüsse. Der Import erfindet keine Pins und macht daraus keinen elektrisch anschließbaren Leitungsschutzschalter. Für eine Stromlaufdarstellung ist weiterhin ein entsprechendes Schaltzeichen oder ein dafür bestimmtes Herstellermakro nötig.
+
+Alle eingebetteten `.ema`, `.ems` und `.wsLIB` werden zusätzlich als unveränderte Originalbytes gespeichert. **Originaldateien sichern** im Artikelkatalog lädt eine ZIP-Datei mit den Quelldateien und den Artikeldaten herunter. Das ist eine Quellsicherung; der normale JSON-/CSV-Katalogexport enthält keine binären Paketdateien. Löschen des lokalen Artikels entfernt seine Paketzuordnung.
+
+Die binäre `.wsLIB` des geprüften WSPAK kann noch nicht decodiert werden. Sie wird daher gesichert und ausdrücklich als noch nicht lesbar angezeigt. Ebenso bleiben 3D-Makros im Original erhalten; eine 3D-Umwandlung ist nicht implementiert. Es gibt keine behauptete vollständige Unterstützung aller Bibliotheksversionen. Bilder, PDF-Datenblätter und Datenbanken werden durch diesen Schritt nicht als Artikelanhänge übernommen.
 
 ## Herstellerportal
 
 **Herstellerportal öffnen** öffnet `https://www.wscaduniverse.com/` im Browser. Dort erfolgt die Registrierung beziehungsweise Anmeldung direkt beim Anbieter. Heruntergeladene Artikelpakete können anschließend importiert werden. In der Desktop-App öffnet ausschließlich eine feste HTTPS-Adresse im Systembrowser; Zugangsdaten und Sitzungscookies werden nicht an Schematico übertragen.
 
-Eine integrierte Suche und ein automatischer Abruf über eine Anbieter-API sind noch nicht implementiert. In der untersuchten öffentlichen Webanwendung sind ein eigener Anmeldeserver und ein Web-Backend erkennbar. Das belegt keine für Drittanbieter freigegebene API. Für eine stabile direkte Anbindung benötigen wir dokumentierte Such-/Download-Endpunkte, ein unterstütztes Authentifizierungsverfahren und gegebenenfalls eine eigene registrierte Anwendung beim Anbieter. Interne Webseiten-Endpunkte oder die Anwendungskonfiguration des Anbieters werden dafür nicht als freigegebene Schnittstelle ausgegeben.
+Die Portalnutzung bleibt bewusst manuell. Eine integrierte API-Suche oder automatisierte Anmeldung ist nicht vorgesehen.

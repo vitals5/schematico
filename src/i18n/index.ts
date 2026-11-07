@@ -7,8 +7,12 @@ const listeners = new Set<Listener>();
 
 export const translations = {
   de: {
+    macroOriginArticlePackage: "Artikelpaket · Verwaltung über den Artikelkatalog",
+    articlePackageSources: "Originaldateien sichern",
+    articlePackagePlace: "Originalmakro platzieren",
+    articlePackageNotes: "Hinweise zu Paketdateien",
     articlePortalOpen: "Herstellerportal öffnen",
-    articlePackageHint: "Artikeldaten aus dem Paket übernommen. {count} eingebettete Symbol-/Makrodateien werden hier nicht als Schaltzeichen importiert. Standardsymbol bitte gezielt zuordnen. Keine automatische Veröffentlichung im gemeinsamen Katalog.",
+    articlePackageHint: "Artikeldaten und Originaldateien werden gemeinsam gespeichert. {count} lesbare 2D-Makros stehen danach im Editor zur Verfügung. Hinweise zu nicht lesbaren Bibliotheken und 3D-Daten beachten. Keine automatische Veröffentlichung im gemeinsamen Katalog.",
     articleSymbolDefault: "Standardsymbol für die Platzierung",
     articleSymbolMissing: "Kein verfügbares Symbol zugeordnet",
     articleSymbolLink: "Symbol zuordnen…",
@@ -1374,8 +1378,12 @@ export const translations = {
     ctxDoorFlipSwing: '🚪 Türanschlag spiegeln'
   },
   en: {
+    macroOriginArticlePackage: "Article package · managed through the article catalogue",
+    articlePackageSources: "Save original files",
+    articlePackagePlace: "Place original macro",
+    articlePackageNotes: "Package file notes",
     articlePortalOpen: "Open manufacturer portal",
-    articlePackageHint: "Article data extracted. {count} embedded symbol/macro files are not imported as schematic symbols here. Assign a default symbol explicitly. No automatic publication to the shared catalogue.",
+    articlePackageHint: "Article data and original files are saved together. {count} readable 2D macros will be available in the editor. Review notes on unsupported libraries and 3D data. No automatic publication to the shared catalogue.",
     articleSymbolDefault: "Default placement symbol",
     articleSymbolMissing: "No available symbol assigned",
     articleSymbolLink: "Assign symbol…",

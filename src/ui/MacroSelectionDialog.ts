@@ -393,7 +393,7 @@ export class MacroSelectionDialog {
           <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroTypeLabel'))}</strong> ${escapeSvg(typeLabel)}</div>
           <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroComponentsLabel'))}</strong> ${escapeSvg(t('macroComponentsVal', { count: componentsCount }))}</div>
           <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroConnectionsLabel'))}</strong> ${escapeSvg(t('macroConnectionsVal', { count: wiresCount }))}</div>
-          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroOriginLabel'))}</strong> ${m.externalPath ? escapeSvg(t('macroOriginExternal', { path: m.externalPath })) : m.isBuiltIn ? escapeSvg(t('macroOriginBuiltin')) : escapeSvg(t('macroOriginUser'))}</div>
+          <div><strong style="color: #cbd5e0;">${escapeSvg(t('macroOriginLabel'))}</strong> ${m.isArticlePackage ? escapeSvg(t('macroOriginArticlePackage')) : m.externalPath ? escapeSvg(t('macroOriginExternal', { path: m.externalPath })) : m.isBuiltIn ? escapeSvg(t('macroOriginBuiltin')) : escapeSvg(t('macroOriginUser'))}</div>
         </div>
       </div>
 
@@ -412,7 +412,7 @@ export class MacroSelectionDialog {
           <button class="btn" id="btnExportMacroItem" style="flex: 1; justify-content: center; font-size: 11px;" title="${escapeSvg(t('export'))}">
             ${escapeSvg(t('macroExportBtn'))}
           </button>
-          ${!m.isBuiltIn && !m.externalPath ? `
+          ${!m.isBuiltIn && !m.externalPath && !m.isArticlePackage ? `
             <button class="btn" id="btnDeleteMacroItem" style="color: #fc8181; border-color: #e53e3e; font-size: 11px;" title="${escapeSvg(t('macroDeleteMacro'))}">
               🗑️
             </button>

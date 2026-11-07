@@ -144,7 +144,7 @@ export class App {
     });
     void externalMacroLibrary.restore();
     onEditorArticlesChange(() => {
-      if (this.activeLeftTab === 'parts') this.renderLeftTab();
+      if (this.activeLeftTab === 'parts' || this.activeLeftTab === 'macros') this.renderLeftTab();
       refreshEditorArticleSelectors();
     });
     void refreshEditorArticles();
@@ -2162,7 +2162,7 @@ export class App {
               <button class="btn btn-primary btn-tab-place-macro" data-macro-id="${m.id}" style="flex:1;padding:3px 6px;font-size:11px;justify-content:center">⚡ ${t('macroPlace')}</button>
               ${m.type==='ems'&&m.nativeData?.kind==='PageMacro'?`<button class="btn btn-tab-add-page-macro" data-macro-id="${m.id}" style="padding:3px 6px;font-size:11px">${t('macroAddPages')}</button>`:''}
               <button class="btn btn-tab-export-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px;" title="${t('macroExportBtn')}">💾</button>
-              ${!m.isBuiltIn && !m.externalPath ? `
+              ${!m.isBuiltIn && !m.externalPath && !m.isArticlePackage ? `
                 <button class="btn btn-tab-delete-macro" data-macro-id="${m.id}" style="padding: 3px 6px; font-size: 11px; color: #fc8181; border-color: #e53e3e;" title="${t('menuDelete')}">🗑️</button>
               ` : ''}
             </div>
@@ -2725,6 +2725,9 @@ export class App {
           <p style="font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere">${escapeSvg(entry.name)}</p>
           <p style="font-size:10px;color:var(--text-muted)">${escapeSvg(symbol ? getLocalizedSymbol(symbol).name : t('articleSymbolMissing'))}</p>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-place-part" data-place-article="${i}" ${symbol ? '' : 'disabled'}>${escapeSvg(t('partsPlaceOnCanvas'))}</button><button class="btn" data-link-article="${i}">${escapeSvg(t('articleSymbolLink'))}</button></div>
+          ${entry.packageMacros?.length ? `<div style="margin-top:8px"><select class="form-input" data-package-macro="${i}">${entry.packageMacros.map((m,j)=>`<option value="${j}">${escapeSvg(m.name)}</option>`).join('')}</select><button class="btn" data-place-package="${i}">${escapeSvg(t('articlePackagePlace'))}</button></div>` : ''}
+          ${entry.packageDiagnostics?.length ? `<details style="font-size:11px;margin-top:6px"><summary>${escapeSvg(t('articlePackageNotes'))}</summary>${entry.packageDiagnostics.map(d=>`<p>${escapeSvg(d)}</p>`).join('')}</details>` : ''}
+
         </div>`;
       }).join('')}</div>${entries.length > 100 ? `<p>${escapeSvg(t('articleSearchNarrow'))}</p>` : ''}`;
     container.querySelector('#mfrSelect')?.addEventListener('change', e => {this.manufacturerFilter=(e.target as HTMLSelectElement).value;this.renderPartsCatalogueTab(container);});
@@ -2738,6 +2741,16 @@ export class App {
     for (const button of container.querySelectorAll<HTMLElement>('[data-link-article]')) button.addEventListener('click', () => {
       const article=entries[Number(button.dataset.linkArticle)].article;
       new ArticleCatalogDialog(this.project,undefined,article.articleNumber,article).show();
+    });
+    for(const button of container.querySelectorAll<HTMLElement>('[data-place-package]'))button.addEventListener('click',()=>{
+      const index=Number(button.dataset.placePackage), entry=entries[index];
+      const choice=container.querySelector<HTMLSelectElement>(`[data-package-macro="${index}"]`);
+      const source=entry.packageMacros?.[Number(choice?.value??0)];if(!source)return;
+      const macro=structuredClone(source);
+      const primary=[...macro.components].sort((a,b)=>{const area=(c:PlacedComponent)=>{const s=macro.symbolLibrary?.find(s=>s.id===c.symbolId);return (s?.width??0)*(s?.height??0);};return area(b)-area(a);})[0];
+      if(primary)assignMainCatalogArticle(primary,entry.article);
+      mergeProjectSymbolLibrary(this.project,macro.symbolLibrary??[],macro.components);
+      this.canvas.setMacroToPlace(macro);
     });
     for (const button of container.querySelectorAll<HTMLElement>('[data-place-article]')) button.addEventListener('click', () => {
       const entry=entries[Number(button.dataset.placeArticle)];
