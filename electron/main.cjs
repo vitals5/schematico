@@ -54,6 +54,12 @@ ipcMain.handle('updates:openRelease', async (_event, tag) => {
   return true;
 });
 
+ipcMain.handle('articles:openPortal', async event => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Invalid sender');
+  await shell.openExternal('https://www.wscaduniverse.com/');
+  return true;
+});
+
 ipcMain.handle('catalog:openPublication', async (event, serialized) => {
   if(!mainWindow || event.sender!==mainWindow.webContents)throw new Error('Invalid sender');
   await shell.openExternal(catalogPublicationUrl(serialized));
@@ -72,7 +78,7 @@ ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Projekt-Datei auswählen',
     filters: [
-      { name: 'Schematico- & Projektdateien', extensions: ['zw1', 'zip', 'edz', 'xml', 'json', 'elk', '001', '002', '003'] },
+      { name: 'Schematico- & Projektdateien', extensions: ['zw1', 'zip', 'edz', 'wspak', 'xml', 'json', 'elk', '001', '002', '003'] },
       { name: 'Alle Dateien', extensions: ['*'] }
     ],
     properties: ['openFile', 'multiSelections']

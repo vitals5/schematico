@@ -1,3 +1,4 @@
+import { importArticlePackage } from '../model/ArticlePackageImport';
 import { SymbolSelectionDialog } from './SymbolSelectionDialog';
 import { getSymbolById } from '../model/symbols';
 import {
@@ -30,7 +31,7 @@ import {
   catalogToCsv,
 } from '../model/ArticleCatalog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
-import { t, translations, getLocalizedSymbol, type TranslationKey } from '../i18n';
+import { t, translations, getUiLanguage, getLocalizedSymbol, type TranslationKey } from '../i18n';
 export const articleError = (e: unknown) => {
   const message = e instanceof Error ? e.message : String(e);
   return message in translations.de ? t(message as TranslationKey) : message;
@@ -74,6 +75,7 @@ export class ArticleCatalogDialog {
     private onChoose?: (article: CatalogArticle) => void,
     initialSearch = '',
     initialArticle?: CatalogArticle,
+    private initialPackages: File[] = [],
   ) {
     this.search = initialSearch;
     if (initialArticle) this.editing = structuredClone(initialArticle);
@@ -101,7 +103,15 @@ export class ArticleCatalogDialog {
     });
     this.render();
     void refreshSharedCatalog();
-    void this.work(() => this.reload());
+    void this.work(async () => {
+      await this.reload();
+      if(this.initialPackages.length) {
+        if(this.initialPackages.length>20)throw new Error('manufacturerInvalid');
+        const imported=[];
+        for(const file of this.initialPackages)imported.push(await importArticlePackage(file,getUiLanguage()));
+        this.prepare(imported.flatMap(r=>r.articles),t('articlePackageHint',{count:imported.reduce((n,r)=>n+r.embeddedSymbols,0)}));
+      }
+    });
   }
   private close() {
     this.closed = true;
@@ -176,7 +186,7 @@ export class ArticleCatalogDialog {
       : undefined;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
  <div class="eng-shared-catalog"><div><strong>${t('githubCatalogTitle')} · ${this.shared.articles.length} ${t('githubCatalogArticles')}</strong><span>${t(('githubCatalogState_' + this.shared.status) as any)}${!this.shared.submission ? ' · ' + t('githubCatalogNotConfigured') : ''}</span></div><button class="btn" data-shared-refresh>${t('articlesRefresh')}</button></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><input type="file" data-file accept=".csv,.json,.xml" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><button class="btn" data-portal>${t('articlePortalOpen')}</button><input type="file" data-file accept=".csv,.json,.xml,.wspak,.edz" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
  <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th>${t('articlesManufacturer')}</th><th>${t('articlesNumber')}</th><th>${t('articlesDescription')}</th><th>${t('engineeringStatus')}</th><th>${t('plausColAction')}</th></tr></thead><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
@@ -375,6 +385,11 @@ export class ArticleCatalogDialog {
         this.render();
       }
     });
+    this.el.querySelector('[data-portal]')?.addEventListener('click',()=> {
+      const native=(window as any).electronAPI?.articles?.openPortal;
+      if(native) void native().catch((error:unknown)=>{this.error=articleError(error);this.render();});
+      else window.open('https://www.wscaduniverse.com/','_blank','noopener,noreferrer');
+    });
     const file = this.el.querySelector<HTMLInputElement>('[data-file]')!;
     this.el
       .querySelector('[data-import]')
@@ -385,6 +400,11 @@ export class ArticleCatalogDialog {
         void this.work(async () => {
           if (f.size > 20 * 1024 * 1024)
             throw new Error('articlesCatalogInvalid');
+          if (/\.(wspak|edz)$/i.test(f.name)) {
+            const result=await importArticlePackage(f,getUiLanguage());
+            this.prepare(result.articles,t('articlePackageHint',{count:result.embeddedSymbols}));
+            return;
+          }
           const text = await f.text();
           if (f.name.toLowerCase().endsWith('.xml')) {
             const imported = manufacturerArticles(text);

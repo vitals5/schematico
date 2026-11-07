@@ -7,6 +7,8 @@ const listeners = new Set<Listener>();
 
 export const translations = {
   de: {
+    articlePortalOpen: "Herstellerportal öffnen",
+    articlePackageHint: "Artikeldaten aus dem Paket übernommen. {count} eingebettete Symbol-/Makrodateien werden hier nicht als Schaltzeichen importiert. Standardsymbol bitte gezielt zuordnen. Keine automatische Veröffentlichung im gemeinsamen Katalog.",
     articleSymbolDefault: "Standardsymbol für die Platzierung",
     articleSymbolMissing: "Kein verfügbares Symbol zugeordnet",
     articleSymbolLink: "Symbol zuordnen…",
@@ -1372,6 +1374,8 @@ export const translations = {
     ctxDoorFlipSwing: '🚪 Türanschlag spiegeln'
   },
   en: {
+    articlePortalOpen: "Open manufacturer portal",
+    articlePackageHint: "Article data extracted. {count} embedded symbol/macro files are not imported as schematic symbols here. Assign a default symbol explicitly. No automatic publication to the shared catalogue.",
     articleSymbolDefault: "Default placement symbol",
     articleSymbolMissing: "No available symbol assigned",
     articleSymbolLink: "Assign symbol…",

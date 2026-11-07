@@ -516,7 +516,9 @@ export class App {
       if (file) {
         if (file.name.endsWith('.floorplan.json')) {
           await this.importFloorPlanPageFromFile(file);
-        } else if (/\.(ema|ems|edz|xml|json)$/i.test(file.name)) {
+        } else if (/\.(wspak|edz)$/i.test(file.name)) {
+          await this.handleFilesOpen(Array.from(e.dataTransfer!.files));
+        } else if (/\.(ema|ems|xml|json)$/i.test(file.name)) {
           await this.handleMacroFileDrop(file, e.clientX, e.clientY);
         }
       }
@@ -4700,7 +4702,7 @@ export class App {
               accept: {
                 'application/json': ['.json'],
                 'application/xml': ['.xml'],
-                'application/octet-stream': ['.zw1', '.zip', '.edz', '.elk', '.001', '.002', '.003']
+                'application/octet-stream': ['.zw1', '.zip', '.edz', '.wspak', '.elk', '.001', '.002', '.003']
               }
             }
           ]
@@ -4733,6 +4735,10 @@ export class App {
     sourceInfo?: { filePath?: string; filePaths?:string[]; fileHandle?: any; fileHandles?:RecentHandle[]; recentId?:string }
   ): Promise<boolean> {
     const selectedFiles=Array.from(files);
+    if(selectedFiles.length && selectedFiles.every(f=>/\.(wspak|edz)$/i.test(f.name))) {
+      new ArticleCatalogDialog(this.project,undefined,'',undefined,selectedFiles).show();
+      return true;
+    }
     try {
       const result: PackageInspectionResult = await PackageHandler.inspectFiles(selectedFiles);
       if(result.electricalInspection)sessionDiagnostics.record('electrical_inspection',{origin:'import',report:result.electricalInspection});

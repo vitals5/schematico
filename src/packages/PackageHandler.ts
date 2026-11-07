@@ -205,7 +205,7 @@ export class PackageHandler {
    * Parses an .edz parts / macro package
    */
   private static async parseEdzPackage(file: File): Promise<PackageInspectionResult> {
-    const zip = await JSZip.loadAsync(file);
+    const {zip} = await readProjectArchive(file);
     const entries: PackageEntry[] = [];
     const messages: string[] = [];
     let partMetadata: Record<string, any> = {};

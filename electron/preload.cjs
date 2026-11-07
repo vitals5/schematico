@@ -2,6 +2,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  articles: { openPortal: () => ipcRenderer.invoke('articles:openPortal') },
   catalog: { openPublication: json => ipcRenderer.invoke('catalog:openPublication', json), copyAndOpenPublication: json => ipcRenderer.invoke('catalog:copyAndOpenPublication', json) },
   updates: { openRelease: tag => ipcRenderer.invoke('updates:openRelease', tag) },
   macroLibrary: {

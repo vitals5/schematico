@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import JSZip from 'jszip';
+import {importArticlePackage} from './ArticlePackageImport';
+const file=async(zip:JSZip,name:string)=>new File([new Uint8Array(await zip.generateAsync({type:'uint8array'}))],name);
+const ws=new JSZip().file('Data\\part.json',JSON.stringify({number:'Type-001',orderNumber:'0000123',manufacturerName:'Maker',translateName:{De:'Schalter',En:'Switch'},voltage:'250 V',cabinet:{width:71,height:71,length:29}})).file('Libraries\\sample.wsLIB','opaque');
+const imported=await importArticlePackage(await file(ws,'test.wspak'));
+assert.equal(imported.articles[0].articleNumber,'0000123');assert.equal(imported.articles[0].manufacturer,'Maker');assert.match(imported.articles[0].description,/Schalter/);assert.match(imported.articles[0].description,/250 V/);assert.equal(imported.articles[0].symbolId,undefined);assert.equal(imported.embeddedSymbols,1);
+const ed=new JSZip().file('items/address.xml','<partsmanagement><address P_PART_ADDRESS_SHORTNAME="M" P_PART_ADDRESS_LONGNAME="Maker"/></partsmanagement>').file('items/part.xml','<partsmanagement><part P_ARTICLE_PARTNR="M.001" P_ARTICLE_ORDERNR="001" P_ARTICLE_MANUFACTURER="M" P_ARTICLE_DESCR1="de_DE@Schalter;en_US@Switch;"><variant P_ARTICLE_VARIANT="A"/><variant P_ARTICLE_VARIANT="B"/></part></partsmanagement>');
+const parts=await importArticlePackage(await file(ed,'test.edz'),'en');assert.equal(parts.articles.length,2);assert.equal(parts.articles[0].variant,'A');assert.equal(parts.articles[0].manufacturer,'Maker');assert.match(parts.articles[0].description,/Switch/);assert.equal(parts.articles[0].functions,undefined);
+await assert.rejects(()=>importArticlePackage(new File(['not an archive'],'bad.edz')));
+await assert.rejects(async()=>importArticlePackage(await file(new JSZip().file('x.xml','<!DOCTYPE a><partsmanagement/>'),'bad.edz')));
+console.log('✓ Structured article packages: ZIP, leading zeros, localized data, variants, manufacturer lookup, opaque-symbol disclosure and invalid XML/archive rejection');

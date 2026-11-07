@@ -103,8 +103,8 @@ export function renderAppHeader(projectName:string):string {
         <div class="toolbar-group inspector-tools" role="group" aria-label="${t('tabProperties')}">${tool('btnToggleRightSidebar',t('toolToggleRight'),'right')}</div>
       </div>
     </header>
-    <input type="file" id="menuFileInput" accept=".zw1,.zip,.edz,.xml,.json,.elk,.001,.002,.003" multiple hidden>
-    <input type="file" id="fileInput" accept=".zw1,.zip,.edz,.xml,.json,.elk,.001,.002,.003" multiple hidden>
+    <input type="file" id="menuFileInput" accept=".zw1,.zip,.edz,.wspak,.xml,.json,.elk,.001,.002,.003" multiple hidden>
+    <input type="file" id="fileInput" accept=".zw1,.zip,.edz,.wspak,.xml,.json,.elk,.001,.002,.003" multiple hidden>
     <input type="file" id="imageFileInput" accept="image/*,.svg,.bmp" hidden>
   </div>`;
 }
