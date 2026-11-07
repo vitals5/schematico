@@ -3,38 +3,47 @@
   "version": 1,
   "articles": [
     {
-      "id": "[\"Hager\",\"CDS440D\",\"\"]",
-      "articleNumber": "CDS440D",
-      "manufacturer": "Hager",
+      "id": "[\"ABB\",\"E290-16-10/230\",\"\"]",
+      "articleNumber": "E290-16-10/230",
+      "manufacturer": "ABB",
       "variant": "",
-      "description": "FI-Schutzschalter 4P 40A 30mA Typ A · Fehlerstromschutzschalter nach DIN EN 61008-1 zum Schutz bei Berührung",
+      "description": "Stromstoßschalter 16A 1S 230VAC · Elektromagnetisches Stromstoßrelais für Reiheneinbau",
       "origin": "starter",
       "verification": "unverified"
     },
     {
-      "id": "[\"Hager\",\"CDA225D\",\"\"]",
-      "articleNumber": "CDA225D",
-      "manufacturer": "Hager",
+      "id": "[\"ABB\",\"FH202-25/0.03\",\"\"]",
+      "articleNumber": "FH202-25/0.03",
+      "manufacturer": "ABB",
       "variant": "",
-      "description": "FI-Schutzschalter 2P 25A 30mA Typ A · Fehlerstromschutzschalter 1P+N für Einphasenstromkreise",
+      "description": "FI-Schutzschalter 2P 25A 30mA Typ A · ABB System pro M compact Fehlerstromschutzschalter",
       "origin": "starter",
       "verification": "unverified"
     },
     {
-      "id": "[\"Hager\",\"EPN510\",\"\"]",
-      "articleNumber": "EPN510",
-      "manufacturer": "Hager",
+      "id": "[\"Busch-Jaeger\",\"2CKA002011A6232\",\"20 EUC-914\"]",
+      "articleNumber": "2CKA002011A6232",
+      "manufacturer": "Busch-Jaeger",
+      "variant": "20 EUC-914",
+      "description": "SCHUKO Steckdosen-Einsatz mit Steckanschluss alpinweiß - Busch-balance SI",
+      "origin": "user",
+      "verification": "unverified"
+    },
+    {
+      "id": "[\"Dehn\",\"952400\",\"\"]",
+      "articleNumber": "952400",
+      "manufacturer": "Dehn",
       "variant": "",
-      "description": "Stromstoßschalter 1S 16A 230V · Elektromechanisches Stromstoßrelais für Lichtsteuerung mit Tastern",
+      "description": "DEHNguard M TNS 275 Überspannungsschutz · Mehrpoliger Überspannungsableiter mit thermodynamischer Abtrennvorrichtung",
       "origin": "starter",
       "verification": "unverified"
     },
     {
-      "id": "[\"Hager\",\"MBN116\",\"\"]",
-      "articleNumber": "MBN116",
-      "manufacturer": "Hager",
+      "id": "[\"Eaton\",\"ETR4-69-A\",\"\"]",
+      "articleNumber": "ETR4-69-A",
+      "manufacturer": "Eaton",
       "variant": "",
-      "description": "Leitungsschutzschalter B16 1-polig · Leitungsschutzschalter nach DIN VDE 0641 Teil 11",
+      "description": "Multifunktions-Zeitrelais ETR4 · Elektronisches Zeitrelais mit Steuerkontakteingang B1",
       "origin": "starter",
       "verification": "unverified"
     },
@@ -66,20 +75,38 @@
       "verification": "unverified"
     },
     {
-      "id": "[\"Siemens\",\"5SV3344-6\",\"\"]",
-      "articleNumber": "5SV3344-6",
-      "manufacturer": "Siemens",
+      "id": "[\"Hager\",\"CDA225D\",\"\"]",
+      "articleNumber": "CDA225D",
+      "manufacturer": "Hager",
       "variant": "",
-      "description": "FI-Schutzschalter SENTRON 4P 40A 30mA · Siemens SENTRON FI-Schutzschalter für Industrie und Gewerbe",
+      "description": "FI-Schutzschalter 2P 25A 30mA Typ A · Fehlerstromschutzschalter 1P+N für Einphasenstromkreise",
       "origin": "starter",
       "verification": "unverified"
     },
     {
-      "id": "[\"Siemens\",\"5SV1316-6KK16\",\"\"]",
-      "articleNumber": "5SV1316-6KK16",
-      "manufacturer": "Siemens",
+      "id": "[\"Hager\",\"CDS440D\",\"\"]",
+      "articleNumber": "CDS440D",
+      "manufacturer": "Hager",
       "variant": "",
-      "description": "FI/LS-Kombischalter 1P+N B16 30mA (1 TE) · Kompakter RCBO spart 50% Platz im Verteilerschrank",
+      "description": "FI-Schutzschalter 4P 40A 30mA Typ A · Fehlerstromschutzschalter nach DIN EN 61008-1 zum Schutz bei Berührung",
+      "origin": "starter",
+      "verification": "unverified"
+    },
+    {
+      "id": "[\"Hager\",\"EPN510\",\"\"]",
+      "articleNumber": "EPN510",
+      "manufacturer": "Hager",
+      "variant": "",
+      "description": "Stromstoßschalter 1S 16A 230V · Elektromechanisches Stromstoßrelais für Lichtsteuerung mit Tastern",
+      "origin": "starter",
+      "verification": "unverified"
+    },
+    {
+      "id": "[\"Hager\",\"MBN116\",\"\"]",
+      "articleNumber": "MBN116",
+      "manufacturer": "Hager",
+      "variant": "",
+      "description": "Leitungsschutzschalter B16 1-polig · Leitungsschutzschalter nach DIN VDE 0641 Teil 11",
       "origin": "starter",
       "verification": "unverified"
     },
@@ -102,38 +129,20 @@
       "verification": "unverified"
     },
     {
-      "id": "[\"ABB\",\"FH202-25/0.03\",\"\"]",
-      "articleNumber": "FH202-25/0.03",
-      "manufacturer": "ABB",
+      "id": "[\"Siemens\",\"5SV1316-6KK16\",\"\"]",
+      "articleNumber": "5SV1316-6KK16",
+      "manufacturer": "Siemens",
       "variant": "",
-      "description": "FI-Schutzschalter 2P 25A 30mA Typ A · ABB System pro M compact Fehlerstromschutzschalter",
+      "description": "FI/LS-Kombischalter 1P+N B16 30mA (1 TE) · Kompakter RCBO spart 50% Platz im Verteilerschrank",
       "origin": "starter",
       "verification": "unverified"
     },
     {
-      "id": "[\"ABB\",\"E290-16-10/230\",\"\"]",
-      "articleNumber": "E290-16-10/230",
-      "manufacturer": "ABB",
+      "id": "[\"Siemens\",\"5SV3344-6\",\"\"]",
+      "articleNumber": "5SV3344-6",
+      "manufacturer": "Siemens",
       "variant": "",
-      "description": "Stromstoßschalter 16A 1S 230VAC · Elektromagnetisches Stromstoßrelais für Reiheneinbau",
-      "origin": "starter",
-      "verification": "unverified"
-    },
-    {
-      "id": "[\"Eaton\",\"ETR4-69-A\",\"\"]",
-      "articleNumber": "ETR4-69-A",
-      "manufacturer": "Eaton",
-      "variant": "",
-      "description": "Multifunktions-Zeitrelais ETR4 · Elektronisches Zeitrelais mit Steuerkontakteingang B1",
-      "origin": "starter",
-      "verification": "unverified"
-    },
-    {
-      "id": "[\"Dehn\",\"952400\",\"\"]",
-      "articleNumber": "952400",
-      "manufacturer": "Dehn",
-      "variant": "",
-      "description": "DEHNguard M TNS 275 Überspannungsschutz · Mehrpoliger Überspannungsableiter mit thermodynamischer Abtrennvorrichtung",
+      "description": "FI-Schutzschalter SENTRON 4P 40A 30mA · Siemens SENTRON FI-Schutzschalter für Industrie und Gewerbe",
       "origin": "starter",
       "verification": "unverified"
     }
