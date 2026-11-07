@@ -137,5 +137,9 @@
       "origin": "starter",
       "verification": "unverified"
     }
-  ]
+  ],
+  "submission": {
+    "url": "https://schematico-catalog-submissions.billowing-dawn-7792.workers.dev/submit",
+    "siteKey": "0x4AAAAAAF3ulJn9eTGHvnUG"
+  }
 }
