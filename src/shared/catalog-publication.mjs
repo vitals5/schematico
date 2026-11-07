@@ -87,6 +87,7 @@ export function appendPublicArticle(current, raw) {
         variant: a.variant,
         description: a.description,
         functions: a.functions ?? [],
+        symbolId: a.symbolId ?? '',
       });
     if (semantic(old) !== semantic(article))
       throw new Error('githubCatalogConflict');

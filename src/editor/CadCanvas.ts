@@ -17,13 +17,14 @@ import { plotFrameSvg } from '../model/PlotFrame';
 import { cleanupConnections } from '../model/WireCleanup';
 import { wirePolyline, wirePinDirection, moveWireSegment } from '../model/WireRouting';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
+import { assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
 import { drawingToSvg, escapeSvg, uprightSymbolSvg } from '../model/ImportedDrawing';
 import { Project, Page, PlacedComponent, Wire, CableDefinition, PageImage, PageBox, PageText, WallSegment, WallOpening } from '../model/types';
 import { getSymbolById, getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { referenceTargets, referenceMarkup, ReferenceTarget } from '../model/CrossReferenceNavigation';
 import { CrossReferenceEngine } from '../model/CrossReferenceEngine';
 import { AutoconnectEngine, AutoconnectPreviewSegment } from '../model/AutoconnectEngine';
-import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition } from '../model/LabelLayout';
+import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, setComponentLabelText } from '../model/LabelLayout';
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
@@ -76,6 +77,7 @@ export class CadCanvas {
   public gridResolution: GridResolution = 'fine';
   public autoconnectEnabled: boolean = true;
   public activeSymbolToPlace: string | null = null;
+  private activeArticleToPlace?: EditorArticle;
   public activeMacroToPlace: WindowMacro | null = null;
   public ghostRotation: 0 | 90 | 180 | 270 = 0;
   public selectedComponentId: string | null = null;
@@ -213,7 +215,7 @@ export class CadCanvas {
     this.isDraggingComponent = false; this.isPanning = false; this.touchMode = 'none';
     this.wireSegmentDrag=undefined;
     this.wireStart = null; this.lastMousePress = null; this.hoveredPin = null;
-    this.activeSymbolToPlace = null; this.activeMacroToPlace = null; this.mode = 'select';
+    this.activeSymbolToPlace = null; this.activeArticleToPlace = undefined; this.activeMacroToPlace = null; this.mode = 'select';
     this.referenceMarker = undefined;this.boxDraft=undefined;this.boxResize=undefined;
     this.multipleSelection=undefined;this.selectionWindow=undefined;this.selectionDrag=undefined;
     this.project = project;
@@ -341,6 +343,7 @@ export class CadCanvas {
     if(mode!=='draw_wall')this.wallDraft=null;
     if(mode!=='place_opening')this.activeOpeningKindToPlace=null;
     this.mode = mode;
+    if (mode !== 'place_symbol') this.activeArticleToPlace = undefined;
     this.cableStart = undefined;
     this.wireStart = null;
     this.render();
@@ -349,13 +352,21 @@ export class CadCanvas {
   public setSymbolToPlace(symbolId: string): void {
     this.setElementSelection(emptySelection());this.cancelBoxInteraction();
     this.activeSymbolToPlace = symbolId;
+    this.activeArticleToPlace = undefined;
     this.activeMacroToPlace = null;
     this.mode = 'place_symbol';
     this.ghostRotation = 0;
     this.render();
   }
 
+  public setArticleToPlace(entry: EditorArticle): void {
+    if (!entry.symbolId || !getSymbolById(entry.symbolId, this.project)) throw new Error('articleSymbolMissing');
+    this.setSymbolToPlace(entry.symbolId);
+    this.activeArticleToPlace = structuredClone(entry);
+  }
+
   public setMacroToPlace(macro: WindowMacro): void {
+    this.activeArticleToPlace = undefined;
     this.setElementSelection(emptySelection());this.cancelBoxInteraction();
     this.activeMacroToPlace = macro;
     this.activeSymbolToPlace = null;
@@ -1366,6 +1377,12 @@ export class CadCanvas {
       pins: Object.fromEntries(sym.pins.map(pin => [pin.id, { customLabel: pin.name, wireIds: [] }]))
     };
 
+    if (this.activeArticleToPlace) {
+      const entry = this.activeArticleToPlace;
+      assignMainCatalogArticle(newComp, entry.article, this.project);
+      setComponentLabelText(newComp, 'functionText', entry.name);
+      if (entry.technicalData) setComponentLabelText(newComp, 'technicalCharacteristics', entry.technicalData);
+    }
     this.activePage.components.push(newComp);
     this.selectedComponentId = newComp.id;
     this.callbacks.onSelectComponent(newComp);

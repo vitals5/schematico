@@ -6,6 +6,7 @@ const article = {
   manufacturer: 'Maker',
   variant: '',
   description: 'Example',
+  symbolId: 'rcd_4p',
   origin: 'user',
   verification: 'user_checked',
 };
@@ -49,6 +50,7 @@ try {
   const payload = JSON.parse(calls[1].options.body);
   assert.equal(payload.event_type, 'schematico.article.submitted');
   assert.equal(payload.client_payload.article.verification, 'unverified');
+  assert.equal(payload.client_payload.article.symbolId, 'rcd_4p');
   assert(!JSON.stringify(payload).includes('test-server-secret'));
   calls = [];
   assert.equal(

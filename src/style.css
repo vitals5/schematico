@@ -1510,3 +1510,9 @@ button:disabled { opacity: .4; cursor: default; }
 .ai-attachment img {width:42px;height:42px;object-fit:contain;}
 .ai-attachment button {background:transparent;color:inherit;border:0;cursor:pointer;font-size:18px;}
 .ai-sent-attachment {margin-top:5px;font-size:11px;overflow-wrap:anywhere;}
+
+.article-sidebar-heading { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.article-sidebar-heading > strong { flex:1; font-size:12px; }
+.article-symbol-field { margin:12px 0; padding:12px; background:#131d29; border:1px solid #34485f; border-radius:6px; }
+.article-symbol-field > label { display:block; font-weight:600; margin-bottom:8px; }
+.article-symbol-field > p { margin:8px 0 0; color:#a5b5c7; font-size:12px; }

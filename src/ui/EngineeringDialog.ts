@@ -72,6 +72,7 @@ export function formatCatalogSummary(
     article.description +
     '\n\n' +
     formatArticleFunctions(article.functions) +
+    (article.symbolId ? '\n\n' + t('articleSymbolDefault') + ': ' + article.symbolId : '') +
     '\n\n' +
     t(
       article.verification === 'user_checked'

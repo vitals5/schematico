@@ -4,6 +4,14 @@ import { effectiveArticles } from './ArticleAssignments';
 import { MANUFACTURER_PARTS } from './PartCatalogue';
 export { catalogKey, validateCatalogArticle } from './CatalogRecord';
 import { catalogKey, validateCatalogArticle } from './CatalogRecord';
+const catalogListeners = new Set<() => void>();
+export function onLocalCatalogChange(listener: () => void) {
+  catalogListeners.add(listener);
+  return () => catalogListeners.delete(listener);
+}
+function notifyCatalogChange() {
+  for (const listener of catalogListeners) listener();
+}
 export const catalogRevision = (articles: CatalogArticle[]) =>
   JSON.stringify(
     [...articles].sort((a, b) => catalogKey(a).localeCompare(catalogKey(b))),
@@ -41,8 +49,20 @@ export function starterArticles(): CatalogArticle[] {
       description: p.name + ' · ' + p.description,
       origin: 'starter',
       verification: 'unverified',
+      symbolId: p.symbolId,
     }),
   );
+}
+/** Older shared seed records lack symbol IDs. Local records remain authoritative,
+ * including an explicitly removed default symbol. */
+export function availableCatalogArticles(shared: CatalogArticle[], local: CatalogArticle[]) {
+  const map = new Map(starterArticles().map(a => [catalogKey(a), a]));
+  for (const a of shared) {
+    const key = catalogKey(a), symbolId = a.symbolId ?? map.get(key)?.symbolId;
+    map.set(key, { ...a, ...(symbolId ? {symbolId} : {}) });
+  }
+  for (const a of local) map.set(catalogKey(a), a);
+  return [...map.values()];
 }
 export function projectArticles(p: Project): CatalogArticle[] {
   const rows: CatalogArticle[] = (p.importedArticleLibrary ?? []).map((m) =>
@@ -94,13 +114,14 @@ export function projectArticles(p: Project): CatalogArticle[] {
 export function catalogToCsv(articles: CatalogArticle[]): string {
   const cell = (s: string) => '"' + s.replace(/"/g, '""') + '"';
   return [
-    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions'],
+    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions', 'symbolId'],
     ...articles.map((a) => [
       a.articleNumber,
       a.manufacturer,
       a.variant,
       a.description,
       a.functions ? JSON.stringify(a.functions) : '',
+      a.symbolId ?? '',
     ]),
   ]
     .map((row) => row.map(cell).join(';'))
@@ -186,6 +207,7 @@ export function parseCatalogFile(
         variant: fields.variant,
         description: fields.description,
         functions: fields.functions ? JSON.parse(fields.functions) : undefined,
+        symbolId: fields.symbolId || undefined,
         origin: 'user',
         verification: 'unverified',
       };
@@ -217,7 +239,7 @@ export class ArticleCatalog {
     });
   }
   async syncState(key:string):Promise<import('./TeamCatalog').TeamState|undefined>{const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('sync','readonly'),r=tx.objectStore('sync').get(key);tx.oncomplete=()=>{db.close();resolve(r.result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};});}
-  async replaceForSync(articles:CatalogArticle[],expected:string,key:string,state:import('./TeamCatalog').TeamState){const rows=articles.map(validateCatalogArticle);if(new Set(rows.map(catalogKey)).size!==rows.length)throw new Error('articlesCatalogDuplicate');const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['articles','sync'],'readwrite'),store=tx.objectStore('articles'),read=store.getAll();let error:unknown;read.onsuccess=()=>{if(catalogRevision(read.result)!==expected){error=new Error('articlesCatalogStale');tx.abort();return;}store.clear();rows.forEach(r=>store.put(r));tx.objectStore('sync').put(state,key);};tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(error??tx.error);};});}
+  async replaceForSync(articles:CatalogArticle[],expected:string,key:string,state:import('./TeamCatalog').TeamState){const rows=articles.map(validateCatalogArticle);if(new Set(rows.map(catalogKey)).size!==rows.length)throw new Error('articlesCatalogDuplicate');const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['articles','sync'],'readwrite'),store=tx.objectStore('articles'),read=store.getAll();let error:unknown;read.onsuccess=()=>{if(catalogRevision(read.result)!==expected){error=new Error('articlesCatalogStale');tx.abort();return;}store.clear();rows.forEach(r=>store.put(r));tx.objectStore('sync').put(state,key);};tx.oncomplete=()=>{db.close();notifyCatalogChange();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(error??tx.error);};});}
   async list(): Promise<CatalogArticle[]> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
@@ -260,6 +282,7 @@ export class ArticleCatalog {
       };
       tx.oncomplete = () => {
         db.close();
+        notifyCatalogChange();
         resolve();
       };
       tx.onabort = tx.onerror = () => {
@@ -283,6 +306,7 @@ export class ArticleCatalog {
       };
       tx.oncomplete = () => {
         db.close();
+        notifyCatalogChange();
         resolve();
       };
       tx.onabort = tx.onerror = () => {

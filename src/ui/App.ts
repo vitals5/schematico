@@ -1,4 +1,7 @@
-import { refreshSharedCatalog } from '../model/GitHubCatalog';
+import { refreshEditorArticles, editorArticles, onEditorArticlesChange, assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
+import { refreshEditorArticleSelectors, editorArticleOptions, componentArticleKey } from './EditorArticlePicker';
+import { ArticleCatalogDialog } from './ArticleCatalogDialog';
+import { catalogKey } from '../model/CatalogRecord';
 import {PotentialDialog} from './PotentialDialog';
 import {DeviceNavigatorDialog} from './DeviceNavigatorDialog';
 import {WiringDialog} from './WiringDialog';
@@ -51,7 +54,6 @@ import { PackageHandler, PackageInspectionResult } from '../packages/PackageHand
 import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
 import { PartsListGenerator,partQuantityLabel } from '../reports/PartsList';
 import { PdfExportDialog } from './PdfExportDialog';
-import { PartCatalogue, MANUFACTURER_PARTS, ManufacturerPart } from '../model/PartCatalogue';
 import { MobileConnectDialog } from './MobileConnectDialog';
 import { PropertiesDialog } from './PropertiesDialog';
 import { SymbolSelectionDialog } from './SymbolSelectionDialog';
@@ -110,7 +112,6 @@ export class App {
   private statusBadge!: StatusBadge;
 
   constructor() {
-    void refreshSharedCatalog();
     const savedLeftW = readAppSetting('left_w');
     if (savedLeftW) this.leftSidebarWidth = parseInt(savedLeftW, 10) || 280;
     const savedRightW = readAppSetting('right_w');
@@ -142,6 +143,11 @@ export class App {
       if (this.activeLeftTab === 'macros') this.renderLeftTab();
     });
     void externalMacroLibrary.restore();
+    onEditorArticlesChange(() => {
+      if (this.activeLeftTab === 'parts') this.renderLeftTab();
+      refreshEditorArticleSelectors();
+    });
+    void refreshEditorArticles();
 
     if (this.isLeftCollapsed) this.setLeftPanelCollapsed(true);
     if (this.isRightCollapsed) this.setRightPanelCollapsed(true);
@@ -797,8 +803,9 @@ export class App {
     }
   }
 
-  public onSymbolSelectedToPlace(symId: string, customName?: string): void {
-    this.canvas.setSymbolToPlace(symId);
+  public onSymbolSelectedToPlace(symId: string, customName?: string, article?: EditorArticle): void {
+    if (article) this.canvas.setArticleToPlace(article);
+    else this.canvas.setSymbolToPlace(symId);
     if (window.innerWidth <= 960) {
       this.setLeftPanelCollapsed(true);
       const banner = document.getElementById('placeHintBanner');
@@ -2701,105 +2708,38 @@ export class App {
   }
 
   private renderPartsCatalogueTab(container: HTMLElement): void {
-    let html = `
-      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
-        ${t('partsHeading')}
-      </div>
-
-      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-        <select class="form-input" id="mfrSelect" style="flex: 1;">
-          <option value="all" ${this.manufacturerFilter === 'all' ? 'selected' : ''}>${t('partsMfrAll')}</option>
-          <option value="Hager" ${this.manufacturerFilter === 'Hager' ? 'selected' : ''}>Hager</option>
-          <option value="Finder" ${this.manufacturerFilter === 'Finder' ? 'selected' : ''}>Finder</option>
-          <option value="Siemens" ${this.manufacturerFilter === 'Siemens' ? 'selected' : ''}>Siemens</option>
-          <option value="ABB" ${this.manufacturerFilter === 'ABB' ? 'selected' : ''}>ABB</option>
-          <option value="Eaton" ${this.manufacturerFilter === 'Eaton' ? 'selected' : ''}>Eaton</option>
-          <option value="Dehn" ${this.manufacturerFilter === 'Dehn' ? 'selected' : ''}>Dehn</option>
-        </select>
-        <input class="form-input" id="mfrSearch" placeholder="${escapeSvg(t('partsSearchPlaceholder'))}" value="${escapeSvg(this.manufacturerSearchQuery)}" style="flex: 1.2;">
-      </div>
-
-      <div class="parts-list" style="display: flex; flex-direction: column; gap: 8px;">
-    `;
-
-    let parts = MANUFACTURER_PARTS;
-    if (this.manufacturerFilter !== 'all') {
-      parts = parts.filter(p => p.manufacturer.toLowerCase() === this.manufacturerFilter.toLowerCase());
-    }
-    if (this.manufacturerSearchQuery) {
-      const q = this.manufacturerSearchQuery.toLowerCase();
-      parts = parts.filter(p => 
-        p.name.toLowerCase().includes(q) || 
-        p.articleNumber.toLowerCase().includes(q) || 
-        p.description.toLowerCase().includes(q) ||
-        p.technicalData.toLowerCase().includes(q)
-      );
-    }
-
-    for (const part of parts) {
-      html += `
-        <div class="part-item-card" data-part-id="${part.id}" style="
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: 6px;
-          padding: 8px 10px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        ">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-            <span style="font-weight: 600; font-size: 11px; color: var(--accent-bright);">${part.manufacturer}</span>
-            <span style="font-family: monospace; font-size: 10px; background: rgba(246, 224, 94, 0.15); color: var(--warning); padding: 1px 4px; border-radius: 3px;">
-              ${part.articleNumber}
-            </span>
-          </div>
-
-          <div style="font-weight: 500; font-size: 11px; margin-bottom: 3px; color: var(--text-main);">
-            ${part.name}
-          </div>
-
-          <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
-            ${part.technicalData}
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
-            <span style="font-size: 9px; color: #718096;">${part.widthModules || t('partsNormDesign')}</span>
-            <button class="btn btn-primary btn-place-part" data-part-id="${part.id}" style="padding: 2px 6px; font-size: 10px;">
-              ⚡ ${t('partsPlaceOnCanvas')}
-            </button>
-          </div>
-        </div>
-      `;
-    }
-
-    html += `</div>`;
-    container.innerHTML = html;
-
-    // Events
-    document.getElementById('mfrSelect')?.addEventListener('change', (e) => {
-      this.manufacturerFilter = (e.target as HTMLSelectElement).value;
-      this.renderPartsCatalogueTab(container);
+    const all = editorArticles();
+    const manufacturers = [...new Set(all.map(e => e.article.manufacturer))].sort((a,b) => a.localeCompare(b));
+    let entries = all.filter(e => this.manufacturerFilter === 'all' || e.article.manufacturer === this.manufacturerFilter);
+    const query = this.manufacturerSearchQuery.trim().toLocaleLowerCase();
+    if (query) entries = entries.filter(e => [e.article.manufacturer,e.article.articleNumber,e.article.variant,e.name,e.technicalData].join(' ').toLocaleLowerCase().includes(query));
+    container.innerHTML = `<div class="article-sidebar-heading"><strong>${escapeSvg(t('partsHeading'))}</strong><button class="btn" data-catalog-manage>${escapeSvg(t('articlesCatalog'))}</button><button class="btn" data-catalog-refresh>${escapeSvg(t('articlesRefresh'))}</button></div>
+      <div style="display:flex;gap:6px;margin:8px 0"><select class="form-input" id="mfrSelect" style="min-width:0;flex:1"><option value="all">${escapeSvg(t('partsMfrAll'))}</option>${manufacturers.map(m => `<option value="${escapeSvg(m)}" ${m === this.manufacturerFilter ? 'selected' : ''}>${escapeSvg(m)}</option>`).join('')}</select><input class="form-input" id="mfrSearch" placeholder="${escapeSvg(t('partsSearchPlaceholder'))}" value="${escapeSvg(this.manufacturerSearchQuery)}" style="min-width:0;flex:1"></div>
+      <p style="font-size:11px;color:var(--text-muted)">${entries.length} ${escapeSvg(t('githubCatalogArticles'))}</p>
+      <div class="parts-list" style="display:flex;flex-direction:column;gap:8px">${entries.slice(0,100).map((entry,i) => {
+        const a = entry.article, symbol = entry.symbolId ? getSymbolById(entry.symbolId,this.project) : undefined;
+        return `<div class="part-item-card" data-editor-article="${i}" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:10px">
+          <div style="display:flex;justify-content:space-between;gap:6px;font-size:11px"><strong>${escapeSvg(a.manufacturer)}</strong><span>${escapeSvg(a.articleNumber)}${a.variant ? ' · ' + escapeSvg(a.variant) : ''}</span></div>
+          <p style="font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere">${escapeSvg(entry.name)}</p>
+          <p style="font-size:10px;color:var(--text-muted)">${escapeSvg(symbol ? getLocalizedSymbol(symbol).name : t('articleSymbolMissing'))}</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-place-part" data-place-article="${i}" ${symbol ? '' : 'disabled'}>${escapeSvg(t('partsPlaceOnCanvas'))}</button><button class="btn" data-link-article="${i}">${escapeSvg(t('articleSymbolLink'))}</button></div>
+        </div>`;
+      }).join('')}</div>${entries.length > 100 ? `<p>${escapeSvg(t('articleSearchNarrow'))}</p>` : ''}`;
+    container.querySelector('#mfrSelect')?.addEventListener('change', e => {this.manufacturerFilter=(e.target as HTMLSelectElement).value;this.renderPartsCatalogueTab(container);});
+    container.querySelector('#mfrSearch')?.addEventListener('input', e => {
+      const input=e.target as HTMLInputElement, cursor=input.selectionStart;
+      this.manufacturerSearchQuery=input.value;this.renderPartsCatalogueTab(container);
+      const next=container.querySelector<HTMLInputElement>('#mfrSearch');next?.focus();if(cursor!==null)next?.setSelectionRange(cursor,cursor);
     });
-
-    document.getElementById('mfrSearch')?.addEventListener('input', (e) => {
-      this.manufacturerSearchQuery = (e.target as HTMLInputElement).value;
-      this.renderPartsCatalogueTab(container);
+    container.querySelector('[data-catalog-refresh]')?.addEventListener('click', () => void refreshEditorArticles());
+    container.querySelector('[data-catalog-manage]')?.addEventListener('click', () => new ArticleCatalogDialog(this.project).show());
+    for (const button of container.querySelectorAll<HTMLElement>('[data-link-article]')) button.addEventListener('click', () => {
+      const article=entries[Number(button.dataset.linkArticle)].article;
+      new ArticleCatalogDialog(this.project,undefined,article.articleNumber,article).show();
     });
-
-    container.querySelectorAll('.btn-place-part, .part-item-card').forEach(el => {
-      el.addEventListener('click', (e) => {
-        const partId = (e.currentTarget as HTMLElement).dataset.partId!;
-        const part = MANUFACTURER_PARTS.find(p => p.id === partId);
-        if (part) {
-          this.onSymbolSelectedToPlace(part.symbolId, `${part.manufacturer} ${part.name}`);
-          if (this.selectedComponent) {
-            this.selectedComponent.manufacturer = part.manufacturer;
-            this.selectedComponent.articleNumber = part.articleNumber;
-            setComponentLabelText(this.selectedComponent, 'functionText', part.name);
-            setComponentLabelText(this.selectedComponent, 'technicalCharacteristics', part.technicalData);
-            this.notifyChange();
-          }
-        }
-      });
+    for (const button of container.querySelectorAll<HTMLElement>('[data-place-article]')) button.addEventListener('click', () => {
+      const entry=entries[Number(button.dataset.placeArticle)];
+      if(entry.symbolId && getSymbolById(entry.symbolId,this.project))this.onSymbolSelectedToPlace(entry.symbolId,entry.name,entry);
     });
   }
 
@@ -4030,24 +3970,19 @@ export class App {
 
         <div class="form-group" style="background: rgba(99, 179, 237, 0.08); padding: 8px; border-radius: 4px; border: 1px dashed var(--accent);">
           <label class="form-label" style="color: var(--accent-bright);">${t('labelAssignPart')}</label>
-          <select class="form-input" id="propAssignPartSelect">
-            <option value="">${t('selectPartPlaceholder')}</option>
-            ${MANUFACTURER_PARTS.map(p => `
-              <option value="${p.id}" ${comp.articleNumber === p.articleNumber ? 'selected' : ''}>
-                ${p.manufacturer} - ${p.articleNumber} (${p.name})
-              </option>
-            `).join('')}
+          <select class="form-input" id="propAssignPartSelect" data-editor-article-select>
+            ${editorArticleOptions(componentArticleKey(comp,this.project))}
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">${t('labelArticleNumber')}</label>
-          <input class="form-input" id="propArticle" value="${comp.articleNumber || ''}">
+          <input class="form-input" id="propArticle" value="${escapeSvg(comp.articleNumber || '')}">
         </div>
 
         <div class="form-group">
           <label class="form-label">${t('labelManufacturer')}</label>
-          <input class="form-input" id="propManufacturer" value="${comp.manufacturer || ''}">
+          <input class="form-input" id="propManufacturer" value="${escapeSvg(comp.manufacturer || '')}">
         </div>
 
         <div class="form-group">
@@ -4171,14 +4106,12 @@ export class App {
         this.notifyChange();
       });
       document.getElementById('propAssignPartSelect')?.addEventListener('change', (e) => {
-        const partId = (e.target as HTMLSelectElement).value;
-        const part = MANUFACTURER_PARTS.find(p => p.id === partId);
-        if (part) {
-          comp.manufacturer = part.manufacturer;
-          comp.articleNumber = part.articleNumber;
-          setComponentLabelText(comp, 'technicalCharacteristics', part.technicalData);
-          setComponentLabelText(comp, 'functionText', part.name);
+        const key = (e.target as HTMLSelectElement).value;
+        const entry = editorArticles().find(e => catalogKey(e.article) === key);
+        if (entry) {
+          assignMainCatalogArticle(comp, entry.article, this.project);
           this.notifyChange();
+          this.renderRightTab();
         }
       });
       document.getElementById('propAdditionalText')?.addEventListener('input', (e) => {

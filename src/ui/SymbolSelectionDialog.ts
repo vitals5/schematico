@@ -5,7 +5,7 @@ import { ELEMENT_CATEGORIES, symbolMatchesQuery } from '../model/SymbolCatalogue
 import { escapeSvg } from '../model/ImportedDrawing';
 import { isConnectionSymbol, connectionFamily } from '../model/ConnectionSymbols';
 import { SymbolDefinition } from '../model/types';
-import { getSymbolDefinitions, getSymbolById } from '../model/symbols';
+import { getSymbolDefinitions, getSymbolById, SYMBOL_DEFINITIONS } from '../model/symbols';
 import { t, getCategoryLabel, getConnectionCategoryLabel, getLocalizedSymbol } from '../i18n';
 
 export interface SymbolSelectionCallbacks {
@@ -14,14 +14,17 @@ export interface SymbolSelectionCallbacks {
 
 export class SymbolSelectionDialog {
   private callbacks: SymbolSelectionCallbacks;
+  private keyHandler?: (e: KeyboardEvent) => void;
   private selectedCategory: string = 'all';
   private searchQuery: string = '';
   private selectedSymbolId: string = getSymbolDefinitions()[0].id;
 
-  constructor(callbacks: SymbolSelectionCallbacks, private kind: 'elements' | 'connections' = 'elements') {
+  constructor(callbacks: SymbolSelectionCallbacks, private kind: 'elements' | 'connections' = 'elements', private options: {standardOnly?:boolean; zIndex?:number} = {}) {
     this.callbacks = callbacks;
-    this.selectedSymbolId = getSymbolDefinitions().find(s => !s.annotationKind && isConnectionSymbol(s) === (kind === 'connections'))?.id ?? '';
+    this.selectedSymbolId = this.definitions().find(s => !s.annotationKind && isConnectionSymbol(s) === (kind === 'connections'))?.id ?? '';
   }
+
+  private definitions() { return this.options.standardOnly ? SYMBOL_DEFINITIONS : getSymbolDefinitions(); }
 
   public show(): void {
     const existing = document.getElementById('symbolSelectionModal');
@@ -36,7 +39,7 @@ export class SymbolSelectionDialog {
     modal.style.display = 'flex';
     modal.style.alignItems = 'center';
     modal.style.justifyContent = 'center';
-    modal.style.zIndex = '2100';
+    modal.style.zIndex = String(this.options.zIndex ?? 2100);
     modal.style.padding = '12px';
 
     modal.innerHTML = `
@@ -93,7 +96,7 @@ export class SymbolSelectionDialog {
             " value="${escapeSvg(this.searchQuery)}">
           </div>
           <span style="font-size: 11px; color: #a0aec0;" id="symCountBadge">
-            ${t('symCountBadge', { count: getSymbolDefinitions().length })}
+            ${t('symCountBadge', { count: this.definitions().length })}
           </span>
         </div>
 
@@ -171,7 +174,7 @@ export class SymbolSelectionDialog {
   }
 
   private getFilteredSymbols(): SymbolDefinition[] {
-    return getSymbolDefinitions().filter(s => {
+    return this.definitions().filter(s => {
       if (s.annotationKind) return false;
       if (isConnectionSymbol(s) !== (this.kind === 'connections')) return false;
       const matchCat = this.selectedCategory === 'all' || this.kind === 'connections' && connectionFamily(s) === this.selectedCategory || s.category === this.selectedCategory
@@ -228,7 +231,7 @@ export class SymbolSelectionDialog {
   }
 
   private renderSymbolDetails(): string {
-    const sym = getSymbolById(this.selectedSymbolId);
+    const sym = this.definitions().find(s => s.id === this.selectedSymbolId);
     if (!sym) return `<div>${t('symNoSelection')}</div>`;
     const locSym = getLocalizedSymbol(sym);
 
@@ -282,8 +285,14 @@ export class SymbolSelectionDialog {
     `;
   }
 
+  private closeDialog(modal: HTMLElement): void {
+    modal.remove();
+    if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler);
+    this.keyHandler = undefined;
+  }
+
   private bindEvents(modal: HTMLElement): void {
-    const closeModal = () => modal.remove();
+    const closeModal = () => this.closeDialog(modal);
 
     // Close buttons
     modal.querySelector('#btnCloseSymModal')?.addEventListener('click', closeModal);
@@ -312,7 +321,7 @@ export class SymbolSelectionDialog {
 
     // Insert on click or enter
     const insertSelected = () => {
-      const sym = getSymbolById(this.selectedSymbolId);
+      const sym = this.definitions().find(s => s.id === this.selectedSymbolId);
       if (sym) {
         this.callbacks.onSelect(sym);
         closeModal();
@@ -331,6 +340,7 @@ export class SymbolSelectionDialog {
         window.removeEventListener('keydown', keyHandler);
       }
     };
+    this.keyHandler = keyHandler;
     window.addEventListener('keydown', keyHandler);
 
     this.bindCardClicks(modal, insertSelected);
@@ -347,10 +357,10 @@ export class SymbolSelectionDialog {
     if (grid) {
       grid.innerHTML = this.renderSymbolsGrid();
       this.bindCardClicks(modal, () => {
-        const sym = getSymbolById(this.selectedSymbolId);
+        const sym = this.definitions().find(s => s.id === this.selectedSymbolId);
         if (sym) {
           this.callbacks.onSelect(sym);
-          modal.remove();
+          this.closeDialog(modal);
         }
       });
     }

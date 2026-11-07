@@ -7,6 +7,12 @@ const listeners = new Set<Listener>();
 
 export const translations = {
   de: {
+    articleSymbolDefault: "Standardsymbol für die Platzierung",
+    articleSymbolMissing: "Kein verfügbares Symbol zugeordnet",
+    articleSymbolLink: "Symbol zuordnen…",
+    articleSymbolClear: "Zuordnung entfernen",
+    articleSymbolHint: "Das Standardsymbol gilt für neue Platzierungen. Bestehende Symbole und Verbindungen werden durch eine Artikelzuweisung nicht geändert. Änderungen an veröffentlichten Artikeln werden als lokale Kopie gespeichert.",
+    articleSearchNarrow: "Weitere Artikel vorhanden. Bitte die Suche eingrenzen.",
     engineeringCableType: "Kabeltyp",
     engineeringCableCore: "Ader auswählen",
     engineeringCoreDesignation: "Aderbezeichnung",
@@ -1366,6 +1372,12 @@ export const translations = {
     ctxDoorFlipSwing: '🚪 Türanschlag spiegeln'
   },
   en: {
+    articleSymbolDefault: "Default placement symbol",
+    articleSymbolMissing: "No available symbol assigned",
+    articleSymbolLink: "Assign symbol…",
+    articleSymbolClear: "Remove link",
+    articleSymbolHint: "The default symbol is used for new placements. Assigning an article preserves existing symbols and connections. Edits to published articles are saved as a local copy.",
+    articleSearchNarrow: "More articles available. Please refine the search.",
     engineeringCableType: "Cable type",
     engineeringCableCore: "Select core",
     engineeringCoreDesignation: "Core designation",

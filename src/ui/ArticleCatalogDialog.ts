@@ -1,3 +1,5 @@
+import { SymbolSelectionDialog } from './SymbolSelectionDialog';
+import { getSymbolById } from '../model/symbols';
 import {
   sharedCatalogState,
   refreshSharedCatalog,
@@ -19,6 +21,7 @@ import {
   catalogKey,
   catalogRevision,
   starterArticles,
+  availableCatalogArticles,
   projectArticles,
   planCatalogMerge,
   validateCatalogArticle,
@@ -27,7 +30,7 @@ import {
   catalogToCsv,
 } from '../model/ArticleCatalog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
-import { t, translations, type TranslationKey } from '../i18n';
+import { t, translations, getLocalizedSymbol, type TranslationKey } from '../i18n';
 export const articleError = (e: unknown) => {
   const message = e instanceof Error ? e.message : String(e);
   return message in translations.de ? t(message as TranslationKey) : message;
@@ -70,8 +73,10 @@ export class ArticleCatalogDialog {
     private project: Project,
     private onChoose?: (article: CatalogArticle) => void,
     initialSearch = '',
+    initialArticle?: CatalogArticle,
   ) {
     this.search = initialSearch;
+    if (initialArticle) this.editing = structuredClone(initialArticle);
   }
   show() {
     if (document.getElementById('articleCatalogDialog')) return;
@@ -128,10 +133,7 @@ export class ArticleCatalogDialog {
   }
   private candidates() {
     if (this.candidateCache) return this.candidateCache;
-    const map = new Map(starterArticles().map((a) => [catalogKey(a), a]));
-    for (const a of this.shared.articles) map.set(catalogKey(a), a);
-    for (const a of this.rows) map.set(catalogKey(a), a);
-    return (this.candidateCache = [...map.values()]);
+    return (this.candidateCache = availableCatalogArticles(this.shared.articles, this.rows));
   }
   private originLabel(article: CatalogArticle) {
     const local = this.rows.some((a) => a.id === article.id),
@@ -185,7 +187,7 @@ export class ArticleCatalogDialog {
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
  ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
@@ -298,6 +300,20 @@ export class ArticleCatalogDialog {
       this.editing = article;
       return article;
     };
+    this.el.querySelector('[data-link-symbol]')?.addEventListener('click', () => {
+      syncDraft();
+      new SymbolSelectionDialog({onSelect: symbol => {
+        this.editing!.symbolId = symbol.id;
+        this.pending = undefined;
+        this.render();
+      }}, 'elements', {standardOnly:true,zIndex:4800}).show();
+    });
+    this.el.querySelector('[data-clear-symbol]')?.addEventListener('click', () => {
+      syncDraft();
+      delete this.editing!.symbolId;
+      this.pending = undefined;
+      this.render();
+    });
     const invalidateEditor = () => {
       const article = syncDraft();
       this.pending = undefined;

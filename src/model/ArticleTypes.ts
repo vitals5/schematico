@@ -7,6 +7,8 @@ export interface CatalogArticle {
   description: string;
   origin: 'user' | 'project_import' | 'starter';
   verification: 'unverified' | 'user_checked';
+  /** Preferred library symbol for placement; assigning an article never replaces existing geometry. */
+  symbolId?: string;
   functions?: { id: string; type: string; pins: string[]; required?: boolean }[];
 }
 export interface AssignedArticle {

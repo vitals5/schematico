@@ -16,6 +16,8 @@ export function validateCatalogArticle(a) {
     !['unverified', 'user_checked'].includes(a.verification)
   )
     throw new Error('articlesCatalogInvalid');
+  if (a.symbolId !== undefined && (typeof a.symbolId !== 'string' || a.symbolId.length > 256 || /[\u0000-\u001f\u007f]/.test(a.symbolId)))
+    throw new Error('articlesCatalogInvalid');
   if (
     a.functions !== undefined &&
     (!Array.isArray(a.functions) ||
@@ -43,6 +45,7 @@ export function validateCatalogArticle(a) {
     description: a.description,
     origin: a.origin,
     verification: a.verification,
+    ...(a.symbolId?.trim() ? { symbolId: a.symbolId.trim() } : {}),
     ...(a.functions
       ? {
           functions: a.functions.map((f) => ({

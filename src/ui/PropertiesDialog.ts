@@ -8,7 +8,10 @@ import { referenceMarkup } from '../model/CrossReferenceNavigation';
 import { Page, PlacedComponent, Project, TextFormatConfig } from '../model/types';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
-import { MANUFACTURER_PARTS } from '../model/PartCatalogue';
+import { editorArticles, assignMainCatalogArticle } from '../model/EditorArticles';
+import { editorArticleOptions, componentArticleKey } from './EditorArticlePicker';
+import { catalogKey } from '../model/CatalogRecord';
+import type { CatalogArticle } from '../model/ArticleTypes';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, arePinLabelsVisible, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
@@ -36,6 +39,7 @@ export class PropertiesDialog {
   private dirtyFields = new Set<string>();
   private differingFields = new Set<string>();
   private resetPositionsTriggered = false;
+  private selectedArticle?: CatalogArticle;
 
   constructor(componentOrComponents: PlacedComponent | PlacedComponent[], project: Project, callbacks: PropertiesDialogCallbacks) {
     if (Array.isArray(componentOrComponents) && componentOrComponents.length > 0) {
@@ -624,13 +628,8 @@ export class PropertiesDialog {
               <div style="font-size: 12px; font-weight: 600; color: #63b3ed;">${escapeSvg(t('propPartHeading'))}</div>
               <div style="font-size: 11px; color: #a0aec0;">${escapeSvg(t('propPartDesc'))}</div>
             </div>
-            <select id="quickPartSelect" class="form-input" style="width: auto; max-width: 260px;">
-              <option value="">${escapeSvg(t('propPartSelectQuick'))}</option>
-              ${MANUFACTURER_PARTS.map(p => `
-                <option value="${p.id}" ${this.component.articleNumber === p.articleNumber ? 'selected' : ''}>
-                  ${p.manufacturer}: ${p.articleNumber} (${escapeSvg(p.name)})
-                </option>
-              `).join('')}
+            <select id="quickPartSelect" data-editor-article-select class="form-input" style="width:auto;max-width:340px">
+              ${editorArticleOptions(componentArticleKey(this.component,this.project))}
             </select>
           </div>
 
@@ -1109,6 +1108,9 @@ export class PropertiesDialog {
       if (this.dirtyFields.has('propArticleNumber')) {
         c.articleNumber = this.component.articleNumber;
       }
+      if (this.selectedArticle && c.articleNumber === this.selectedArticle.articleNumber && c.manufacturer === this.selectedArticle.manufacturer) {
+        assignMainCatalogArticle(c, this.selectedArticle, this.project);
+      }
       if (this.dirtyFields.has('propRotation')) {
         c.rotation = this.component.rotation;
       }
@@ -1571,20 +1573,16 @@ export class PropertiesDialog {
     // Article quick select
     const quickPart = modal.querySelector('#quickPartSelect') as HTMLSelectElement;
     quickPart?.addEventListener('change', () => {
-      const partId = quickPart.value;
-      const part = MANUFACTURER_PARTS.find(p => p.id === partId);
-      if (part) {
-        const mfrInput = modal.querySelector('#propManufacturer') as HTMLInputElement;
-        const artInput = modal.querySelector('#propArticleNumber') as HTMLInputElement;
-        const descInput = modal.querySelector('#propPartDesc') as HTMLInputElement;
-        if (mfrInput) mfrInput.value = part.manufacturer;
-        if (artInput) artInput.value = part.articleNumber;
-        if (descInput) descInput.value = `${part.name} - ${part.technicalData}`;
-
-        this.component.manufacturer = part.manufacturer;
-        this.component.articleNumber = part.articleNumber;
-        setComponentLabelText(this.component, 'technicalCharacteristics', part.technicalData);
-        setComponentLabelText(this.component, 'deviceTag', part.name);
+      const entry = editorArticles().find(e => catalogKey(e.article) === quickPart.value);
+      if (entry) {
+        this.selectedArticle = structuredClone(entry.article);
+        assignMainCatalogArticle(this.component, entry.article, this.project);
+        const mfrInput = modal.querySelector<HTMLInputElement>('#propManufacturer');
+        const artInput = modal.querySelector<HTMLInputElement>('#propArticleNumber');
+        if (mfrInput) mfrInput.value = entry.article.manufacturer;
+        if (artInput) artInput.value = entry.article.articleNumber;
+        this.dirtyFields.add('propManufacturer');
+        this.dirtyFields.add('propArticleNumber');
       }
     });
 

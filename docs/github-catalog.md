@@ -21,6 +21,18 @@ In der Desktopanwendung und auf extern gehosteten Webkopien öffnet sich dafür 
 
 Öffentliches Einreichen erlaubt **neue** Datensätze. Vorhandene Kombinationen aus Hersteller, Artikelnummer und Variante werden nicht anonym überschrieben. Eine identische Wiederholung ist idempotent; abweichende Daten desselben Schlüssels werden abgelehnt. Bestehende zentrale Artikel kann ein Repository-Mitarbeiter weiterhin kontrolliert über GitHub ändern. Lokale Kopien bleiben in der App bearbeitbar.
 
+## Artikel im Editor verwenden
+
+Der linke Editorbereich **Artikel** und die Artikelauswahl in den Elementeigenschaften verwenden denselben Bestand aus Startbibliothek, GitHub und lokalen Artikeln. Herstellerfilter werden aus diesen Daten aufgebaut. Über **Aktualisieren** wird der gemeinsame Bestand erneut geladen; lokale Änderungen sind nach dem Speichern unmittelbar verfügbar.
+
+Ein Artikel kann im Katalog über **Bearbeiten → Standardsymbol für die Platzierung → Symbol zuordnen…** mit einem Symbol der Standardbibliothek verknüpft werden. **Speichern → Vorschau prüfen → Übernehmen** speichert den Datensatz lokal. Bei einem neuen Artikel kann die Symbolzuordnung zusammen mit dem Artikel zentral veröffentlicht werden. Eine nachträgliche Änderung eines bereits veröffentlichten Artikels ist zunächst eine lokale Kopie; anonyme Einreichungen überschreiben weiterhin keine bestehenden zentralen Datensätze.
+
+Im Editorbereich **Artikel** führt **Symbol zuordnen…** direkt zum entsprechenden Datensatz. Sobald ein verfügbares Standardsymbol zugeordnet ist, lässt sich der Artikel mit **Platzieren** auf dem Blatt einsetzen. Jeder neue Einsatz erhält seine eigene Artikelzuweisung mit Hersteller, Artikelnummer, Variante und gespeichertem Katalogstand. Der zuvor ausgewählte Planinhalt wird dabei nicht verändert.
+
+Um ein bestehendes Symbol mit einem Artikel zu verknüpfen, dieses Symbol auswählen und im Eigenschaftenbereich unter **Artikel zuweisen** den Artikel wählen. Im Eigenschaftenfenster steht dieselbe Auswahl im Register **Artikel** bereit. Das ordnet die Artikeldaten zu und erhält Symbol, Anschlussbezeichnungen, Beschriftungen und Verdrahtung. Vorhandenes Zubehör bleibt erhalten. Auch Mehrfachauswahl ist möglich. Alle Projektänderungen unterstützen Rückgängig/Wiederholen.
+
+Ein Artikel ohne Standardsymbol kann einem bestehenden Symbol zugewiesen werden; die direkte Platzierung benötigt zuerst eine verfügbare Symbolzuordnung. Unbekannte Symbol-IDs werden nicht durch ein geratenes Ersatzsymbol ersetzt. Die optionale Spalte `symbolId` wird in JSON und CSV erhalten. Ältere Katalogdateien ohne diese Spalte bleiben verwendbar.
+
 ## Einmalige Aktivierung des Einreichungsdienstes
 
 GitHub Actions besitzt keinen anonym aufrufbaren Schreibendpunkt. Ein kleiner Cloudflare Worker nimmt die Einreichungen entgegen und löst die Action aus. Er speichert keine Artikel und verwendet keine eigene Datenbank. Im ausgelieferten Programm befindet sich kein GitHub-Schreibtoken.
