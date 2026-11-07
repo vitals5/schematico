@@ -24,3 +24,11 @@ for(let i=0;i<4;i++){link('ab'+i,'a','b');link('cd'+i,'c','d');}link('bc','b','c
 const bins=electricalPartitions([['d'],['b'],['c'],['a']],2,snapshot)[0];assert.deepEqual(bins,[['a','b'],['c','d']]);
 assert.deepEqual(electricalPartitions([['a'],['b'],['c'],['d']],2,snapshot)[0],bins);
 console.log('✓ Display-only word wrapping agrees in geometry, editor and PDF, preserves stored text/fonts and scales; bounded sheet partitions preserve strong electrical neighbours');
+// Ordinary/manual article placement also wraps, without a preceding AI layout pass.
+c.functionText='SCHUKO Steckdosen-Einsatz mit Steckanschluss alpinweiß - Busch-balance SI Schuko';
+delete c.functionTextPosition;
+const defaultPos=computeFunctionTextPosition(c,s), defaultText=wrapLabelText(c.functionText,defaultPos.fontSize,defaultPos.maxWidth);
+assert(defaultText.includes('\n'));assert.equal(defaultPos.maxWidth,Math.max(40*(s.unitsPerMm??2),16*defaultPos.fontSize));
+assert.equal(componentShapes(c,s,p).find(shape=>shape.id==='drive:function')!.text!.value,defaultText);
+calls.length=0;(PdfExporter as any).renderComponents(doc,p.pages[0],p,840,594,{colorMode:'monochrome'},new Map());assert(calls.some(call=>call[0]===defaultText));
+c.functionTextPosition={maxWidth:0};assert.equal(wrapLabelText(c.functionText,8,computeFunctionTextPosition(c,s).maxWidth),c.functionText);

@@ -3527,7 +3527,7 @@ export class CadCanvas {
             return `<text data-label="functionTextPosition" x="${pos.x}" y="${pos.y}" ${labelTransform(pos.x, pos.y, comp.rotation)} font-size="${fontSize}" font-weight="bold" font-family="${sym.source ? 'sans-serif' : 'monospace'}" fill="${color}" text-anchor="${pos.anchor}">${escapeSvg(text)}</text>`;
           })() : '')}
 
-          ${!hideLabels && additionalPos.visible && comp.additionalText ? `<text data-label="additionalTextPosition" class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${labelText(comp.additionalText, additionalPos.x, additionalPos.fontSize)}</text>` : ''}
+          ${!hideLabels && additionalPos.visible && comp.additionalText ? `<text data-label="additionalTextPosition" class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${labelText(wrapLabelText(comp.additionalText,additionalPos.fontSize,additionalPos.maxWidth), additionalPos.x, additionalPos.fontSize)}</text>` : ''}
 
           ${!hideLabels ? crossRefDisplay : ''}
 

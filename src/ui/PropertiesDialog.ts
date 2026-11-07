@@ -1,3 +1,4 @@
+import { wrapLabelText, type CalculatedLabelPosition } from '../model/LabelLayout';
 import {importedArticleFields} from './ImportedArticleFields';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 import {renderInspectionFields,collectInspectionFields,applyInspectionFields} from './InspectionFields';
@@ -885,6 +886,7 @@ export class PropertiesDialog {
 
     const bmkPos = computeBmkPosition(this.component, sym);
     const fnPos = computeFunctionTextPosition(this.component, sym);
+    const previewLabel = (text:string,pos:CalculatedLabelPosition) => { const rows=wrapLabelText(text,pos.fontSize,pos.maxWidth).split(/\r?\n/); return rows.length===1 ? escapeSvg(rows[0]) : rows.map((line,i)=>`<tspan x="${pos.x}" dy="${i ? pos.fontSize*1.2 : 0}">${escapeSvg(line)}</tspan>`).join(''); };
     const techPos = computeTechnicalDataPosition(this.component, sym);
     const additionalPos = computeAdditionalTextPosition(this.component, sym);
     const refPos = computeCrossReferencePosition(this.component, sym, this.project);
@@ -908,11 +910,11 @@ export class PropertiesDialog {
     ` : '';
 
     const fnSvg = (!isConn && fnPos.visible) ? `
-      <text x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${escapeSvg(this.component.functionText || t('labelFunctionText'))}</text>
+      <text x="${fnPos.x}" y="${fnPos.y}" font-size="${fnPos.fontSize}" font-weight="${fnPos.fontWeight || 'normal'}" font-family="sans-serif" fill="${escapeSvg(fnPos.fontColor || '#e2e8f0')}" text-anchor="${fnPos.anchor}" ${fnPos.transform}>${previewLabel(this.component.functionText || t('labelFunctionText'),fnPos)}</text>
     ` : '';
 
     const techSvg = (!isConn && techPos.visible && (techText || this.activeTab === 'display')) ? `
-      <text x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${escapeSvg(techText || t('labelDeviceTag'))}</text>
+      <text x="${techPos.x}" y="${techPos.y}" font-size="${techPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(techPos.fontColor || '#68d391')}" text-anchor="${techPos.anchor}" ${techPos.transform}>${previewLabel(techText || t('labelDeviceTag'),techPos)}</text>
     ` : '';
 
     const pinsSvg = sym.pins.map(pin => {
@@ -943,7 +945,7 @@ export class PropertiesDialog {
         ${bmkSvg}
         ${fnSvg}
         ${techSvg}
-        ${additionalPos.visible && this.component.additionalText ? `<text class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${escapeSvg(this.component.additionalText)}</text>` : ''}
+        ${additionalPos.visible && this.component.additionalText ? `<text class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${previewLabel(this.component.additionalText,additionalPos)}</text>` : ''}
         ${this.component.crossRef && refPos.visible ? `<text class="cross-reference" x="${refPos.x}" y="${refPos.y}" text-anchor="${refPos.anchor}" font-size="${refPos.fontSize}" ${refPos.transform} fill="#f6ad55">${referenceMarkup(this.project, this.component, true, refPos)}</text>` : ''}
         </g>
       </svg>

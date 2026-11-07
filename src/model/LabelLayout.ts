@@ -21,6 +21,10 @@ export interface CalculatedLabelPosition {
 }
 
 type LabelKey = 'bmkPosition' | 'functionTextPosition' | 'technicalDataPosition' | 'additionalTextPosition' | 'crossRefPosition';
+export function labelWrapWidth(cfg: TextFormatConfig | undefined, sym: SymbolDefinition, key: LabelKey): number | undefined {
+  if (sym.family === 'feed_terminal' || sym.family === 'pe_terminal' || isInterruptionSymbol(sym)) return cfg?.maxWidth;
+  return cfg?.maxWidth ?? (['functionTextPosition','technicalDataPosition','additionalTextPosition'].includes(key) ? Math.max(40 * (sym.unitsPerMm ?? 2),16 * (cfg?.fontSize ?? 8)) : undefined);
+}
 const automatic = (cfg?: TextFormatConfig) => !cfg?.preset || cfg.preset === 'auto';
 /** Display-only word wrapping; stored equipment text and font sizes stay intact. */
 export function wrapLabelText(text:string,size:number,width?:number):string {
@@ -47,7 +51,7 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
     ['additionalTextPosition', comp.additionalText ?? '', 8], ['crossRefPosition', comp.crossRef ?? '', comp.crossRefFontSize ?? 8]
   ];
   const rows = data.filter(([id, text]) => id === key || automatic(comp[id]) && comp[id]?.visible !== false && !!text);
-  const height = ([id, text, size]: typeof data[number]) => Math.max(1, (id === 'crossRefPosition' ? splitCrossReferenceLines(text) : wrapLabelText(text,comp[id]?.fontSize??size,comp[id]?.maxWidth).split(/\r?\n/)).length)
+  const height = ([id, text, size]: typeof data[number]) => Math.max(1, (id === 'crossRefPosition' ? splitCrossReferenceLines(text) : wrapLabelText(text,comp[id]?.fontSize??size,labelWrapWidth(comp[id],sym,id)).split(/\r?\n/)).length)
     * (id === 'crossRefPosition' ? comp.crossRefFontSize ?? comp[id]?.fontSize ?? size : comp[id]?.fontSize ?? size) * 1.4;
   const total = rows.reduce((sum, row) => sum + height(row), 0);
   let y = sym.height / 2 - total / 2;
@@ -58,7 +62,7 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
     const rotatedWidth = comp.rotation % 180 ? sym.height : sym.width;
     const local = rotatedLocalPoint({ x: sym.width / 2 - rotatedWidth / 2 - 4 * (sym.unitsPerMm ?? 2), y }, sym, -comp.rotation);
     const x = local.x + (cfg?.offsetX ?? 0), py = local.y + (cfg?.offsetY ?? 0), rotation = cfg?.rotation ?? 0;
-    return { x, y: py, anchor: cfg?.alignment ?? 'end', rotation, fontSize: size, maxWidth:cfg?.maxWidth,
+    return { x, y: py, anchor: cfg?.alignment ?? 'end', rotation, fontSize: size, maxWidth:labelWrapWidth(cfg,sym,key),
       visible: cfg?.visible ?? (key === 'technicalDataPosition' ? !!row[1] : true),
       transform: labelTransform(x, py, comp.rotation, rotation), fontColor: cfg?.fontColor, fontWeight: cfg?.fontWeight };
   }
@@ -206,7 +210,7 @@ export function computeFunctionTextPosition(comp: PlacedComponent, sym: SymbolDe
   const visible = cfg?.visible !== false;
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
-  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:cfg?.maxWidth, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
+  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:labelWrapWidth(cfg,sym,'functionTextPosition'), ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
 }
 
 export function computeTechnicalDataPosition(comp: PlacedComponent, sym: SymbolDefinition): CalculatedLabelPosition {
@@ -278,7 +282,7 @@ export function computeTechnicalDataPosition(comp: PlacedComponent, sym: SymbolD
   const visible = cfg?.visible !== undefined ? cfg.visible : !!(comp.deviceTag || comp.technicalCharacteristics);
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
-  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:cfg?.maxWidth, ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
+  return { x, y, anchor, rotation, fontSize, visible, transform, maxWidth:labelWrapWidth(cfg,sym,'technicalDataPosition'), ...(cfg?.fontColor ? { fontColor: cfg.fontColor } : {}), ...(cfg?.fontWeight ? { fontWeight: cfg.fontWeight } : {}) };
 }
 
 /** Keep the automatic interruption layout unless an instance overrides it. */
@@ -337,11 +341,12 @@ export function computeAdditionalTextPosition(comp: PlacedComponent, sym: Symbol
     pos.y = sym.height + 34 + (cfg.offsetY || 0);
     pos.transform = labelTransform(pos.x, pos.y, comp.rotation, pos.rotation);
   } else if (!cfg?.preset || cfg.preset === 'bottom' || cfg.preset === 'bottom_left' || cfg.preset === 'bottom_right') {
-    const lines = Math.max(1, (comp.functionText || '').split('\n').length);
+    const fnWidth = labelWrapWidth(comp.functionTextPosition,sym,'functionTextPosition');
+    const lines = Math.max(1, wrapLabelText(comp.functionText || '',comp.functionTextPosition?.fontSize ?? 8,fnWidth).split('\n').length);
     const fn = computeFunctionTextPosition(comp, sym), tech = computeTechnicalDataPosition(comp, sym);
     const lowest = Math.max(sym.height + 12,
       comp.functionText && fn.visible ? fn.y + (lines - 1) * fn.fontSize * 1.2 : 0,
-      (comp.deviceTag || comp.technicalCharacteristics) && tech.visible ? tech.y + Math.max(0, ((comp.deviceTag || '').split('\n').length - 1)) * tech.fontSize * 1.2 : 0);
+      (comp.deviceTag || comp.technicalCharacteristics) && tech.visible ? tech.y + Math.max(0, (wrapLabelText([comp.deviceTag,comp.technicalCharacteristics].filter(Boolean).join(' · '),tech.fontSize,tech.maxWidth).split('\n').length - 1)) * tech.fontSize * 1.2 : 0);
     pos.y = lowest + pos.fontSize * 1.4 + (cfg?.offsetY || 0);
     pos.transform = labelTransform(pos.x, pos.y, comp.rotation, pos.rotation);
   }
