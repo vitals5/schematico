@@ -1,0 +1,9 @@
+{
+  "name": "schematico-cad-converter",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "description": "Standalone, optional DWG to standard DXF file converter",
+  "dependencies": { "@mlightcad/libredwg-web": "0.8.7" }
+}

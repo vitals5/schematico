@@ -19,3 +19,7 @@ test-data/private/
 .wrangler/
 workers/**/.dev.vars*
 workers/**/.env*
+
+# Generated standalone converter assets and upstream source cache
+/public/cad-converter/
+/tools/cad-converter/.cache/

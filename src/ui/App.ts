@@ -2719,7 +2719,7 @@ export class App {
       <div style="display:flex;gap:6px;margin:8px 0"><select class="form-input" id="mfrSelect" style="min-width:0;flex:1"><option value="all">${escapeSvg(t('partsMfrAll'))}</option>${manufacturers.map(m => `<option value="${escapeSvg(m)}" ${m === this.manufacturerFilter ? 'selected' : ''}>${escapeSvg(m)}</option>`).join('')}</select><input class="form-input" id="mfrSearch" placeholder="${escapeSvg(t('partsSearchPlaceholder'))}" value="${escapeSvg(this.manufacturerSearchQuery)}" style="min-width:0;flex:1"></div>
       <p style="font-size:11px;color:var(--text-muted)">${entries.length} ${escapeSvg(t('githubCatalogArticles'))}</p>
       <div class="parts-list" style="display:flex;flex-direction:column;gap:8px">${entries.slice(0,100).map((entry,i) => {
-        const a = entry.article, symbol = entry.symbolId ? getSymbolById(entry.symbolId,this.project) : undefined;
+        const a = entry.article, symbol = entry.symbolId ? getSymbolById(entry.symbolId,this.project)??entry.packageSymbol : undefined;
         return `<div class="part-item-card" data-editor-article="${i}" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:10px">
           <div style="display:flex;justify-content:space-between;gap:6px;font-size:11px"><strong>${escapeSvg(a.manufacturer)}</strong><span>${escapeSvg(a.articleNumber)}${a.variant ? ' · ' + escapeSvg(a.variant) : ''}</span></div>
           <p style="font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere">${escapeSvg(entry.name)}</p>
@@ -2754,7 +2754,11 @@ export class App {
     });
     for (const button of container.querySelectorAll<HTMLElement>('[data-place-article]')) button.addEventListener('click', () => {
       const entry=entries[Number(button.dataset.placeArticle)];
-      if(entry.symbolId && getSymbolById(entry.symbolId,this.project))this.onSymbolSelectedToPlace(entry.symbolId,entry.name,entry);
+      if(entry.symbolId && entry.packageSymbol) {
+        const placement={symbolId:entry.symbolId} as PlacedComponent;
+        mergeProjectSymbolLibrary(this.project,[entry.packageSymbol],[placement]);
+        this.onSymbolSelectedToPlace(placement.symbolId,entry.name,{...entry,symbolId:placement.symbolId});
+      } else if(entry.symbolId && getSymbolById(entry.symbolId,this.project))this.onSymbolSelectedToPlace(entry.symbolId,entry.name,entry);
     });
   }
 

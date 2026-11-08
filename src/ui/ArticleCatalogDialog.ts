@@ -1,3 +1,4 @@
+import {CadArticleSymbolDialog} from './CadArticleSymbolDialog';
 import type {ArticlePackageAssets} from '../model/ArticlePackageAssets';
 import { importArticlePackage } from '../model/ArticlePackageImport';
 import { SymbolSelectionDialog } from './SymbolSelectionDialog';
@@ -166,6 +167,20 @@ export class ArticleCatalogDialog {
     const key = catalogKey(article);
     return this.shared.articles.some((a) => a.id === key);
   }
+  private openCadSymbol(article:CatalogArticle, pendingIndex?:number) {
+    const incoming=this.pending ? structuredClone(this.pending) : undefined;
+    const pendingAssets=structuredClone(this.pendingAssets);
+    const existing=this.pendingAssets.find(p=>p.id===article.id)??this.packageRows.find(p=>p.id===article.id);
+    new CadArticleSymbolDialog(article,existing,result=>{
+      if(this.closed)return;
+      const items=incoming?incoming.map((a,i)=>(pendingIndex!==undefined?i===pendingIndex:a.id===article.id)?result.article:a):[];
+      if(!items.some(a=>a.id===result.article.id))items.push(result.article);
+      this.editing=result.article;
+      this.prepare(items,t('cadLinked'));
+      this.pendingAssets=[...pendingAssets.filter(p=>items.some(a=>a.id===p.id)&&p.id!==result.asset.id),result.asset];
+      this.render();
+    }).show();
+  }
   private packageHint(results:Awaited<ReturnType<typeof importArticlePackage>>[]) {
     const assets=results.flatMap(r=>r.assets), macros=new Set(assets.flatMap(a=>a.macros.map(m=>m.id)));
     return t('articlePackageHint',{count:macros.size})+'\n'+[...new Set(assets.flatMap(a=>a.diagnostics))].join('\n');
@@ -206,8 +221,8 @@ export class ArticleCatalogDialog {
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
- ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : [...this.pendingAssets,...this.packageRows].flatMap(p=>p.macros).flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===this.editing!.symbolId)?.name??this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-cad-link>${t('cadTitle')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
+ ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend>${this.pending?.map((a,i)=>`<button class="btn" data-cad-pending="${i}">${esc(a.manufacturer+' '+a.articleNumber)} · ${t('cadTitle')}</button>`).join('')}<p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
     const slice = candidates.slice(this.page * 50, this.page * 50 + 50);
@@ -285,6 +300,7 @@ export class ArticleCatalogDialog {
       const article=slice[Number(b.dataset.packageDownload)], asset=this.packageRows.find(p=>p.id===article.id);if(!asset)return;
       const {default:JSZip}=await import('jszip'),zip=new JSZip();
       zip.file('article.json',catalogToJson([article]));
+      asset.macros.forEach((macro,i)=>zip.file(`macros/${i+1}-symbol.json`,JSON.stringify(macro,null,2)));
       asset.sources.forEach((source,i)=>zip.file(`${i+1}-${source.path.split(/[\\/]/).pop()||'source.bin'}`,source.data));
       const blob=await zip.generateAsync({type:'blob'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='schematico-article-sources.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }));
@@ -333,6 +349,12 @@ export class ArticleCatalogDialog {
         this.pending = undefined;
         this.render();
       }}, 'elements', {standardOnly:true,zIndex:4800}).show();
+    });
+    this.el.querySelector('[data-cad-link]')?.addEventListener('click',()=>{
+      try{this.openCadSymbol(validateCatalogArticle(syncDraft()));}catch(e){this.error=articleError(e);this.render();}
+    });
+    for(const button of this.el.querySelectorAll<HTMLElement>('[data-cad-pending]'))button.addEventListener('click',()=>{
+      const index=Number(button.dataset.cadPending),article=this.pending?.[index];if(article)this.openCadSymbol(article,index);
     });
     this.el.querySelector('[data-clear-symbol]')?.addEventListener('click', () => {
       syncDraft();

@@ -5,9 +5,9 @@ import { ArticleCatalog, catalogKey, onLocalCatalogChange, availableCatalogArtic
 import { onSharedCatalogChange, refreshSharedCatalog, sharedCatalogState } from './GitHubCatalog';
 import { MANUFACTURER_PARTS } from './PartCatalogue';
 import { effectiveArticles, setArticleAssignment } from './ArticleAssignments';
-import type { PlacedComponent, Project } from './types';
+import type { PlacedComponent, Project, SymbolDefinition } from './types';
 
-export type EditorArticle = { article: CatalogArticle; name: string; technicalData: string; symbolId?: string; widthModules?: string; packageMacros?:WindowMacro[]; packageDiagnostics?:string[] };
+export type EditorArticle = { article: CatalogArticle; name: string; technicalData: string; symbolId?: string; widthModules?: string; packageMacros?:WindowMacro[]; packageDiagnostics?:string[]; packageSymbol?:SymbolDefinition };
 /** Exact keys, including variant. Local edits override public data; no fuzzy part matching. */
 export function mergeEditorArticles(shared: CatalogArticle[], local: CatalogArticle[]): EditorArticle[] {
   return availableCatalogArticles(shared, local).map(article => {
@@ -19,7 +19,7 @@ export function mergeEditorArticles(shared: CatalogArticle[], local: CatalogArti
 let local: CatalogArticle[] = [];
 let packages:ArticlePackageAssets[]=[];
 const listeners = new Set<() => void>();
-export function editorArticles() { return mergeEditorArticles(sharedCatalogState().articles, local).map(entry=>{const p=packages.find(p=>p.id===entry.article.id);return {...entry,packageMacros:p?.macros,packageDiagnostics:p?.diagnostics};}); }
+export function editorArticles() { return mergeEditorArticles(sharedCatalogState().articles, local).map(entry=>{const p=packages.find(p=>p.id===entry.article.id);return {...entry,packageMacros:p?.macros,packageDiagnostics:p?.diagnostics,packageSymbol:p?.macros.flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===entry.symbolId)};}); }
 export function onEditorArticlesChange(listener: () => void) { listeners.add(listener); return () => listeners.delete(listener); }
 const notify = () => { for (const listener of listeners) listener(); };
 let loading: Promise<void> | undefined;
