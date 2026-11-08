@@ -51,7 +51,9 @@ export class CadArticleSymbolDialog {
     const text=await dxf.text();if(this.abort.signal.aborted)return;
     this.doc=readCadDxf(text,dxf.name);this.dxf=dxf;this.original=original;
     this.name=dxf.name.replace(/\.dxf$/i,'');this.unit=this.doc.mmPerUnit??1;this.unitConfirmed=Boolean(this.doc.mmPerUnit);
-    this.block=this.doc.blocks.length===2?this.doc.blocks[1].id:'';this.resetGeometry();this.render();
+    const candidateBlock = this.doc.blocks.find(b => b.id && b.name.toLowerCase().includes(this.name.toLowerCase()))
+      ?? (this.doc.blocks.length === 2 ? this.doc.blocks[1] : this.doc.blocks.find(b => b.id && !b.name.startsWith('img_')));
+    this.block = candidateBlock?.id ?? '';this.resetGeometry();this.render();
   }
   private resetGeometry(){
     this.geometry=undefined;this.rows=[];

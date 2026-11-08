@@ -43,7 +43,7 @@ export function readCadDxf(text:string,name:string):CadDocument {
   const recognized=new Set(['LINE','LWPOLYLINE','POLYLINE','VERTEX','SEQEND','CIRCLE','ARC','ELLIPSE','TEXT','MTEXT','ATTDEF','INSERT','SOLID','TRACE','POINT','VIEWPORT','BLOCK','ENDBLK','ENDSEC']);
   const unknown=[...kinds].filter(k=>!recognized.has(k));
   const unit=units[Number(data.header?.$INSUNITS)];
-  return {name,data,mmPerUnit:unit?.[1],units:unit?.[0]??'',blocks:[{id:'',name:'Model'},...Object.entries(data.blocks).filter(([n])=>!n.startsWith('*')).map(([id])=>({id,name:id.replace(/[a-f0-9]{8}_x002D_.*/i,'')}))],warnings:unknown.length?[unknown.join(', ')]:[]};
+  return {name,data,mmPerUnit:unit?.[1],units:unit?.[0]??'',blocks:[{id:'',name:'Model'},...Object.entries(data.blocks).filter(([n])=>!n.startsWith('*')).map(([id])=>({id,name:id.replace(/[a-f0-9]{8}_x002D_.*/i,'').replace(/_x([0-9a-f]{4})_/gi,(_,h)=>String.fromCharCode(parseInt(h,16)))}))],warnings:unknown.length?[unknown.join(', ')]:[]};
 }
 
 export function cadBounds(graphics:DrawingPrimitive[]) {
@@ -118,11 +118,15 @@ export function cadGeometry(doc:CadDocument,blockId='',mmPerUnit=doc.mmPerUnit??
         const mx=Math.hypot(m[0],m[1]),my=Math.hypot(m[2],m[3]);
         if(Math.abs(mx-my)>1e-7||Math.abs(m[0]*m[2]+m[1]*m[3])>1e-7||Math.abs((e.xScale??e.scale??1)-1)>1e-8||e.obliqueAngle||e.backwards||e.mirrored||(e.generationFlag??0)!==0)throw new Error('cadTextUnsupported');
         const h=e.halign??e.horizontalJustification??0,v=e.valign??e.verticalJustification??0;
-        if(h>2||v!==0||e.type==='MTEXT'&&(e.attachmentPoint??1)!==1)throw new Error('cadTextUnsupported');
-        const position=point(e.type==='MTEXT'?e.position:(h||v)&&e.endPoint?e.endPoint:e.startPoint),p=transform(position,m),height=finite(e.textHeight??e.height??1);
+        if(h>2&&h!==4||v>3||e.type==='MTEXT'&&((e.attachmentPoint??1)<1||(e.attachmentPoint??1)>9))throw new Error('cadTextUnsupported');
+        const isMText=e.type==='MTEXT',attach=isMText?(e.attachmentPoint??1):0;
+        const anchor=isMText?([2,5,8].includes(attach)?'middle':[3,6,9].includes(attach)?'end':'start'):(h===2?'end':(h===1||h===4)?'middle':'start');
+        const height=finite(e.textHeight??e.height??1);
+        const position=point(isMText?{x:e.position?.x??0,y:(e.position?.y??0)+([1,2,3].includes(attach)?-height*.75:[4,5,6].includes(attach)?-height*.25:height*.2)}:(h||v)&&e.endPoint?{x:e.endPoint.x,y:e.startPoint?.y??e.endPoint.y}:e.startPoint);
+        const p=transform(position,m);
         const angle=(e.rotation??0)*Math.PI/180,dir={x:m[0]*Math.cos(angle)+m[2]*Math.sin(angle),y:m[1]*Math.cos(angle)+m[3]*Math.sin(angle)};
         const text=textValue(String(e.text??''));if(text.length>10000||/\\[A-Za-z].*;/.test(text))throw new Error('cadTextUnsupported');
-        add(id,{kind:'text',...p,text,size:height*Math.hypot(m[2],m[3]),rotation:Math.atan2(dir.y,dir.x)*180/Math.PI,anchor:h===2?'end':h===1?'middle':'start',color:'currentColor'});texts.push({id,text,...p});
+        add(id,{kind:'text',...p,text,size:height*Math.hypot(m[2],m[3]),rotation:Math.atan2(dir.y,dir.x)*180/Math.PI,anchor,color:'currentColor'});texts.push({id,text,...p});
       }else if(e.type==='SOLID'||e.type==='TRACE'){
         const points=(e.points??e.vertices??[]).map((p:Point)=>transform(point(p),m));if(points.length<3)throw new Error('cadInvalid');
         add(id,{kind:'polygon',points,color:'currentColor',fill:'currentColor',width:.15});
@@ -136,8 +140,8 @@ export function cadGeometry(doc:CadDocument,blockId='',mmPerUnit=doc.mmPerUnit??
   for(const p of ends){const key=p.x.toFixed(5)+','+p.y.toFixed(5),entry=counts.get(key);if(entry)entry.n++;else counts.set(key,{p,n:1});}
   const candidates=[...counts.values()].filter(v=>v.n===1).map(({p})=>{
     const direction=([['top',Math.abs(p.y-body.minY)],['bottom',Math.abs(p.y-body.maxY)],['left',Math.abs(p.x-body.minX)],['right',Math.abs(p.x-body.maxX)]] as [PinDefinition['direction'],number][]).sort((a,b)=>a[1]-b[1])[0][0];
-    const label=texts.filter(t=>/^(?:\d+|[LA]\d*|N|PE|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
-    const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<3*mmPerUnit;
+    const label=texts.filter(t=>/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+    const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<3.5*mmPerUnit;
     return {...p,direction,name:near?label.text:'',textId:near?label.id:undefined};
   }).sort((a,b)=>a.y-b.y||a.x-b.x);
   return {graphics,texts,candidates:candidates.slice(0,256),candidatesLimited:candidates.length>256,bounds};

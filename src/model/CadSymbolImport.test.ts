@@ -35,6 +35,8 @@ await assert.rejects(()=>createCadSymbol(article,g,{...options,pins:[chosen[0],{
 const rotated=readCadDxf(dxf(insert('R',10,20,90,2,2),block('R',line(1,1,1,3),1,1)),'rotated.dxf');
 const r=cadGeometry(rotated).graphics[0].drawing;assert(r.kind==='line');assert(Math.abs(r.x1-10)<1e-8&&Math.abs(r.y1+20)<1e-8);assert(Math.abs(r.x2-6)<1e-8&&Math.abs(r.y2+20)<1e-8,'Nested block insertion applies base point, rotation, scaling and Y inversion');
 assert.throws(()=>cadGeometry(readCadDxf(dxf(insert('T',0,0,0,2,1),block('T',outline)),'stretched.dxf')),/cadTextUnsupported/);
+const justified=readCadDxf(dxf(line(0,0,5,5)+pairs(0,'TEXT',8,'0',10,0,20,-3,30,0,11,5,21,-3,31,0,40,1.5,1,'+A1',72,1,73,3)+pairs(0,'MTEXT',8,'0',10,10,20,-10,30,0,40,2,1,'3/L',71,5)),'justified.dxf');
+const j=cadGeometry(justified);assert.equal(j.graphics.filter(g=>g.drawing.kind==='text').length,2);assert.equal(j.texts[0].text,'+A1');assert.equal(j.texts[1].text,'3/L');
 assert.equal(readCadDxf(dxf(outline,'',1),'inches.dxf').mmPerUnit,25.4);
 assert.equal(readCadDxf(dxf(outline,'',0),'unitless.dxf').mmPerUnit,undefined);
 const circle=readCadDxf(dxf(pairs(0,'CIRCLE',10,0,20,0,40,2)),'circle.dxf');assert.equal(cadGeometry(circle).graphics[0].drawing.kind,'circle');
