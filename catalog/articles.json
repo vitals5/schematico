@@ -53,6 +53,16 @@
       "symbolId": "timer_relay_multifunction"
     },
     {
+      "id": "[\"ELTAKO\",\"21400301\",\"\"]",
+      "articleNumber": "21400301",
+      "manufacturer": "ELTAKO",
+      "variant": "",
+      "description": "Type: 21400301Impulse switching relay, 4NO, 16A/250VACIntermittent switching relay, also for central and group controlESR12Z-4DX-UCvoltage: 250VACcurrent: 16Aweight: 0,163width: 36 mmheight: 58 mmlength: 58 mm",
+      "origin": "user",
+      "verification": "unverified",
+      "symbolId": "cad-symbol:ef0fe1ae6459c38f85e583bce13872b697caeec9c23cd16d43654ece2ff4349d"
+    },
+    {
       "id": "[\"Finder\",\"20.21.8.230.4000\",\"\"]",
       "articleNumber": "20.21.8.230.4000",
       "manufacturer": "Finder",
