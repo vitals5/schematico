@@ -70,7 +70,14 @@ export class CadArticleSymbolDialog {
     this.category=this.prefix==='F'?'protection':this.prefix==='K'||this.prefix==='Q'?'relays':'structure';
     this.confirmed=Boolean(existingPins?.length);this.noPins=false;this.partial=true;
   }
-  private selected(){return this.rows.filter(r=>r.enabled).map(({enabled,...p})=>p);}
+  private selected(){
+    const seen=new Set<string>();
+    return this.rows.filter(r=>r.enabled).map(({enabled,...p})=>{
+      if(p.textId&&seen.has(p.textId))return {...p,textId:undefined};
+      if(p.textId)seen.add(p.textId);
+      return p;
+    });
+  }
   private options(){return {name:this.name,prefix:this.prefix,category:this.category,gridMm:this.grid||undefined,scaleMultiplier:this.scaleMultiplier,bmkTextId:this.bmkText||undefined,pins:this.selected(),confirmed:true};}
   private read(){
     const value=(key:string)=>this.el.querySelector<HTMLInputElement|HTMLSelectElement>('[data-'+key+']')?.value;

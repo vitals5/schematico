@@ -35,6 +35,13 @@ import {
 import { escapeSvg as esc } from '../model/ImportedDrawing';
 import { t, translations, getUiLanguage, getLocalizedSymbol, type TranslationKey } from '../i18n';
 export const articleError = (e: unknown) => {
+  if (e && typeof e === 'object') {
+    const msg = String((e as any).message ?? '');
+    const name = String((e as any).name ?? '');
+    if (msg.includes('event handler') || name === 'AbortError' || name === 'InvalidStateError') {
+      return t('articlesStorageUnavailable');
+    }
+  }
   const message = e instanceof Error ? e.message : String(e);
   return message in translations.de ? t(message as TranslationKey) : message;
 };
@@ -509,7 +516,9 @@ export class ArticleCatalogDialog {
       'click',
       () =>
         void this.work(async () => {
-          await this.store.remove(this.deletion!.id, this.expected, true);
+          const targetId = this.deletion!.id;
+          this.deletion = undefined;
+          await this.store.remove(targetId, this.expected, true);
           await this.reload();
           this.message = t('articlesStored');
         }),

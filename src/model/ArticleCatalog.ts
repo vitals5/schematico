@@ -228,7 +228,7 @@ export class ArticleCatalog {
     if (typeof indexedDB === 'undefined')
       throw new Error('articlesStorageUnavailable');
     return new Promise<IDBDatabase>((resolve, reject) => {
-      const r = indexedDB.open('schematico-articles', 3);
+      const r = indexedDB.open('schematico-articles', 4);
       r.onupgradeneeded = () => {if(!r.result.objectStoreNames.contains('packageAssets'))r.result.createObjectStore('packageAssets',{keyPath:'id'});if(!r.result.objectStoreNames.contains('articles'))r.result.createObjectStore('articles',{keyPath:'id'});if(!r.result.objectStoreNames.contains('sync'))r.result.createObjectStore('sync');};
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
@@ -236,7 +236,7 @@ export class ArticleCatalog {
     });
   }
   async syncState(key:string):Promise<import('./TeamCatalog').TeamState|undefined>{const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('sync','readonly'),r=tx.objectStore('sync').get(key);tx.oncomplete=()=>{db.close();resolve(r.result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};});}
-  async replaceForSync(articles:CatalogArticle[],expected:string,key:string,state:import('./TeamCatalog').TeamState){const rows=articles.map(validateCatalogArticle);if(new Set(rows.map(catalogKey)).size!==rows.length)throw new Error('articlesCatalogDuplicate');const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['articles','sync'],'readwrite'),store=tx.objectStore('articles'),read=store.getAll();let error:unknown;read.onsuccess=()=>{if(catalogRevision(read.result)!==expected){error=new Error('articlesCatalogStale');tx.abort();return;}store.clear();rows.forEach(r=>store.put(r));tx.objectStore('sync').put(state,key);};tx.oncomplete=()=>{db.close();notifyCatalogChange();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(error??tx.error);};});}
+  async replaceForSync(articles:CatalogArticle[],expected:string,key:string,state:import('./TeamCatalog').TeamState){const rows=articles.map(validateCatalogArticle);if(new Set(rows.map(catalogKey)).size!==rows.length)throw new Error('articlesCatalogDuplicate');const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['articles','sync'],'readwrite'),store=tx.objectStore('articles'),read=store.getAll();let error:unknown;read.onsuccess=()=>{try{if(catalogRevision(read.result)!==expected){error=new Error('articlesCatalogStale');tx.abort();return;}store.clear();rows.forEach(r=>store.put(r));tx.objectStore('sync').put(state,key);}catch(e){error=e;tx.abort();}};tx.oncomplete=()=>{db.close();notifyCatalogChange();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(error??tx.error);};});}
   async list(): Promise<CatalogArticle[]> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
@@ -250,7 +250,7 @@ export class ArticleCatalog {
           reject(e);
         }
       };
-      tx.onerror = () => {
+      tx.onerror = tx.onabort = () => {
         db.close();
         reject(tx.error);
       };
@@ -331,21 +331,37 @@ export class ArticleCatalog {
       const tx = db.transaction(['articles','packageAssets','sync'], 'readwrite'),
         store = tx.objectStore('articles'),
         syncStore = tx.objectStore('sync'),
-        r = store.getAll(),
-        delReq = syncStore.get('deleted_ids');
+        r = store.getAll();
       let error: unknown;
       r.onsuccess = () => {
-        if (expected !== '*' && catalogRevision(r.result) !== expected) {
-          error = new Error('articlesCatalogStale');
-          tx.abort();
-        } else {
+        try {
+          if (expected !== '*' && catalogRevision(r.result) !== expected) {
+            error = new Error('articlesCatalogStale');
+            tx.abort();
+            return;
+          }
           store.delete(id);
           tx.objectStore('packageAssets').delete(id);
           if (permanent) {
-            const list: string[] = Array.isArray(delReq.result) ? delReq.result : [];
-            if (!list.includes(id)) list.push(id);
-            syncStore.put(list, 'deleted_ids');
+            const delReq = syncStore.get('deleted_ids');
+            delReq.onsuccess = () => {
+              try {
+                const list: string[] = Array.isArray(delReq.result) ? delReq.result : [];
+                if (!list.includes(id)) list.push(id);
+                syncStore.put(list, 'deleted_ids');
+              } catch (e) {
+                error = e;
+                tx.abort();
+              }
+            };
+            delReq.onerror = () => {
+              error = delReq.error;
+              tx.abort();
+            };
           }
+        } catch (e) {
+          error = e;
+          tx.abort();
         }
       };
       tx.oncomplete = () => {
@@ -355,7 +371,7 @@ export class ArticleCatalog {
       };
       tx.onabort = tx.onerror = () => {
         db.close();
-        reject(error ?? tx.error);
+        reject(error ?? tx.error ?? new Error('articlesStorageUnavailable'));
       };
     });
   }

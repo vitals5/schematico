@@ -128,12 +128,16 @@ setArticleAssignment(c, [
   },
 ]);
 assert.equal(projectArticles(p)[0].articleNumber, a.articleNumber);
-await catalog.remove(a.id, catalogRevision(await catalog.list()));
+await catalog.remove(a.id, catalogRevision(await catalog.list()), true);
 assert.equal(
   c.articleAssignment!.items[0].snapshot!.description,
   a.description,
   'Deleting or editing local records never changes project snapshots',
 );
+const deletedList = await catalog.deletedIds();
+assert(deletedList.includes(a.id), 'Permanent deletion records id in deleted_ids');
+await catalog.resetDeleted();
+assert.equal((await catalog.deletedIds()).length, 0, 'resetDeleted restores deleted ids');
 await assert.rejects(
   () => catalog.remove(b.id, catalogRevision(state)),
   /articlesCatalogStale/,

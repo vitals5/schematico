@@ -138,11 +138,13 @@ export function cadGeometry(doc:CadDocument,blockId='',mmPerUnit=doc.mmPerUnit??
   const bounds=cadBounds(graphics.map(g=>g.drawing)),body=cadBounds(graphics.filter(g=>g.drawing.kind!=='text').map(g=>g.drawing));
   const counts=new Map<string,{p:Point;n:number}>();
   for(const p of ends){const key=p.x.toFixed(5)+','+p.y.toFixed(5),entry=counts.get(key);if(entry)entry.n++;else counts.set(key,{p,n:1});}
+  const assignedTexts = new Set<string>();
   const candidates=[...counts.values()].filter(v=>v.n===1).map(({p})=>{
     const direction=([['top',Math.abs(p.y-body.minY)],['bottom',Math.abs(p.y-body.maxY)],['left',Math.abs(p.x-body.minX)],['right',Math.abs(p.x-body.maxX)]] as [PinDefinition['direction'],number][]).sort((a,b)=>a[1]-b[1])[0][0];
     const isBoundary=Math.abs(p.y-body.minY)<1e-3||Math.abs(p.y-body.maxY)<1e-3||Math.abs(p.x-body.minX)<1e-3||Math.abs(p.x-body.maxX)<1e-3;
-    const label=texts.filter(t=>/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+    const label=texts.filter(t=>!assignedTexts.has(t.id)&&/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
     const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<5*mmPerUnit;
+    if(near)assignedTexts.add(label.id);
     return {...p,direction,isBoundary,name:near?label.text:'',textId:near?label.id:undefined};
   }).sort((a,b)=>(b.isBoundary?1:0)-(a.isBoundary?1:0)||a.y-b.y||a.x-b.x);
   return {graphics,texts,candidates:candidates.slice(0,256),candidatesLimited:candidates.length>256,bounds};
