@@ -55,6 +55,13 @@ await loadLocalEditorArticles();const entry=editorArticles().find(e=>e.article.a
 assert.equal((await store.packageAssets())[0].sources[1].data.length,source.data.length);
 const imported=await MacroManager.parseMacroFile(new File([JSON.stringify(macro)],'breaker.json'),{allowHeuristic:false});
 assert.equal(imported.symbolLibrary![0].pins.length,2);
+assert(symbol.cadImport, 'Symbol saves cadImport configuration');
+assert.equal(symbol.cadImport?.scaleMultiplier, 1);
+assert.equal(symbol.cadImport?.rows?.length, 2);
+const scaledComp = { ...structuredClone(macro.components[0]), scale: 2.5 };
+const pin0 = AutoconnectEngine.getRotatedPinInfo(macro.components[0], symbol.pins[0], symbol);
+const pin0Scaled = AutoconnectEngine.getRotatedPinInfo(scaledComp, symbol.pins[0], symbol);
+assert.equal(pin0Scaled.worldX, pin0.worldX * 2.5, 'Pin coordinate scales with component.scale');
 const project={pages:[],drawingUnitsPerMm:2} as unknown as Project;mergeProjectSymbolLibrary(project,macro.symbolLibrary!,macro.components);assert(getSymbolById(macro.components[0].symbolId,project));
 const auto1=structuredClone(macro.components[0]),auto2={...structuredClone(macro.components[0]),id:'second',y:32};
 const pairsFound=AutoconnectEngine.findAutoconnectPairs([auto1,auto2],.01,8,project);

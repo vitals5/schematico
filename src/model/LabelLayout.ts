@@ -366,7 +366,7 @@ export function arePinLabelsVisible(comp: PlacedComponent, sym?: SymbolDefinitio
   });
 }
 
-export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefinition, pin: PinDefinition): CalculatedLabelPosition {
+export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefinition, pin: PinDefinition, scale: number = comp.scale ?? 1): CalculatedLabelPosition {
   const cfg = comp.pinLabelPosition;
   const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
   const isConn = !sym.importedGraphics && sym.category === 'connections';
@@ -381,57 +381,57 @@ export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefini
   let baseFontSize: number;
 
   if (label) {
-    x = label.x;
-    y = label.y;
+    x = label.x * scale;
+    y = label.y * scale;
     anchor = label.alignment;
     baseRotation = label.rotation ?? 0;
-    baseFontSize = label.fontSize;
+    baseFontSize = label.fontSize * scale;
   } else if (sym.source) {
     if (pin.direction === 'top') {
-      x = pin.x + 2;
-      y = pin.y - 2;
+      x = (pin.x + 2) * scale;
+      y = (pin.y - 2) * scale;
       anchor = 'start';
     } else if (pin.direction === 'bottom') {
-      x = pin.x + 2;
-      y = pin.y + 6;
+      x = (pin.x + 2) * scale;
+      y = (pin.y + 6) * scale;
       anchor = 'start';
     } else if (pin.direction === 'left') {
-      x = pin.x - 3;
-      y = pin.y - 2;
+      x = (pin.x - 3) * scale;
+      y = (pin.y - 2) * scale;
       anchor = 'end';
     } else {
-      x = pin.x + 3;
-      y = pin.y - 2;
+      x = (pin.x + 3) * scale;
+      y = (pin.y - 2) * scale;
       anchor = 'start';
     }
     baseRotation = 0;
-    baseFontSize = 4.5;
+    baseFontSize = 4.5 * scale;
   } else {
-    x = pin.x + (pin.direction === 'top' ? 0 : 5);
-    y = pin.y + (pin.direction === 'top' ? -4 : 3.5);
+    x = (pin.x + (pin.direction === 'top' ? 0 : 5)) * scale;
+    y = (pin.y + (pin.direction === 'top' ? -4 : 3.5)) * scale;
     anchor = pin.direction === 'top' ? 'middle' : 'start';
     baseRotation = 0;
-    baseFontSize = 6.5;
+    baseFontSize = 6.5 * scale;
   }
 
   if (cfg?.preset && cfg.preset !== 'auto' && cfg.preset !== 'custom') {
     switch (cfg.preset) {
-      case 'top': x = pin.x; y = pin.y - 4; anchor = 'middle'; break;
-      case 'top_left': x = pin.x - 3; y = pin.y - 3; anchor = 'end'; break;
-      case 'top_right': x = pin.x + 3; y = pin.y - 3; anchor = 'start'; break;
-      case 'bottom': x = pin.x; y = pin.y + 7; anchor = 'middle'; break;
-      case 'bottom_left': x = pin.x - 3; y = pin.y + 7; anchor = 'end'; break;
-      case 'bottom_right': x = pin.x + 3; y = pin.y + 7; anchor = 'start'; break;
-      case 'left': x = pin.x - 4; y = pin.y + 2; anchor = 'end'; break;
-      case 'right': x = pin.x + 4; y = pin.y + 2; anchor = 'start'; break;
+      case 'top': x = pin.x * scale; y = (pin.y - 4) * scale; anchor = 'middle'; break;
+      case 'top_left': x = (pin.x - 3) * scale; y = (pin.y - 3) * scale; anchor = 'end'; break;
+      case 'top_right': x = (pin.x + 3) * scale; y = (pin.y - 3) * scale; anchor = 'start'; break;
+      case 'bottom': x = pin.x * scale; y = (pin.y + 7) * scale; anchor = 'middle'; break;
+      case 'bottom_left': x = (pin.x - 3) * scale; y = (pin.y + 7) * scale; anchor = 'end'; break;
+      case 'bottom_right': x = (pin.x + 3) * scale; y = (pin.y + 7) * scale; anchor = 'start'; break;
+      case 'left': x = (pin.x - 4) * scale; y = (pin.y + 2) * scale; anchor = 'end'; break;
+      case 'right': x = (pin.x + 4) * scale; y = (pin.y + 2) * scale; anchor = 'start'; break;
     }
   }
 
-  x += cfg?.offsetX ?? 0;
-  y += cfg?.offsetY ?? 0;
+  x += (cfg?.offsetX ?? 0) * scale;
+  y += (cfg?.offsetY ?? 0) * scale;
   if (cfg?.alignment) anchor = cfg.alignment;
   const rotation = cfg?.rotation ?? baseRotation;
-  const fontSize = comp.pinLabelFontSize ?? cfg?.fontSize ?? baseFontSize;
+  const fontSize = comp.pinLabelFontSize ? comp.pinLabelFontSize * scale : (cfg?.fontSize ? cfg.fontSize * scale : baseFontSize);
   const transform = labelTransform(x, y, comp.rotation, rotation);
 
   return { x, y, anchor, rotation, fontSize, visible, transform };

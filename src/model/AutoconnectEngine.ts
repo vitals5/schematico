@@ -42,10 +42,14 @@ export class AutoconnectEngine {
   public static getRotatedPinInfo(
     comp: PlacedComponent,
     pinDef: PinDefinition,
-    sym: SymbolDefinition
+    sym: SymbolDefinition,
+    scale?: number
   ): RotatedPinInfo {
+    const s = scale ?? comp.scale ?? 1;
     const rot = comp.rotation || 0;
-    const local = rotatedLocalPoint(pinDef, sym, rot);
+    const scaledPin: PinDefinition = s === 1 ? pinDef : { ...pinDef, x: pinDef.x * s, y: pinDef.y * s };
+    const scaledSym: SymbolDefinition = s === 1 ? sym : { ...sym, width: sym.width * s, height: sym.height * s };
+    const local = rotatedLocalPoint(scaledPin, scaledSym, rot);
     const dirs: PinDefinition['direction'][] = ['top', 'right', 'bottom', 'left'];
     return { componentId: comp.id, pinId: pinDef.id, pinName: pinDef.name,
       worldX: comp.x + local.x, worldY: comp.y + local.y,

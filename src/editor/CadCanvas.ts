@@ -1400,7 +1400,7 @@ export class CadCanvas {
     if(result.failed.length)window.alert(`${result.failed.length} Verbindung(en) konnten bei unveränderten Geräten und Anschlüssen nicht mit ausreichendem Abstand geführt werden. Ihre bisherigen Wege bleiben erhalten.`);
   }
 
-  private rerouteMovedComponents(ids: readonly string[]): void {
+  public rerouteMovedComponents(ids: readonly string[]): void {
     const moved=new Set(ids);
     const wires=this.activePage.wires.filter(w=>!w.isAutoconnect&&w.routingMode!=='manual'&&(moved.has(w.from.componentId)||moved.has(w.to.componentId)));
     if(wires.length)cleanupConnections(this.activePage,this.project,wires.map(w=>w.id));
@@ -2605,7 +2605,8 @@ export class CadCanvas {
     const pin = sym.pins.find(p => p.id === pinId);
     if (!pin) return null;
 
-    const info = AutoconnectEngine.getRotatedPinInfo(comp, pin, sym);
+    const s = this.getComponentScale(comp);
+    const info = AutoconnectEngine.getRotatedPinInfo(comp, pin, sym, s);
     return { x: info.worldX, y: info.worldY };
   }
 
@@ -3439,19 +3440,20 @@ export class CadCanvas {
       const strokeColor = isSelected ? '#63b3ed' : comp.deviceBox?.color??(isConn || isConnectionGraphic(comp, sym)
         ? this.getWireColor(connectedWire?.potential ?? 'Signal', connectedWire?.color) : '#e2e8f0');
 
-      const bmkPos = computeBmkPosition(comp, sym);
-      const fnPos = computeFunctionTextPosition(comp, sym);
-      const arrowPos = interruptionLabelPosition(this.project, comp, sym);
+      const scaledSym = s === 1 ? sym : { ...sym, width: scaledW, height: scaledH };
+      const bmkPos = computeBmkPosition(comp, scaledSym);
+      const fnPos = computeFunctionTextPosition(comp, scaledSym);
+      const arrowPos = interruptionLabelPosition(this.project, comp, scaledSym);
       if (arrowPos) Object.assign(fnPos, arrowPos, { transform: labelTransform(arrowPos.x, arrowPos.y, comp.rotation) });
-      const techPos = computeTechnicalDataPosition(comp, sym);
-      const additionalPos = computeAdditionalTextPosition(comp, sym);
+      const techPos = computeTechnicalDataPosition(comp, scaledSym);
+      const additionalPos = computeAdditionalTextPosition(comp, scaledSym);
       const techText = comp.deviceTag
         ? (comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : ''))
         : (comp.technicalCharacteristics || '');
 
       // Cross Reference text / Contact mirror (placed below technical data)
       let crossRefDisplay = '';
-      const refPos = computeCrossReferencePosition(comp, sym, this.project);
+      const refPos = computeCrossReferencePosition(comp, scaledSym, this.project);
       if (comp.crossRef && refPos.visible && (!isConn || isInterruptionSymbol(sym))) {
         crossRefDisplay = `<text class="cross-reference" ${refPos.transform} x="${refPos.x}" y="${refPos.y}" font-size="${refPos.fontSize}" font-family="monospace" fill="#f6ad55" text-anchor="${refPos.anchor}">${referenceMarkup(this.project, comp, true, refPos)}</text>`;
       }
@@ -3460,17 +3462,19 @@ export class CadCanvas {
       const editingConnections = this.mode === 'wire' || !!this.wireStart;
       const connectionPins = isConnectionSymbol(sym) || isConnectionGraphic(comp, sym);
       const pinsSvg = sym.pins.map(pin => {
+        const pinX = pin.x * s;
+        const pinY = pin.y * s;
         if (sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition || comp.pinLabelPosition) {
-          const pinPos = computePinLabelPosition(comp, sym, pin);
+          const pinPos = computePinLabelPosition(comp, sym, pin, s);
           const handle = (!sym.source && !connectionPins) || editingConnections
-            ? `<circle class="pin-handle" cx="${pin.x}" cy="${pin.y}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>` : '';
+            ? `<circle class="pin-handle" cx="${pinX}" cy="${pinY}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>` : '';
           const text = pinPos.visible
             ? `<text class="source-pin-label" x="${pinPos.x}" y="${pinPos.y}" font-size="${pinPos.fontSize}" font-family="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? 'Tahoma, Arial, sans-serif' : 'monospace'}" fill="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? '#e2e8f0' : '#a0aec0'}" text-anchor="${pinPos.anchor}" ${pinPos.transform}>${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>` : '';
           return `<g class="pin">${handle}${text}</g>`;
         }
         if (isConn || isTerminal) {
           return `
-            <g class="pin" transform="translate(${pin.x}, ${pin.y})">
+            <g class="pin" transform="translate(${pinX}, ${pinY})">
               ${connectionPins && editingConnections
                 ? '<circle class="pin-handle" cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>'
                 : '<circle cx="0" cy="0" r="2.5" fill="transparent"/>'}
@@ -3478,9 +3482,9 @@ export class CadCanvas {
           `;
         }
         return `
-          <g class="pin" transform="translate(${pin.x}, ${pin.y})">
+          <g class="pin" transform="translate(${pinX}, ${pinY})">
             <circle cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>
-            <text ${labelTransform(pin.direction === 'top' ? 0 : 5, pin.direction === 'top' ? -4 : 3.5, comp.rotation)} x="${pin.direction === 'top' ? 0 : 5}" y="${pin.direction === 'top' ? -4 : 3.5}" font-size="${comp.pinLabelFontSize ?? 6.5}" font-family="monospace" fill="#a0aec0" text-anchor="${pin.direction === 'top' ? 'middle' : 'start'}">${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>
+            <text ${labelTransform((pin.direction === 'top' ? 0 : 5) * s, (pin.direction === 'top' ? -4 : 3.5) * s, comp.rotation)} x="${(pin.direction === 'top' ? 0 : 5) * s}" y="${(pin.direction === 'top' ? -4 : 3.5) * s}" font-size="${(comp.pinLabelFontSize ?? 6.5) * s}" font-family="monospace" fill="#a0aec0" text-anchor="${pin.direction === 'top' ? 'middle' : 'start'}">${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>
           </g>
         `;
       }).join('');

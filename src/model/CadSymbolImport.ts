@@ -18,7 +18,22 @@ export interface CadGeometry {
   candidatesLimited?:boolean;
 }
 export interface CadPin extends Point {name:string;direction:PinDefinition['direction'];textId?:string}
-export interface CadSymbolOptions {name:string;prefix:string;category?:SymbolDefinition['category'];gridMm?:number;scaleMultiplier?:number;bmkTextId?:string;pins:CadPin[];confirmed:boolean}
+export interface CadSymbolOptions {
+  name:string;
+  prefix:string;
+  category?:SymbolDefinition['category'];
+  gridMm?:number;
+  scaleMultiplier?:number;
+  bmkTextId?:string;
+  pins:CadPin[];
+  confirmed:boolean;
+  block?:string;
+  unit?:number;
+  unitConfirmed?:boolean;
+  noPins?:boolean;
+  partial?:boolean;
+  allRows?:Array<CadPin & {enabled:boolean}>;
+}
 const units:Record<number,[string,number]> = {1:['in',25.4],2:['ft',304.8],4:['mm',1],5:['cm',10],6:['m',1000],7:['km',1e6],8:['µin',.0000254],9:['mil',.0254],10:['yd',914.4],13:['µm',.001],14:['dm',100],15:['dam',10000],16:['hm',100000]};
 const finite=(n:unknown):number=>{if(typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>1e9)throw new Error('cadInvalid');return n;};
 const point=(p:any):Point=>({x:finite(p?.x),y:finite(p?.y)});
@@ -190,7 +205,19 @@ export async function createCadSymbol(article:CatalogArticle,geometry:CadGeometr
   const pins:PinDefinition[]=options.pins.map((p,i)=>{const text=geometry.graphics.find(t=>t.id===p.textId)?.drawing;return {id:'p'+(i+1),name:p.name.trim(),...at(p),direction:p.direction,electricalRole:'unknown',...(text?.kind==='text'?{labelPosition:{...at(text),fontSize:text.size*scale*2,alignment:text.anchor??'start',rotation:((Math.round((text.rotation??0)/90)*90)%360+360)%360 as 0|90|180|270}}:{})};});
   const width=Math.max(1,(bounds.maxX-bounds.minX)*scale*2),height=Math.max(1,(bounds.maxY-bounds.minY)*scale*2);
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({articleId:article.id,options,drawings,pins})))),b=>b.toString(16).padStart(2,'0')).join('');
-  const symbol:SymbolDefinition={id:'cad-symbol:'+hash,name:options.name.trim(),category:options.category??'structure',standard:'CAD',defaultBmkPrefix:options.prefix.trim().startsWith('-')?options.prefix.trim():'-'+options.prefix.trim(),defaultFunctionText:'',width,height,pins,unitsPerMm:2,insertionPoint:pins[0]?{x:pins[0].x,y:pins[0].y}:{x:0,y:0},importedGraphics:drawings,svgContent:drawingToSvg(drawings),description:'CAD · '+article.manufacturer+' '+article.articleNumber,manufacturer:article.manufacturer,articleNumber:article.articleNumber};
+  const cadImport: import('./types').CadImportConfig = {
+    block: options.block,
+    unit: options.unit,
+    unitConfirmed: options.unitConfirmed,
+    grid: options.gridMm ?? 0,
+    scaleMultiplier: options.scaleMultiplier ?? 1,
+    bmkText: options.bmkTextId,
+    confirmed: options.confirmed,
+    noPins: options.noPins ?? (options.pins.length === 0),
+    partial: options.partial ?? true,
+    rows: options.allRows ?? options.pins.map(p => ({ ...p, enabled: true }))
+  };
+  const symbol:SymbolDefinition={id:'cad-symbol:'+hash,name:options.name.trim(),category:options.category??'structure',standard:'CAD',defaultBmkPrefix:options.prefix.trim().startsWith('-')?options.prefix.trim():'-'+options.prefix.trim(),defaultFunctionText:'',width,height,pins,unitsPerMm:2,insertionPoint:pins[0]?{x:pins[0].x,y:pins[0].y}:{x:0,y:0},importedGraphics:drawings,svgContent:drawingToSvg(drawings),description:'CAD · '+article.manufacturer+' '+article.articleNumber,manufacturer:article.manufacturer,articleNumber:article.articleNumber,cadImport};
   const macro:WindowMacro={id:'cad-macro:'+hash,name:symbol.name,type:'ema',category:'Artikelpakete',description:symbol.description,width,height,unitsPerMm:2,handlePoint:symbol.insertionPoint,symbolLibrary:[symbol],components:[{id:'cad-component:'+hash,symbolId:symbol.id,x:0,y:0,rotation:0,bmk:symbol.defaultBmkPrefix+'1',functionText:'',pins:Object.fromEntries(pins.map(p=>[p.id,{customLabel:p.name}]))}]};
   return {symbol,macro};
 }

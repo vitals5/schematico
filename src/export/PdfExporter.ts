@@ -22,6 +22,7 @@ import { gridForPage } from '../model/DrawingGrid';
 import { connectionCutouts, connectionGraphicWires, isConnectionGraphic, supersededConnectionGraphics, visibleWireSegments } from '../model/ConnectionGraphics';
 import { arcPoints, rotateDrawing } from '../model/ImportedDrawing';
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition } from '../model/LabelLayout';
+import { AutoconnectEngine } from '../model/AutoconnectEngine';
 import { jsPDF } from 'jspdf';
 import { Project, Page, PlacedComponent, Wire, DrawingPrimitive, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
@@ -730,8 +731,8 @@ export class PdfExporter {
         // Functional source object is retained in the model; its co-located
         // explicit routing symbol supplies the visible connection geometry.
       } else if (sym.importedGraphics) {
-        this.renderImportedGraphics(doc, rotateDrawing(sym.importedGraphics, comp.rotation, sym.width, sym.height), wMm / page.plotFrame.width, hMm / page.plotFrame.height,
-          options.colorMode, comp.x, comp.y, foreground);
+        this.renderImportedGraphics(doc, rotateDrawing(sym.importedGraphics, comp.rotation, sym.width, sym.height), (wMm / page.plotFrame.width) * s, (hMm / page.plotFrame.height) * s,
+          options.colorMode, comp.x / s, comp.y / s, foreground);
       } else {
         // Draw Symbol Vector Outline
         if (isConnection) {
@@ -747,10 +748,11 @@ export class PdfExporter {
       }
 
       // Export the same anchors and fonts as the editor; pin handles are editing aids.
+      const scaledSym = s === 1 ? sym : { ...sym, width: sym.width * s, height: sym.height * s };
       for (const pin of sym.pins) {
-        const pinPos = computePinLabelPosition(comp, sym, pin);
+        const pinPos = computePinLabelPosition(comp, sym, pin, s);
         if (!pinPos.visible) continue;
-        const point = rotatedLocalPoint(pinPos, sym, comp.rotation);
+        const point = rotatedLocalPoint({ x: pinPos.x, y: pinPos.y }, scaledSym, comp.rotation);
         const sourceLabel = sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition;
         doc.setFont(sourceLabel ? 'helvetica' : 'courier', 'normal');
         doc.setFontSize(pinPos.fontSize * sy * 72 / 25.4);
@@ -1141,9 +1143,9 @@ export class PdfExporter {
     if (!sym) return null;
     const pin = sym.pins.find(p => p.id === pinId);
     if (!pin) return null;
-    const angle = comp.rotation * Math.PI / 180, dx = pin.x - sym.width / 2, dy = pin.y - sym.height / 2;
-    return { x: comp.x + sym.width / 2 + dx * Math.cos(angle) - dy * Math.sin(angle),
-      y: comp.y + sym.height / 2 + dx * Math.sin(angle) + dy * Math.cos(angle) };
+    const s = comp.scale ?? (page.floorPlan ? (page.floorPlan?.symbolScale ?? getAutoSymbolScale(page.floorPlan?.scale?.scaleRatio)) : 1);
+    const info = AutoconnectEngine.getRotatedPinInfo(comp, pin, sym, s);
+    return { x: info.worldX, y: info.worldY };
   }
 
   private static renderImportedGraphics(doc: jsPDF, graphics: DrawingPrimitive[], sx: number, sy: number,

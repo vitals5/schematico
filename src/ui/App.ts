@@ -554,6 +554,7 @@ export class App {
           if (idx !== -1) {
             activePage.components[idx] = comp;
           }
+          this.canvas.rerouteMovedComponents([comp.id]);
           if (this.canvas.autoconnectEnabled) {
             AutoconnectEngine.updatePageAutoconnections(activePage);
           }
@@ -4183,6 +4184,11 @@ export class App {
           delete comp.scale;
         } else {
           comp.scale = parseFloat(val);
+        }
+        this.canvas.rerouteMovedComponents([comp.id]);
+        const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
+        if (activePage && this.canvas.autoconnectEnabled) {
+          AutoconnectEngine.updatePageAutoconnections(activePage);
         }
         this.notifyChange();
         this.canvas.render();

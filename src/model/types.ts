@@ -166,6 +166,27 @@ export interface SymbolDefinition {
   keywords?: string[];
   bmkPrefixes?: string[];
   variantProperties?: Record<string, string>;
+  cadImport?: CadImportConfig;
+}
+
+export interface CadImportConfig {
+  block?: string;
+  unit?: number;
+  unitConfirmed?: boolean;
+  grid?: number;
+  scaleMultiplier?: number;
+  bmkText?: string;
+  confirmed?: boolean;
+  noPins?: boolean;
+  partial?: boolean;
+  rows?: Array<{
+    enabled: boolean;
+    name: string;
+    direction: 'top' | 'bottom' | 'left' | 'right';
+    x: number;
+    y: number;
+    textId?: string;
+  }>;
 }
 
 export interface TextFormatConfig {

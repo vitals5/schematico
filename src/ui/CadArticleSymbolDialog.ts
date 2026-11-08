@@ -50,10 +50,29 @@ export class CadArticleSymbolDialog {
     if(dxf.size>MAX_CAD_BYTES||original&&original.size>MAX_CAD_BYTES)throw new Error('cadTooLarge');
     const text=await dxf.text();if(this.abort.signal.aborted)return;
     this.doc=readCadDxf(text,dxf.name);this.dxf=dxf;this.original=original;
-    this.name=dxf.name.replace(/\.dxf$/i,'');this.unit=this.doc.mmPerUnit??1;this.unitConfirmed=Boolean(this.doc.mmPerUnit);
-    const candidateBlock = this.doc.blocks.find(b => b.id && b.name.toLowerCase().includes(this.name.toLowerCase()))
-      ?? (this.doc.blocks.length === 2 ? this.doc.blocks[1] : this.doc.blocks.find(b => b.id && !b.name.startsWith('img_')));
-    this.block = candidateBlock?.id ?? '';this.resetGeometry();this.render();
+    const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? this.article.symbol;
+    const imp = existingSymbol?.cadImport;
+    if (imp) {
+      if (imp.block && this.doc.blocks.some(b => b.id === imp.block)) this.block = imp.block;
+      else {
+        const candidateBlock = this.doc.blocks.find(b => b.id && b.name.toLowerCase().includes(dxf.name.toLowerCase()))
+          ?? (this.doc.blocks.length === 2 ? this.doc.blocks[1] : this.doc.blocks.find(b => b.id && !b.name.startsWith('img_')));
+        this.block = candidateBlock?.id ?? '';
+      }
+      this.unit = imp.unit ?? this.doc.mmPerUnit ?? 1;
+      this.unitConfirmed = imp.unitConfirmed ?? Boolean(this.doc.mmPerUnit);
+      this.name = existingSymbol.name ?? dxf.name.replace(/\.dxf$/i,'');
+    } else {
+      this.name=dxf.name.replace(/\.dxf$/i,'');
+      this.unit=this.doc.mmPerUnit??1;
+      this.unitConfirmed=Boolean(this.doc.mmPerUnit);
+      const candidateBlock = this.doc.blocks.find(b => b.id && b.name.toLowerCase().includes(this.name.toLowerCase()))
+        ?? (this.doc.blocks.length === 2 ? this.doc.blocks[1] : this.doc.blocks.find(b => b.id && !b.name.startsWith('img_')));
+      this.block = candidateBlock?.id ?? '';
+    }
+    this.resetGeometry();
+    this.render();
   }
   private resetGeometry(){
     this.geometry=undefined;this.rows=[];
@@ -66,7 +85,29 @@ export class CadArticleSymbolDialog {
       if (existingSymbol.name) this.name = existingSymbol.name;
       if (existingSymbol.category) this.category = existingSymbol.category;
       if (existingSymbol.defaultBmkPrefix) this.prefix = existingSymbol.defaultBmkPrefix.replace(/^-/, '');
-      this.grid = 0;
+      if (existingSymbol.cadImport) {
+        const imp = existingSymbol.cadImport;
+        this.grid = imp.grid ?? 0;
+        this.scaleMultiplier = imp.scaleMultiplier ?? 1;
+        this.bmkText = imp.bmkText ?? '';
+        this.confirmed = imp.confirmed ?? true;
+        this.noPins = imp.noPins ?? false;
+        this.partial = imp.partial ?? true;
+        if (imp.rows && imp.rows.length > 0) {
+          this.rows = imp.rows.map(r => ({ ...r }));
+          const known = new Set(this.rows.map(r => `${r.x.toFixed(3)},${r.y.toFixed(3)}`));
+          for (const cand of this.geometry.candidates) {
+            const key = `${cand.x.toFixed(3)},${cand.y.toFixed(3)}`;
+            if (!known.has(key)) {
+              this.rows.push({ ...cand, enabled: false });
+              known.add(key);
+            }
+          }
+          return;
+        }
+      } else {
+        this.grid = 0;
+      }
     }
     const matchedExisting = new Set<unknown>();
     this.rows=this.geometry.candidates.map(p=>{
@@ -94,7 +135,24 @@ export class CadArticleSymbolDialog {
       return p;
     });
   }
-  private options(){return {name:this.name,prefix:this.prefix,category:this.category,gridMm:this.grid||undefined,scaleMultiplier:this.scaleMultiplier,bmkTextId:this.bmkText||undefined,pins:this.selected(),confirmed:true};}
+  private options(){
+    return {
+      name:this.name,
+      prefix:this.prefix,
+      category:this.category,
+      gridMm:this.grid||undefined,
+      scaleMultiplier:this.scaleMultiplier,
+      bmkTextId:this.bmkText||undefined,
+      pins:this.selected(),
+      confirmed:true,
+      block:this.block,
+      unit:this.unit,
+      unitConfirmed:this.unitConfirmed,
+      noPins:this.noPins,
+      partial:this.partial,
+      allRows:this.rows.map(r=>({...r}))
+    };
+  }
   private read(){
     const value=(key:string)=>this.el.querySelector<HTMLInputElement|HTMLSelectElement>('[data-'+key+']')?.value;
     this.name=value('name')??this.name;this.prefix=value('prefix')??this.prefix;this.grid=Number(value('grid')??this.grid);this.scaleMultiplier=Number(value('scale-multiplier')??this.scaleMultiplier)||1;this.bmkText=value('bmk')??this.bmkText;this.category=(value('category')??this.category) as SymbolDefinition['category'];

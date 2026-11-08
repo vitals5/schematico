@@ -636,3 +636,36 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
 
   console.log('✓ Touch navigation, centered zoom, multi-select and wall/opening proximity tests verified');
 }
+
+// 11. Scaled component pins and label layout
+{
+  const sym: SymbolDefinition = {
+    id: 'scale_sym', name: 'Scalable CAD', category: 'relays', standard: 'CAD',
+    defaultBmkPrefix: '-K', defaultFunctionText: '', width: 100, height: 60,
+    pins: [
+      { id: 'p1', name: 'A1', x: 20, y: 0, direction: 'top' },
+      { id: 'p2', name: 'A2', x: 20, y: 60, direction: 'bottom' }
+    ],
+    svgContent: '<rect width="100" height="60"/>', description: 'CAD'
+  };
+  const comp1: PlacedComponent = {
+    id: 'c1', symbolId: sym.id, bmk: '-K1', functionText: '', technicalCharacteristics: '',
+    x: 50, y: 50, rotation: 0, pins: {}, scale: 2.0
+  };
+  const testPage = {
+    id: 'p_scale', pageNumber: '6', title: 'Scale', higherLevel: '', location: '',
+    components: [comp1], wires: [], plotFrame: { width: 1000, height: 700 }
+  } as unknown as Page;
+  const canvas = Object.assign(Object.create(CadCanvas.prototype), {
+    activePage: testPage,
+    project: { pages: [testPage], symbolLibrary: [sym] }
+  });
+  const pin1Coord = canvas.getPinCoordinates('c1', 'p1');
+  const pin2Coord = canvas.getPinCoordinates('c1', 'p2');
+  assert.equal(pin1Coord?.x, 50 + 20 * 2.0, 'Top pin X scales with component.scale');
+  assert.equal(pin1Coord?.y, 50 + 0 * 2.0, 'Top pin Y scales with component.scale');
+  assert.equal(pin2Coord?.x, 50 + 20 * 2.0, 'Bottom pin X scales with component.scale');
+  assert.equal(pin2Coord?.y, 50 + 60 * 2.0, 'Bottom pin Y scales with component.scale');
+
+  console.log('✓ Scaled component pins: getPinCoordinates and autoconnect scale correctly with component.scale');
+}
