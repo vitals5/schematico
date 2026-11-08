@@ -60,14 +60,30 @@ export class CadArticleSymbolDialog {
     this.geometry=cadGeometry(this.doc!,this.block,this.unit);
     const existingPins = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)?.pins
       ?? this.article.symbol?.pins;
+    const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? this.article.symbol;
+    if (existingSymbol) {
+      if (existingSymbol.name) this.name = existingSymbol.name;
+      if (existingSymbol.category) this.category = existingSymbol.category;
+      if (existingSymbol.defaultBmkPrefix) this.prefix = existingSymbol.defaultBmkPrefix.replace(/^-/, '');
+      this.grid = 0;
+    }
+    const matchedExisting = new Set<unknown>();
     this.rows=this.geometry.candidates.map(p=>{
-      const match = existingPins?.find(ep => ep.name.trim() === p.name.trim() || (Math.abs(ep.x - p.x) < 2 && Math.abs(ep.y - p.y) < 2));
-      return {...p, direction: match?.direction ?? p.direction, name: match?.name ?? p.name, enabled: Boolean(match)};
+      const match = existingPins?.find(ep => !matchedExisting.has(ep) && ep.name.trim() && (ep.name.trim() === p.name.trim() || (Math.abs(ep.x - p.x) < 2 && Math.abs(ep.y - p.y) < 2)));
+      if (match) {
+        matchedExisting.add(match);
+        return {...p, direction: match.direction ?? p.direction, name: match.name, enabled: true};
+      }
+      return {...p, enabled: false};
     });
     const bmk = this.geometry.texts.find(p=>/^-[A-Za-z]+$/.test(p.text))
       ?? this.geometry.texts.find(p=>/^-[A-Za-z]+\d*$/.test(p.text));
-    this.bmkText=bmk?.id??'';this.prefix=bmk?.text.replace(/^-|\d+$/g,'')??'U';
-    this.category=this.prefix==='F'?'protection':this.prefix==='K'||this.prefix==='Q'?'relays':'structure';
+    this.bmkText=bmk?.id??'';
+    if (!existingSymbol) {
+      this.prefix=bmk?.text.replace(/^-|\d+$/g,'')??'U';
+      this.category=this.prefix==='F'?'protection':this.prefix==='K'||this.prefix==='Q'?'relays':'structure';
+    }
     this.confirmed=Boolean(existingPins?.length);this.noPins=false;this.partial=true;
   }
   private selected(){
@@ -95,11 +111,26 @@ export class CadArticleSymbolDialog {
   private async updatePreview(){
     if(!this.geometry)return;this.read();const id=++this.previewId,preview=this.el.querySelector('[data-preview]')!,note=this.el.querySelector('[data-preview-note]')!;
     try{
-      const {symbol}=await createCadSymbol(this.article,this.geometry,this.options());if(id!==this.previewId)return;
+      let symbol: SymbolDefinition;
+      let gridNotice = '';
+      try {
+        const res = await createCadSymbol(this.article,this.geometry,this.options());
+        symbol = res.symbol;
+      } catch (err) {
+        if ((err as Error).message === 'cadGridInvalid') {
+          gridNotice = ' (' + t('cadGridInvalid') + ')';
+          const fallback = await createCadSymbol(this.article,this.geometry,{...this.options(),gridMm:undefined});
+          symbol = fallback.symbol;
+        } else {
+          throw err;
+        }
+      }
+      if(id!==this.previewId)return;
       const graphics=symbol.importedGraphics!,bounds=cadBounds(graphics),margin=6;
       preview.innerHTML=`<svg data-cad-svg viewBox="${bounds.minX-margin} ${bounds.minY-margin} ${bounds.maxX-bounds.minX+margin*2} ${bounds.maxY-bounds.minY+margin*2}" style="width:100%;height:290px;background:#101722;color:#e5e7eb">${drawingToSvg(graphics)}${symbol.pins.map(p=>`<circle cx="${p.x}" cy="${p.y}" r=".55" fill="#38bdf8"/><text x="${p.x+1}" y="${p.y-.8}" fill="#38bdf8" font-size="2">${esc(p.name)}</text>`).join('')}</svg>`;
-      note.textContent=`${(symbol.width/2).toFixed(2)} × ${(symbol.height/2).toFixed(2)} mm · ${symbol.pins.length} ${t('cadPins')}`;
-    }catch(e){if(id===this.previewId){note.textContent=this.message(e);preview.innerHTML='';}}
+      note.textContent=`${(symbol.width/2).toFixed(2)} × ${(symbol.height/2).toFixed(2)} mm · ${symbol.pins.length} ${t('cadPins')}${gridNotice}`;
+      (note as HTMLElement).style.color = gridNotice ? '#f59e0b' : '';
+    }catch(e){if(id===this.previewId){note.textContent=this.message(e);(note as HTMLElement).style.color='#fca5a5';preview.innerHTML='';}}
   }
   private render(){
     const g=this.geometry;
@@ -127,7 +158,17 @@ export class CadArticleSymbolDialog {
     try{
       if(!this.confirmed||!this.unitConfirmed||!this.rows.some(r=>r.enabled)&&!this.noPins||this.rows.some(r=>r.enabled)&&this.noPins)throw new Error('cadConfirmRequired');
       if(this.doc!.warnings.length&&!this.partial)throw new Error('cadPartialRequired');
-      this.busy=true;const result=await createCadSymbol(this.article,this.geometry!,this.options());
+      this.busy=true;
+      let result;
+      try {
+        result=await createCadSymbol(this.article,this.geometry!,this.options());
+      } catch (err) {
+        if ((err as Error).message === 'cadGridInvalid') {
+          result=await createCadSymbol(this.article,this.geometry!,{...this.options(),gridMm:undefined});
+        } else {
+          throw err;
+        }
+      }
       const sources=[{path:'CAD/'+this.dxf!.name,data:new Uint8Array(await this.dxf!.arrayBuffer())}];
       if(this.original)sources.unshift({path:'CAD/'+this.original.name,data:new Uint8Array(await this.original.arrayBuffer())});
       if(this.abort.signal.aborted)return;

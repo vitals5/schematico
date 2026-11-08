@@ -158,10 +158,23 @@ export async function createCadSymbol(article:CatalogArticle,geometry:CadGeometr
   for(const pin of options.pins)if(!pin.name.trim()||!['top','bottom','left','right'].includes(pin.direction)){throw new Error('cadPinInvalid');}else{finite(pin.x);finite(pin.y);}
   let scale = options.scaleMultiplier ?? 1;
   if(options.gridMm){
-    const distances:number[]=[];for(let i=0;i<options.pins.length;i++)for(let j=i+1;j<options.pins.length;j++)for(const axis of ['x','y'] as const){const d=Math.abs(options.pins[i][axis]-options.pins[j][axis]);if(d>1e-5)distances.push(d);}
+    const distances:number[]=[];
+    for(let i=0;i<options.pins.length;i++){
+      for(let j=i+1;j<options.pins.length;j++){
+        const dx=Math.abs(options.pins[i].x-options.pins[j].x);
+        const dy=Math.abs(options.pins[i].y-options.pins[j].y);
+        if(dy<1.0&&dx>=0.5)distances.push(dx);
+        else if(dx<1.0&&dy>=0.5)distances.push(dy);
+        else{const dist=Math.hypot(dx,dy);if(dist>=0.5)distances.push(dist);}
+      }
+    }
     const mult = options.scaleMultiplier ?? 1;
     if(distances.length)scale=(options.gridMm/Math.min(...distances))*mult;
-    const first=options.pins[0];if(first&&options.pins.some(p=>['x','y'].some(axis=>{const v=((p[axis as 'x'|'y']-first[axis as 'x'|'y'])*scale)/(options.gridMm!*mult);return Math.abs(v-Math.round(v))>1e-5;})))throw new Error('cadGridInvalid');
+    const first=options.pins[0];
+    if(first&&options.pins.some(p=>['x','y'].some(axis=>{
+      const v=((p[axis as 'x'|'y']-first[axis as 'x'|'y'])*scale)/(options.gridMm!*mult);
+      return Math.abs(v-Math.round(v))>0.05;
+    })))throw new Error('cadGridInvalid');
   }
   const kept=geometry.graphics.filter(g=>g.id!==bmkTextId&&!usedTexts.includes(g.id));
   const bounds=cadBounds(kept.map(g=>g.drawing)),offset={x:-bounds.minX,y:-bounds.minY};
