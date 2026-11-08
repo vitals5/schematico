@@ -140,17 +140,19 @@ export function cadGeometry(doc:CadDocument,blockId='',mmPerUnit=doc.mmPerUnit??
   for(const p of ends){const key=p.x.toFixed(5)+','+p.y.toFixed(5),entry=counts.get(key);if(entry)entry.n++;else counts.set(key,{p,n:1});}
   const candidates=[...counts.values()].filter(v=>v.n===1).map(({p})=>{
     const direction=([['top',Math.abs(p.y-body.minY)],['bottom',Math.abs(p.y-body.maxY)],['left',Math.abs(p.x-body.minX)],['right',Math.abs(p.x-body.maxX)]] as [PinDefinition['direction'],number][]).sort((a,b)=>a[1]-b[1])[0][0];
+    const isBoundary=Math.abs(p.y-body.minY)<1e-3||Math.abs(p.y-body.maxY)<1e-3||Math.abs(p.x-body.minX)<1e-3||Math.abs(p.x-body.maxX)<1e-3;
     const label=texts.filter(t=>/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
-    const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<3.5*mmPerUnit;
-    return {...p,direction,name:near?label.text:'',textId:near?label.id:undefined};
-  }).sort((a,b)=>a.y-b.y||a.x-b.x);
+    const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<5*mmPerUnit;
+    return {...p,direction,isBoundary,name:near?label.text:'',textId:near?label.id:undefined};
+  }).sort((a,b)=>(b.isBoundary?1:0)-(a.isBoundary?1:0)||a.y-b.y||a.x-b.x);
   return {graphics,texts,candidates:candidates.slice(0,256),candidatesLimited:candidates.length>256,bounds};
 }
 
 export async function createCadSymbol(article:CatalogArticle,geometry:CadGeometry,options:CadSymbolOptions):Promise<{symbol:SymbolDefinition;macro:WindowMacro}> {
   if(!options.confirmed||!options.name.trim()||!options.prefix.trim()||options.pins.length>256||options.gridMm!==undefined&&(!Number.isFinite(options.gridMm)||options.gridMm<=0||options.gridMm>1000))throw new Error('cadConfirmRequired');
   const usedTexts=options.pins.map(p=>p.textId).filter(Boolean);
-  if(new Set(usedTexts).size!==usedTexts.length||options.bmkTextId&&usedTexts.includes(options.bmkTextId))throw new Error('cadTextDuplicate');
+  const bmkTextId=options.bmkTextId&&!usedTexts.includes(options.bmkTextId)?options.bmkTextId:undefined;
+  if(new Set(usedTexts).size!==usedTexts.length)throw new Error('cadTextDuplicate');
   for(const pin of options.pins)if(!pin.name.trim()||!['top','bottom','left','right'].includes(pin.direction)){throw new Error('cadPinInvalid');}else{finite(pin.x);finite(pin.y);}
   let scale = options.scaleMultiplier ?? 1;
   if(options.gridMm){
@@ -159,7 +161,7 @@ export async function createCadSymbol(article:CatalogArticle,geometry:CadGeometr
     if(distances.length)scale=(options.gridMm/Math.min(...distances))*mult;
     const first=options.pins[0];if(first&&options.pins.some(p=>['x','y'].some(axis=>{const v=((p[axis as 'x'|'y']-first[axis as 'x'|'y'])*scale)/(options.gridMm!*mult);return Math.abs(v-Math.round(v))>1e-5;})))throw new Error('cadGridInvalid');
   }
-  const kept=geometry.graphics.filter(g=>g.id!==options.bmkTextId&&!usedTexts.includes(g.id));
+  const kept=geometry.graphics.filter(g=>g.id!==bmkTextId&&!usedTexts.includes(g.id));
   const bounds=cadBounds(kept.map(g=>g.drawing)),offset={x:-bounds.minX,y:-bounds.minY};
   const at=(p:Point)=>({x:(p.x+offset.x)*scale*2,y:(p.y+offset.y)*scale*2});
   const drawings=kept.map(({drawing:g}):DrawingPrimitive=>{

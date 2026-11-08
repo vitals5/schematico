@@ -28,7 +28,7 @@ export class CadArticleSymbolDialog {
   private bmkText='';
   private confirmed=false;
   private noPins=false;
-  private partial=false;
+  private partial=true;
   private busy=false;
   private error='';
   private previewId=0;
@@ -64,7 +64,11 @@ export class CadArticleSymbolDialog {
       const match = existingPins?.find(ep => ep.name.trim() === p.name.trim() || (Math.abs(ep.x - p.x) < 2 && Math.abs(ep.y - p.y) < 2));
       return {...p, direction: match?.direction ?? p.direction, name: match?.name ?? p.name, enabled: Boolean(match)};
     });
-    const bmk=this.geometry.texts.find(p=>/^-[A-Za-z]+\d*$/.test(p.text));this.bmkText=bmk?.id??'';this.prefix=bmk?.text.replace(/^-|\d+$/g,'')??'U';this.category=this.prefix==='F'?'protection':'structure';this.confirmed=Boolean(existingPins?.length);this.noPins=false;
+    const bmk = this.geometry.texts.find(p=>/^-[A-Za-z]+$/.test(p.text))
+      ?? this.geometry.texts.find(p=>/^-[A-Za-z]+\d*$/.test(p.text));
+    this.bmkText=bmk?.id??'';this.prefix=bmk?.text.replace(/^-|\d+$/g,'')??'U';
+    this.category=this.prefix==='F'?'protection':this.prefix==='K'||this.prefix==='Q'?'relays':'structure';
+    this.confirmed=Boolean(existingPins?.length);this.noPins=false;this.partial=true;
   }
   private selected(){return this.rows.filter(r=>r.enabled).map(({enabled,...p})=>p);}
   private options(){return {name:this.name,prefix:this.prefix,category:this.category,gridMm:this.grid||undefined,scaleMultiplier:this.scaleMultiplier,bmkTextId:this.bmkText||undefined,pins:this.selected(),confirmed:true};}
@@ -114,7 +118,8 @@ export class CadArticleSymbolDialog {
     if(this.busy)return;
     this.read();this.error='';
     try{
-      if(!this.confirmed||!this.unitConfirmed||!this.rows.some(r=>r.enabled)&&!this.noPins||this.rows.some(r=>r.enabled)&&this.noPins||this.doc!.warnings.length&&!this.partial)throw new Error('cadConfirmRequired');
+      if(!this.confirmed||!this.unitConfirmed||!this.rows.some(r=>r.enabled)&&!this.noPins||this.rows.some(r=>r.enabled)&&this.noPins)throw new Error('cadConfirmRequired');
+      if(this.doc!.warnings.length&&!this.partial)throw new Error('cadPartialRequired');
       this.busy=true;const result=await createCadSymbol(this.article,this.geometry!,this.options());
       const sources=[{path:'CAD/'+this.dxf!.name,data:new Uint8Array(await this.dxf!.arrayBuffer())}];
       if(this.original)sources.unshift({path:'CAD/'+this.original.name,data:new Uint8Array(await this.original.arrayBuffer())});
