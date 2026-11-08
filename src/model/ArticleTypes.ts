@@ -9,6 +9,7 @@ export interface CatalogArticle {
   verification: 'unverified' | 'user_checked';
   /** Preferred library symbol for placement; assigning an article never replaces existing geometry. */
   symbolId?: string;
+  symbol?: import('./types').SymbolDefinition;
   functions?: { id: string; type: string; pins: string[]; required?: boolean }[];
 }
 export interface AssignedArticle {

@@ -1,7 +1,7 @@
 import { validateCatalogArticle, catalogKey } from './catalog-record.mjs';
 export const CATALOG_SCHEMA = 'schematico-articles';
 export const MAX_CATALOG_BYTES = 20 * 1024 * 1024;
-export const MAX_SUBMISSION_BYTES = 32 * 1024;
+export const MAX_SUBMISSION_BYTES = 256 * 1024;
 /** Public submissions are new, unverified data; they never grant authority to
  * overwrite an existing record or alter deployment configuration. */
 export function validatePublicArticle(raw) {

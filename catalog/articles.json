@@ -9,7 +9,8 @@
       "variant": "",
       "description": "Stromstoßschalter 16A 1S 230VAC · Elektromagnetisches Stromstoßrelais für Reiheneinbau",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "impulse_relay_1no"
     },
     {
       "id": "[\"ABB\",\"FH202-25/0.03\",\"\"]",
@@ -18,7 +19,8 @@
       "variant": "",
       "description": "FI-Schutzschalter 2P 25A 30mA Typ A · ABB System pro M compact Fehlerstromschutzschalter",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "rcd_2p"
     },
     {
       "id": "[\"Busch-Jaeger\",\"2CKA002011A6232\",\"20 EUC-914\"]",
@@ -27,7 +29,8 @@
       "variant": "20 EUC-914",
       "description": "SCHUKO Steckdosen-Einsatz mit Steckanschluss alpinweiß - Busch-balance SI",
       "origin": "user",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "socket_schuko"
     },
     {
       "id": "[\"Dehn\",\"952400\",\"\"]",
@@ -36,7 +39,8 @@
       "variant": "",
       "description": "DEHNguard M TNS 275 Überspannungsschutz · Mehrpoliger Überspannungsableiter mit thermodynamischer Abtrennvorrichtung",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "surge_arrester_spd"
     },
     {
       "id": "[\"Eaton\",\"ETR4-69-A\",\"\"]",
@@ -45,7 +49,8 @@
       "variant": "",
       "description": "Multifunktions-Zeitrelais ETR4 · Elektronisches Zeitrelais mit Steuerkontakteingang B1",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "timer_relay_multifunction"
     },
     {
       "id": "[\"Finder\",\"20.21.8.230.4000\",\"\"]",
@@ -54,7 +59,8 @@
       "variant": "",
       "description": "Stromstoßrelais Serie 20 16A 1S 230V · Schritt- / Stromstoßschalter für DIN-Hutschienenmontage",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "impulse_relay_1no"
     },
     {
       "id": "[\"Finder\",\"20.22.8.230.4000\",\"\"]",
@@ -63,7 +69,8 @@
       "variant": "",
       "description": "Stromstoßrelais Serie 20 16A 2S 230V · Stromstoß-Schrittschalter mit Serienschaltung für 2 Leuchtengruppen",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "impulse_relay_2no"
     },
     {
       "id": "[\"Finder\",\"80.01.0.240.0000\",\"\"]",
@@ -72,7 +79,8 @@
       "variant": "",
       "description": "Multifunktions-Zeitrelais Serie 80 · Elektronisches Zeitrelais mit 6 Zeitfunktionen (AI, DI, SW, BE, CE, DE)",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "timer_relay_multifunction"
     },
     {
       "id": "[\"Hager\",\"CDA225D\",\"\"]",
@@ -81,7 +89,8 @@
       "variant": "",
       "description": "FI-Schutzschalter 2P 25A 30mA Typ A · Fehlerstromschutzschalter 1P+N für Einphasenstromkreise",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "rcd_2p"
     },
     {
       "id": "[\"Hager\",\"CDS440D\",\"\"]",
@@ -90,7 +99,8 @@
       "variant": "",
       "description": "FI-Schutzschalter 4P 40A 30mA Typ A · Fehlerstromschutzschalter nach DIN EN 61008-1 zum Schutz bei Berührung",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "rcd_4p"
     },
     {
       "id": "[\"Hager\",\"EPN510\",\"\"]",
@@ -99,7 +109,8 @@
       "variant": "",
       "description": "Stromstoßschalter 1S 16A 230V · Elektromechanisches Stromstoßrelais für Lichtsteuerung mit Tastern",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "impulse_relay_1no"
     },
     {
       "id": "[\"Hager\",\"MBN116\",\"\"]",
@@ -108,7 +119,8 @@
       "variant": "",
       "description": "Leitungsschutzschalter B16 1-polig · Leitungsschutzschalter nach DIN VDE 0641 Teil 11",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "fuse_1p"
     },
     {
       "id": "[\"Siemens\",\"3RT2016-1BB41\",\"\"]",
@@ -117,7 +129,8 @@
       "variant": "",
       "description": "Leistungsschütz SIRIUS 3kW/400V 24VDC · SIRIUS 3-poliges Motorschütz für Steuerungen",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "contactor_coil"
     },
     {
       "id": "[\"Siemens\",\"3RV2011-1EA10\",\"\"]",
@@ -126,7 +139,8 @@
       "variant": "",
       "description": "Motorschutzschalter SIRIUS 2.8 - 4.0A · Leistungsschalter für Motorschutz mit Überlast- und Kurzschlussauslöser",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "motor_protective_switch"
     },
     {
       "id": "[\"Siemens\",\"5SK9011-2KK25\",\"\"]",
@@ -145,7 +159,8 @@
       "variant": "",
       "description": "FI/LS-Kombischalter 1P+N B16 30mA (1 TE) · Kompakter RCBO spart 50% Platz im Verteilerschrank",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "rcbo_1p_n"
     },
     {
       "id": "[\"Siemens\",\"5SV3344-6\",\"\"]",
@@ -154,7 +169,8 @@
       "variant": "",
       "description": "FI-Schutzschalter SENTRON 4P 40A 30mA · Siemens SENTRON FI-Schutzschalter für Industrie und Gewerbe",
       "origin": "starter",
-      "verification": "unverified"
+      "verification": "unverified",
+      "symbolId": "rcd_4p"
     }
   ],
   "submission": {

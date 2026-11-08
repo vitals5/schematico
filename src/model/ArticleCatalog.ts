@@ -2,7 +2,7 @@ import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import type { CatalogArticle } from './ArticleTypes';
 import type { Project } from './types';
 import { effectiveArticles } from './ArticleAssignments';
-import { MANUFACTURER_PARTS } from './PartCatalogue';
+import defaultCatalog from '../../catalog/articles.json';
 export { catalogKey, validateCatalogArticle } from './CatalogRecord';
 import { catalogKey, validateCatalogArticle } from './CatalogRecord';
 const catalogListeners = new Set<() => void>();
@@ -42,27 +42,23 @@ export function planCatalogMerge(
   return { added, conflicts, unchanged };
 }
 export function starterArticles(): CatalogArticle[] {
-  return MANUFACTURER_PARTS.map((p) =>
-    validateCatalogArticle({
-      articleNumber: p.articleNumber,
-      manufacturer: p.manufacturer,
-      variant: '',
-      description: p.name + ' · ' + p.description,
-      origin: 'starter',
-      verification: 'unverified',
-      symbolId: p.symbolId,
-    }),
-  );
+  return (defaultCatalog.articles as any[]).map(a => validateCatalogArticle({ ...a, origin: 'starter' }));
 }
 /** Older shared seed records lack symbol IDs. Local records remain authoritative,
  * including an explicitly removed default symbol. */
-export function availableCatalogArticles(shared: CatalogArticle[], local: CatalogArticle[]) {
-  const map = new Map(starterArticles().map(a => [catalogKey(a), a]));
+export function availableCatalogArticles(shared: CatalogArticle[], local: CatalogArticle[], deletedIds: Set<string> = new Set()) {
+  const map = new Map(starterArticles().filter(a => !deletedIds.has(catalogKey(a)) && !deletedIds.has(a.id)).map(a => [catalogKey(a), a]));
   for (const a of shared) {
-    const key = catalogKey(a), symbolId = a.symbolId ?? map.get(key)?.symbolId;
+    const key = catalogKey(a);
+    if (deletedIds.has(key) || deletedIds.has(a.id)) continue;
+    const symbolId = a.symbolId ?? map.get(key)?.symbolId;
     map.set(key, { ...a, ...(symbolId ? {symbolId} : {}) });
   }
-  for (const a of local) map.set(catalogKey(a), a);
+  for (const a of local) {
+    const key = catalogKey(a);
+    if (deletedIds.has(key) || deletedIds.has(a.id)) continue;
+    map.set(key, a);
+  }
   return [...map.values()];
 }
 export function projectArticles(p: Project): CatalogArticle[] {
@@ -298,18 +294,59 @@ export class ArticleCatalog {
       };
     });
   }
-  async remove(id: string, expected: string) {
+  async deletedIds(): Promise<string[]> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sync', 'readonly'),
+        r = tx.objectStore('sync').get('deleted_ids');
+      tx.oncomplete = () => {
+        db.close();
+        resolve(Array.isArray(r.result) ? r.result : []);
+      };
+      tx.onerror = tx.onabort = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+  async resetDeleted(): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sync', 'readwrite');
+      tx.objectStore('sync').delete('deleted_ids');
+      tx.oncomplete = () => {
+        db.close();
+        notifyCatalogChange();
+        resolve();
+      };
+      tx.onerror = tx.onabort = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  }
+  async remove(id: string, expected: string, permanent: boolean = false) {
     const db = await this.open();
     return new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['articles','packageAssets'], 'readwrite'),
+      const tx = db.transaction(['articles','packageAssets','sync'], 'readwrite'),
         store = tx.objectStore('articles'),
-        r = store.getAll();
+        syncStore = tx.objectStore('sync'),
+        r = store.getAll(),
+        delReq = syncStore.get('deleted_ids');
       let error: unknown;
       r.onsuccess = () => {
-        if (catalogRevision(r.result) !== expected) {
+        if (expected !== '*' && catalogRevision(r.result) !== expected) {
           error = new Error('articlesCatalogStale');
           tx.abort();
-        } else {store.delete(id);tx.objectStore('packageAssets').delete(id);}
+        } else {
+          store.delete(id);
+          tx.objectStore('packageAssets').delete(id);
+          if (permanent) {
+            const list: string[] = Array.isArray(delReq.result) ? delReq.result : [];
+            if (!list.includes(id)) list.push(id);
+            syncStore.put(list, 'deleted_ids');
+          }
+        }
       };
       tx.oncomplete = () => {
         db.close();

@@ -715,26 +715,23 @@ export class PropertiesDialog {
             </select>
           </div>
 
-          ${isFloorPlan ? `
             <div style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:10px;margin-top:6px;">
-              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:8px;">${escapeSvg(t('fpCompDisplayHeading'))}</div>
+              <div style="font-size:11px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:8px;">${escapeSvg(isFloorPlan ? t('fpCompDisplayHeading') : t('compScaleHeading'))}</div>
+              ${isFloorPlan ? `
               <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;margin-bottom:8px;color:#cbd5e0;">
                 <input type="checkbox" id="propCompShowLabel" ${this.component.showLabels ? 'checked' : ''} style="accent-color:#3182ce;" />
                 <span>${escapeSvg(t('fpCompShowBmkLabel'))}</span>
               </label>
+              ` : ''}
               <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
                 <span style="font-size:11px;color:#a0aec0;">${escapeSvg(t('fpCompScaleLabel'))}</span>
                 <select id="propCompScale" class="form-input" style="font-size:11px;padding:3px 6px;width:140px;">
                   <option value="inherit" ${!this.component.scale ? 'selected' : ''}>${escapeSvg(t('fpCompScaleInherit'))}</option>
-                  <option value="0.35" ${this.component.scale === 0.35 ? 'selected' : ''}>${escapeSvg(t('fpCompScale35'))}</option>
-                  <option value="0.45" ${this.component.scale === 0.45 ? 'selected' : ''}>${escapeSvg(t('fpCompScale45'))}</option>
-                  <option value="0.6" ${this.component.scale === 0.6 ? 'selected' : ''}>${escapeSvg(t('fpCompScale60'))}</option>
-                  <option value="0.75" ${this.component.scale === 0.75 ? 'selected' : ''}>${escapeSvg(t('fpCompScale75'))}</option>
-                  <option value="1.0" ${this.component.scale === 1.0 ? 'selected' : ''}>${escapeSvg(t('fpCompScale100'))}</option>
+                  ${[0.25, 0.35, 0.45, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0].map(val => `<option value="${val}" ${this.component.scale === val ? 'selected' : ''}>${val === 1.0 ? '1.0 (100%)' : (val * 100).toFixed(0) + '%'}</option>`).join('')}
+                  ${this.component.scale && ![0.25, 0.35, 0.45, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0].includes(this.component.scale) ? `<option value="${this.component.scale}" selected>${(this.component.scale * 100).toFixed(0)}%</option>` : ''}
                 </select>
               </div>
             </div>
-          ` : ''}
         </div>
       `;
     }

@@ -1,4 +1,5 @@
 import { refreshEditorArticles, editorArticles, onEditorArticlesChange, assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
+import { ArticleCatalog } from '../model/ArticleCatalog';
 import { refreshEditorArticleSelectors, editorArticleOptions, componentArticleKey } from './EditorArticlePicker';
 import { ArticleCatalogDialog } from './ArticleCatalogDialog';
 import { catalogKey } from '../model/CatalogRecord';
@@ -2724,7 +2725,7 @@ export class App {
           <div style="display:flex;justify-content:space-between;gap:6px;font-size:11px"><strong>${escapeSvg(a.manufacturer)}</strong><span>${escapeSvg(a.articleNumber)}${a.variant ? ' · ' + escapeSvg(a.variant) : ''}</span></div>
           <p style="font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere">${escapeSvg(entry.name)}</p>
           <p style="font-size:10px;color:var(--text-muted)">${escapeSvg(symbol ? getLocalizedSymbol(symbol).name : t('articleSymbolMissing'))}</p>
-          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-place-part" data-place-article="${i}" ${symbol ? '' : 'disabled'}>${escapeSvg(t('partsPlaceOnCanvas'))}</button><button class="btn" data-link-article="${i}">${escapeSvg(t('articleSymbolLink'))}</button></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-place-part" data-place-article="${i}" ${symbol ? '' : 'disabled'}>${escapeSvg(t('partsPlaceOnCanvas'))}</button><button class="btn" data-link-article="${i}">${escapeSvg(t('articleSymbolLink'))}</button><button class="btn" data-remove-article="${i}" title="${escapeSvg(t('articlesDelete'))}" style="color:#f87171">✕</button></div>
           ${entry.packageMacros?.length ? `<div style="margin-top:8px"><select class="form-input" data-package-macro="${i}">${entry.packageMacros.map((m,j)=>`<option value="${j}">${escapeSvg(m.name)}</option>`).join('')}</select><button class="btn" data-place-package="${i}">${escapeSvg(t('articlePackagePlace'))}</button></div>` : ''}
           ${entry.packageDiagnostics?.length ? `<details style="font-size:11px;margin-top:6px"><summary>${escapeSvg(t('articlePackageNotes'))}</summary>${entry.packageDiagnostics.map(d=>`<p>${escapeSvg(d)}</p>`).join('')}</details>` : ''}
 
@@ -2741,6 +2742,14 @@ export class App {
     for (const button of container.querySelectorAll<HTMLElement>('[data-link-article]')) button.addEventListener('click', () => {
       const article=entries[Number(button.dataset.linkArticle)].article;
       new ArticleCatalogDialog(this.project,undefined,article.articleNumber,article).show();
+    });
+    for (const button of container.querySelectorAll<HTMLElement>('[data-remove-article]')) button.addEventListener('click', async () => {
+      const article = entries[Number(button.dataset.removeArticle)].article;
+      const label = `${article.manufacturer} ${article.articleNumber}`;
+      if (confirm(t('articlesDeleteConfirm', { name: label }))) {
+        await new ArticleCatalog().remove(article.id, '*', true);
+        await refreshEditorArticles();
+      }
     });
     for(const button of container.querySelectorAll<HTMLElement>('[data-place-package]'))button.addEventListener('click',()=>{
       const index=Number(button.dataset.placePackage), entry=entries[index];
@@ -3966,26 +3975,23 @@ export class App {
           <input class="form-input" id="propTechnical" value="${escapeSvg(comp.technicalCharacteristics || '')}">
         </div>
 
-        ${page?.floorPlan ? `
           <div class="form-group" style="background:#1a202c;border:1px solid #4a5568;border-radius:4px;padding:8px;margin-bottom:12px;">
-            <div style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:6px;">${t('fpCompDisplayHeading')}</div>
+            <div style="font-size:10px;font-weight:bold;color:#63b3ed;text-transform:uppercase;margin-bottom:6px;">${page?.floorPlan ? t('fpCompDisplayHeading') : t('compScaleHeading')}</div>
+            ${page?.floorPlan ? `
             <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;margin-bottom:6px;color:#cbd5e0;">
               <input type="checkbox" id="propCompShowLabel" ${comp.showLabels ? 'checked' : ''} style="accent-color:#3182ce;" />
               <span>${t('fpCompShowBmkLabel')}</span>
             </label>
+            ` : ''}
             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
               <span style="font-size:10px;color:#a0aec0;">${t('fpCompScaleLabel')}</span>
               <select id="propCompScale" class="form-input" style="font-size:10px;padding:2px 4px;width:120px;flex:1;min-width:100px;">
                 <option value="inherit" ${!comp.scale ? 'selected' : ''}>${t('fpCompScaleInherit')}</option>
-                <option value="0.35" ${comp.scale === 0.35 ? 'selected' : ''}>${t('fpCompScale35')}</option>
-                <option value="0.45" ${comp.scale === 0.45 ? 'selected' : ''}>${t('fpCompScale45')}</option>
-                <option value="0.6" ${comp.scale === 0.6 ? 'selected' : ''}>${t('fpCompScale60')}</option>
-                <option value="0.75" ${comp.scale === 0.75 ? 'selected' : ''}>${t('fpCompScale75')}</option>
-                <option value="1.0" ${comp.scale === 1.0 ? 'selected' : ''}>${t('fpCompScale100')}</option>
+                ${[0.25, 0.35, 0.45, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0].map(val => `<option value="${val}" ${comp.scale === val ? 'selected' : ''}>${val === 1.0 ? '1.0 (100%)' : (val * 100).toFixed(0) + '%'}</option>`).join('')}
+                ${comp.scale && ![0.25, 0.35, 0.45, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0].includes(comp.scale) ? `<option value="${comp.scale}" selected>${(comp.scale * 100).toFixed(0)}%</option>` : ''}
               </select>
             </div>
           </div>
-        ` : ''}
 
         <div class="form-group" style="background: rgba(99, 179, 237, 0.08); padding: 8px; border-radius: 4px; border: 1px dashed var(--accent);">
           <label class="form-label" style="color: var(--accent-bright);">${t('labelAssignPart')}</label>

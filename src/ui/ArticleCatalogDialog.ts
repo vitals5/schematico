@@ -55,6 +55,7 @@ export class ArticleCatalogDialog {
   private store = new ArticleCatalog();
   private rows: CatalogArticle[] = [];
   private packageRows: ArticlePackageAssets[] = [];
+  private deletedList: string[] = [];
   private search = '';
   private page = 0;
   private error = '';
@@ -125,7 +126,7 @@ export class ArticleCatalogDialog {
     if (this.restore?.isConnected) this.restore.focus();
   }
   private async reload() {
-    [this.rows,this.packageRows] = await Promise.all([this.store.list(),this.store.packageAssets()]);
+    [this.rows,this.packageRows,this.deletedList] = await Promise.all([this.store.list(),this.store.packageAssets(),this.store.deletedIds()]);
     this.candidateCache = undefined;
     this.expected = catalogRevision(this.rows);
     this.available = true;
@@ -148,7 +149,7 @@ export class ArticleCatalogDialog {
   }
   private candidates() {
     if (this.candidateCache) return this.candidateCache;
-    return (this.candidateCache = availableCatalogArticles(this.shared.articles, this.rows));
+    return (this.candidateCache = availableCatalogArticles(this.shared.articles, this.rows, new Set(this.deletedList)));
   }
   private originLabel(article: CatalogArticle) {
     const local = this.rows.some((a) => a.id === article.id),
@@ -210,13 +211,13 @@ export class ArticleCatalogDialog {
       : undefined;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
  <div class="eng-shared-catalog"><div><strong>${t('githubCatalogTitle')} · ${this.shared.articles.length} ${t('githubCatalogArticles')}</strong><span>${t(('githubCatalogState_' + this.shared.status) as any)}${!this.shared.submission ? ' · ' + t('githubCatalogNotConfigured') : ''}</span></div><button class="btn" data-shared-refresh>${t('articlesRefresh')}</button></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><button class="btn" data-portal>${t('articlePortalOpen')}</button><input type="file" data-file accept=".csv,.json,.xml,.wspak,.edz" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button></div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><button class="btn" data-portal>${t('articlePortalOpen')}</button><input type="file" data-file accept=".csv,.json,.xml,.wspak,.edz" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button>${this.deletedList.length ? `<button class="btn" data-reset-defaults>${t('articlesResetDefaults')}</button>` : ''}</div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
  <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th>${t('articlesManufacturer')}</th><th>${t('articlesNumber')}</th><th>${t('articlesDescription')}</th><th>${t('engineeringStatus')}</th><th>${t('plausColAction')}</th></tr></thead><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
    .map(
      (a, i) =>
-       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.packageRows.some(p=>p.id===a.id)?`<button class="btn" data-package-download="${i}">${t('articlePackageSources')}</button>`:''}${this.rows.some((r) => r.id === a.id) ? `<button class="btn" data-delete="${i}">${t('articlesDelete')}</button>` : ''}</td></tr>`,
+       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.packageRows.some(p=>p.id===a.id)?`<button class="btn" data-package-download="${i}">${t('articlePackageSources')}</button>`:''}<button class="btn" data-delete="${i}">${t('articlesDelete')}</button></td></tr>`,
    )
    .join(
      '',
@@ -251,6 +252,13 @@ export class ArticleCatalogDialog {
           this.shared = await refreshSharedCatalog();
         }),
     );
+    this.el.querySelector('[data-reset-defaults]')?.addEventListener('click', () => {
+      void this.work(async () => {
+        await this.store.resetDeleted();
+        await this.reload();
+        this.message = t('articlesResetDone');
+      });
+    });
     this.el.querySelector('[data-publish]')?.addEventListener('click', () => {
       try {
         const article = validateCatalogArticle(syncDraft());
@@ -501,7 +509,7 @@ export class ArticleCatalogDialog {
       'click',
       () =>
         void this.work(async () => {
-          await this.store.remove(this.deletion!.id, this.expected);
+          await this.store.remove(this.deletion!.id, this.expected, true);
           await this.reload();
           this.message = t('articlesStored');
         }),

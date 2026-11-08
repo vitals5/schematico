@@ -19,6 +19,16 @@ export function validateCatalogArticle(a) {
   if (a.symbolId !== undefined && (typeof a.symbolId !== 'string' || a.symbolId.length > 256 || /[\u0000-\u001f\u007f]/.test(a.symbolId)))
     throw new Error('articlesCatalogInvalid');
   if (
+    a.symbol !== undefined &&
+    (!a.symbol ||
+      typeof a.symbol !== 'object' ||
+      typeof a.symbol.id !== 'string' ||
+      !a.symbol.id.trim() ||
+      typeof a.symbol.name !== 'string' ||
+      !Array.isArray(a.symbol.pins))
+  )
+    throw new Error('articlesCatalogInvalid');
+  if (
     a.functions !== undefined &&
     (!Array.isArray(a.functions) ||
       a.functions.length > 500 ||
@@ -46,6 +56,7 @@ export function validateCatalogArticle(a) {
     origin: a.origin,
     verification: a.verification,
     ...(a.symbolId?.trim() ? { symbolId: a.symbolId.trim() } : {}),
+    ...(a.symbol ? { symbol: a.symbol } : {}),
     ...(a.functions
       ? {
           functions: a.functions.map((f) => ({

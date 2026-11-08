@@ -1380,7 +1380,6 @@ export class CadCanvas {
     if (this.activeArticleToPlace) {
       const entry = this.activeArticleToPlace;
       assignMainCatalogArticle(newComp, entry.article, this.project);
-      setComponentLabelText(newComp, 'functionText', entry.name);
       if (entry.technicalData) setComponentLabelText(newComp, 'technicalCharacteristics', entry.technicalData);
     }
     this.activePage.components.push(newComp);
