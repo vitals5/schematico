@@ -23,60 +23,36 @@ const SYMBOLS_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../catalog/symbols.json',
 );
-const SYMBOL_ALIAS_PATH = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../catalog/symbol.json',
-);
 
 export function readSymbols(symbolsPath = SYMBOLS_PATH) {
   if (!fs.existsSync(symbolsPath)) {
-    if (fs.existsSync(SYMBOL_ALIAS_PATH)) {
-      return parseSharedSymbols(
-        JSON.parse(fs.readFileSync(SYMBOL_ALIAS_PATH, 'utf8')),
-      );
-    }
     return { schema: 'schematico-symbols', version: 1, symbols: [] };
   }
   const text = fs.readFileSync(symbolsPath, 'utf8');
   return parseSharedSymbols(JSON.parse(text));
 }
 
-export function writeSymbols(
-  symbolsData,
-  symbolsPath = SYMBOLS_PATH,
-  aliasPath = SYMBOL_ALIAS_PATH,
-) {
+export function writeSymbols(symbolsData, symbolsPath = SYMBOLS_PATH) {
   const validated = parseSharedSymbols(symbolsData);
   validated.symbols.sort((a, b) => a.id.localeCompare(b.id, 'en'));
   const json = JSON.stringify(validated, null, 2) + '\n';
   fs.writeFileSync(symbolsPath, json, 'utf8');
-  if (aliasPath && aliasPath !== symbolsPath) {
-    fs.writeFileSync(aliasPath, json, 'utf8');
-  }
   return validated;
 }
 
-export function applySymbol(
-  rawSymbol,
-  symbolsPath = SYMBOLS_PATH,
-  aliasPath = SYMBOL_ALIAS_PATH,
-) {
+export function applySymbol(rawSymbol, symbolsPath = SYMBOLS_PATH) {
   const current = readSymbols(symbolsPath);
   const result = appendPublicSymbol(current, rawSymbol);
   if (result.changed) {
-    writeSymbols(result.symbolsData, symbolsPath, aliasPath);
+    writeSymbols(result.symbolsData, symbolsPath);
   }
   return result.symbol;
 }
 
-export function deleteSymbol(
-  symbolId,
-  symbolsPath = SYMBOLS_PATH,
-  aliasPath = SYMBOL_ALIAS_PATH,
-) {
+export function deleteSymbol(symbolId, symbolsPath = SYMBOLS_PATH) {
   const current = readSymbols(symbolsPath);
   const result = removeSharedSymbol(current, symbolId);
-  writeSymbols(result.symbolsData, symbolsPath, aliasPath);
+  writeSymbols(result.symbolsData, symbolsPath);
   return result.removed;
 }
 

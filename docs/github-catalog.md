@@ -1,6 +1,6 @@
 # Gemeinsamer Artikelkatalog auf GitHub
 
-Der gemeinsame Artikelbestand liegt unter [`catalog/articles.json`](../catalog/articles.json). Diese Datei ist die zentrale Datenquelle für Artikelstammdaten. Die zugehörigen Vektordaten von Symbolen (z. B. CAD-Symbole und Sonderformen ohne Binärdaten) werden in [`catalog/symbols.json`](../catalog/symbols.json) (sowie synchron [`catalog/symbol.json`](../catalog/symbol.json)) gespeichert. Beim Programmstart lädt Schematico sie von GitHub und hält einen getrennten lokalen Offline-Zwischenspeicher bereit. Ein Datenbankserver ist dafür nicht erforderlich.
+Der gemeinsame Artikelbestand liegt unter [`catalog/articles.json`](../catalog/articles.json). Diese Datei ist die zentrale Datenquelle für Artikelstammdaten. Die zugehörigen Vektordaten von Symbolen (z. B. CAD-Symbole und Sonderformen ohne Binärdaten) werden in [`catalog/symbols.json`](../catalog/symbols.json) gespeichert. Beim Programmstart lädt Schematico sie von GitHub und hält einen getrennten lokalen Offline-Zwischenspeicher bereit. Ein Datenbankserver ist dafür nicht erforderlich.
 
 Der Anfangsbestand enthält die 15 bereits vorhandenen Startartikel. Deren technische Funktionen werden nicht nachträglich erfunden oder als geprüft ausgegeben. Neue öffentliche Einträge bleiben ebenfalls **ungeprüft**.
 
@@ -23,7 +23,7 @@ In der Desktopanwendung und auf extern gehosteten Webkopien öffnet sich dafür 
 
 ## Vektor-Symbole in catalog/symbols.json
 
-In [`catalog/symbols.json`](../catalog/symbols.json) (sowie synchron [`catalog/symbol.json`](../catalog/symbol.json)) werden die reinen Vektordaten der Symbole hinterlegt:
+In [`catalog/symbols.json`](../catalog/symbols.json) werden die reinen Vektordaten der Symbole hinterlegt:
 - Enthält ausschließlich JSON-Vektordaten (Linien, Polygone, Kreise, Texte, SVG-Pfad, Anschluss-Pins und Bounding Boxes).
 - Enthält **keine Binärdaten** (keine DWG/DXF-Binärdateien, keine Bilddateien oder Byte-Arrays).
 - Wird beim Starten und Aktualisieren automatisch mit GitHub synchronisiert und lokal gecacht.

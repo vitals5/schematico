@@ -81,7 +81,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog/articles.json catalog/symbols.json catalog/symbol.json
+          git add catalog/articles.json catalog/symbols.json
           if git diff --staged --quiet; then
             echo "No changes in catalog files."
           else
