@@ -3,6 +3,677 @@
   "version": 1,
   "symbols": [
     {
+      "id": "cad-symbol:06eb4c7f1e6a16e246dfd1e81fa6889349f581fc2e4ece4e699d82ca199c85fd",
+      "name": "Automat_(MCB)_3P",
+      "category": "protection",
+      "standard": "CAD",
+      "defaultBmkPrefix": "-F",
+      "defaultFunctionText": "",
+      "width": 41.6,
+      "height": 24,
+      "pins": [
+        {
+          "id": "p1",
+          "name": "1",
+          "x": 9.6,
+          "y": 0,
+          "direction": "top",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 7.2,
+            "y": 4,
+            "fontSize": 4.27132009345794,
+            "alignment": "start",
+            "rotation": 270
+          }
+        },
+        {
+          "id": "p2",
+          "name": "3",
+          "x": 25.6,
+          "y": 0,
+          "direction": "top",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 23.2,
+            "y": 4,
+            "fontSize": 4.27132009345794,
+            "alignment": "start",
+            "rotation": 270
+          }
+        },
+        {
+          "id": "p3",
+          "name": "5",
+          "x": 41.6,
+          "y": 0,
+          "direction": "top",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 39.2,
+            "y": 4,
+            "fontSize": 4.27132009345794,
+            "alignment": "start",
+            "rotation": 270
+          }
+        },
+        {
+          "id": "p4",
+          "name": "2",
+          "x": 9.6,
+          "y": 24,
+          "direction": "bottom",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 7.2,
+            "y": 24.4848860981308,
+            "fontSize": 4.27132009345794,
+            "alignment": "end",
+            "rotation": 270
+          }
+        },
+        {
+          "id": "p5",
+          "name": "4",
+          "x": 25.6,
+          "y": 24,
+          "direction": "bottom",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 23.2,
+            "y": 24.4848860981308,
+            "fontSize": 4.27132009345794,
+            "alignment": "end",
+            "rotation": 270
+          }
+        },
+        {
+          "id": "p6",
+          "name": "6",
+          "x": 41.6,
+          "y": 24,
+          "direction": "bottom",
+          "electricalRole": "unknown",
+          "labelPosition": {
+            "x": 39.2,
+            "y": 24.4848860981308,
+            "fontSize": 4.27132009345794,
+            "alignment": "end",
+            "rotation": 270
+          }
+        }
+      ],
+      "importedGraphics": [
+        {
+          "kind": "line",
+          "x1": 9.6,
+          "y1": 8,
+          "x2": 9.6,
+          "y2": 0,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 9.6,
+          "y1": 16,
+          "x2": 9.6,
+          "y2": 24,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 9.6,
+          "y1": 16,
+          "x2": 7.2,
+          "y2": 7.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 0,
+          "y1": 10.4,
+          "x2": 1.6,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 1.6,
+          "y1": 10.4,
+          "x2": 1.6,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 1.6,
+          "y1": 8,
+          "x2": 4.8,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 4.8,
+          "y1": 8,
+          "x2": 4.8,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 4.8,
+          "y1": 10.4,
+          "x2": 8,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "arc",
+          "x": 3.2,
+          "y": 15.2,
+          "radius": 1.6,
+          "startAngle": 0,
+          "endAngle": -180,
+          "color": "currentColor"
+        },
+        {
+          "kind": "line",
+          "x1": 1.6,
+          "y1": 15.2,
+          "x2": 0,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 4.8,
+          "y1": 15.2,
+          "x2": 8.8,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 25.6,
+          "y1": 8,
+          "x2": 25.6,
+          "y2": 0,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 25.6,
+          "y1": 16,
+          "x2": 25.6,
+          "y2": 24,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 25.6,
+          "y1": 16,
+          "x2": 23.2,
+          "y2": 7.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 16,
+          "y1": 10.4,
+          "x2": 17.6,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 17.6,
+          "y1": 10.4,
+          "x2": 17.6,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 17.6,
+          "y1": 8,
+          "x2": 20.8,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 20.8,
+          "y1": 8,
+          "x2": 20.8,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 20.8,
+          "y1": 10.4,
+          "x2": 24,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "arc",
+          "x": 19.2,
+          "y": 15.2,
+          "radius": 1.6,
+          "startAngle": 0,
+          "endAngle": -180,
+          "color": "currentColor"
+        },
+        {
+          "kind": "line",
+          "x1": 17.6,
+          "y1": 15.2,
+          "x2": 16,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 20.8,
+          "y1": 15.2,
+          "x2": 24.8,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 8.8,
+          "y1": 12,
+          "x2": 24,
+          "y2": 12,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 41.6,
+          "y1": 8,
+          "x2": 41.6,
+          "y2": 0,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 41.6,
+          "y1": 16,
+          "x2": 41.6,
+          "y2": 24,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 41.6,
+          "y1": 16,
+          "x2": 39.2,
+          "y2": 7.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 32,
+          "y1": 10.4,
+          "x2": 33.6,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 33.6,
+          "y1": 10.4,
+          "x2": 33.6,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 33.6,
+          "y1": 8,
+          "x2": 36.8,
+          "y2": 8,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 36.8,
+          "y1": 8,
+          "x2": 36.8,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 36.8,
+          "y1": 10.4,
+          "x2": 40,
+          "y2": 10.4,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "arc",
+          "x": 35.2,
+          "y": 15.2,
+          "radius": 1.6,
+          "startAngle": 0,
+          "endAngle": -180,
+          "color": "currentColor"
+        },
+        {
+          "kind": "line",
+          "x1": 33.6,
+          "y1": 15.2,
+          "x2": 32,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 36.8,
+          "y1": 15.2,
+          "x2": 40.8,
+          "y2": 15.2,
+          "color": "currentColor",
+          "width": 0.48
+        },
+        {
+          "kind": "line",
+          "x1": 24.8,
+          "y1": 12,
+          "x2": 40,
+          "y2": 12,
+          "color": "currentColor",
+          "width": 0.48
+        }
+      ],
+      "svgContent": "<line x1=\"9.600000000000001\" y1=\"8\" x2=\"9.600000000000001\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"9.600000000000001\" y1=\"16\" x2=\"9.600000000000001\" y2=\"24\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"9.600000000000001\" y1=\"16\" x2=\"7.2\" y2=\"7.2\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"0\" y1=\"10.4\" x2=\"1.6\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"1.6\" y1=\"10.4\" x2=\"1.6\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"1.6\" y1=\"8\" x2=\"4.800000000000001\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"4.800000000000001\" y1=\"8\" x2=\"4.800000000000001\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"4.800000000000001\" y1=\"10.4\" x2=\"8\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><polyline points=\"4.800000000000001,15.200000000000001 4.797807255607318,15.116262470011291 4.791235032589237,15.032754458771755 4.780301344952221,14.949704855935632 4.7650361611740895,14.867341294691586 4.74548132206251,14.785889527835968 4.721690426072246,14.705572809000085 4.693728682395523,14.62661128072752 4.661672732228162,14.54922137107872 4.625610438701389,14.473615200416726 4.5856406460551025,14.4 4.541872908712679,14.328577543975957 4.494427190999916,14.259543596332044 4.443433538331154,14.19308737432026 4.389031720763831,14.129391029825827 4.331370849898477,14.068629150101525 4.270608970174173,14.01096827923617 4.20691262567974,13.956566461668848 4.140456403667957,13.905572809000084 4.0714224560240435,13.858127091287322 4,13.8143593539449 3.9263847995832752,13.774389561298612 3.8507786289212804,13.73832726777184 3.773388719272481,13.706271317604479 3.694427190999916,13.678309573927756 3.6141104721640334,13.654518677937492 3.5326587053084153,13.634963838825913 3.45029514406437,13.619698655047781 3.367245541228246,13.608764967410764 3.2837375299887106,13.602192744392683 3.2,13.600000000000001 3.11626247001129,13.602192744392683 3.032754458771755,13.608764967410764 2.9497048559356305,13.619698655047781 2.8673412946915855,13.634963838825911 2.785889527835967,13.654518677937492 2.7055728090000843,13.678309573927756 2.62661128072752,13.706271317604479 2.54922137107872,13.73832726777184 2.4736152004167256,13.774389561298612 2.4000000000000004,13.8143593539449 2.328577543975957,13.858127091287322 2.259543596332043,13.905572809000084 2.1930873743202604,13.956566461668848 2.129391029825827,14.01096827923617 2.068629150101524,14.068629150101525 2.0109682792361694,14.129391029825827 1.956566461668847,14.19308737432026 1.9055728090000843,14.259543596332044 1.8581270912873213,14.328577543975959 1.8143593539448981,14.4 1.7743895612986116,14.473615200416726 1.7383272677718389,14.54922137107872 1.7062713176044773,14.62661128072752 1.6783095739277545,14.705572809000085 1.654518677937491,14.785889527835968 1.634963838825911,14.867341294691586 1.6196986550477799,14.949704855935632 1.608764967410763,15.032754458771755 1.602192744392682,15.116262470011291 1.6,15.200000000000001\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.48\"/><line x1=\"1.6\" y1=\"15.200000000000001\" x2=\"0\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"4.800000000000001\" y1=\"15.200000000000001\" x2=\"8.8\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"25.6\" y1=\"8\" x2=\"25.6\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"25.6\" y1=\"16\" x2=\"25.6\" y2=\"24\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"25.6\" y1=\"16\" x2=\"23.200000000000003\" y2=\"7.2\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"16\" y1=\"10.4\" x2=\"17.6\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"17.6\" y1=\"10.4\" x2=\"17.6\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"17.6\" y1=\"8\" x2=\"20.8\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"20.8\" y1=\"8\" x2=\"20.8\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"20.8\" y1=\"10.4\" x2=\"24\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><polyline points=\"20.800000000000004,15.200000000000001 20.79780725560732,15.116262470011291 20.791235032589242,15.032754458771755 20.780301344952225,14.949704855935632 20.76503616117409,14.867341294691586 20.745481322062513,14.785889527835968 20.72169042607225,14.705572809000085 20.693728682395527,14.62661128072752 20.661672732228165,14.54922137107872 20.625610438701393,14.473615200416726 20.585640646055104,14.4 20.54187290871268,14.328577543975957 20.494427190999918,14.259543596332044 20.443433538331156,14.19308737432026 20.389031720763832,14.129391029825827 20.33137084989848,14.068629150101525 20.270608970174177,14.01096827923617 20.206912625679742,13.956566461668848 20.14045640366796,13.905572809000084 20.071422456024045,13.858127091287322 20.000000000000004,13.8143593539449 19.92638479958328,13.774389561298612 19.850778628921283,13.73832726777184 19.773388719272482,13.706271317604479 19.694427190999917,13.678309573927756 19.614110472164036,13.654518677937492 19.532658705308418,13.634963838825913 19.450295144064373,13.619698655047781 19.367245541228247,13.608764967410764 19.283737529988713,13.602192744392683 19.200000000000003,13.600000000000001 19.116262470011293,13.602192744392683 19.03275445877176,13.608764967410764 18.949704855935632,13.619698655047781 18.867341294691588,13.634963838825911 18.78588952783597,13.654518677937492 18.70557280900009,13.678309573927756 18.626611280727523,13.706271317604479 18.549221371078723,13.73832726777184 18.473615200416727,13.774389561298612 18.400000000000002,13.8143593539449 18.32857754397596,13.858127091287322 18.259543596332048,13.905572809000084 18.193087374320264,13.956566461668848 18.12939102982583,14.01096827923617 18.068629150101525,14.068629150101525 18.010968279236174,14.129391029825827 17.95656646166885,14.19308737432026 17.905572809000088,14.259543596332044 17.858127091287322,14.328577543975959 17.8143593539449,14.4 17.774389561298616,14.473615200416726 17.73832726777184,14.54922137107872 17.70627131760448,14.62661128072752 17.678309573927756,14.705572809000085 17.654518677937492,14.785889527835968 17.634963838825914,14.867341294691586 17.61969865504778,14.949704855935632 17.608764967410764,15.032754458771755 17.602192744392685,15.116262470011291 17.6,15.200000000000001\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.48\"/><line x1=\"17.6\" y1=\"15.200000000000001\" x2=\"16\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"20.8\" y1=\"15.200000000000001\" x2=\"24.8\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"8.8\" y1=\"12\" x2=\"24\" y2=\"12\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"41.6\" y1=\"8\" x2=\"41.6\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"41.6\" y1=\"16\" x2=\"41.6\" y2=\"24\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"41.6\" y1=\"16\" x2=\"39.2\" y2=\"7.2\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"32\" y1=\"10.4\" x2=\"33.6\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"33.6\" y1=\"10.4\" x2=\"33.6\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"33.6\" y1=\"8\" x2=\"36.800000000000004\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"36.800000000000004\" y1=\"8\" x2=\"36.800000000000004\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"36.800000000000004\" y1=\"10.4\" x2=\"40\" y2=\"10.4\" stroke=\"currentColor\" stroke-width=\"0.48\" /><polyline points=\"36.800000000000004,15.200000000000001 36.797807255607324,15.116262470011291 36.79123503258924,15.032754458771755 36.78030134495222,14.949704855935632 36.765036161174095,14.867341294691586 36.74548132206251,14.785889527835968 36.72169042607225,14.705572809000085 36.69372868239552,14.62661128072752 36.66167273222816,14.54922137107872 36.62561043870139,14.473615200416726 36.585640646055104,14.4 36.54187290871268,14.328577543975957 36.49442719099992,14.259543596332044 36.443433538331156,14.19308737432026 36.38903172076383,14.129391029825827 36.33137084989848,14.068629150101525 36.27060897017417,14.01096827923617 36.20691262567974,13.956566461668848 36.14045640366796,13.905572809000084 36.071422456024045,13.858127091287322 36,13.8143593539449 35.926384799583275,13.774389561298612 35.85077862892128,13.73832726777184 35.77338871927248,13.706271317604479 35.69442719099992,13.678309573927756 35.614110472164036,13.654518677937492 35.53265870530842,13.634963838825913 35.45029514406437,13.619698655047781 35.36724554122825,13.608764967410764 35.28373752998871,13.602192744392683 35.2,13.600000000000001 35.11626247001129,13.602192744392683 35.032754458771755,13.608764967410764 34.949704855935636,13.619698655047781 34.86734129469159,13.634963838825911 34.78588952783597,13.654518677937492 34.70557280900009,13.678309573927756 34.62661128072752,13.706271317604479 34.54922137107872,13.73832726777184 34.47361520041673,13.774389561298612 34.400000000000006,13.8143593539449 34.32857754397596,13.858127091287322 34.259543596332044,13.905572809000084 34.193087374320264,13.956566461668848 34.12939102982583,14.01096827923617 34.06862915010153,14.068629150101525 34.010968279236174,14.129391029825827 33.95656646166885,14.19308737432026 33.905572809000084,14.259543596332044 33.85812709128732,14.328577543975959 33.8143593539449,14.4 33.77438956129861,14.473615200416726 33.738327267771844,14.54922137107872 33.70627131760448,14.62661128072752 33.678309573927756,14.705572809000085 33.654518677937496,14.785889527835968 33.63496383882591,14.867341294691586 33.619698655047785,14.949704855935632 33.608764967410764,15.032754458771755 33.60219274439268,15.116262470011291 33.6,15.200000000000001\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.48\"/><line x1=\"33.6\" y1=\"15.200000000000001\" x2=\"32\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"36.800000000000004\" y1=\"15.200000000000001\" x2=\"40.800000000000004\" y2=\"15.200000000000001\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"24.8\" y1=\"12\" x2=\"40\" y2=\"12\" stroke=\"currentColor\" stroke-width=\"0.48\" />",
+      "description": "CAD · Siemens AG 5SL6316-7",
+      "manufacturer": "Siemens AG",
+      "articleNumber": "5SL6316-7",
+      "unitsPerMm": 2,
+      "insertionPoint": {
+        "x": 9.6,
+        "y": 0
+      },
+      "cadImport": {
+        "block": "Automat_(MCB)_3P1b2f7301_x002D_1360_x002D_4b53_x002D_8efb_x002D_6b741e6748be7a04efb6_x002D_2f6f_x002D_41ca_x002D_97ba_x002D_4e5f4161f6d4",
+        "bmkText": "cad/BC",
+        "confirmed": true,
+        "grid": 8,
+        "noPins": false,
+        "partial": false,
+        "rows": [
+          {
+            "direction": "top",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "1",
+            "textId": "cad/BE",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "direction": "top",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "3",
+            "textId": "cad/BF",
+            "x": 5,
+            "y": 0
+          },
+          {
+            "direction": "top",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "5",
+            "textId": "cad/C1",
+            "x": 10,
+            "y": 0
+          },
+          {
+            "direction": "bottom",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "2",
+            "textId": "cad/BD",
+            "x": 0,
+            "y": 7.5
+          },
+          {
+            "direction": "bottom",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "4",
+            "textId": "cad/C0",
+            "x": 5,
+            "y": 7.5
+          },
+          {
+            "direction": "bottom",
+            "enabled": true,
+            "isBoundary": true,
+            "name": "6",
+            "textId": "cad/C2",
+            "x": 10,
+            "y": 7.5
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": true,
+            "name": "",
+            "x": 10,
+            "y": 2.5
+          },
+          {
+            "direction": "left",
+            "enabled": false,
+            "isBoundary": true,
+            "name": "",
+            "x": -3,
+            "y": 3.25
+          },
+          {
+            "direction": "left",
+            "enabled": false,
+            "isBoundary": true,
+            "name": "",
+            "x": -3,
+            "y": 4.75
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": -0.75,
+            "y": 2.25
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 4.25,
+            "y": 2.25
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 9.25,
+            "y": 2.25
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 0,
+            "y": 2.5
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 5,
+            "y": 2.5
+          },
+          {
+            "direction": "left",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": -0.5,
+            "y": 3.25
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 2,
+            "y": 3.25
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 4.5,
+            "y": 3.25
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 7,
+            "y": 3.25
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 9.5,
+            "y": 3.25
+          },
+          {
+            "direction": "left",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": -0.25,
+            "y": 3.75
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 4.5,
+            "y": 3.75
+          },
+          {
+            "direction": "top",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 4.75,
+            "y": 3.75
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 9.5,
+            "y": 3.75
+          },
+          {
+            "direction": "bottom",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": -0.25,
+            "y": 4.75
+          },
+          {
+            "direction": "bottom",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 2,
+            "y": 4.75
+          },
+          {
+            "direction": "bottom",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 4.75,
+            "y": 4.75
+          },
+          {
+            "direction": "bottom",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 7,
+            "y": 4.75
+          },
+          {
+            "direction": "right",
+            "enabled": false,
+            "isBoundary": false,
+            "name": "",
+            "x": 9.75,
+            "y": 4.75
+          }
+        ],
+        "scaleMultiplier": 1,
+        "unit": 1,
+        "unitConfirmed": true
+      }
+    },
+    {
       "id": "cad-symbol:193f1f846971089d9e4d937ed391d4044c277f5120ce51aa999911986590da6e",
       "name": "ESR12Z-4DX-UC_Stromstoss-Schaltrelais",
       "category": "relays",
@@ -313,11 +984,6 @@
           }
         }
       ],
-      "unitsPerMm": 2,
-      "insertionPoint": {
-        "x": 19.01707390758479,
-        "y": 0
-      },
       "importedGraphics": [
         {
           "kind": "line",
@@ -1018,9 +1684,9 @@
           "y": 54.400000000000006,
           "text": "+G1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1028,9 +1694,9 @@
           "y": 86.4,
           "text": "-A2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1038,9 +1704,9 @@
           "y": 54.400000000000006,
           "text": "+H1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1048,9 +1714,9 @@
           "y": 54.400000000000006,
           "text": "1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1058,9 +1724,9 @@
           "y": 54.400000000000006,
           "text": "3",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1068,9 +1734,9 @@
           "y": 86.4,
           "text": "2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1078,9 +1744,9 @@
           "y": 86.4,
           "text": "4",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1088,9 +1754,9 @@
           "y": 69.60000000000001,
           "text": "μ",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1098,9 +1764,9 @@
           "y": 47.2,
           "text": "+A1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1108,9 +1774,9 @@
           "y": 47.2,
           "text": "+A7",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1118,9 +1784,9 @@
           "y": 54.400000000000006,
           "text": "+E1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1128,9 +1794,9 @@
           "y": 86.4,
           "text": "-E2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1138,9 +1804,9 @@
           "y": 54.400000000000006,
           "text": "+F1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1148,9 +1814,9 @@
           "y": 54.400000000000006,
           "text": "5",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1158,9 +1824,9 @@
           "y": 54.400000000000006,
           "text": "7",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1168,9 +1834,9 @@
           "y": 86.4,
           "text": "6",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1178,9 +1844,9 @@
           "y": 86.4,
           "text": "8",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -1188,15 +1854,20 @@
           "y": 14.367999267578126,
           "text": "-K",
           "size": 6.406980140186916,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "end",
-          "color": "currentColor"
+          "rotation": 0
         }
       ],
       "svgContent": "<line x1=\"11.017073907584791\" y1=\"8\" x2=\"11.017073907584791\" y2=\"112\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"112\" x2=\"171.0170739075848\" y2=\"112\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"112\" x2=\"171.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"8\" x2=\"11.017073907584791\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"16\" x2=\"171.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"32\" x2=\"171.0170739075848\" y2=\"32\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"104\" x2=\"171.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"88\" x2=\"171.0170739075848\" y2=\"88\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"19.01707390758479\" y1=\"0\" x2=\"19.01707390758479\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.017073907584795\" y1=\"0\" x2=\"35.017073907584795\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"19.01707390758479\" y1=\"112\" x2=\"19.01707390758479\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.017073907584795\" y1=\"112\" x2=\"35.017073907584795\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"51.017073907584795\" y1=\"112\" x2=\"51.017073907584795\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"8\" x2=\"27.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"8\" x2=\"43.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"112\" x2=\"27.01707390758479\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"112\" x2=\"43.017073907584795\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"64\" x2=\"27.01707390758479\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"72\" x2=\"43.017073907584795\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"72\" x2=\"43.017073907584795\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"64\" x2=\"27.01707390758479\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"30.985073175162917\" y1=\"56\" x2=\"30.985073175162917\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.049074640006666\" y1=\"72\" x2=\"35.049074640006666\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"51.017073907584795\" y1=\"0\" x2=\"51.017073907584795\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"8\" x2=\"43.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"8\" x2=\"59.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.01707390758479\" y1=\"0\" x2=\"67.01707390758479\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"8\" x2=\"59.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"8\" x2=\"75.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"83.0170739075848\" y1=\"0\" x2=\"83.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"8\" x2=\"75.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"91.0170739075848\" y1=\"8\" x2=\"91.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"112\" x2=\"59.017073907584795\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"112\" x2=\"75.01707390758479\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.01707390758479\" y1=\"112\" x2=\"67.01707390758479\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"39.017073907584795\" y1=\"56\" x2=\"39.017073907584795\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"56\" x2=\"123.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"64\" x2=\"119.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"72\" x2=\"123.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"56\" x2=\"131.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"64\" x2=\"127.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"72\" x2=\"131.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"99.0170739075848\" y1=\"0\" x2=\"99.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"115.0170739075848\" y1=\"0\" x2=\"115.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"107.0170739075848\" y1=\"8\" x2=\"107.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"0\" x2=\"131.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"8\" x2=\"123.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"0\" x2=\"147.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"8\" x2=\"139.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"163.0170739075848\" y1=\"0\" x2=\"163.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"155.0170739075848\" y1=\"8\" x2=\"155.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"8\" x2=\"171.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"83.0170739075848\" y1=\"112\" x2=\"83.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"99.0170739075848\" y1=\"112\" x2=\"99.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"115.0170739075848\" y1=\"112\" x2=\"115.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"91.0170739075848\" y1=\"112\" x2=\"91.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"107.0170739075848\" y1=\"112\" x2=\"107.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"112\" x2=\"123.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"112\" x2=\"131.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"112\" x2=\"147.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"112\" x2=\"139.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"155.0170739075848\" y1=\"112\" x2=\"155.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"112\" x2=\"171.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"163.0170739075848\" y1=\"112\" x2=\"163.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"63.81707390758479\" y1=\"64\" x2=\"63.81707390758479\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"63.81707390758479\" y1=\"72\" x2=\"79.8170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"79.8170739075848\" y1=\"72\" x2=\"79.8170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"79.8170739075848\" y1=\"64\" x2=\"63.81707390758479\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.7850731751629\" y1=\"56\" x2=\"67.7850731751629\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"71.84907464000668\" y1=\"72\" x2=\"71.84907464000668\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.8170739075848\" y1=\"56\" x2=\"75.8170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"56\" x2=\"139.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"64\" x2=\"135.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"72\" x2=\"139.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"56\" x2=\"147.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"64\" x2=\"143.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"72\" x2=\"147.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><text x=\"26.21707390758479\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"26.21707390758479\" dy=\"0\">+G1</tspan></text><text x=\"35.017073907584795\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"35.017073907584795\" dy=\"0\">-A2</tspan></text><text x=\"43.017073907584795\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"43.017073907584795\" dy=\"0\">+H1</tspan></text><text x=\"123.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"123.0170739075848\" dy=\"0\">1</tspan></text><text x=\"131.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"131.0170739075848\" dy=\"0\">3</tspan></text><text x=\"123.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"123.0170739075848\" dy=\"0\">2</tspan></text><text x=\"131.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"131.0170739075848\" dy=\"0\">4</tspan></text><text x=\"155.08107537242856\" y=\"69.60000000000001\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"155.08107537242856\" dy=\"0\">μ</tspan></text><text x=\"26.21707390758479\" y=\"47.2\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"26.21707390758479\" dy=\"0\">+A1</tspan></text><text x=\"43.017073907584795\" y=\"47.2\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"43.017073907584795\" dy=\"0\">+A7</tspan></text><text x=\"63.017073907584795\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"63.017073907584795\" dy=\"0\">+E1</tspan></text><text x=\"71.8170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"71.8170739075848\" dy=\"0\">-E2</tspan></text><text x=\"79.8170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"79.8170739075848\" dy=\"0\">+F1</tspan></text><text x=\"139.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"139.0170739075848\" dy=\"0\">5</tspan></text><text x=\"147.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"147.0170739075848\" dy=\"0\">7</tspan></text><text x=\"139.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"139.0170739075848\" dy=\"0\">6</tspan></text><text x=\"147.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"147.0170739075848\" dy=\"0\">8</tspan></text><text x=\"8.329074182242993\" y=\"14.367999267578126\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186916\" text-anchor=\"end\" ><tspan x=\"8.329074182242993\" dy=\"0\">-K</tspan></text>",
       "description": "CAD · ELTAKO 21400301",
       "manufacturer": "ELTAKO",
       "articleNumber": "21400301",
+      "unitsPerMm": 2,
+      "insertionPoint": {
+        "x": 19.01707390758479,
+        "y": 0
+      },
       "cadImport": {
         "block": "ESR12Z_x002D_4DX_x002D_UC Stromstoss_x002D_Schaltrelaisafc473d5_x002D_8e91_x002D_471c_x002D_beaa_x002D_d5d41ad6f0ce5b32f5ba_x002D_58cb_x002D_4074_x002D_b97b_x002D_ccf01a1d1f40",
         "unit": 1,
@@ -1702,11 +2373,6 @@
           }
         }
       ],
-      "unitsPerMm": 2,
-      "insertionPoint": {
-        "x": 19.01707390758479,
-        "y": 0
-      },
       "importedGraphics": [
         {
           "kind": "line",
@@ -2407,9 +3073,9 @@
           "y": 54.400000000000006,
           "text": "+G1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2417,9 +3083,9 @@
           "y": 86.4,
           "text": "-A2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2427,9 +3093,9 @@
           "y": 54.400000000000006,
           "text": "+H1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2437,9 +3103,9 @@
           "y": 54.400000000000006,
           "text": "1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2447,9 +3113,9 @@
           "y": 54.400000000000006,
           "text": "3",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2457,9 +3123,9 @@
           "y": 86.4,
           "text": "2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2467,9 +3133,9 @@
           "y": 86.4,
           "text": "4",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2477,9 +3143,9 @@
           "y": 69.60000000000001,
           "text": "μ",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2487,9 +3153,9 @@
           "y": 47.2,
           "text": "+A1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2497,9 +3163,9 @@
           "y": 47.2,
           "text": "+A7",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2507,9 +3173,9 @@
           "y": 54.400000000000006,
           "text": "+E1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2517,9 +3183,9 @@
           "y": 86.4,
           "text": "-E2",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2527,9 +3193,9 @@
           "y": 54.400000000000006,
           "text": "+F1",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2537,9 +3203,9 @@
           "y": 54.400000000000006,
           "text": "5",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2547,9 +3213,9 @@
           "y": 54.400000000000006,
           "text": "7",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2557,9 +3223,9 @@
           "y": 86.4,
           "text": "6",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2567,9 +3233,9 @@
           "y": 86.4,
           "text": "8",
           "size": 4.271320093457943,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "middle",
-          "color": "currentColor"
+          "rotation": 0
         },
         {
           "kind": "text",
@@ -2577,15 +3243,20 @@
           "y": 14.367999267578126,
           "text": "-K",
           "size": 6.406980140186916,
-          "rotation": 0,
+          "color": "currentColor",
           "anchor": "end",
-          "color": "currentColor"
+          "rotation": 0
         }
       ],
       "svgContent": "<line x1=\"11.017073907584791\" y1=\"8\" x2=\"11.017073907584791\" y2=\"112\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"112\" x2=\"171.0170739075848\" y2=\"112\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"112\" x2=\"171.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"8\" x2=\"11.017073907584791\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"16\" x2=\"171.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"32\" x2=\"171.0170739075848\" y2=\"32\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"104\" x2=\"171.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"11.017073907584791\" y1=\"88\" x2=\"171.0170739075848\" y2=\"88\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"19.01707390758479\" y1=\"0\" x2=\"19.01707390758479\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.017073907584795\" y1=\"0\" x2=\"35.017073907584795\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"19.01707390758479\" y1=\"112\" x2=\"19.01707390758479\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.017073907584795\" y1=\"112\" x2=\"35.017073907584795\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"51.017073907584795\" y1=\"112\" x2=\"51.017073907584795\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"8\" x2=\"27.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"8\" x2=\"43.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"112\" x2=\"27.01707390758479\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"112\" x2=\"43.017073907584795\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"64\" x2=\"27.01707390758479\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"27.01707390758479\" y1=\"72\" x2=\"43.017073907584795\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"72\" x2=\"43.017073907584795\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"64\" x2=\"27.01707390758479\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"30.985073175162917\" y1=\"56\" x2=\"30.985073175162917\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"35.049074640006666\" y1=\"72\" x2=\"35.049074640006666\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"51.017073907584795\" y1=\"0\" x2=\"51.017073907584795\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"43.017073907584795\" y1=\"8\" x2=\"43.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"8\" x2=\"59.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.01707390758479\" y1=\"0\" x2=\"67.01707390758479\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"8\" x2=\"59.017073907584795\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"8\" x2=\"75.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"83.0170739075848\" y1=\"0\" x2=\"83.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"8\" x2=\"75.01707390758479\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"91.0170739075848\" y1=\"8\" x2=\"91.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"59.017073907584795\" y1=\"112\" x2=\"59.017073907584795\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.01707390758479\" y1=\"112\" x2=\"75.01707390758479\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.01707390758479\" y1=\"112\" x2=\"67.01707390758479\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"39.017073907584795\" y1=\"56\" x2=\"39.017073907584795\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"56\" x2=\"123.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"64\" x2=\"119.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"72\" x2=\"123.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"56\" x2=\"131.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"64\" x2=\"127.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"72\" x2=\"131.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"99.0170739075848\" y1=\"0\" x2=\"99.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"115.0170739075848\" y1=\"0\" x2=\"115.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"107.0170739075848\" y1=\"8\" x2=\"107.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"0\" x2=\"131.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"8\" x2=\"123.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"0\" x2=\"147.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"8\" x2=\"139.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"163.0170739075848\" y1=\"0\" x2=\"163.0170739075848\" y2=\"8\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"155.0170739075848\" y1=\"8\" x2=\"155.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"8\" x2=\"171.0170739075848\" y2=\"16\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"83.0170739075848\" y1=\"112\" x2=\"83.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"99.0170739075848\" y1=\"112\" x2=\"99.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"115.0170739075848\" y1=\"112\" x2=\"115.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"91.0170739075848\" y1=\"112\" x2=\"91.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"107.0170739075848\" y1=\"112\" x2=\"107.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"123.0170739075848\" y1=\"112\" x2=\"123.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"131.0170739075848\" y1=\"112\" x2=\"131.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"112\" x2=\"147.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"112\" x2=\"139.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"155.0170739075848\" y1=\"112\" x2=\"155.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"171.0170739075848\" y1=\"112\" x2=\"171.0170739075848\" y2=\"104\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"163.0170739075848\" y1=\"112\" x2=\"163.0170739075848\" y2=\"120\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"63.81707390758479\" y1=\"64\" x2=\"63.81707390758479\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"63.81707390758479\" y1=\"72\" x2=\"79.8170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"79.8170739075848\" y1=\"72\" x2=\"79.8170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"79.8170739075848\" y1=\"64\" x2=\"63.81707390758479\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"67.7850731751629\" y1=\"56\" x2=\"67.7850731751629\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"71.84907464000668\" y1=\"72\" x2=\"71.84907464000668\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"75.8170739075848\" y1=\"56\" x2=\"75.8170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"56\" x2=\"139.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"64\" x2=\"135.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"139.0170739075848\" y1=\"72\" x2=\"139.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"56\" x2=\"147.0170739075848\" y2=\"64\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"64\" x2=\"143.0170739075848\" y2=\"72\" stroke=\"currentColor\" stroke-width=\"0.48\" /><line x1=\"147.0170739075848\" y1=\"72\" x2=\"147.0170739075848\" y2=\"80\" stroke=\"currentColor\" stroke-width=\"0.48\" /><text x=\"26.21707390758479\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"26.21707390758479\" dy=\"0\">+G1</tspan></text><text x=\"35.017073907584795\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"35.017073907584795\" dy=\"0\">-A2</tspan></text><text x=\"43.017073907584795\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"43.017073907584795\" dy=\"0\">+H1</tspan></text><text x=\"123.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"123.0170739075848\" dy=\"0\">1</tspan></text><text x=\"131.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"131.0170739075848\" dy=\"0\">3</tspan></text><text x=\"123.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"123.0170739075848\" dy=\"0\">2</tspan></text><text x=\"131.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"131.0170739075848\" dy=\"0\">4</tspan></text><text x=\"155.08107537242856\" y=\"69.60000000000001\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"155.08107537242856\" dy=\"0\">μ</tspan></text><text x=\"26.21707390758479\" y=\"47.2\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"26.21707390758479\" dy=\"0\">+A1</tspan></text><text x=\"43.017073907584795\" y=\"47.2\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"43.017073907584795\" dy=\"0\">+A7</tspan></text><text x=\"63.017073907584795\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"63.017073907584795\" dy=\"0\">+E1</tspan></text><text x=\"71.8170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"71.8170739075848\" dy=\"0\">-E2</tspan></text><text x=\"79.8170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"79.8170739075848\" dy=\"0\">+F1</tspan></text><text x=\"139.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"139.0170739075848\" dy=\"0\">5</tspan></text><text x=\"147.0170739075848\" y=\"54.400000000000006\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"147.0170739075848\" dy=\"0\">7</tspan></text><text x=\"139.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"139.0170739075848\" dy=\"0\">6</tspan></text><text x=\"147.0170739075848\" y=\"86.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"4.271320093457943\" text-anchor=\"middle\" ><tspan x=\"147.0170739075848\" dy=\"0\">8</tspan></text><text x=\"8.329074182242993\" y=\"14.367999267578126\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186916\" text-anchor=\"end\" ><tspan x=\"8.329074182242993\" dy=\"0\">-K</tspan></text>",
       "description": "CAD · ELTAKO 21400301",
       "manufacturer": "ELTAKO",
       "articleNumber": "21400301",
+      "unitsPerMm": 2,
+      "insertionPoint": {
+        "x": 19.01707390758479,
+        "y": 0
+      },
       "cadImport": {
         "block": "ESR12Z_x002D_4DX_x002D_UC Stromstoss_x002D_Schaltrelaisafc473d5_x002D_8e91_x002D_471c_x002D_beaa_x002D_d5d41ad6f0ce5b32f5ba_x002D_58cb_x002D_4074_x002D_b97b_x002D_ccf01a1d1f40",
         "unit": 1,
