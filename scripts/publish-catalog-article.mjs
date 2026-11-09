@@ -15,6 +15,7 @@ export async function updateCatalogFile(
     fetcher = fetch,
     token,
     wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    message,
   } = {},
 ) {
   if (!token) throw Error('Missing workflow authentication');
@@ -61,11 +62,16 @@ export async function updateCatalogFile(
     const serialized = JSON.stringify(merged.catalog, null, 2) + '\n';
     if (Buffer.byteLength(serialized, 'utf8') > MAX_CATALOG_BYTES)
       throw Error('Catalogue capacity exceeded');
+    const commitMsg =
+      message ??
+      (merged.article?.symbolId
+        ? `catalog: update symbol for ${merged.article.manufacturer} ${merged.article.articleNumber}`
+        : 'catalog: add community article');
     const put = await fetcher(endpoint, {
       method: 'PUT',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'catalog: add community article',
+        message: commitMsg,
         branch: 'main',
         sha: file.sha,
         content: Buffer.from(serialized).toString('base64'),
@@ -82,7 +88,8 @@ export async function updateCatalogFile(
 export function publishCatalogArticle(raw, options) {
   const article = validatePublicArticle(raw);
   return updateCatalogFile(
-    (current) => appendPublicArticle(current, article),
+    (current) =>
+      appendPublicArticle(current, article, { allowSymbolUpdate: true }),
     options,
   );
 }

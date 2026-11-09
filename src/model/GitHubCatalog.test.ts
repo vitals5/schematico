@@ -10,6 +10,8 @@ import {
 import {
   parseSharedCatalog,
   appendPublicArticle,
+  removeSharedArticle,
+  updateSharedArticleSymbol,
   validatePublicArticle,
 } from '../shared/catalog-publication.mjs';
 import { ArticleCatalog, catalogRevision } from './ArticleCatalog';
@@ -111,6 +113,26 @@ assert.throws(
     }),
   /githubCatalogConflict/,
 );
+// Symbol update on existing article with allowSymbolUpdate: true
+const withSymbol = appendPublicArticle(
+  published.catalog,
+  { ...record, symbolId: 'new_sym_id' },
+  { allowSymbolUpdate: true },
+);
+assert.equal(withSymbol.changed, true);
+assert.equal(withSymbol.article.symbolId, 'new_sym_id');
+
+// updateSharedArticleSymbol
+const directlyUpdated = updateSharedArticleSymbol(withSymbol.catalog, record, 'another_sym');
+assert.equal(directlyUpdated.changed, true);
+assert.equal(directlyUpdated.article.symbolId, 'another_sym');
+
+// removeSharedArticle
+const afterRemoval = removeSharedArticle(directlyUpdated.catalog, record);
+assert.equal(afterRemoval.changed, true);
+assert.equal(afterRemoval.removed.articleNumber, record.articleNumber);
+assert.equal(afterRemoval.catalog.articles.some(a => a.articleNumber === record.articleNumber), false);
+assert.throws(() => removeSharedArticle(afterRemoval.catalog, record), /articlesCatalogNotFound/);
 assert.throws(() => validatePublicArticle({ ...record, manufacturer: '' }));
 console.log(
   '✓ GitHub catalogue: bounded validated public data, independent offline cache, local-data isolation, unverified public records, immutable keys, explicit publication and safe error states',

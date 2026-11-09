@@ -74,12 +74,21 @@ export function parseSharedCatalog(value) {
     ...(submission ? { submission } : {}),
   };
 }
-export function appendPublicArticle(current, raw) {
+export function appendPublicArticle(current, raw, options = {}) {
   const catalog = parseSharedCatalog(current),
     article = validatePublicArticle(raw),
     key = catalogKey(article),
     old = catalog.articles.find((a) => catalogKey(a) === key);
   if (old) {
+    if (
+      options.allowSymbolUpdate &&
+      article.symbolId !== undefined &&
+      article.symbolId !== (old.symbolId ?? '')
+    ) {
+      if (article.symbolId) old.symbolId = article.symbolId;
+      else delete old.symbolId;
+      return { catalog, article: old, changed: true };
+    }
     const semantic = (a) =>
       JSON.stringify({
         articleNumber: a.articleNumber,
@@ -103,5 +112,51 @@ export function appendPublicArticle(current, raw) {
     new TextEncoder().encode(JSON.stringify(catalog)).length > MAX_CATALOG_BYTES
   )
     throw new Error('githubCatalogCapacity');
+  return { catalog, article, changed: true };
+}
+
+export function removeSharedArticle(current, filter) {
+  const catalog = parseSharedCatalog(current);
+  const targetKey =
+    typeof filter === 'string'
+      ? filter
+      : catalogKey({
+          manufacturer: filter.manufacturer ?? '',
+          articleNumber: filter.articleNumber ?? '',
+          variant: filter.variant ?? '',
+        });
+  const index = catalog.articles.findIndex(
+    (a) => catalogKey(a) === targetKey || a.id === targetKey,
+  );
+  if (index === -1) throw new Error('articlesCatalogNotFound');
+  const [removed] = catalog.articles.splice(index, 1);
+  return { catalog, removed, changed: true };
+}
+
+export function updateSharedArticleSymbol(current, filter, symbolId) {
+  const catalog = parseSharedCatalog(current);
+  const targetKey =
+    typeof filter === 'string'
+      ? filter
+      : catalogKey({
+          manufacturer: filter.manufacturer ?? '',
+          articleNumber: filter.articleNumber ?? '',
+          variant: filter.variant ?? '',
+        });
+  const article = catalog.articles.find(
+    (a) => catalogKey(a) === targetKey || a.id === targetKey,
+  );
+  if (!article) throw new Error('articlesCatalogNotFound');
+  const cleanSymbol = symbolId ? String(symbolId).trim() : undefined;
+  if (
+    cleanSymbol &&
+    (cleanSymbol.length > 256 || /[\u0000-\u001f\u007f]/.test(cleanSymbol))
+  ) {
+    throw new Error('githubCatalogInvalid');
+  }
+  if ((article.symbolId ?? undefined) === cleanSymbol)
+    return { catalog, article, changed: false };
+  if (cleanSymbol) article.symbolId = cleanSymbol;
+  else delete article.symbolId;
   return { catalog, article, changed: true };
 }

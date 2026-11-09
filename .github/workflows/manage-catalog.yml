@@ -1,0 +1,84 @@
+name: Manage Shared Catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Catalog management action'
+        required: true
+        type: choice
+        options:
+          - delete
+          - set-symbol
+          - clear-symbol
+      manufacturer:
+        description: 'Manufacturer (Hersteller)'
+        required: true
+        type: string
+      article_number:
+        description: 'Article number (Artikelnummer)'
+        required: true
+        type: string
+      variant:
+        description: 'Variant (optional)'
+        required: false
+        type: string
+        default: ''
+      symbol_id:
+        description: 'Symbol ID (required for set-symbol)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  manage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Execute catalog operation
+        run: |
+          ACTION="${{ inputs.action }}"
+          MFR="${{ inputs.manufacturer }}"
+          ART="${{ inputs.article_number }}"
+          VAR="${{ inputs.variant }}"
+          SYM="${{ inputs.symbol_id }}"
+
+          if [ "$ACTION" = "delete" ]; then
+            node scripts/manage-catalog.mjs delete "$MFR" "$ART" "$VAR"
+            MSG="catalog: remove article $MFR $ART"
+          elif [ "$ACTION" = "set-symbol" ]; then
+            node scripts/manage-catalog.mjs set-symbol "$MFR" "$ART" "$SYM" "$VAR"
+            MSG="catalog: set symbol $SYM for $MFR $ART"
+          elif [ "$ACTION" = "clear-symbol" ]; then
+            node scripts/manage-catalog.mjs clear-symbol "$MFR" "$ART" "$VAR"
+            MSG="catalog: clear symbol for $MFR $ART"
+          else
+            echo "Unknown action: $ACTION"
+            exit 1
+          fi
+
+          echo "COMMIT_MSG=$MSG" >> $GITHUB_ENV
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalog/articles.json
+          if git diff --staged --quiet; then
+            echo "No changes in catalog/articles.json."
+          else
+            git commit -m "$COMMIT_MSG"
+            git push origin main
+          fi

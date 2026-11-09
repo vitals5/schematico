@@ -13,4 +13,18 @@ export function parseSharedCatalog(value: unknown): SharedCatalogData;
 export function appendPublicArticle(
   current: unknown,
   raw: unknown,
+  options?: { allowSymbolUpdate?: boolean },
+): { catalog: SharedCatalogData; article: CatalogArticle; changed: boolean };
+export function removeSharedArticle(
+  current: unknown,
+  filter:
+    | string
+    | { manufacturer: string; articleNumber: string; variant?: string },
+): { catalog: SharedCatalogData; removed: CatalogArticle; changed: boolean };
+export function updateSharedArticleSymbol(
+  current: unknown,
+  filter:
+    | string
+    | { manufacturer: string; articleNumber: string; variant?: string },
+  symbolId?: string,
 ): { catalog: SharedCatalogData; article: CatalogArticle; changed: boolean };
