@@ -153,16 +153,6 @@
       "symbolId": "motor_protective_switch"
     },
     {
-      "id": "[\"Siemens\",\"5SK9011-2KK25\",\"\"]",
-      "articleNumber": "5SK9011-2KK25",
-      "manufacturer": "Siemens",
-      "variant": "",
-      "description": "Type: 5SK9011-2KK25Circuit breaker f.aux.circuits,overload+short circ.release,1P,2A5SK9011-2KKcurrent: 2AexternalDocuments: http://www.siemens.com/product?5SK9011-2KK25width: 12.5 mmheight: 89 mmlength: 96 mm",
-      "origin": "user",
-      "verification": "unverified",
-      "symbolId": "cad-symbol:b33591ce9018ccc0d9ef4f51e3ccfd095d6c7b7360c7dceb1861cfc169076337"
-    },
-    {
       "id": "[\"Siemens\",\"5SV1316-6KK16\",\"\"]",
       "articleNumber": "5SV1316-6KK16",
       "manufacturer": "Siemens",
