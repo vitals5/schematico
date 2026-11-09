@@ -143,6 +143,16 @@
       "symbolId": "cad-symbol:485be5f79cb9ae43fc8e06107d15e8747066f5252437bc2a05e27fd134e8576b"
     },
     {
+      "id": "[\"Siemens AG\",\"5SL6316-7\",\"1\"]",
+      "articleNumber": "5SL6316-7",
+      "manufacturer": "Siemens AG",
+      "variant": "1",
+      "description": "LS-SCHALTER 6KA 3POL C16SENTRON LeitungsschutzschalterLeitungsschutzschalter 5SLLeitungsschutzschalter 400V 6kA, 3-polig, C, 16ASource ID: SIE.5SL6316-7TYPENR: 5SL6316-7IDENTCODE: 4001869388762WIDTH: 54 HEIGHT: 90 DEPTH: 76 WEIGHT: 0.36",
+      "origin": "user",
+      "verification": "unverified",
+      "symbolId": "cad-symbol:115789a04b044ce7d73df110d78a2e5d95256e976923659c978823cd7a3966b9"
+    },
+    {
       "id": "[\"Siemens\",\"3RT2016-1BB41\",\"\"]",
       "articleNumber": "3RT2016-1BB41",
       "manufacturer": "Siemens",
