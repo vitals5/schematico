@@ -161,16 +161,6 @@
       "origin": "starter",
       "verification": "unverified",
       "symbolId": "rcbo_1p_n"
-    },
-    {
-      "id": "[\"Siemens\",\"5SV3344-6\",\"\"]",
-      "articleNumber": "5SV3344-6",
-      "manufacturer": "Siemens",
-      "variant": "",
-      "description": "FI-Schutzschalter SENTRON 4P 40A 30mA · Siemens SENTRON FI-Schutzschalter für Industrie und Gewerbe",
-      "origin": "starter",
-      "verification": "unverified",
-      "symbolId": "rcd_4p"
     }
   ],
   "submission": {
