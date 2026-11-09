@@ -60,7 +60,7 @@
       "description": "Type: 21400301Impulse switching relay, 4NO, 16A/250VACIntermittent switching relay, also for central and group controlESR12Z-4DX-UCvoltage: 250VACcurrent: 16Aweight: 0,163width: 36 mmheight: 58 mmlength: 58 mm",
       "origin": "user",
       "verification": "unverified",
-      "symbolId": "cad-symbol:ef0fe1ae6459c38f85e583bce13872b697caeec9c23cd16d43654ece2ff4349d"
+      "symbolId": "cad-symbol:193f1f846971089d9e4d937ed391d4044c277f5120ce51aa999911986590da6e"
     },
     {
       "id": "[\"Finder\",\"20.21.8.230.4000\",\"\"]",
