@@ -178,6 +178,8 @@ export default {
           'invalid_article',
           'articlesCatalogInvalid',
           'githubCatalogInvalid',
+          'githubSymbolsInvalid',
+          'symbolsCatalogDuplicate',
         ].includes(error?.message);
       return json(
         { error: invalid ? 'invalid_article' : 'service_unavailable' },

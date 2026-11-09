@@ -262,6 +262,18 @@ export async function submitSharedArticle(
       if (response.status === 403) throw new Error('githubCatalogChallenge');
       if (response.status === 409) throw new Error('githubCatalogConflict');
       if (response.status === 429) throw new Error('githubCatalogRateLimited');
+      try {
+        const errJson = JSON.parse(await boundedText(response, 1024));
+        if (errJson?.error === 'challenge_failed')
+          throw new Error('githubCatalogChallenge');
+        if (errJson?.error === 'rate_limited')
+          throw new Error('githubCatalogRateLimited');
+        if (errJson?.error === 'invalid_article')
+          throw new Error('githubCatalogInvalid');
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('githubCatalog'))
+          throw e;
+      }
       throw new Error('githubCatalogSubmitFailed');
     }
     const result = JSON.parse(await boundedText(response, 8192));

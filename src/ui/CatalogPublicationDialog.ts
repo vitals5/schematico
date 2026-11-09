@@ -231,7 +231,8 @@ export async function openCatalogPublication(
     return;
   }
   if (!import.meta.env.DEV && location.origin !== 'https://vitals5.github.io') {
-    const bytes = new TextEncoder().encode(JSON.stringify(normalized));
+    const payloadObject = symbol ? { article: normalized, symbol } : normalized;
+    const bytes = new TextEncoder().encode(JSON.stringify(payloadObject));
     const payload = btoa(String.fromCharCode(...bytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
