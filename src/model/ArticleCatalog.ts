@@ -261,7 +261,7 @@ export class ArticleCatalog {
     return new Promise((resolve,reject)=>{const tx=db.transaction('packageAssets','readonly'),read=tx.objectStore('packageAssets').getAll();tx.oncomplete=()=>{db.close();resolve(read.result);};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error);};});
   }
   async merge(incoming: CatalogArticle[], replace: boolean, expected: string, assets: ArticlePackageAssets[] = []) {
-    if(assets.some(a=>!incoming.some(r=>catalogKey(r)===a.id)||a.sources.reduce((n,s)=>n+s.data.byteLength,0)>64*1024*1024))throw new Error('articlesCatalogInvalid');
+    if(assets.some(a=>!incoming.some(r=>catalogKey(r)===a.id || r.id===a.id)||a.sources.reduce((n,s)=>n+s.data.byteLength,0)>64*1024*1024))throw new Error('articlesCatalogInvalid');
     const normalized = incoming.map(validateCatalogArticle),
       db = await this.open();
     return new Promise<void>((resolve, reject) => {

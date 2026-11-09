@@ -3,6 +3,7 @@ import type {DrawingPrimitive, PinDefinition, SymbolDefinition} from './types';
 import type {CatalogArticle} from './ArticleTypes';
 import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import type {WindowMacro} from './MacroManager';
+import {catalogKey} from './CatalogRecord';
 import {drawingToSvg, arcPoints} from './ImportedDrawing';
 
 export const MAX_CAD_BYTES = 20 * 1024 * 1024;
@@ -13,11 +14,11 @@ export interface CadDocument {name:string; data:IDxf; mmPerUnit?:number; units:s
 export interface CadGeometry {
   graphics:{id:string;drawing:DrawingPrimitive}[];
   texts:{id:string;text:string;x:number;y:number}[];
-  candidates:{x:number;y:number;direction:PinDefinition['direction'];name:string;textId?:string}[];
+  candidates:{x:number;y:number;direction:PinDefinition['direction'];name:string;textId?:string;isBoundary?:boolean}[];
   bounds:{minX:number;minY:number;maxX:number;maxY:number};
   candidatesLimited?:boolean;
 }
-export interface CadPin extends Point {name:string;direction:PinDefinition['direction'];textId?:string}
+export interface CadPin extends Point {name:string;direction:PinDefinition['direction'];textId?:string;isBoundary?:boolean}
 export interface CadSymbolOptions {
   name:string;
   prefix:string;
@@ -153,15 +154,39 @@ export function cadGeometry(doc:CadDocument,blockId='',mmPerUnit=doc.mmPerUnit??
   const bounds=cadBounds(graphics.map(g=>g.drawing)),body=cadBounds(graphics.filter(g=>g.drawing.kind!=='text').map(g=>g.drawing));
   const counts=new Map<string,{p:Point;n:number}>();
   for(const p of ends){const key=p.x.toFixed(5)+','+p.y.toFixed(5),entry=counts.get(key);if(entry)entry.n++;else counts.set(key,{p,n:1});}
-  const assignedTexts = new Set<string>();
-  const candidates=[...counts.values()].filter(v=>v.n===1).map(({p})=>{
+  const rawCandidates=[...counts.values()].filter(v=>v.n===1).map(({p})=>{
     const direction=([['top',Math.abs(p.y-body.minY)],['bottom',Math.abs(p.y-body.maxY)],['left',Math.abs(p.x-body.minX)],['right',Math.abs(p.x-body.maxX)]] as [PinDefinition['direction'],number][]).sort((a,b)=>a[1]-b[1])[0][0];
     const isBoundary=Math.abs(p.y-body.minY)<1e-3||Math.abs(p.y-body.maxY)<1e-3||Math.abs(p.x-body.minX)<1e-3||Math.abs(p.x-body.maxX)<1e-3;
-    const label=texts.filter(t=>!assignedTexts.has(t.id)&&/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
-    const near=label&&Math.hypot(label.x-p.x,label.y-p.y)<5*mmPerUnit;
-    if(near)assignedTexts.add(label.id);
-    return {...p,direction,isBoundary,name:near?label.text:'',textId:near?label.id:undefined};
-  }).sort((a,b)=>(b.isBoundary?1:0)-(a.isBoundary?1:0)||a.y-b.y||a.x-b.x);
+    return {...p,direction,isBoundary};
+  });
+  const eligibleTexts=texts.filter(t=>/^(?:[+-]?[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)?|[+-])$/.test(t.text));
+  const pairs:Array<{c:typeof rawCandidates[number];t:typeof texts[number];score:number}>=[];
+  const maxDist=5*mmPerUnit;
+  for(const c of rawCandidates){
+    for(const t of eligibleTexts){
+      const dx=t.x-c.x,dy=t.y-c.y,dist=Math.hypot(dx,dy);
+      if(dist>maxDist)continue;
+      let perp=0,axial=0,wrongSide=false;
+      if(c.direction==='top'){perp=Math.abs(dx);axial=Math.max(0,dy);if(dy<-0.5*mmPerUnit)wrongSide=true;}
+      else if(c.direction==='bottom'){perp=Math.abs(dx);axial=Math.max(0,-dy);if(dy>0.5*mmPerUnit)wrongSide=true;}
+      else if(c.direction==='left'){perp=Math.abs(dy);axial=Math.max(0,dx);if(dx<-0.5*mmPerUnit)wrongSide=true;}
+      else if(c.direction==='right'){perp=Math.abs(dy);axial=Math.max(0,-dx);if(dx>0.5*mmPerUnit)wrongSide=true;}
+      const score=perp*3+axial*0.5+(c.isBoundary?0:8*mmPerUnit)+(wrongSide?15*mmPerUnit:0);
+      pairs.push({c,t,score});
+    }
+  }
+  pairs.sort((a,b)=>a.score-b.score);
+  const assignedCandidates=new Set<string>(),assignedTexts=new Set<string>(),matches=new Map<string,{name:string;textId:string}>();
+  for(const p of pairs){
+    const cKey=`${p.c.x.toFixed(4)},${p.c.y.toFixed(4)}`;
+    if(assignedCandidates.has(cKey)||assignedTexts.has(p.t.id))continue;
+    if(p.score>12*mmPerUnit)continue;
+    assignedCandidates.add(cKey);assignedTexts.add(p.t.id);matches.set(cKey,{name:p.t.text,textId:p.t.id});
+  }
+  const candidates=rawCandidates.map(c=>{
+    const m=matches.get(`${c.x.toFixed(4)},${c.y.toFixed(4)}`);
+    return {...c,name:m?.name??'',textId:m?.textId};
+  }).sort((a,b)=>(b.name?1:0)-(a.name?1:0)||(b.isBoundary?1:0)-(a.isBoundary?1:0)||a.y-b.y||a.x-b.x);
   return {graphics,texts,candidates:candidates.slice(0,256),candidatesLimited:candidates.length>256,bounds};
 }
 
@@ -188,7 +213,9 @@ export async function createCadSymbol(article:CatalogArticle,geometry:CadGeometr
     const first=options.pins[0];
     if(first&&options.pins.some(p=>['x','y'].some(axis=>{
       const v=((p[axis as 'x'|'y']-first[axis as 'x'|'y'])*scale)/(options.gridMm!*mult);
-      return Math.abs(v-Math.round(v))>0.05;
+      const isWhole = Math.abs(v - Math.round(v)) <= 0.05;
+      const isHalf = Math.abs(v * 2 - Math.round(v * 2)) <= 0.05;
+      return !isWhole && !isHalf;
     })))throw new Error('cadGridInvalid');
   }
   const kept=geometry.graphics.filter(g=>g.id!==bmkTextId&&!usedTexts.includes(g.id));
@@ -226,5 +253,6 @@ export function attachCadSymbol(article:CatalogArticle,existing:ArticlePackageAs
   const all=[...(existing?.sources??[])];
   for(const source of sources)if(!all.some(s=>s.path===source.path&&s.data.length===source.data.length&&s.data.every((v,i)=>v===source.data[i])))all.push(source);
   if(all.reduce((n,s)=>n+s.data.length,0)>64*1024*1024)throw new Error('cadTooLarge');
-  return {article:{...article,symbolId:symbol.id,symbol},asset:{id:article.id,sources:all,macros:[...(existing?.macros??[]).filter(m=>m.id!==macro.id),macro],diagnostics:[...(existing?.diagnostics??[]),'CAD: '+symbol.name+' · '+symbol.pins.length+' user-confirmed pins']}};
+  const assetId = (article.manufacturer && article.articleNumber) ? catalogKey(article) : article.id;
+  return {article:{...article,symbolId:symbol.id,symbol},asset:{id:assetId,sources:all,macros:[...(existing?.macros??[]).filter(m=>m.id!==macro.id),macro],diagnostics:[...(existing?.diagnostics??[]),'CAD: '+symbol.name+' · '+symbol.pins.length+' user-confirmed pins']}};
 }

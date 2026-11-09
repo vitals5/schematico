@@ -22,7 +22,7 @@ let deleted: Set<string> = new Set();
 const listeners = new Set<() => void>();
 export function editorArticles() {
   return mergeEditorArticles(sharedCatalogState().articles, local, deleted).map(entry=>{
-    const p=packages.find(p=>p.id===entry.article.id);
+    const p=packages.find(p=>p.id===entry.article.id || p.id===catalogKey(entry.article));
     const customSym = entry.article.symbol;
     return {...entry,packageMacros:p?.macros,packageDiagnostics:p?.diagnostics,packageSymbol:p?.macros.flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===entry.symbolId) ?? customSym};
   });
@@ -41,7 +41,7 @@ export async function loadLocalEditorArticles(): Promise<void> {
         const [loadedLocal, loadedPackages, loadedDeleted] = await Promise.all([store.list(), store.packageAssets(), store.deletedIds()]);
         local = loadedLocal;
         deleted = new Set(loadedDeleted);
-        packages=loadedPackages.filter(p=>local.some(a=>a.id===p.id));
+        packages=loadedPackages.filter(p=>local.some(a=>a.id===p.id || catalogKey(a)===p.id));
         MacroManager.setArticlePackageMacros([...new Map(packages.flatMap(p=>p.macros).map(m=>[m.id,m])).values()]);
       } catch { /* Public and starter data remain available without IndexedDB. */ }
       notify();

@@ -39,7 +39,9 @@ export class CadArticleSymbolDialog {
     if (existingDxf) {
       this.busy = true;
       this.render();
-      void this.load(new File([existingDxf.data as unknown as BlobPart], existingDxf.path.split('/').pop()!))
+      const rawData = existingDxf.data;
+      const data = rawData instanceof Uint8Array ? rawData : new Uint8Array(Object.values(rawData as any));
+      void this.load(new File([data as unknown as BlobPart], existingDxf.path.split('/').pop()!))
         .catch(e => { this.error = this.message(e); })
         .finally(() => { this.busy = false; if (!this.abort.signal.aborted) this.render(); });
     }
@@ -51,6 +53,7 @@ export class CadArticleSymbolDialog {
     const text=await dxf.text();if(this.abort.signal.aborted)return;
     this.doc=readCadDxf(text,dxf.name);this.dxf=dxf;this.original=original;
     const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]
       ?? this.article.symbol;
     const imp = existingSymbol?.cadImport;
     if (imp) {
@@ -78,8 +81,10 @@ export class CadArticleSymbolDialog {
     this.geometry=undefined;this.rows=[];
     this.geometry=cadGeometry(this.doc!,this.block,this.unit);
     const existingPins = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)?.pins
+      ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]?.pins
       ?? this.article.symbol?.pins;
     const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]
       ?? this.article.symbol;
     if (existingSymbol) {
       if (existingSymbol.name) this.name = existingSymbol.name;
@@ -116,7 +121,7 @@ export class CadArticleSymbolDialog {
         matchedExisting.add(match);
         return {...p, direction: match.direction ?? p.direction, name: match.name, enabled: true};
       }
-      return {...p, enabled: false};
+      return {...p, enabled: Boolean(!existingPins?.length && p.isBoundary && p.name)};
     });
     const bmk = this.geometry.texts.find(p=>/^-[A-Za-z]+$/.test(p.text))
       ?? this.geometry.texts.find(p=>/^-[A-Za-z]+\d*$/.test(p.text));

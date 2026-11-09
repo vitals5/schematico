@@ -67,4 +67,31 @@ const auto1=structuredClone(macro.components[0]),auto2={...structuredClone(macro
 const pairsFound=AutoconnectEngine.findAutoconnectPairs([auto1,auto2],.01,8,project);
 assert(pairsFound.some(p=>p.pin1.componentId===auto1.id&&p.pin2.componentId==='second'),'Confirmed directional pins participate in the standard autoconnect engine');
 const payload={name:'folder/result.dxf',originalName:'folder/source.dwg',bytes:new Uint8Array([48,10]),originalBytes:new Uint8Array([65,67])};assert.equal(cadConverterFiles(payload).dxf.name,'result.dxf');assert.throws(()=>cadConverterFiles({...payload,bytes:'untrusted'}));
+
+// Test complex multi-pin component with top and bottom terminals on 5mm pitch, height 37.5mm (half-grid when scaled by 8/5)
+let relayDxf = dxf(line(0,0,0,-2.5) + line(5,0,5,-2.5) + line(10,0,10,-2.5) +
+  line(0,-35,0,-37.5) + line(5,-35,5,-37.5) + line(10,-35,10,-37.5) +
+  line(0,-2.5,10,-2.5) + line(0,-35,10,-35) + line(0,-2.5,0,-35) + line(10,-2.5,10,-35) +
+  text('N',0,-4.5) + text('L',5,-4.5) + text('PE',10,-4.5) +
+  text('1',0,-33) + text('2',5,-33) + text('3',10,-33));
+const relayDoc = readCadDxf(relayDxf, 'relay.dxf');
+const relayGeo = cadGeometry(relayDoc);
+const relayPins = relayGeo.candidates.filter(c => c.isBoundary && c.name);
+assert.equal(relayPins.length, 6, 'All 6 boundary terminal pins matched their names');
+const relayTop = relayPins.filter(c => c.direction === 'top');
+assert.deepEqual(relayTop.map(p => p.name), ['N', 'L', 'PE']);
+const relayBtm = relayPins.filter(c => c.direction === 'bottom');
+assert.deepEqual(relayBtm.map(p => p.name), ['1', '2', '3']);
+const relaySym = await createCadSymbol(article, relayGeo, {
+  name: 'Relay', prefix: 'K', confirmed: true, gridMm: 8, pins: relayPins
+});
+assert.equal(relaySym.symbol.pins.length, 6);
+assert.equal(relaySym.symbol.height, 120, '37.5mm scaled by 1.6 becomes 60mm (120 units at 2 units/mm) on half-grid');
+
+// Test articleError formatting
+const { articleError } = await import('../ui/ArticleCatalogDialog');
+assert(articleError('Uncaught exception in event handler.').includes('nicht verfügbar') || articleError('Uncaught exception in event handler.').includes('unavailable'));
+assert(articleError(new Error('Uncaught exception in event handler.')).includes('nicht verfügbar') || articleError(new Error('Uncaught exception in event handler.')).includes('unavailable'));
+assert(articleError({ name: 'AbortError', message: 'The user aborted a request.' }).includes('nicht verfügbar') || articleError({ name: 'AbortError', message: 'The user aborted a request.' }).includes('unavailable'));
+
 console.log('✓ CAD symbols: block transforms, units, arcs, text mapping, explicit pins, grid scaling, diagnostics, bounded geometry, atomic article/source storage and portable master data');

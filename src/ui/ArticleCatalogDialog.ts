@@ -35,14 +35,11 @@ import {
 import { escapeSvg as esc } from '../model/ImportedDrawing';
 import { t, translations, getUiLanguage, getLocalizedSymbol, type TranslationKey } from '../i18n';
 export const articleError = (e: unknown) => {
-  if (e && typeof e === 'object') {
-    const msg = String((e as any).message ?? '');
-    const name = String((e as any).name ?? '');
-    if (msg.includes('event handler') || name === 'AbortError' || name === 'InvalidStateError') {
-      return t('articlesStorageUnavailable');
-    }
+  const message = e instanceof Error ? e.message : (typeof e === 'object' && e !== null && 'message' in e) ? String((e as any).message) : String(e ?? '');
+  const name = (typeof e === 'object' && e !== null && 'name' in e) ? String((e as any).name) : '';
+  if (message.toLowerCase().includes('event handler') || name === 'AbortError' || name === 'InvalidStateError') {
+    return t('articlesStorageUnavailable');
   }
-  const message = e instanceof Error ? e.message : String(e);
   return message in translations.de ? t(message as TranslationKey) : message;
 };
 export const downloadArticleFile = (
@@ -178,14 +175,16 @@ export class ArticleCatalogDialog {
   private openCadSymbol(article:CatalogArticle, pendingIndex?:number) {
     const incoming=this.pending ? structuredClone(this.pending) : undefined;
     const pendingAssets=structuredClone(this.pendingAssets);
-    const existing=this.pendingAssets.find(p=>p.id===article.id)??this.packageRows.find(p=>p.id===article.id);
+    const key = catalogKey(article);
+    const existing=this.pendingAssets.find(p=>p.id===article.id || p.id===key)??this.packageRows.find(p=>p.id===article.id || p.id===key);
     new CadArticleSymbolDialog(article,existing,result=>{
       if(this.closed)return;
-      const items=incoming?incoming.map((a,i)=>(pendingIndex!==undefined?i===pendingIndex:a.id===article.id)?result.article:a):[];
-      if(!items.some(a=>a.id===result.article.id))items.push(result.article);
+      const rKey = catalogKey(result.article);
+      const items=incoming?incoming.map((a,i)=>(pendingIndex!==undefined?i===pendingIndex:(a.id===article.id || catalogKey(a)===key))?result.article:a):[];
+      if(!items.some(a=>a.id===result.article.id || catalogKey(a)===rKey))items.push(result.article);
       this.editing=result.article;
       this.prepare(items,t('cadLinked'));
-      this.pendingAssets=[...pendingAssets.filter(p=>items.some(a=>a.id===p.id)&&p.id!==result.asset.id),result.asset];
+      this.pendingAssets=[...pendingAssets.filter(p=>items.some(a=>a.id===p.id || catalogKey(a)===p.id)&&p.id!==result.asset.id),result.asset];
       this.render();
     }).show();
   }
@@ -195,7 +194,7 @@ export class ArticleCatalogDialog {
   }
   private prepare(items: CatalogArticle[], importHint = '') {
     planCatalogMerge(this.rows, items);
-    this.pendingAssets=[];
+    this.pendingAssets = this.pendingAssets.filter(p => items.some(a => a.id === p.id));
     this.pending = structuredClone(items);
     this.importHint = importHint;
     this.deletion = undefined;
