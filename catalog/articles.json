@@ -133,6 +133,493 @@
       "symbolId": "fuse_1p"
     },
     {
+      "id": "[\"MEAN WELL\",\"HDR-30-12\",\"\"]",
+      "articleNumber": "HDR-30-12",
+      "manufacturer": "MEAN WELL",
+      "variant": "",
+      "description": "Type: HDR-30-12HDR-30-12 AC-DC Ultraflaches DIN-Schienen-Netzteil; Eingangsbereich 85-264VAC; Ausgang 12VDC bei 2A; Pass LPS12V , 24W, 2AHDR-30-12orderNumber: HDR-30-12voltage: 12 Vcurrent: 2 Aweight: 0,140externalDocuments: https://www.meanwell-web.com/content/files/pdfs/productPdfs/MW/HDR-30/HDR-30-spec.pdfwidth: 35 mmheight: 90 mmlength: 58.400001525878906 mm",
+      "origin": "user",
+      "verification": "unverified",
+      "symbolId": "cad-symbol:653371190c1d7e2c11406da53a463bf44a9d646f8e449ca2a9ea3b201c750165",
+      "symbol": {
+        "articleNumber": "HDR-30-12",
+        "cadImport": {
+          "block": "HDR_x002D_30_x002D_xx Netzteil74dec73e_x002D_a334_x002D_4452_x002D_88e9_x002D_d9b63d50b20eb245ba30_x002D_cbda_x002D_40ae_x002D_b140_x002D_b09eb860a4f5",
+          "bmkText": "cad/B0",
+          "confirmed": true,
+          "grid": 8,
+          "noPins": false,
+          "partial": false,
+          "rows": [
+            {
+              "direction": "top",
+              "enabled": true,
+              "isBoundary": true,
+              "name": "1",
+              "textId": "cad/B2",
+              "x": 0,
+              "y": 0
+            },
+            {
+              "direction": "top",
+              "enabled": true,
+              "isBoundary": true,
+              "name": "2",
+              "textId": "cad/B4",
+              "x": 5,
+              "y": 0
+            },
+            {
+              "direction": "bottom",
+              "enabled": true,
+              "isBoundary": true,
+              "name": "AC/L",
+              "textId": "cad/B5",
+              "x": 0,
+              "y": 30
+            },
+            {
+              "direction": "bottom",
+              "enabled": true,
+              "isBoundary": true,
+              "name": "AC/N",
+              "textId": "cad/B7",
+              "x": 5,
+              "y": 30
+            },
+            {
+              "direction": "top",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "+V",
+              "textId": "cad/B1",
+              "x": 0,
+              "y": 2.5
+            },
+            {
+              "direction": "top",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "-V",
+              "textId": "cad/B3",
+              "x": 5,
+              "y": 2.5
+            },
+            {
+              "direction": "left",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": -5,
+              "y": 3.5
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": 10,
+              "y": 3.5
+            },
+            {
+              "direction": "left",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": -5,
+              "y": 8
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": 10,
+              "y": 8
+            },
+            {
+              "direction": "left",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": -5,
+              "y": 21
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": 10,
+              "y": 21
+            },
+            {
+              "direction": "left",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": -5,
+              "y": 26.5
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": true,
+              "name": "",
+              "x": 10,
+              "y": 26.5
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "",
+              "x": 9,
+              "y": 2.5
+            },
+            {
+              "direction": "left",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "",
+              "x": -4,
+              "y": 27.5
+            },
+            {
+              "direction": "bottom",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "",
+              "x": 0,
+              "y": 27.5
+            },
+            {
+              "direction": "bottom",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "",
+              "x": 5,
+              "y": 27.5
+            },
+            {
+              "direction": "right",
+              "enabled": false,
+              "isBoundary": false,
+              "name": "",
+              "x": 9,
+              "y": 27.5
+            }
+          ],
+          "scaleMultiplier": 1.5,
+          "unit": 1,
+          "unitConfirmed": true
+        },
+        "category": "structure",
+        "defaultBmkPrefix": "-T",
+        "defaultFunctionText": "",
+        "description": "CAD · MEAN WELL HDR-30-12",
+        "height": 148.891866238318,
+        "id": "cad-symbol:653371190c1d7e2c11406da53a463bf44a9d646f8e449ca2a9ea3b201c750165",
+        "importedGraphics": [
+          {
+            "color": "currentColor",
+            "counterClockwise": true,
+            "endAngle": -180,
+            "kind": "arc",
+            "radius": 4.8,
+            "startAngle": -90,
+            "width": 0.72,
+            "x": 4.8,
+            "y": 16.8
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 0,
+            "x2": 0,
+            "y1": 16.8,
+            "y2": 127.2
+          },
+          {
+            "color": "currentColor",
+            "counterClockwise": true,
+            "endAngle": 90,
+            "kind": "arc",
+            "radius": 4.8,
+            "startAngle": 180,
+            "width": 0.72,
+            "x": 4.8,
+            "y": 127.2
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 4.8,
+            "x2": 67.2,
+            "y1": 132,
+            "y2": 132
+          },
+          {
+            "color": "currentColor",
+            "counterClockwise": true,
+            "endAngle": 1.4210854715202e-14,
+            "kind": "arc",
+            "radius": 4.8,
+            "startAngle": 90,
+            "width": 0.72,
+            "x": 67.2,
+            "y": 127.2
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 72,
+            "x2": 72,
+            "y1": 127.2,
+            "y2": 16.8
+          },
+          {
+            "color": "currentColor",
+            "counterClockwise": true,
+            "endAngle": -90,
+            "kind": "arc",
+            "radius": 4.8,
+            "startAngle": 0,
+            "width": 0.72,
+            "x": 67.2,
+            "y": 16.8
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 67.2,
+            "x2": 4.8,
+            "y1": 12,
+            "y2": 12
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 24,
+            "x2": 24,
+            "y1": 12,
+            "y2": 0
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 48,
+            "x2": 48,
+            "y1": 12,
+            "y2": 0
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 48,
+            "x2": 48,
+            "y1": 132,
+            "y2": 144
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 24,
+            "x2": 24,
+            "y1": 132,
+            "y2": 132
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 24,
+            "x2": 24,
+            "y1": 132,
+            "y2": 144
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 0,
+            "x2": 72,
+            "y1": 38.4,
+            "y2": 38.4
+          },
+          {
+            "color": "currentColor",
+            "kind": "line",
+            "width": 0.72,
+            "x1": 0,
+            "x2": 72,
+            "y1": 100.8,
+            "y2": 100.8
+          },
+          {
+            "anchor": "start",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": 0,
+            "size": 3.20349007009346,
+            "text": "EINGANG",
+            "x": 24,
+            "y": 96
+          },
+          {
+            "anchor": "start",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": 0,
+            "size": 3.20349007009346,
+            "text": "AUSGANG",
+            "x": 24,
+            "y": 49.2
+          },
+          {
+            "anchor": "middle",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": 0,
+            "size": 5.38186331775701,
+            "text": "MEAN WELL",
+            "x": 36,
+            "y": 69.6
+          },
+          {
+            "anchor": "middle",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": 0,
+            "size": 5.38186331775701,
+            "text": "HDR-30",
+            "x": 36,
+            "y": 80.4
+          },
+          {
+            "anchor": "end",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": -90,
+            "size": 6.40698014018691,
+            "text": "+V",
+            "x": 23.7789591851636,
+            "y": 27.8546582943925
+          },
+          {
+            "anchor": "end",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": -90,
+            "size": 6.40698014018691,
+            "text": "-V",
+            "x": 47.7789591851636,
+            "y": 27.8546582943925
+          },
+          {
+            "anchor": "end",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": -90,
+            "size": 6.40698014018691,
+            "text": "3",
+            "x": 20.4,
+            "y": 144.727329147196
+          },
+          {
+            "anchor": "end",
+            "color": "currentColor",
+            "kind": "text",
+            "rotation": -90,
+            "size": 6.40698014018691,
+            "text": "4",
+            "x": 44.4,
+            "y": 144.727329147196
+          }
+        ],
+        "insertionPoint": {
+          "x": 24,
+          "y": 0
+        },
+        "manufacturer": "MEAN WELL",
+        "name": "HDR-30-xx Power supply",
+        "pins": [
+          {
+            "direction": "top",
+            "electricalRole": "unknown",
+            "id": "p1",
+            "labelPosition": {
+              "alignment": "start",
+              "fontSize": 6.40698014018691,
+              "rotation": 270,
+              "x": 20.4,
+              "y": 6
+            },
+            "name": "1",
+            "x": 24,
+            "y": 0
+          },
+          {
+            "direction": "top",
+            "electricalRole": "unknown",
+            "id": "p2",
+            "labelPosition": {
+              "alignment": "start",
+              "fontSize": 6.40698014018691,
+              "rotation": 270,
+              "x": 44.4,
+              "y": 6
+            },
+            "name": "2",
+            "x": 48,
+            "y": 0
+          },
+          {
+            "direction": "bottom",
+            "electricalRole": "unknown",
+            "id": "p3",
+            "labelPosition": {
+              "alignment": "start",
+              "fontSize": 6.40698014018691,
+              "rotation": 270,
+              "x": 23.7789591851636,
+              "y": 129.6
+            },
+            "name": "AC/L",
+            "x": 24,
+            "y": 144
+          },
+          {
+            "direction": "bottom",
+            "electricalRole": "unknown",
+            "id": "p4",
+            "labelPosition": {
+              "alignment": "start",
+              "fontSize": 6.40698014018691,
+              "rotation": 270,
+              "x": 47.7789591851636,
+              "y": 129.6
+            },
+            "name": "AC/N",
+            "x": 48,
+            "y": 144
+          }
+        ],
+        "standard": "CAD",
+        "svgContent": "<polyline points=\"4.800000000000001,12.000000000000004 4.548787410033872,12.00657823317805 4.298263376315265,12.02629490223229 4.049114567806892,12.059095965143342 3.8020238840747567,12.104891516477736 3.5576685835079003,12.163556033812476 3.316718427000253,12.234928721783266 3.079833842182559,12.318813952813436 2.84766411323616,12.41498180331552 2.6208456012501764,12.523168683895838 2.4000000000000012,12.643078061834698 2.1857326319278703,12.77438127386197 1.9786307889961297,12.916718427000255 1.7792621229607812,13.069699385006544 1.5881730894774808,13.232904837708512 1.4058874503045722,13.405887450304576 1.2329048377085088,13.588173089477484 1.0696993850065408,13.779262122960782 0.9167184270002529,13.978630788996131 0.7743812738619642,14.185732631927873 0.6430780618346947,14.400000000000004 0.5231686838958343,14.62084560125018 0.4149818033155164,14.847664113236162 0.3188139528134313,15.079833842182563 0.2349287217832634,15.316718427000255 0.16355603381247263,15.557668583507903 0.10489151647773287,15.80202388407476 0.05909596514333959,16.049114567806896 0.02629490223228803,16.298263376315266 0.006578233178045956,16.548787410033874 0,16.800000000000004\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\"/><line x1=\"0\" y1=\"16.800000000000004\" x2=\"0\" y2=\"127.20000000000002\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><polyline points=\"0,127.20000000000002 0.006578233178045956,127.45121258996615 0.02629490223228803,127.70173662368475 0.05909596514333959,127.95088543219313 0.10489151647773287,128.19797611592526 0.16355603381247263,128.44233141649212 0.2349287217832634,128.68328157299976 0.3188139528134313,128.92016615781745 0.4149818033155164,129.15233588676386 0.5231686838958343,129.37915439874985 0.6430780618346947,129.60000000000002 0.7743812738619642,129.81426736807214 0.9167184270002529,130.0213692110039 1.0696993850065408,130.22073787703923 1.2329048377085088,130.41182691052254 1.4058874503045722,130.59411254969544 1.5881730894774808,130.7670951622915 1.7792621229607812,130.93030061499348 1.9786307889961297,131.08328157299977 2.1857326319278703,131.22561872613807 2.4000000000000012,131.35692193816533 2.6208456012501764,131.47683131610418 2.84766411323616,131.5850181966845 3.079833842182559,131.6811860471866 3.316718427000253,131.76507127821677 3.5576685835079003,131.83644396618755 3.8020238840747567,131.89510848352228 4.049114567806892,131.9409040348567 4.298263376315265,131.97370509776772 4.548787410033872,131.99342176682197 4.800000000000001,132.00000000000003\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\"/><line x1=\"4.800000000000001\" y1=\"132.00000000000003\" x2=\"67.20000000000002\" y2=\"132.00000000000003\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><polyline points=\"67.20000000000002,132.00000000000003 67.45121258996615,131.99342176682197 67.70173662368475,131.97370509776772 67.95088543219313,131.9409040348567 68.19797611592526,131.89510848352228 68.44233141649212,131.83644396618755 68.68328157299976,131.76507127821677 68.92016615781746,131.6811860471866 69.15233588676386,131.5850181966845 69.37915439874985,131.47683131610418 69.60000000000002,131.35692193816533 69.81426736807215,131.22561872613807 70.02136921100389,131.08328157299977 70.22073787703924,130.93030061499348 70.41182691052254,130.7670951622915 70.59411254969545,130.59411254969544 70.76709516229151,130.41182691052254 70.93030061499348,130.22073787703923 71.08328157299977,130.0213692110039 71.22561872613805,129.81426736807214 71.35692193816533,129.60000000000002 71.47683131610418,129.37915439874985 71.5850181966845,129.15233588676386 71.68118604718659,128.92016615781745 71.76507127821675,128.68328157299976 71.83644396618755,128.44233141649212 71.89510848352228,128.19797611592526 71.94090403485669,127.95088543219313 71.97370509776773,127.70173662368475 71.99342176682197,127.45121258996615 72.00000000000001,127.20000000000002\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\"/><line x1=\"72.00000000000001\" y1=\"127.20000000000002\" x2=\"72.00000000000001\" y2=\"16.800000000000004\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><polyline points=\"72.00000000000001,16.800000000000004 71.99342176682197,16.548787410033874 71.97370509776773,16.29826337631527 71.94090403485669,16.049114567806896 71.89510848352228,15.80202388407476 71.83644396618755,15.557668583507905 71.76507127821675,15.316718427000257 71.68118604718659,15.079833842182563 71.5850181966845,14.847664113236164 71.47683131610418,14.62084560125018 71.35692193816533,14.400000000000004 71.22561872613805,14.185732631927873 71.08328157299977,13.978630788996133 70.93030061499348,13.779262122960784 70.76709516229151,13.588173089477484 70.59411254969545,13.405887450304576 70.41182691052254,13.232904837708512 70.22073787703924,13.069699385006544 70.02136921100389,12.916718427000255 69.81426736807215,12.77438127386197 69.60000000000002,12.643078061834698 69.37915439874985,12.523168683895838 69.15233588676386,12.41498180331552 68.92016615781746,12.318813952813436 68.68328157299976,12.234928721783266 68.44233141649212,12.163556033812476 68.19797611592526,12.104891516477736 67.95088543219313,12.059095965143342 67.70173662368475,12.02629490223229 67.45121258996615,12.00657823317805 67.20000000000002,12.000000000000004\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\"/><line x1=\"67.20000000000002\" y1=\"12.000000000000002\" x2=\"4.800000000000001\" y2=\"12.000000000000002\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"24.000000000000004\" y1=\"12.000000000000002\" x2=\"24.000000000000004\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"48.00000000000001\" y1=\"12.000000000000002\" x2=\"48.00000000000001\" y2=\"0\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"48.00000000000001\" y1=\"132.00000000000003\" x2=\"48.00000000000001\" y2=\"144.00000000000003\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"24.000000000000004\" y1=\"132.00000000000003\" x2=\"24.000000000000004\" y2=\"132.00000000000003\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"24.000000000000004\" y1=\"132.00000000000003\" x2=\"24.000000000000004\" y2=\"144.00000000000003\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"0\" y1=\"38.400000000000006\" x2=\"72.00000000000001\" y2=\"38.400000000000006\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><line x1=\"0\" y1=\"100.80000000000001\" x2=\"72.00000000000001\" y2=\"100.80000000000001\" stroke=\"currentColor\" stroke-width=\"0.7200000000000001\" /><text x=\"24.000000000000004\" y=\"96.00000000000001\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"3.203490070093458\" text-anchor=\"start\" ><tspan x=\"24.000000000000004\" dy=\"0\">EINGANG</tspan></text><text x=\"24.000000000000004\" y=\"49.20000000000001\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"3.203490070093458\" text-anchor=\"start\" ><tspan x=\"24.000000000000004\" dy=\"0\">AUSGANG</tspan></text><text x=\"36.00000000000001\" y=\"69.60000000000001\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"5.381863317757008\" text-anchor=\"middle\" ><tspan x=\"36.00000000000001\" dy=\"0\">MEAN WELL</tspan></text><text x=\"36.00000000000001\" y=\"80.4\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"5.381863317757008\" text-anchor=\"middle\" ><tspan x=\"36.00000000000001\" dy=\"0\">HDR-30</tspan></text><text x=\"23.778959185163554\" y=\"27.854658294392525\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186914\" text-anchor=\"end\" transform=\"rotate(-90,23.778959185163554,27.854658294392525)\"><tspan x=\"23.778959185163554\" dy=\"0\">+V</tspan></text><text x=\"47.77895918516356\" y=\"27.854658294392525\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186914\" text-anchor=\"end\" transform=\"rotate(-90,47.77895918516356,27.854658294392525)\"><tspan x=\"47.77895918516356\" dy=\"0\">-V</tspan></text><text x=\"20.400000000000002\" y=\"144.7273291471963\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186914\" text-anchor=\"end\" transform=\"rotate(-90,20.400000000000002,144.7273291471963)\"><tspan x=\"20.400000000000002\" dy=\"0\">3</tspan></text><text x=\"44.400000000000006\" y=\"144.7273291471963\" fill=\"currentColor\" font-family=\"Arial, sans-serif\" font-size=\"6.406980140186914\" text-anchor=\"end\" transform=\"rotate(-90,44.400000000000006,144.7273291471963)\"><tspan x=\"44.400000000000006\" dy=\"0\">4</tspan></text>",
+        "unitsPerMm": 2,
+        "width": 72
+      }
+    },
+    {
       "id": "[\"Siemens AG\",\"5SL6316-6\",\"1\"]",
       "articleNumber": "5SL6316-6",
       "manufacturer": "Siemens AG",
