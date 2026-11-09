@@ -270,4 +270,91 @@ const memberships=stripPages.flatMap(p=>(p.groups??[]).filter(g=>g.id==='ai-g_te
 assert.equal(memberships.length,16);assert.equal(new Set(memberships.map(m=>m.id)).size,16);
 console.log('✓ AI terminal planning groups retain all members across audited sheet-local fragments');
 
+// Multi-tier sub-distribution with feed, isolator, RCDs, N/PE distribution blocks, MCBs and terminal strips
+const tierDistProject = fixture();
+const tierDistArgs = {
+  preferAutoconnect: true,
+  components: [
+    { id: 'x1_1', bmk: '-X1:1', symbolId: 'catalog_feed_terminal_federzug_1' },
+    { id: 'x1_2', bmk: '-X1:2', symbolId: 'catalog_feed_terminal_federzug_1' },
+    { id: 'x1_3', bmk: '-X1:3', symbolId: 'catalog_feed_terminal_federzug_1' },
+    { id: 'x1_4', bmk: '-X1:4', symbolId: 'catalog_feed_terminal_federzug_1' },
+    { id: 'x1_5', bmk: '-X1:5', symbolId: 'catalog_feed_terminal_federzug_1' },
+    { id: 'q1', bmk: '-Q1', symbolId: 'catalog_isolator_4p' },
+    { id: 'f1', bmk: '-F1', symbolId: 'catalog_rcd_4p_a_30' },
+    { id: 'x2', bmk: '-X2', symbolId: 'catalog_distribution_block_neutral' },
+    { id: 'x3', bmk: '-X3', symbolId: 'catalog_distribution_block_pe' },
+    { id: 'f1_1', bmk: '-F1.1', symbolId: 'catalog_mcb_1p_b', functionText: 'Kueche Steckdosen' },
+    { id: 'f1_2', bmk: '-F1.2', symbolId: 'catalog_mcb_1p_b', functionText: 'Wohnzimmer Steckdosen' },
+    { id: 'f1_3', bmk: '-F1.3', symbolId: 'catalog_mcb_1p_b', functionText: 'Bad Steckdosen' },
+    { id: 'x6_1', bmk: '-X6:1', symbolId: 'catalog_feed_terminal_federzug_3', functionText: 'Abgang Kueche L/N/PE' },
+    { id: 'x6_2', bmk: '-X6:2', symbolId: 'catalog_feed_terminal_federzug_3', functionText: 'Abgang Wohnzimmer L/N/PE' },
+    { id: 'x6_3', bmk: '-X6:3', symbolId: 'catalog_feed_terminal_federzug_3', functionText: 'Abgang Bad L/N/PE' },
+    { id: 'f2', bmk: '-F2', symbolId: 'catalog_rcd_4p_a_30' },
+    { id: 'x4', bmk: '-X4', symbolId: 'catalog_distribution_block_neutral' },
+    { id: 'x5', bmk: '-X5', symbolId: 'catalog_distribution_block_pe' },
+    { id: 'f2_1', bmk: '-F2.1', symbolId: 'catalog_mcb_1p_b', functionText: 'Schlafen Steckdosen' },
+    { id: 'f2_2', bmk: '-F2.2', symbolId: 'catalog_mcb_1p_b', functionText: 'Kinderzimmer Steckdosen' },
+    { id: 'x7_1', bmk: '-X7:1', symbolId: 'catalog_feed_terminal_federzug_3', functionText: 'Abgang Schlafen L/N/PE' },
+    { id: 'x7_2', bmk: '-X7:2', symbolId: 'catalog_feed_terminal_federzug_3', functionText: 'Abgang Kinderzimmer L/N/PE' },
+  ],
+  connections: [
+    { id: 'c01', from: { componentId: 'x1_1', pinId: '1.2' }, to: { componentId: 'q1', pinId: '1' }, potential: 'L1' },
+    { id: 'c02', from: { componentId: 'x1_2', pinId: '1.2' }, to: { componentId: 'q1', pinId: '3' }, potential: 'L2' },
+    { id: 'c03', from: { componentId: 'x1_3', pinId: '1.2' }, to: { componentId: 'q1', pinId: '5' }, potential: 'L3' },
+    { id: 'c04', from: { componentId: 'x1_4', pinId: '1.2' }, to: { componentId: 'q1', pinId: '7' }, potential: 'N' },
+    { id: 'c05', from: { componentId: 'x1_5', pinId: '1.1' }, to: { componentId: 'x3', pinId: 'PE-IN' }, potential: 'PE' },
+    { id: 'c06', from: { componentId: 'x1_5', pinId: '1.1' }, to: { componentId: 'x5', pinId: 'PE-IN' }, potential: 'PE' },
+    { id: 'c07', from: { componentId: 'q1', pinId: '2' }, to: { componentId: 'f1', pinId: '1' }, potential: 'L1' },
+    { id: 'c08', from: { componentId: 'q1', pinId: '4' }, to: { componentId: 'f1', pinId: '3' }, potential: 'L2' },
+    { id: 'c09', from: { componentId: 'q1', pinId: '6' }, to: { componentId: 'f1', pinId: '5' }, potential: 'L3' },
+    { id: 'c10', from: { componentId: 'q1', pinId: '8' }, to: { componentId: 'f1', pinId: 'N-in' }, potential: 'N' },
+    { id: 'c11', from: { componentId: 'q1', pinId: '2' }, to: { componentId: 'f2', pinId: '1' }, potential: 'L1' },
+    { id: 'c12', from: { componentId: 'q1', pinId: '4' }, to: { componentId: 'f2', pinId: '3' }, potential: 'L2' },
+    { id: 'c13', from: { componentId: 'q1', pinId: '6' }, to: { componentId: 'f2', pinId: '5' }, potential: 'L3' },
+    { id: 'c14', from: { componentId: 'q1', pinId: '8' }, to: { componentId: 'f2', pinId: 'N-in' }, potential: 'N' },
+    { id: 'c15', from: { componentId: 'f1', pinId: 'N-out' }, to: { componentId: 'x2', pinId: 'N-IN' }, potential: 'N' },
+    { id: 'c16', from: { componentId: 'f1', pinId: '2' }, to: { componentId: 'f1_1', pinId: '1' }, potential: 'L1' },
+    { id: 'c17', from: { componentId: 'f1', pinId: '4' }, to: { componentId: 'f1_2', pinId: '1' }, potential: 'L2' },
+    { id: 'c18', from: { componentId: 'f1', pinId: '6' }, to: { componentId: 'f1_3', pinId: '1' }, potential: 'L3' },
+    { id: 'c19', from: { componentId: 'f1_1', pinId: '2' }, to: { componentId: 'x6_1', pinId: '1.1' }, potential: 'L1' },
+    { id: 'c20', from: { componentId: 'x2', pinId: 'N1' }, to: { componentId: 'x6_1', pinId: '2.1' }, potential: 'N' },
+    { id: 'c21', from: { componentId: 'x3', pinId: 'PE1' }, to: { componentId: 'x6_1', pinId: '3.1' }, potential: 'PE' },
+    { id: 'c22', from: { componentId: 'f1_2', pinId: '2' }, to: { componentId: 'x6_2', pinId: '1.1' }, potential: 'L2' },
+    { id: 'c23', from: { componentId: 'x2', pinId: 'N2' }, to: { componentId: 'x6_2', pinId: '2.1' }, potential: 'N' },
+    { id: 'c24', from: { componentId: 'x3', pinId: 'PE2' }, to: { componentId: 'x6_2', pinId: '3.1' }, potential: 'PE' },
+    { id: 'c25', from: { componentId: 'f1_3', pinId: '2' }, to: { componentId: 'x6_3', pinId: '1.1' }, potential: 'L3' },
+    { id: 'c26', from: { componentId: 'x2', pinId: 'N3' }, to: { componentId: 'x6_3', pinId: '2.1' }, potential: 'N' },
+    { id: 'c27', from: { componentId: 'x3', pinId: 'PE3' }, to: { componentId: 'x6_3', pinId: '3.1' }, potential: 'PE' },
+    { id: 'c28', from: { componentId: 'f2', pinId: 'N-out' }, to: { componentId: 'x4', pinId: 'N-IN' }, potential: 'N' },
+    { id: 'c29', from: { componentId: 'f2', pinId: '2' }, to: { componentId: 'f2_1', pinId: '1' }, potential: 'L1' },
+    { id: 'c30', from: { componentId: 'f2', pinId: '4' }, to: { componentId: 'f2_2', pinId: '1' }, potential: 'L2' },
+    { id: 'c31', from: { componentId: 'f2_1', pinId: '2' }, to: { componentId: 'x7_1', pinId: '1.1' }, potential: 'L1' },
+    { id: 'c32', from: { componentId: 'x4', pinId: 'N1' }, to: { componentId: 'x7_1', pinId: '2.1' }, potential: 'N' },
+    { id: 'c33', from: { componentId: 'x5', pinId: 'PE1' }, to: { componentId: 'x7_1', pinId: '3.1' }, potential: 'PE' },
+    { id: 'c34', from: { componentId: 'f2_2', pinId: '2' }, to: { componentId: 'x7_2', pinId: '1.1' }, potential: 'L2' },
+    { id: 'c35', from: { componentId: 'x4', pinId: 'N2' }, to: { componentId: 'x7_2', pinId: '2.1' }, potential: 'N' },
+    { id: 'c36', from: { componentId: 'x5', pinId: 'PE2' }, to: { componentId: 'x7_2', pinId: '3.1' }, potential: 'PE' },
+  ],
+  groups: [
+    { id: 'g_in', name: 'Einspeisung', members: ['x1_1', 'x1_2', 'x1_3', 'x1_4', 'x1_5', 'q1'] },
+    { id: 'g_rcd1', name: 'FI-Gruppe 1', members: ['f1', 'x2', 'x3', 'f1_1', 'f1_2', 'f1_3', 'x6_1', 'x6_2', 'x6_3'] },
+    { id: 'g_rcd2', name: 'FI-Gruppe 2', members: ['f2', 'x4', 'x5', 'f2_1', 'f2_2', 'x7_1', 'x7_2'] },
+  ],
+};
+let tierShown: any;
+const tierManagerMock: any = {
+  getProject: () => tierDistProject,
+  getActivePage: () => tierDistProject.pages[0],
+  showLayoutPreview: (preview: any, draft: any) => { tierShown = { preview, draft }; },
+};
+const tierRes = await handleCreateDraft(tierDistArgs, tierManagerMock);
+assert.equal(tierRes.success, true);
+assert.equal(tierRes.status, 'preview_ready');
+const tierCand = tierShown.preview.candidates[0];
+assert(tierCand.multiPage.pages.length >= 2);
+assert.equal(tierRes.candidates[0].routedConnections, 0);
+assert(tierRes.candidates[0].autoconnectConnections > 0);
+console.log('✓ Multi-tier sub-distribution with RCDs, N/PE distribution blocks, MCBs and terminal strips partitions into checked autoconnect multi-page layout');
+
 

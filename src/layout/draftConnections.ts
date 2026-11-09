@@ -49,8 +49,26 @@ export function markLayoutAutoconnections(project:Project,page:Page):void {
  const key=(a:Wire['from'],b:Wire['to'])=>JSON.stringify([JSON.stringify([a.componentId,a.pinId]),JSON.stringify([b.componentId,b.pinId])].sort());
  const eligible=new Set(AutoconnectEngine.findAutoconnectPairs(page.components,1e-6,page.grid?page.grid.spacing/4:8,project).map(p=>key({componentId:p.pin1.componentId,pinId:p.pin1.pinId},{componentId:p.pin2.componentId,pinId:p.pin2.pinId})));
  for(const w of page.wires){
-  if(!eligible.has(key(w.from,w.to))||w.waypoints?.length)continue;
-  w.isAutoconnect=true;
+  if(w.waypoints?.length)continue;
+  if(eligible.has(key(w.from,w.to))){
+    w.isAutoconnect=true;
+    continue;
+  }
+  const c1 = page.components.find(c => c.id === w.from.componentId);
+  const c2 = page.components.find(c => c.id === w.to.componentId);
+  if (c1 && c2) {
+    const s1 = getSymbolForComponent(c1, project);
+    const s2 = getSymbolForComponent(c2, project);
+    const p1 = s1?.pins.find(p => p.id === w.from.pinId);
+    const p2 = s2?.pins.find(p => p.id === w.to.pinId);
+    if (s1 && s2 && p1 && p2) {
+      const q1 = AutoconnectEngine.getRotatedPinInfo(c1, p1, s1);
+      const q2 = AutoconnectEngine.getRotatedPinInfo(c2, p2, s2);
+      if (Math.abs(q1.worldX - q2.worldX) <= 1e-4 && Math.abs(q1.worldY - q2.worldY) <= 1e-4) {
+        w.isAutoconnect = true;
+      }
+    }
+  }
  }
 }
 

@@ -293,7 +293,7 @@ function constructDistribution(project: Project, original: Page, newDevices: Set
   return true;
 }
 
-function constructGeneralCircuit(
+export function constructGeneralCircuit(
   project: Project,
   original: Page,
   newDevices: Set<string>,
@@ -426,10 +426,26 @@ function constructGeneralCircuit(
     }
   }
 
-  const returnNet=(net:IndexedNet)=>net.wires.some(w=>/^(N|PE)$/i.test(w.potential?.trim()??''))||net.endpoints.some(ep=>{
-    const c=page.components.find(c=>c.id===ep.componentId)!,pin=getSymbolForComponent(c,work)?.pins.find(p=>p.id===ep.pinId);
-    return /^(PE|N)([-_].*)?$/i.test(pin?.name??'')||/^(PE|N)([-_].*)?$/i.test(ep.pinId);
-  });
+  const returnNet=(net:IndexedNet)=>{
+    const isForwardSupply = net.endpoints.some(ep => {
+      const c = page.components.find(c => c.id === ep.componentId);
+      const s = c && getSymbolForComponent(c, work);
+      const rcdP = rcdPorts(s);
+      return rcdP && ep.pinId === rcdP.neutralOut;
+    });
+    if (isForwardSupply) return false;
+    // Distribution blocks (N/PE busbars) feeding terminal strips or loads are forward supply
+    const isBlockFeed = net.endpoints.some(ep => {
+      const c = page.components.find(c => c.id === ep.componentId);
+      const s = c && getSymbolForComponent(c, work);
+      return s?.id.includes('distribution_block') && !ep.pinId.toUpperCase().includes('IN');
+    });
+    if (isBlockFeed) return false;
+    return net.wires.some(w=>/^(N|PE)$/i.test(w.potential?.trim()??''))||net.endpoints.some(ep=>{
+      const c=page.components.find(c=>c.id===ep.componentId)!,pin=getSymbolForComponent(c,work)?.pins.find(p=>p.id===ep.pinId);
+      return /^(PE|N)([-_].*)?$/i.test(pin?.name??'')||/^(PE|N)([-_].*)?$/i.test(ep.pinId);
+    });
+  };
   type Escape={endpoint:Endpoint;net:IndexedNet;symbolId:string;distance:number;radius:number;side:'left'|'right';vertical:'top'|'bottom';adapter?:Endpoint};
   const escapes=new Map<string,Escape>();
   const point = (ep: Endpoint) => {
@@ -453,12 +469,20 @@ function constructGeneralCircuit(
     const connected = netList.flatMap(n => n.endpoints.filter(e => e.componentId === c.id));
     if (connected.length !== 1) continue;
     const ep = connected[0];
+    const directWires = page.wires.filter(w =>
+      (w.from.componentId === c.id && w.from.pinId === ep.pinId) ||
+      (w.to.componentId === c.id && w.to.pinId === ep.pinId)
+    );
+    const directEndpoints = directWires.map(w =>
+      w.from.componentId === c.id && w.from.pinId === ep.pinId ? w.to : w.from
+    );
     const net = nets.get(endpointNet.get(key(ep))!)!;
     const others = net.endpoints.filter(e => e.componentId !== c.id);
-    if (!others.length) continue;
-    let desired:Direction|undefined = others.some(o => point(o).direction === 'bottom') ? 'top'
-      : others.some(o => point(o).direction === 'top') ? 'bottom' : undefined;
-    if(!desired&&others.every(other=>{const sym=getSymbolForComponent(page.components.find(c=>c.id===other.componentId)!,work);return sym&&(isDistributionFeed(sym)||isConnectionSymbol(sym));})){
+    const partners = directEndpoints.length ? directEndpoints : others;
+    if (!partners.length) continue;
+    let desired:Direction|undefined = partners.some(o => point(o).direction === 'top') ? 'bottom'
+      : partners.some(o => point(o).direction === 'bottom') ? 'top' : undefined;
+    if(!desired&&partners.every(other=>{const sym=getSymbolForComponent(page.components.find(c=>c.id===other.componentId)!,work);return sym&&(isDistributionFeed(sym)||isConnectionSymbol(sym));})){
       desired=key(ep)===key([...net.endpoints].sort((a,b)=>key(a).localeCompare(key(b)))[0])?'bottom':'top';
     }
     if(desired){
@@ -534,6 +558,28 @@ function constructGeneralCircuit(
   const minRank = Math.min(0, ...rank.values());
   if (minRank < 0) {
     for (const [id, r] of rank) rank.set(id, r - minRank);
+  }
+  for (const c of page.components) {
+    const s = getSymbolForComponent(c, work);
+    if (s?.id.includes('distribution_block')) {
+      const outRank = edges.filter(([u]) => u === c.id).map(([, v]) => rank.get(v)!);
+      if (outRank.length) {
+        rank.set(c.id, Math.min(...outRank) - 1);
+      }
+    }
+  }
+  const stripRanks = new Map<string, number>();
+  for (const c of page.components) {
+    const strip = (c.bmk || '').replace(/:\d+$/, '');
+    if (strip && strip !== c.bmk) {
+      stripRanks.set(strip, Math.max(stripRanks.get(strip) ?? 0, rank.get(c.id)!));
+    }
+  }
+  for (const c of page.components) {
+    const strip = (c.bmk || '').replace(/:\d+$/, '');
+    if (strip && stripRanks.has(strip)) {
+      rank.set(c.id, stripRanks.get(strip)!);
+    }
   }
 
   if(profile.labelWidth)for(const c of page.components)for(const field of ['functionTextPosition','technicalDataPosition'] as const)c[field]={...c[field],maxWidth:Math.min(c[field]?.maxWidth??Infinity,profile.labelWidth*u)};
