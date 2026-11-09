@@ -64,5 +64,12 @@ assert.throws(()=>canvas.setArticleToPlace({...seed,symbolId:'missing-library-sy
 linked.description='external mutation';assert.equal(placed.articleAssignment.items[0].snapshot.description,record.description);
 await local.remove(record.id,catalogRevision(await local.list()));await loadLocalEditorArticles();
 assert.equal(editorArticles().find(e=>e.article.id===record.id)!.symbolId,undefined,'Removing a local override reveals the public record again');
+// Verify that an article with a CAD symbol from symbols.json resolves packageSymbol
+const eltakoArticle = editorArticles().find(e => e.article.articleNumber === '21400301');
+if (eltakoArticle) {
+  assert(eltakoArticle.packageSymbol, 'ELTAKO article has packageSymbol resolved from shared symbols.json');
+  assert.equal(eltakoArticle.packageSymbol.pins.length, 20);
+}
+
 stop();
 console.log('✓ Shared/local editor catalogue, variant identity, symbol linkage, CSV/public validation, preserved geometry/accessories, atomic repeated placement, snapshot isolation, undo/redo and ordinary-symbol reset');

@@ -1,6 +1,6 @@
 # Gemeinsamer Artikelkatalog auf GitHub
 
-Der gemeinsame Artikelbestand liegt unter [`catalog/articles.json`](../catalog/articles.json). Diese Datei ist die zentrale Datenquelle. Beim Programmstart lädt Schematico sie von GitHub und hält einen getrennten lokalen Offline-Zwischenspeicher bereit. Ein Datenbankserver ist dafür nicht erforderlich.
+Der gemeinsame Artikelbestand liegt unter [`catalog/articles.json`](../catalog/articles.json). Diese Datei ist die zentrale Datenquelle für Artikelstammdaten. Die zugehörigen Vektordaten von Symbolen (z. B. CAD-Symbole und Sonderformen ohne Binärdaten) werden in [`catalog/symbols.json`](../catalog/symbols.json) (sowie synchron [`catalog/symbol.json`](../catalog/symbol.json)) gespeichert. Beim Programmstart lädt Schematico sie von GitHub und hält einen getrennten lokalen Offline-Zwischenspeicher bereit. Ein Datenbankserver ist dafür nicht erforderlich.
 
 Der Anfangsbestand enthält die 15 bereits vorhandenen Startartikel. Deren technische Funktionen werden nicht nachträglich erfunden oder als geprüft ausgegeben. Neue öffentliche Einträge bleiben ebenfalls **ungeprüft**.
 
@@ -20,6 +20,18 @@ Zum Einreichen eines neuen Artikels:
 In der Desktopanwendung und auf extern gehosteten Webkopien öffnet sich dafür die feste HTTPS-Veröffentlichungsseite von Schematico im Browser. Die Artikeldaten werden im URL-Fragment übertragen, nicht als Anfrageparameter an den Webserver. Die Seite entfernt das Fragment nach dem Einlesen. Bei umfangreichen Desktop-Datensätzen verhindert eine ausdrückliche Kopieren-und-Einfügen-Übergabe das Überschreiten der URL-Grenze des Betriebssystems. Die Zwischenablage wird erst durch die beschriftete Benutzeraktion überschrieben; im Browser sind automatisches Übernehmen und manuelles Einfügen möglich. Erst das ausdrückliche Einreichen sendet die Daten an den Einreichungsdienst. Auf der offiziellen Webversion erscheint die Veröffentlichung direkt als Dialog.
 
 Öffentliches Einreichen erlaubt **neue** Datensätze sowie die **Übernahme nachträglich eingetragener Symbole** auf bestehende Datensätze. Vorhandene Stammdaten wie Hersteller, Artikelnummer und Variantenbeschreibung werden nicht überschrieben, aber fehlende oder aktualisierte Symbolzuordnungen können über **Symbol auf GitHub übernehmen…** zentral eingereicht und per GitHub Action übernommen werden. Bestehende zentrale Artikel kann ein Repository-Mitarbeiter über die GitHub Action **Manage Shared Catalog** (`workflow_dispatch`) oder lokal über `npm run catalog:delete` bzw. `npm run catalog:set-symbol` verwalten und löschen. Lokale Kopien bleiben in der App bearbeitbar.
+
+## Vektor-Symbole in catalog/symbols.json
+
+In [`catalog/symbols.json`](../catalog/symbols.json) (sowie synchron [`catalog/symbol.json`](../catalog/symbol.json)) werden die reinen Vektordaten der Symbole hinterlegt:
+- Enthält ausschließlich JSON-Vektordaten (Linien, Polygone, Kreise, Texte, SVG-Pfad, Anschluss-Pins und Bounding Boxes).
+- Enthält **keine Binärdaten** (keine DWG/DXF-Binärdateien, keine Bilddateien oder Byte-Arrays).
+- Wird beim Starten und Aktualisieren automatisch mit GitHub synchronisiert und lokal gecacht.
+- Beim Platzieren von Artikeln aus dem gemeinsamen Katalog stehen die Vektorsymbole dadurch sofort zur Verfügung.
+- Befehle zur Verwaltung:
+  - `npm run catalog:list-symbols` – Listet alle Vektorsymbole mit ihren Pin-Anzahlen und Zuordnungen auf.
+  - `npm run catalog:add-symbol -- <Dateipfad.json | JSON-String>` – Fügt ein Vektorsymbol hinzu oder aktualisiert es.
+  - `npm run catalog:delete-symbol -- <Symbol-ID>` – Entfernt ein Vektorsymbol aus den gemeinsamen Dateien.
 
 ## Artikel im Editor verwenden
 

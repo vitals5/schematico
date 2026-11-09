@@ -29,14 +29,18 @@ window.addEventListener('DOMContentLoaded', () => {
   history.replaceState(null, '', location.pathname);
   const catalog = refreshSharedCatalog();
   const present = async (text: string) => {
-    if (new TextEncoder().encode(text).length > MAX_SUBMISSION_BYTES)
+    if (new TextEncoder().encode(text).length > MAX_SUBMISSION_BYTES * 2)
       throw new Error('githubCatalogInvalid');
-    const article = validatePublicArticle(JSON.parse(text));
+    const parsed = JSON.parse(text);
+    const rawArticle = parsed?.article ?? parsed;
+    const rawSymbol = parsed?.symbol;
+    const article = validatePublicArticle(rawArticle);
     await catalog;
     new CatalogPublicationDialog(
       article,
       () => {},
       () => message(t('githubCatalogClosePage')),
+      rawSymbol,
     ).show();
   };
   if (parameters.get('paste') === '1') {

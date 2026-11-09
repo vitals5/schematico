@@ -6,6 +6,7 @@ import {drawingToSvg,escapeSvg as esc} from '../model/ImportedDrawing';
 import {openCadConverter} from './CadConverter';
 import {bindArticleModalKeys,focusArticleModal} from './ArticleModal';
 import {t,getCategoryLabel,type TranslationKey} from '../i18n';
+import { getSharedCatalogSymbol } from '../model/GitHubCatalog';
 
 type Row=CadPin&{enabled:boolean};
 export class CadArticleSymbolDialog {
@@ -53,6 +54,7 @@ export class CadArticleSymbolDialog {
     const text=await dxf.text();if(this.abort.signal.aborted)return;
     this.doc=readCadDxf(text,dxf.name);this.dxf=dxf;this.original=original;
     const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? (this.article.symbolId ? getSharedCatalogSymbol(this.article.symbolId) : undefined)
       ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]
       ?? this.article.symbol;
     const imp = existingSymbol?.cadImport;
@@ -84,6 +86,7 @@ export class CadArticleSymbolDialog {
       ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]?.pins
       ?? this.article.symbol?.pins;
     const existingSymbol = this.existing?.macros?.flatMap(m => m.symbolLibrary ?? []).find(s => s.id === this.article.symbolId)
+      ?? (this.article.symbolId ? getSharedCatalogSymbol(this.article.symbolId) : undefined)
       ?? this.existing?.macros?.[0]?.symbolLibrary?.[0]
       ?? this.article.symbol;
     if (existingSymbol) {

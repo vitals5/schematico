@@ -11,21 +11,24 @@ on:
           - delete
           - set-symbol
           - clear-symbol
+          - delete-symbol
       manufacturer:
-        description: 'Manufacturer (Hersteller)'
-        required: true
+        description: 'Manufacturer (Hersteller) - optional if delete-symbol'
+        required: false
         type: string
+        default: ''
       article_number:
-        description: 'Article number (Artikelnummer)'
-        required: true
+        description: 'Article number (Artikelnummer) - optional if delete-symbol'
+        required: false
         type: string
+        default: ''
       variant:
         description: 'Variant (optional)'
         required: false
         type: string
         default: ''
       symbol_id:
-        description: 'Symbol ID (required for set-symbol)'
+        description: 'Symbol ID (for set-symbol or delete-symbol)'
         required: false
         type: string
         default: ''
@@ -64,6 +67,9 @@ jobs:
           elif [ "$ACTION" = "clear-symbol" ]; then
             node scripts/manage-catalog.mjs clear-symbol "$MFR" "$ART" "$VAR"
             MSG="catalog: clear symbol for $MFR $ART"
+          elif [ "$ACTION" = "delete-symbol" ]; then
+            node scripts/manage-catalog.mjs delete-symbol "$SYM"
+            MSG="catalog: remove vector symbol $SYM"
           else
             echo "Unknown action: $ACTION"
             exit 1
@@ -75,9 +81,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog/articles.json
+          git add catalog/articles.json catalog/symbols.json catalog/symbol.json
           if git diff --staged --quiet; then
-            echo "No changes in catalog/articles.json."
+            echo "No changes in catalog files."
           else
             git commit -m "$COMMIT_MSG"
             git push origin main

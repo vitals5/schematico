@@ -1,6 +1,8 @@
 import {
   validatePublicArticle,
   MAX_SUBMISSION_BYTES,
+  validatePublicSymbol,
+  MAX_SYMBOL_SUBMISSION_BYTES,
 } from '../../src/shared/catalog-publication.mjs';
 const REPOSITORY = 'vitals5/schematico';
 const EVENT = 'schematico.article.submitted';
@@ -26,12 +28,13 @@ async function readRequest(request) {
   const reader = request.body.getReader(),
     parts = [];
   let size = 0;
+  const maxAllowed = MAX_SUBMISSION_BYTES + MAX_SYMBOL_SUBMISSION_BYTES + 8192;
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_SUBMISSION_BYTES + 4096) {
+      if (size > maxAllowed) {
         await reader.cancel();
         throw Error('invalid_article');
       }
@@ -112,7 +115,8 @@ export default {
           'Retry-After': '60',
         });
       const input = await readRequest(request),
-        article = validatePublicArticle(input.article);
+        article = validatePublicArticle(input.article),
+        symbol = input.symbol ? validatePublicSymbol(input.symbol) : undefined;
       if (
         typeof input.challengeToken !== 'string' ||
         !input.challengeToken ||
@@ -155,7 +159,11 @@ export default {
           },
           body: JSON.stringify({
             event_type: EVENT,
-            client_payload: { article, submissionId },
+            client_payload: {
+              article,
+              ...(symbol ? { symbol } : {}),
+              submissionId,
+            },
           }),
           signal: AbortSignal.timeout(15000),
         },

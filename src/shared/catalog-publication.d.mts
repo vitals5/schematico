@@ -28,3 +28,23 @@ export function updateSharedArticleSymbol(
     | { manufacturer: string; articleNumber: string; variant?: string },
   symbolId?: string,
 ): { catalog: SharedCatalogData; article: CatalogArticle; changed: boolean };
+
+import type { SymbolDefinition } from '../model/types';
+export const SYMBOLS_SCHEMA: 'schematico-symbols';
+export const MAX_SYMBOLS_BYTES: number;
+export const MAX_SYMBOL_SUBMISSION_BYTES: number;
+export interface SharedSymbolsData {
+  schema: 'schematico-symbols';
+  version: 1;
+  symbols: SymbolDefinition[];
+}
+export function validatePublicSymbol(raw: unknown): SymbolDefinition;
+export function parseSharedSymbols(value: unknown): SharedSymbolsData;
+export function appendPublicSymbol(
+  current: unknown,
+  raw: unknown,
+): { symbolsData: SharedSymbolsData; symbol: SymbolDefinition; changed: boolean };
+export function removeSharedSymbol(
+  current: unknown,
+  symbolId: string,
+): { symbolsData: SharedSymbolsData; removed: SymbolDefinition; changed: boolean };

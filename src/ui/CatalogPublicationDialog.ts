@@ -1,4 +1,5 @@
 import type { CatalogArticle } from '../model/ArticleTypes';
+import type { SymbolDefinition } from '../model/types';
 import {
   sharedCatalogState,
   submitSharedArticle,
@@ -47,6 +48,7 @@ export class CatalogPublicationDialog {
       ? document.activeElement
       : undefined;
   private article: CatalogArticle;
+  private symbol?: SymbolDefinition;
   private busy = false;
   private sent = false;
   private token = '';
@@ -56,8 +58,10 @@ export class CatalogPublicationDialog {
     article: CatalogArticle,
     private onDone: () => void = () => {},
     private onClose?: () => void,
+    symbol?: SymbolDefinition,
   ) {
     this.article = validatePublicArticle(article);
+    this.symbol = symbol;
   }
   show() {
     if (document.getElementById('catalogPublicationDialog')) return;
@@ -132,7 +136,7 @@ export class CatalogPublicationDialog {
     this.error('');
     this.status(t('githubCatalogSubmitting'));
     try {
-      await submitSharedArticle(this.article, this.token);
+      await submitSharedArticle(this.article, this.token, undefined, this.symbol);
       this.sent = true;
       this.status(t('githubCatalogSubmitted'));
       this.onDone();
@@ -156,6 +160,7 @@ export class CatalogPublicationDialog {
 export async function openCatalogPublication(
   article: CatalogArticle,
   onDone: () => void,
+  symbol?: SymbolDefinition,
 ) {
   const normalized = validatePublicArticle(article);
   if (!sharedCatalogState().submission)
@@ -171,7 +176,10 @@ export async function openCatalogPublication(
     }
   ).electronAPI?.catalog;
   if (desktop) {
-    const serialized = JSON.stringify(normalized);
+    const serialized = JSON.stringify({
+      article: normalized,
+      ...(symbol ? { symbol } : {}),
+    });
     if (new TextEncoder().encode(serialized).length > 1350) {
       if (document.getElementById('catalogDesktopTransfer')) return;
       const restore =
@@ -245,5 +253,6 @@ export async function openCatalogPublication(
     () => {
       if (submitted) onDone();
     },
+    symbol,
   ).show();
 }

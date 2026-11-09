@@ -9,10 +9,17 @@ import {
   setArticleSymbol,
   applyArticle,
   listArticles,
+  readSymbols,
+  writeSymbols,
+  applySymbol,
+  deleteSymbol,
+  listSymbols,
 } from './manage-catalog.mjs';
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'manage-catalog-test-'));
 const testCatalogPath = path.join(tempDir, 'articles.json');
+const testSymbolsPath = path.join(tempDir, 'symbols.json');
+const testSymbolAliasPath = path.join(tempDir, 'symbol.json');
 
 const initialCatalog = {
   schema: 'schematico-articles',
@@ -91,6 +98,60 @@ assert.throws(
     ),
   /articlesCatalogNotFound/,
 );
+
+// 5. Symbols management (symbols.json & symbol.json)
+const testSymbol = {
+  id: 'cad-symbol:test12345',
+  name: 'Test Relais',
+  category: 'relays',
+  standard: 'CAD',
+  defaultBmkPrefix: '-K',
+  defaultFunctionText: '',
+  width: 100,
+  height: 80,
+  pins: [
+    { id: 'p1', name: 'A1', x: 10, y: 0, direction: 'top', electricalRole: 'unknown' },
+    { id: 'p2', name: 'A2', x: 10, y: 80, direction: 'bottom', electricalRole: 'unknown' },
+  ],
+  svgContent: '<svg></svg>',
+  importedGraphics: [
+    { kind: 'line', x1: 0, y1: 0, x2: 100, y2: 0, color: 'currentColor', width: 0.5 },
+  ],
+  description: 'Test symbol vector data',
+};
+
+// writeSymbols & readSymbols
+writeSymbols(
+  { schema: 'schematico-symbols', version: 1, symbols: [testSymbol] },
+  testSymbolsPath,
+  testSymbolAliasPath,
+);
+assert.equal(fs.existsSync(testSymbolsPath), true);
+assert.equal(fs.existsSync(testSymbolAliasPath), true);
+assert.equal(readSymbols(testSymbolsPath).symbols.length, 1);
+assert.equal(readSymbols(testSymbolAliasPath).symbols[0].id, 'cad-symbol:test12345');
+
+// listSymbols
+assert.equal(listSymbols('', testSymbolsPath).length, 1);
+assert.equal(listSymbols('Test Relais', testSymbolsPath).length, 1);
+assert.equal(listSymbols('missing', testSymbolsPath).length, 0);
+
+// applySymbol (add new / update existing)
+const secondSymbol = {
+  ...testSymbol,
+  id: 'cad-symbol:second999',
+  name: 'Second Symbol',
+};
+applySymbol(secondSymbol, testSymbolsPath, testSymbolAliasPath);
+assert.equal(listSymbols('', testSymbolsPath).length, 2);
+assert.equal(readSymbols(testSymbolAliasPath).symbols.length, 2);
+
+// deleteSymbol
+const removedSym = deleteSymbol('cad-symbol:test12345', testSymbolsPath, testSymbolAliasPath);
+assert.equal(removedSym.id, 'cad-symbol:test12345');
+assert.equal(listSymbols('', testSymbolsPath).length, 1);
+assert.equal(readSymbols(testSymbolAliasPath).symbols.length, 1);
+assert.throws(() => deleteSymbol('cad-symbol:test12345', testSymbolsPath, testSymbolAliasPath), /symbolsCatalogNotFound/);
 
 // Cleanup
 fs.rmSync(tempDir, { recursive: true, force: true });

@@ -8,6 +8,10 @@ import {
   updateSharedArticleSymbol,
   appendPublicArticle,
   validatePublicArticle,
+  parseSharedSymbols,
+  appendPublicSymbol,
+  removeSharedSymbol,
+  validatePublicSymbol,
 } from '../src/shared/catalog-publication.mjs';
 import { catalogKey } from '../src/shared/catalog-record.mjs';
 
@@ -15,6 +19,81 @@ const CATALOG_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../catalog/articles.json',
 );
+const SYMBOLS_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../catalog/symbols.json',
+);
+const SYMBOL_ALIAS_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../catalog/symbol.json',
+);
+
+export function readSymbols(symbolsPath = SYMBOLS_PATH) {
+  if (!fs.existsSync(symbolsPath)) {
+    if (fs.existsSync(SYMBOL_ALIAS_PATH)) {
+      return parseSharedSymbols(
+        JSON.parse(fs.readFileSync(SYMBOL_ALIAS_PATH, 'utf8')),
+      );
+    }
+    return { schema: 'schematico-symbols', version: 1, symbols: [] };
+  }
+  const text = fs.readFileSync(symbolsPath, 'utf8');
+  return parseSharedSymbols(JSON.parse(text));
+}
+
+export function writeSymbols(
+  symbolsData,
+  symbolsPath = SYMBOLS_PATH,
+  aliasPath = SYMBOL_ALIAS_PATH,
+) {
+  const validated = parseSharedSymbols(symbolsData);
+  validated.symbols.sort((a, b) => a.id.localeCompare(b.id, 'en'));
+  const json = JSON.stringify(validated, null, 2) + '\n';
+  fs.writeFileSync(symbolsPath, json, 'utf8');
+  if (aliasPath && aliasPath !== symbolsPath) {
+    fs.writeFileSync(aliasPath, json, 'utf8');
+  }
+  return validated;
+}
+
+export function applySymbol(
+  rawSymbol,
+  symbolsPath = SYMBOLS_PATH,
+  aliasPath = SYMBOL_ALIAS_PATH,
+) {
+  const current = readSymbols(symbolsPath);
+  const result = appendPublicSymbol(current, rawSymbol);
+  if (result.changed) {
+    writeSymbols(result.symbolsData, symbolsPath, aliasPath);
+  }
+  return result.symbol;
+}
+
+export function deleteSymbol(
+  symbolId,
+  symbolsPath = SYMBOLS_PATH,
+  aliasPath = SYMBOL_ALIAS_PATH,
+) {
+  const current = readSymbols(symbolsPath);
+  const result = removeSharedSymbol(current, symbolId);
+  writeSymbols(result.symbolsData, symbolsPath, aliasPath);
+  return result.removed;
+}
+
+export function listSymbols(filter = '', symbolsPath = SYMBOLS_PATH) {
+  const current = readSymbols(symbolsPath);
+  const needle = filter.toLowerCase().trim();
+  return needle
+    ? current.symbols.filter(
+        (s) =>
+          s.id.toLowerCase().includes(needle) ||
+          s.name.toLowerCase().includes(needle) ||
+          (s.manufacturer ?? '').toLowerCase().includes(needle) ||
+          (s.articleNumber ?? '').toLowerCase().includes(needle) ||
+          (s.description ?? '').toLowerCase().includes(needle),
+      )
+    : current.symbols;
+}
 
 export function readCatalog(catalogPath = CATALOG_PATH) {
   const text = fs.readFileSync(catalogPath, 'utf8');
@@ -88,9 +167,9 @@ export function listArticles(filter = '', catalogPath = CATALOG_PATH) {
 
 function printUsage() {
   console.log(`
-Verwaltung des gemeinsamen Artikelkatalogs (catalog/articles.json)
+Verwaltung des gemeinsamen Katalogs (catalog/articles.json & catalog/symbols.json)
 
-Befehle:
+Artikel-Befehle:
   node scripts/manage-catalog.mjs list [Suchbegriff]
       Listet alle oder gefilterte Artikel mit ihren Symbolen auf.
 
@@ -105,6 +184,19 @@ Befehle:
 
   node scripts/manage-catalog.mjs apply <Dateipfad.json | JSON-String>
       Fügt einen neuen Artikel hinzu oder aktualisiert das Symbol eines bestehenden Artikels.
+
+Symbol-Befehle (Vektordaten):
+  node scripts/manage-catalog.mjs list-symbols [Suchbegriff]
+      Listet alle gespeicherten Vektor-Symbole in catalog/symbols.json auf.
+
+  node scripts/manage-catalog.mjs add-symbol <Dateipfad.json | JSON-String>
+      Fügt ein Vektor-Symbol zu catalog/symbols.json hinzu (oder aktualisiert es).
+
+  node scripts/manage-catalog.mjs delete-symbol <Symbol-ID>
+      Löscht ein Vektor-Symbol aus catalog/symbols.json.
+
+  node scripts/manage-catalog.mjs get-symbol <Symbol-ID>
+      Gibt das Vektor-Symbol als JSON auf der Konsole aus.
 `);
 }
 
@@ -206,6 +298,90 @@ if (
             `✓ Artikel übernommen: ${applied.manufacturer} ${applied.articleNumber} (Symbol: ${applied.symbolId ?? 'keines'})`,
           );
         }
+        break;
+      }
+
+      case 'list-symbols': {
+        const query = args[0] ?? '';
+        const items = listSymbols(query);
+        console.log(
+          `\nGemeinsame Vektor-Symbole: ${items.length} Symbole gefunden\n`,
+        );
+        console.log(
+          `${'Symbol-ID'.padEnd(45)} | ${'Name'.padEnd(30)} | Pins | Herst./ArtNr`,
+        );
+        console.log('-'.repeat(110));
+        for (const s of items) {
+          const id = (s.id.length > 43 ? s.id.slice(0, 42) + '…' : s.id).padEnd(
+            45,
+          );
+          const name = (
+            s.name.length > 28 ? s.name.slice(0, 27) + '…' : s.name
+          ).padEnd(30);
+          const pins = String(s.pins?.length ?? 0).padStart(4);
+          const ref = [s.manufacturer, s.articleNumber]
+            .filter(Boolean)
+            .join(' ');
+          console.log(`${id} | ${name} | ${pins} | ${ref}`);
+        }
+        break;
+      }
+
+      case 'add-symbol':
+      case 'set-symbol-data': {
+        const target = args[0];
+        if (!target) {
+          console.error('Fehler: JSON-Datei oder JSON-String erforderlich.');
+          printUsage();
+          process.exit(1);
+        }
+        let raw;
+        if (fs.existsSync(target)) {
+          raw = JSON.parse(fs.readFileSync(target, 'utf8'));
+        } else {
+          raw = JSON.parse(target);
+        }
+        const items = Array.isArray(raw)
+          ? raw
+          : raw?.symbols && Array.isArray(raw.symbols)
+            ? raw.symbols
+            : [raw];
+        for (const item of items) {
+          const applied = applySymbol(item);
+          console.log(
+            `✓ Vektor-Symbol gespeichert: ${applied.id} (${applied.name}, ${applied.pins?.length ?? 0} Pins)`,
+          );
+        }
+        break;
+      }
+
+      case 'delete-symbol':
+      case 'remove-symbol': {
+        const symbolId = args[0];
+        if (!symbolId) {
+          console.error('Fehler: Symbol-ID erforderlich.');
+          printUsage();
+          process.exit(1);
+        }
+        const removed = deleteSymbol(symbolId);
+        console.log(`✓ Vektor-Symbol gelöscht: ${removed.id} (${removed.name})`);
+        break;
+      }
+
+      case 'get-symbol': {
+        const symbolId = args[0];
+        if (!symbolId) {
+          console.error('Fehler: Symbol-ID erforderlich.');
+          printUsage();
+          process.exit(1);
+        }
+        const items = listSymbols(symbolId);
+        const exact = items.find((s) => s.id === symbolId) ?? items[0];
+        if (!exact) {
+          console.error(`Fehler: Symbol nicht gefunden: ${symbolId}`);
+          process.exit(1);
+        }
+        console.log(JSON.stringify(exact, null, 2));
         break;
       }
 

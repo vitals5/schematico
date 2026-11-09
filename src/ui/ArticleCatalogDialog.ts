@@ -278,12 +278,25 @@ export class ArticleCatalogDialog {
         );
         if (sharedArticle && !isSymbolUpdate)
           throw new Error('githubCatalogConflict');
-        void openCatalogPublication(article, () => {
-          this.message = t('githubCatalogSubmitted');
-          this.shared = sharedCatalogState();
-          this.render();
-          void refreshSharedCatalog();
-        }).catch((error) => {
+        const symbol =
+          article.symbol ??
+          (article.symbolId
+            ? getSymbolById(article.symbolId, this.project)
+            : undefined) ??
+          [...this.pendingAssets, ...this.packageRows]
+            .flatMap((p) => p.macros)
+            .flatMap((m) => m.symbolLibrary ?? [])
+            .find((s) => s.id === article.symbolId);
+        void openCatalogPublication(
+          article,
+          () => {
+            this.message = t('githubCatalogSubmitted');
+            this.shared = sharedCatalogState();
+            this.render();
+            void refreshSharedCatalog();
+          },
+          symbol,
+        ).catch((error) => {
           this.error = articleError(error);
           this.render();
         });

@@ -1,24 +1,49 @@
 import type { CatalogArticle } from './ArticleTypes';
+import type { SymbolDefinition } from './types';
+import defaultSymbols from '../../catalog/symbols.json';
 import {
   parseSharedCatalog,
   validatePublicArticle,
   MAX_CATALOG_BYTES,
   type SharedCatalogData,
+  parseSharedSymbols,
+  validatePublicSymbol,
+  MAX_SYMBOLS_BYTES,
+  type SharedSymbolsData,
 } from '../shared/catalog-publication.mjs';
 export const SHARED_CATALOG_URL =
   'https://raw.githubusercontent.com/vitals5/schematico/main/catalog/articles.json';
 export const SHARED_CATALOG_FILE =
   'https://github.com/vitals5/schematico/blob/main/catalog/articles.json';
+export const SHARED_SYMBOLS_URL =
+  'https://raw.githubusercontent.com/vitals5/schematico/main/catalog/symbols.json';
+export const SHARED_SYMBOLS_FILE =
+  'https://github.com/vitals5/schematico/blob/main/catalog/symbols.json';
 export type SharedCatalogState = {
   articles: CatalogArticle[];
+  symbols: SymbolDefinition[];
   status: 'loading' | 'ready' | 'offline' | 'unavailable';
   updatedAt?: string;
   submission?: SharedCatalogData['submission'];
 };
-let state: SharedCatalogState = { articles: [], status: 'loading' },
+const starterSymbols: SymbolDefinition[] = Array.isArray(
+  (defaultSymbols as any)?.symbols,
+)
+  ? (defaultSymbols as any).symbols
+  : [];
+let state: SharedCatalogState = {
+    articles: [],
+    symbols: starterSymbols,
+    status: 'loading',
+  },
   pending: Promise<SharedCatalogState> | undefined;
 const listeners = new Set<() => void>();
 export const sharedCatalogState = () => structuredClone(state);
+export const sharedCatalogSymbols = (): SymbolDefinition[] =>
+  structuredClone(state.symbols);
+export const getSharedCatalogSymbol = (
+  id: string,
+): SymbolDefinition | undefined => state.symbols.find((s) => s.id === id);
 export function onSharedCatalogChange(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -28,8 +53,10 @@ function notify() {
 }
 async function cache(
   mode: 'read' | 'write',
-  data?: SharedCatalogData,
-): Promise<SharedCatalogData | undefined> {
+  data?: { catalog?: SharedCatalogData; symbols?: SharedSymbolsData },
+): Promise<
+  { catalog?: SharedCatalogData; symbols?: SharedSymbolsData } | undefined
+> {
   if (typeof indexedDB === 'undefined') return;
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const r = indexedDB.open('schematico-github-catalog', 1);
@@ -44,14 +71,32 @@ async function cache(
         mode === 'read' ? 'readonly' : 'readwrite',
       ),
       store = tx.objectStore('snapshot');
-    const req =
-      mode === 'read' ? store.get('catalog') : store.put(data, 'catalog');
+    const reqCatalog =
+      mode === 'read'
+        ? store.get('catalog')
+        : data?.catalog
+          ? store.put(data.catalog, 'catalog')
+          : undefined;
+    const reqSymbols =
+      mode === 'read'
+        ? store.get('symbols')
+        : data?.symbols
+          ? store.put(data.symbols, 'symbols')
+          : undefined;
     tx.oncomplete = () => {
       db.close();
       try {
-        resolve(
-          mode === 'read' && req.result ? parseSharedCatalog(req.result) : data,
-        );
+        if (mode === 'read') {
+          const parsedCatalog = reqCatalog?.result
+            ? parseSharedCatalog(reqCatalog.result)
+            : undefined;
+          const parsedSymbols = reqSymbols?.result
+            ? parseSharedSymbols(reqSymbols.result)
+            : undefined;
+          resolve({ catalog: parsedCatalog, symbols: parsedSymbols });
+        } else {
+          resolve(data);
+        }
       } catch (error) {
         reject(error);
       }
@@ -70,10 +115,11 @@ export async function refreshSharedCatalog(
     if (!state.articles.length) {
       try {
         const saved = await cache('read');
-        if (saved) {
+        if (saved?.catalog) {
           state = {
-            articles: saved.articles,
-            submission: saved.submission,
+            articles: saved.catalog.articles,
+            symbols: saved.symbols?.symbols ?? starterSymbols,
+            submission: saved.catalog.submission,
             status: 'loading',
           };
           notify();
@@ -97,14 +143,43 @@ export async function refreshSharedCatalog(
         throw new Error('githubCatalogUnavailable');
       const text = await boundedText(response, MAX_CATALOG_BYTES),
         data = parseSharedCatalog(JSON.parse(text));
+
+      let symbolsData: SharedSymbolsData | undefined;
+      try {
+        const symbolsResp = await fetcher(SHARED_SYMBOLS_URL, {
+          signal: controller.signal,
+          cache: 'no-cache',
+          credentials: 'omit',
+        });
+        if (
+          symbolsResp.ok &&
+          Number(symbolsResp.headers.get('content-length') ?? 0) <=
+            MAX_SYMBOLS_BYTES
+        ) {
+          const symText = await boundedText(symbolsResp, MAX_SYMBOLS_BYTES);
+          symbolsData = parseSharedSymbols(JSON.parse(symText));
+        }
+      } catch {
+        /* Optional symbols fetch failure preserves existing symbols */
+      }
+
+      const effectiveSymbols = symbolsData?.symbols ?? state.symbols;
       state = {
         articles: data.articles,
+        symbols: effectiveSymbols,
         submission: data.submission,
         status: 'ready',
         updatedAt: new Date().toISOString(),
       };
       try {
-        await cache('write', data);
+        await cache('write', {
+          catalog: data,
+          symbols: symbolsData ?? {
+            schema: 'schematico-symbols',
+            version: 1,
+            symbols: effectiveSymbols,
+          },
+        });
       } catch {
         /* Data remains usable for this session. */
       }
@@ -161,8 +236,10 @@ export async function submitSharedArticle(
   raw: CatalogArticle,
   challengeToken: string,
   fetcher: typeof fetch = fetch,
+  rawSymbol?: unknown,
 ) {
   const article = validatePublicArticle(raw),
+    symbol = rawSymbol ? validatePublicSymbol(rawSymbol) : undefined,
     endpoint = state.submission;
   if (!endpoint) throw new Error('githubCatalogNotConfigured');
   if (!challengeToken) throw new Error('githubCatalogChallenge');
@@ -172,7 +249,11 @@ export async function submitSharedArticle(
     const response = await fetcher(endpoint.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ article, challengeToken }),
+      body: JSON.stringify({
+        article,
+        ...(symbol ? { symbol } : {}),
+        challengeToken,
+      }),
       credentials: 'omit',
       redirect: 'error',
       signal: controller.signal,

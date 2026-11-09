@@ -11,6 +11,7 @@ import { EXTENDED_SYMBOL_DEFINITIONS } from './ExtendedSymbols';
 import { STANDARD_IEC_SYMBOLS } from './StandardIecSymbols';
 import { INSTALLATION_SYMBOLS } from './InstallationSymbols';
 import { scaleSymbolDefinition } from './SymbolGeometry';
+import { getSharedCatalogSymbol, sharedCatalogSymbols } from './GitHubCatalog';
 
 export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   // --- 1. SCHÜTZE & RELAIS ---
@@ -1498,13 +1499,15 @@ function inProjectUnits(symbol: SymbolDefinition, project?: Project): SymbolDefi
 /** The active project's master data is scoped to that project, never added to built-ins. */
 export function getSymbolDefinitions(project: Project | undefined = activeProject): SymbolDefinition[] {
   const symbols = new Map(SYMBOL_DEFINITIONS.map(symbol => [symbol.id, symbol]));
+  for (const symbol of sharedCatalogSymbols()) symbols.set(symbol.id, symbol);
   for (const symbol of project?.symbolLibrary ?? []) symbols.set(symbol.id, symbol);
   return [...symbols.values()].map(s => inProjectUnits(s, project));
 }
 
 export function getSymbolById(id: string, project: Project | undefined = activeProject): SymbolDefinition | undefined {
   const symbol = project?.symbolLibrary?.find(symbol => symbol.id === id)
-    ?? SYMBOL_DEFINITIONS.find(symbol => symbol.id === id);
+    ?? SYMBOL_DEFINITIONS.find(symbol => symbol.id === id)
+    ?? getSharedCatalogSymbol(id);
   return symbol && inProjectUnits(symbol, project);
 }
 

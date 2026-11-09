@@ -1,6 +1,6 @@
 {
   "name": "schematico",
-  "version": "1.2.107",
+  "version": "1.2.108",
   "type": "module",
   "main": "electron/main.cjs",
   "description": "Schematico – editierbare Stromlaufpläne für Windows, Linux und Web",
@@ -24,6 +24,9 @@
     "catalog:delete": "node scripts/manage-catalog.mjs delete",
     "catalog:set-symbol": "node scripts/manage-catalog.mjs set-symbol",
     "catalog:list": "node scripts/manage-catalog.mjs list",
+    "catalog:list-symbols": "node scripts/manage-catalog.mjs list-symbols",
+    "catalog:add-symbol": "node scripts/manage-catalog.mjs add-symbol",
+    "catalog:delete-symbol": "node scripts/manage-catalog.mjs delete-symbol",
     "predev": "node scripts/prepare-cad-converter.mjs",
     "prebuild": "node scripts/prepare-cad-converter.mjs"
   },

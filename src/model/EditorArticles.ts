@@ -2,7 +2,7 @@ import {MacroManager, type WindowMacro} from './MacroManager';
 import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import type { CatalogArticle } from './ArticleTypes';
 import { ArticleCatalog, catalogKey, onLocalCatalogChange, availableCatalogArticles } from './ArticleCatalog';
-import { onSharedCatalogChange, refreshSharedCatalog, sharedCatalogState } from './GitHubCatalog';
+import { onSharedCatalogChange, refreshSharedCatalog, sharedCatalogState, getSharedCatalogSymbol } from './GitHubCatalog';
 import { effectiveArticles, setArticleAssignment } from './ArticleAssignments';
 import type { PlacedComponent, Project, SymbolDefinition } from './types';
 
@@ -24,7 +24,8 @@ export function editorArticles() {
   return mergeEditorArticles(sharedCatalogState().articles, local, deleted).map(entry=>{
     const p=packages.find(p=>p.id===entry.article.id || p.id===catalogKey(entry.article));
     const customSym = entry.article.symbol;
-    return {...entry,packageMacros:p?.macros,packageDiagnostics:p?.diagnostics,packageSymbol:p?.macros.flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===entry.symbolId) ?? customSym};
+    const catalogSym = entry.symbolId ? getSharedCatalogSymbol(entry.symbolId) : undefined;
+    return {...entry,packageMacros:p?.macros,packageDiagnostics:p?.diagnostics,packageSymbol:p?.macros.flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===entry.symbolId) ?? customSym ?? catalogSym};
   });
 }
 export function onEditorArticlesChange(listener: () => void) { listeners.add(listener); return () => listeners.delete(listener); }

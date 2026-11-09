@@ -4,9 +4,13 @@ import {
   appendPublicArticle,
   validatePublicArticle,
   MAX_CATALOG_BYTES,
+  appendPublicSymbol,
+  validatePublicSymbol,
+  MAX_SYMBOLS_BYTES,
 } from '../src/shared/catalog-publication.mjs';
 const REPOSITORY = 'vitals5/schematico';
 const FILE = 'catalog/articles.json';
+const SYMBOLS_FILE = 'catalog/symbols.json';
 /** Compare-and-swap with bounded retries: concurrent submissions cannot replace
  * each other's additions. No user-controlled path, branch, command or script. */
 export async function updateCatalogFile(
@@ -16,10 +20,12 @@ export async function updateCatalogFile(
     token,
     wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     message,
+    targetFile = FILE,
+    maxBytes = MAX_CATALOG_BYTES,
   } = {},
 ) {
   if (!token) throw Error('Missing workflow authentication');
-  const endpoint = `https://api.github.com/repos/${REPOSITORY}/contents/${FILE}`;
+  const endpoint = `https://api.github.com/repos/${REPOSITORY}/contents/${targetFile}`;
   const headers = {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github+json',
@@ -31,14 +37,14 @@ export async function updateCatalogFile(
       headers,
       signal: AbortSignal.timeout(20000),
     });
-    if (!response.ok) throw Error('Cannot read shared catalogue');
+    if (!response.ok) throw Error(`Cannot read shared ${targetFile}`);
     const file = await response.json();
     if (
       file.type !== 'file' ||
-      file.path !== FILE ||
+      file.path !== targetFile ||
       typeof file.sha !== 'string' ||
       !/^[a-f0-9]{40,64}$/i.test(file.sha) ||
-      file.size > MAX_CATALOG_BYTES
+      file.size > maxBytes
     )
       throw Error('Invalid shared catalogue response');
     let encoded = file;
@@ -49,24 +55,27 @@ export async function updateCatalogFile(
       );
       if (!blob.ok) throw Error('Cannot read catalogue blob');
       encoded = await blob.json();
-      if (encoded.sha !== file.sha || encoded.size > MAX_CATALOG_BYTES)
+      if (encoded.sha !== file.sha || encoded.size > maxBytes)
         throw Error('Invalid catalogue blob');
     }
     if (encoded.encoding !== 'base64' || typeof encoded.content !== 'string')
       throw Error('Invalid shared catalogue encoding');
     const bytes = Buffer.from(encoded.content, 'base64');
-    if (bytes.length > MAX_CATALOG_BYTES)
+    if (bytes.length > maxBytes)
       throw Error('Catalogue capacity exceeded');
     const merged = transform(JSON.parse(bytes.toString('utf8')));
     if (!merged.changed) return { changed: false };
-    const serialized = JSON.stringify(merged.catalog, null, 2) + '\n';
-    if (Buffer.byteLength(serialized, 'utf8') > MAX_CATALOG_BYTES)
+    const output = merged.catalog ?? merged.symbolsData;
+    const serialized = JSON.stringify(output, null, 2) + '\n';
+    if (Buffer.byteLength(serialized, 'utf8') > maxBytes)
       throw Error('Catalogue capacity exceeded');
     const commitMsg =
       message ??
-      (merged.article?.symbolId
-        ? `catalog: update symbol for ${merged.article.manufacturer} ${merged.article.articleNumber}`
-        : 'catalog: add community article');
+      (merged.symbol
+        ? `catalog: update vector symbol ${merged.symbol.id}`
+        : merged.article?.symbolId
+          ? `catalog: update symbol for ${merged.article.manufacturer} ${merged.article.articleNumber}`
+          : 'catalog: add community article');
     const put = await fetcher(endpoint, {
       method: 'PUT',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -80,7 +89,7 @@ export async function updateCatalogFile(
     });
     if (put.ok) return { changed: true };
     if (![409, 422].includes(put.status))
-      throw Error('Cannot publish shared article');
+      throw Error(`Cannot publish shared ${targetFile}`);
     await wait(Math.min(4000, 200 * (attempt + 1)));
   }
   throw Error('Catalogue changed repeatedly; retry submission');
@@ -91,6 +100,19 @@ export function publishCatalogArticle(raw, options) {
     (current) =>
       appendPublicArticle(current, article, { allowSymbolUpdate: true }),
     options,
+  );
+}
+
+export function publishCatalogSymbol(raw, options) {
+  const symbol = validatePublicSymbol(raw);
+  return updateCatalogFile(
+    (current) => appendPublicSymbol(current, symbol),
+    {
+      ...options,
+      targetFile: SYMBOLS_FILE,
+      maxBytes: MAX_SYMBOLS_BYTES,
+      message: `catalog: add vector symbol ${symbol.id}`,
+    },
   );
 }
 if (
@@ -114,12 +136,30 @@ if (
       : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
         ? JSON.parse(event.inputs?.article ?? 'null')
         : undefined;
+  const rawSymbol =
+    process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
+    event.action === 'schematico.article.submitted'
+      ? event.client_payload?.symbol
+      : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
+        ? JSON.parse(event.inputs?.symbol ?? 'null')
+        : undefined;
+
   const result = await publishCatalogArticle(raw, {
     token: process.env.GH_TOKEN,
   });
   console.log(
     result.changed
-      ? 'Shared article added.'
+      ? 'Shared article added/updated.'
       : 'Identical shared article already exists.',
   );
+  if (rawSymbol) {
+    const symResult = await publishCatalogSymbol(rawSymbol, {
+      token: process.env.GH_TOKEN,
+    });
+    console.log(
+      symResult.changed
+        ? 'Shared vector symbol added/updated.'
+        : 'Identical shared vector symbol already exists.',
+    );
+  }
 }
