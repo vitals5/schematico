@@ -377,6 +377,8 @@ export interface PageImage {
  * Child groups allow an outer group to be dissolved without losing inner groups.
  * A group can be treated as a composite device / article in editor and BOM. */
 export interface ElementGroup {
+  /** Display and inspection settings edited through the shared component dialog. */
+  propertySettings?: Partial<PlacedComponent>;
   /** Identity of an explicitly splittable AI planning group across sheet-local fragments. */
   layoutOriginId?: string;
   id: string;

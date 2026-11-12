@@ -2885,12 +2885,7 @@ export class App {
     if (selectionCount(selection) > 1) {
       const group = selectedGroup(page, selection);
       if (group) {
-        PropertiesDialog.showGroupModal(page, this.project, group, () => {
-          this.notifyChange();
-          this.renderRightTab();
-          this.updateFloatingSelectionBar();
-          this.canvas?.render();
-        });
+        this.openGroupPropertiesDialog(page,group);
         return;
       }
       if (selection.componentIds.length > 1 && !selection.cableIds.length && !selection.boxIds?.length && !selection.imageIds?.length && !selection.wireIds?.length && !selection.textIds?.length) {
@@ -3881,6 +3876,16 @@ export class App {
     });
   }
 
+  private openGroupPropertiesDialog(page:Page,group:ElementGroup):void {
+    const ids=groupSelection(page,group.id).componentIds;
+    const primary=page.components.find(c=>ids.includes(c.id)&&c.bmk===group.bmk)??page.components.find(c=>ids.includes(c.id));
+    PropertiesDialog.showGroupModal(page,this.project,group,()=>{
+      this.canvas.rerouteMovedComponents(ids);
+      if(this.canvas.autoconnectEnabled)AutoconnectEngine.updatePageAutoconnections(page);
+      this.notifyChange();this.renderRightTab();this.updateFloatingSelectionBar();this.canvas.render();
+    },{onNavigateToPage:id=>this.canvas.setPage(id),onNavigateToReference:index=>{if(primary)this.canvas.followReference(primary,index);}});
+  }
+
   private renderGroupProperties(container: HTMLElement, group: ElementGroup, page: Page): void {
     container.innerHTML = `
       <button class="btn btn-primary" id="btnOpenGroupPropModal" style="width: 100%; margin-bottom: 12px; font-weight: 600; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #3182ce; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
@@ -3959,12 +3964,7 @@ export class App {
     `;
 
     container.querySelector('#btnOpenGroupPropModal')?.addEventListener('click', () => {
-      PropertiesDialog.showGroupModal(page, this.project, group, () => {
-        this.notifyChange();
-        this.renderRightTab();
-        this.updateFloatingSelectionBar();
-        this.canvas?.render();
-      });
+      this.openGroupPropertiesDialog(page,group);
     });
 
     const partSelect = container.querySelector('#propGroupAssignPartSelect') as HTMLSelectElement;
