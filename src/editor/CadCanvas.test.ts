@@ -669,3 +669,41 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
 
   console.log('✓ Scaled component pins: getPinCoordinates and autoconnect scale correctly with component.scale');
 }
+
+// A group is an indivisible selection on every input path, even if a legacy
+// navigator left one member selected or a resize/segment handle was clicked.
+{
+  const {dissolveElementGroups}=await import('../model/ElementGroups');
+  const groupedPage=structuredClone(page);
+  groupedPage.components=[{...structuredClone(component),id:'ga',x:10,y:10},{...structuredClone(component),id:'gb',x:80,y:10}];
+  groupedPage.wires=[{id:'gw',potential:'L1',from:{componentId:'ga',pinId:'1'},to:{componentId:'gb',pinId:'1'},waypoints:[{x:30,y:50}]}];
+  groupedPage.texts=[{id:'gt',x:20,y:60,text:'Gruppe',fontSize:9}];
+  groupedPage.boxes=[{id:'gbox',x:0,y:0,width:120,height:80} as any];
+  groupedPage.groups=[{id:'inner',members:[{kind:'component',id:'ga'},{kind:'component',id:'gb'}]},{id:'outer',members:[{kind:'group',id:'inner'},{kind:'wire',id:'gw'},{kind:'text',id:'gt'},{kind:'box',id:'gbox'}]}];
+  const target=(entries:Record<string,string>)=>({closest:(selector:string)=>Object.hasOwn(entries,selector)?{id:entries[selector],getAttribute:()=>entries[selector]}:null});
+  let individualCalls=0;
+  const c:any=Object.assign(Object.create(CadCanvas.prototype),{activePage:groupedPage,project:{...project,pages:[groupedPage]},mode:'select',
+    screenToWorld:(x:number,y:number)=>({x,y}),findComponentAt:()=>null,findWireAt:()=>null,updateSelectionClasses:()=>{},render:()=>{},
+    svg:{getElementById:()=>null},updateSelectionOverlay:()=>{},renderWires:()=>'',
+    callbacks:{onSelectComponent:()=>{},onSelectWire:()=>{},onSelectText:()=>{individualCalls++;}},
+    referenceFromEvent:()=>{throw new Error('Grouped press must precede individual reference/resize/segment handling');}});
+  const mouse=(entries:Record<string,string>,extra={})=>({target:target(entries),clientX:10,clientY:10,button:0,timeStamp:1000,preventDefault:()=>{},...extra});
+  const assertWhole=()=>{assert.deepEqual(c.getElementSelection().componentIds,['ga','gb']);assert.deepEqual(c.getElementSelection().wireIds,['gw']);assert.deepEqual(c.getElementSelection().textIds,['gt']);assert.deepEqual(c.getElementSelection().boxIds,['gbox']);assert(c.selectionDrag);};
+  for(const entries of ([{'.component':'ga'},{'[data-wire-id]':'gw','[data-wire-segment]':'0'},{'[data-box-id]':'gbox','[data-box-resize]':'gbox'},{'[data-text-id]':'gt'},{'[data-element-group-id]':'outer'}] as Record<string,string>[])){
+    c.multipleSelection=undefined;c.selectedComponentId='ga';c.lastMousePress=null;c.selectionDrag=undefined;
+    c.onMouseDown(mouse(entries));assertWhole();assert.equal(c.wireSegmentDrag,undefined);assert.equal(c.boxResize,undefined);
+  }
+  c.moveElementSelection(20,30);
+  assert.deepEqual(groupedPage.components.map(c=>[c.x,c.y]),[[30,40],[100,40]]);
+  assert.deepEqual(groupedPage.wires[0].waypoints,[{x:50,y:80}]);assert.equal(groupedPage.texts[0].x,40);assert.equal(groupedPage.boxes[0].x,20);
+  c.lastMousePress=null;c.selectionDrag=undefined;
+  c.onTouchStart({...mouse({'.component':'gb'}),touches:[{clientX:80,clientY:10}]});assertWhole();
+  assert.equal(individualCalls,0,'Grouped text never opens individual text editing');
+  c.handleSelectionMouseDown(mouse({'.component':'gb'},{shiftKey:true}),{x:80,y:10});assert.equal(c.getElementSelection().componentIds.length,0,'Modifier removes the entire group');
+  c.showContextMenu=()=>{};c.triggerContextMenu(10,10,target({'.component':'ga'}));assert.deepEqual(c.getElementSelection().componentIds,['ga','gb']);
+  assert(dissolveElementGroups(groupedPage,c.getElementSelection()));
+  assert(dissolveElementGroups(groupedPage,c.getElementSelection()));
+  c.multipleSelection=undefined;c.selectedComponentId=null;c.lastMousePress=null;
+  c.setElementSelection({componentIds:['ga'],cableIds:[]});assert.deepEqual(c.getElementSelection().componentIds,['ga'],'After ungrouping individual selection is restored');
+  console.log('✓ Group selection is atomic across mouse, touch, context menu, nested members, resize/route handles and movement; ungrouping restores individual selection');
+}

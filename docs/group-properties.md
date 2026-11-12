@@ -1,5 +1,7 @@
 # Eigenschaften von Gruppen-Artikeln
 
+Ein Klick auf ein beliebiges Mitglied wählt immer die vollständige Baugruppe aus. Beim Ziehen werden alle Mitglieder gemeinsam verschoben; einzelne Mitglieder lassen sich erst nach dem Auflösen ihrer Gruppierung verschieben. Bei verschachtelten Gruppen wird zunächst die äußere Gruppe ausgewählt.
+
 Eine Baugruppe auswählen und **F2**, **Enter** oder **Vollständige Eigenschaften** öffnen. Gruppen verwenden denselben Eigenschaftsdialog wie einzelne Elemente, mit den Reitern **Symbol**, **Anzeige**, **Artikel**, **Querverweise** und **Format**.
 
 - Identifikation, Funktionstext, Gerätebezeichnung, Zusatztexte und technische Daten bearbeiten.
