@@ -1,6 +1,6 @@
 import {wrapLabelText} from '../model/LabelLayout';
 import type {InspectionLocation} from '../model/ElectricalInspection';
-import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection } from '../model/ElementGroups';
+import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
 import { boxDrawing, boxSvg } from '../model/DeviceBox';
 import { nextDeviceTag } from '../model/DeviceTag';
@@ -2989,6 +2989,13 @@ export class CadCanvas {
     if(box?.moved){const x=Math.min(box.start.x,box.end.x),y=Math.min(box.start.y,box.end.y);return `<rect class="selection-marquee" x="${x}" y="${y}" width="${Math.abs(box.end.x-box.start.x)}" height="${Math.abs(box.end.y-box.start.y)}" fill="#63b3ed22" stroke="#63b3ed" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="5 3"/>`;}
     if(!this.multipleSelection)return '';
     const bounds=selectionBounds(this.activePage,this.project,this.multipleSelection);if(!bounds)return '';
+    const group=selectedGroup(this.activePage,this.multipleSelection);
+    if(group){
+      const label=`📦 ${group.bmk||'Baugruppe'}${group.articleNumber?` · ${group.articleNumber}`:''}`;
+      const badgeWidth=Math.max(70,label.length*6.5+14);
+      const badgeX=bounds.left-6,badgeY=Math.max(0,bounds.top-22);
+      return `<rect class="selection-group-outline" x="${bounds.left-6}" y="${bounds.top-6}" width="${bounds.right-bounds.left+12}" height="${bounds.bottom-bounds.top+12}" fill="none" stroke="#63b3ed" stroke-dasharray="6 4" stroke-width="1.5" vector-effect="non-scaling-stroke"/><g class="selection-group-badge" transform="translate(${badgeX},${badgeY})"><rect width="${badgeWidth}" height="18" rx="3" fill="#1a202c" stroke="#63b3ed" stroke-width="1"/><text x="6" y="13" fill="#63b3ed" font-size="10" font-family="system-ui,-apple-system,sans-serif" font-weight="600">${escapeSvg(label)}</text></g>`;
+    }
     return `<rect class="selection-group-outline" x="${bounds.left-6}" y="${bounds.top-6}" width="${bounds.right-bounds.left+12}" height="${bounds.bottom-bounds.top+12}" fill="none" stroke="#63b3ed" stroke-dasharray="6 4" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
   }
 

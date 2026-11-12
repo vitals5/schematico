@@ -374,7 +374,8 @@ export interface PageImage {
 }
 
 /** Persistent, page-local groups keep their members as ordinary editable objects.
- * Child groups allow an outer group to be dissolved without losing inner groups. */
+ * Child groups allow an outer group to be dissolved without losing inner groups.
+ * A group can be treated as a composite device / article in editor and BOM. */
 export interface ElementGroup {
   /** Identity of an explicitly splittable AI planning group across sheet-local fragments. */
   layoutOriginId?: string;
@@ -382,6 +383,18 @@ export interface ElementGroup {
   name?: string;
   members: { kind: 'component' | 'cable' | 'image' | 'box' | 'wire' | 'text' | 'group'; id: string }[];
   source?: { format: 'NATIVE_CAD'; objectType: number; objectId: number };
+  bmk?: string;
+  deviceTag?: string;
+  functionText?: string;
+  additionalText?: string;
+  technicalCharacteristics?: string;
+  articleNumber?: string;
+  manufacturer?: string;
+  description?: string;
+  variant?: string;
+  higherLevelFunction?: string;
+  mountingLocation?: string;
+  articleAssignment?: { mode: 'manual'; items: AssignedArticle[] };
 }
 
 export interface Page {

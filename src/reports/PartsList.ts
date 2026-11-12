@@ -1,6 +1,7 @@
 import {DeviceRegistry,componentAddress,addressKey,designationContext} from '../model/DeviceRegistry';
 import {effectiveArticles} from '../model/ArticleAssignments';
 import {activeImportedArticles} from '../model/ImportedArticles';
+import { groupSelection } from '../model/ElementGroups';
 import { Project, PlacedComponent, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
 import { isConnectionSymbol } from '../model/ConnectionSymbols';
@@ -42,7 +43,76 @@ export class PartsListGenerator {
     const invalidMembers=new Set(devices.issues.flatMap(i=>i.members.map(addressKey)));
 
     for (const page of project.pages) {
+      // Process groups as single composite devices / articles in BOM
+      const rootGroups = (page.groups ?? []).filter(g =>
+        !(page.groups ?? []).some(parent => parent.members.some(m => m.kind === 'group' && m.id === g.id))
+      );
+      const groupedCompIds = new Set<string>();
+
+      for (const group of rootGroups) {
+        const groupSel = groupSelection(page, group.id);
+        for (const compId of groupSel.componentIds ?? []) {
+          groupedCompIds.add(compId);
+        }
+
+        const hasComponents = (groupSel.componentIds?.length ?? 0) > 0;
+        if (!hasComponents && !group.articleNumber && !group.articleAssignment?.items?.length) {
+          continue;
+        }
+
+        const assigned = group.articleAssignment?.items?.length
+          ? group.articleAssignment.items
+          : [];
+        if (group.articleAssignment && !assigned.length) continue;
+
+        const items = assigned.length
+          ? assigned.map(a => ({
+              article: a.articleNumber,
+              manufacturer: a.manufacturer,
+              variant: a.variant,
+              quantity: a.quantity ?? 1,
+              description: a.snapshot?.description || group.description || group.functionText || 'Baugruppe',
+              basis: 'manual_assignment' as PartEntry['quantityBasis'],
+            }))
+          : [{
+              article: group.articleNumber || (group.bmk ? 'GRP-' + group.bmk.replace(/^[-+=]/, '') : 'STD-BAUGRUPPE'),
+              manufacturer: group.manufacturer || 'Standard Fabrikat',
+              variant: group.variant || undefined,
+              quantity: 1,
+              description: group.description || group.functionText || group.name || 'Baugruppe',
+              basis: 'placement' as PartEntry['quantityBasis'],
+            }];
+
+        for (const item of items) {
+          const key = JSON.stringify([item.article, item.manufacturer, item.variant ?? '']);
+          if (!partsMap.has(key)) {
+            partsMap.set(key, {
+              articleNumber: item.article,
+              manufacturer: item.manufacturer,
+              description: item.description,
+              technicalCharacteristics: group.technicalCharacteristics || '-',
+              quantity: 0,
+              bmkList: [],
+              ...(item.variant ? { variant: item.variant } : {}),
+              quantityBasis: item.basis,
+            });
+          }
+          const entry = partsMap.get(key)!;
+          if (item.quantity === undefined) entry.quantityUncertain = true;
+          else entry.quantity += item.quantity;
+          if (entry.quantityBasis !== item.basis) entry.quantityBasis = 'mixed';
+          const plant = (group.higherLevelFunction ?? page.higherLevel ?? '').replace(/^=/, '');
+          const loc = (group.mountingLocation ?? page.location ?? '').replace(/^\+/, '');
+          const bmk = group.bmk || 'Gruppe';
+          const tag = `${plant ? '=' + plant : ''}${loc ? '+' + loc : ''}${bmk}`;
+          if (!entry.bmkList.includes(tag)) entry.bmkList.push(tag);
+        }
+      }
+
       for (const comp of page.components) {
+        if (groupedCompIds.has(comp.id)) {
+          continue; // Group members are suppressed from individual BOM listing
+        }
         const sym = getSymbolForComponent(comp, project);
         const address=componentAddress(page,comp),device=devices.forComponent(address);
         if(device&&addressKey(device.main)!==addressKey(address))continue;

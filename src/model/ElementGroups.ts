@@ -1,4 +1,6 @@
 import type { ElementGroup, Page } from './types';
+import type { CatalogArticle } from './ArticleTypes';
+import { catalogKey } from './CatalogRecord';
 import { emptySelection, normalizeSelection, selectionCount, type ElementSelection } from './ElementSelection';
 
 export const memberKeys = {component:'componentIds',cable:'cableIds',image:'imageIds',box:'boxIds',wire:'wireIds',text:'textIds'} as const;
@@ -39,8 +41,77 @@ export function createElementGroup(page:Page,selection:ElementSelection):Element
   const expanded=expandGroupedSelection(page,selection),roots=selectedRootGroups(page,expanded);
   const grouped=new Set(roots.flatMap(g=>selectionMembers(groupSelection(page,g.id))).map(m=>`${m.kind}:${m.id}`));
   const members:GroupMember[]=[...roots.map(g=>({kind:'group' as const,id:g.id})),...selectionMembers(expanded).filter(m=>!grouped.has(`${m.kind}:${m.id}`))];
-  const group:ElementGroup={id:'group_'+crypto.randomUUID(),members};
+  
+  // Find primary component from members to initialize default BMK and article
+  const primaryCompId = selectionMembers(expanded).find(m => m.kind === 'component')?.id;
+  const primaryComp = primaryCompId ? page.components.find(c => c.id === primaryCompId) : undefined;
+
+  const group:ElementGroup={
+    id:'group_'+crypto.randomUUID(),
+    members,
+    bmk: primaryComp?.bmk || '',
+    deviceTag: primaryComp?.deviceTag || '',
+    functionText: primaryComp?.functionText || 'Baugruppe',
+    additionalText: primaryComp?.additionalText || '',
+    technicalCharacteristics: primaryComp?.technicalCharacteristics || '',
+    articleNumber: primaryComp?.articleNumber || '',
+    manufacturer: primaryComp?.manufacturer || '',
+    description: primaryComp?.functionText || primaryComp?.symbolId || 'Baugruppe',
+    variant: primaryComp?.articleAssignment?.items?.[0]?.variant || '',
+    higherLevelFunction: primaryComp?.higherLevelFunction || page.higherLevel || '',
+    mountingLocation: primaryComp?.mountingLocation || page.location || '',
+    ...(primaryComp?.articleAssignment ? { articleAssignment: structuredClone(primaryComp.articleAssignment) } : {})
+  };
   (page.groups??=[]).push(group);return group;
+}
+
+/** Detects if the current selection exactly matches a single root group. */
+export function selectedGroup(page: Page, selection: ElementSelection): ElementGroup | undefined {
+  if (selectionCount(selection) < 2) return undefined;
+  const roots = selectedRootGroups(page, selection);
+  if (roots.length !== 1) return undefined;
+  const root = roots[0];
+  const rootSel = groupSelection(page, root.id);
+  if (selectionCount(rootSel) === selectionCount(selection)) {
+    return root;
+  }
+  return undefined;
+}
+
+export function groupArticleKey(group: ElementGroup): string {
+  const primary = group.articleAssignment?.items?.find(a => a.role === 'main') ?? group.articleAssignment?.items?.[0];
+  if (primary) return catalogKey(primary);
+  if (group.articleNumber) {
+    return catalogKey({ articleNumber: group.articleNumber, manufacturer: group.manufacturer || '', variant: group.variant || '' });
+  }
+  return '';
+}
+
+export function assignGroupCatalogArticle(group: ElementGroup, article: CatalogArticle, quantity: number = 1): void {
+  group.articleNumber = article.articleNumber;
+  group.manufacturer = article.manufacturer;
+  group.variant = article.variant ?? '';
+  if (article.description) {
+    group.description = article.description;
+  }
+  const parts = (article.description || '').split(' · ');
+  if (parts[0]) {
+    group.functionText = parts[0];
+  }
+  if (parts[1]) {
+    group.technicalCharacteristics = parts[1];
+  }
+  group.articleAssignment = {
+    mode: 'manual',
+    items: [{
+      articleNumber: article.articleNumber,
+      manufacturer: article.manufacturer,
+      variant: article.variant ?? '',
+      quantity,
+      role: 'main',
+      snapshot: structuredClone(article),
+    }],
+  };
 }
 /** Dissolve only the selected outer layer. Nested groups remain independently selectable. */
 export function dissolveElementGroups(page:Page,selection:ElementSelection):boolean {
@@ -78,12 +149,21 @@ export function pruneElementGroups(page:Page):void {
   page.groups=[...byId.values()];
 }
 /** Copies groups into a new ID space (macro insertion/export), omitting external links. */
-export function remapElementGroups(groups:ElementGroup[]|undefined,ids:Partial<Record<keyof typeof memberKeys,Map<string,string>>>):ElementGroup[] {
+export function remapElementGroups(groups:ElementGroup[]|undefined,ids:Partial<Record<keyof typeof memberKeys,Map<string,string>>>,bmkMap?:Map<string,string>):ElementGroup[] {
   if(!groups)return [];
   const groupIds=new Map(groups.map(g=>[g.id,'group_'+crypto.randomUUID()]));
-  const mapped:ElementGroup[]=groups.map(g=>({...structuredClone(g),id:groupIds.get(g.id)!,members:g.members.flatMap(m=>{
-    const id=m.kind==='group'?groupIds.get(m.id):ids[m.kind]?.get(m.id);return id?[{...m,id}]:[];
-  })}));
+  const mapped:ElementGroup[]=groups.map(g=>{
+    const copy = structuredClone(g);
+    if (copy.bmk && bmkMap?.has(copy.bmk)) copy.bmk = bmkMap.get(copy.bmk)!;
+    return {
+      ...copy,
+      id: groupIds.get(g.id)!,
+      members: g.members.flatMap(m => {
+        const id = m.kind === 'group' ? groupIds.get(m.id) : ids[m.kind]?.get(m.id);
+        return id ? [{ ...m, id }] : [];
+      })
+    };
+  });
   // Retain valid subgroups, even if their outer group was only partially exported.
   let changed=true;
   while(changed){changed=false;for(let i=mapped.length-1;i>=0;i--)if(mapped[i].members.length<2){

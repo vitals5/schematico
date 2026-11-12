@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createElementGroup,dissolveElementGroups,expandGroupedSelection,groupSelection,pruneElementGroups,remapElementGroups,canGroupSelection } from './ElementGroups';
+import { createElementGroup,dissolveElementGroups,expandGroupedSelection,groupSelection,pruneElementGroups,remapElementGroups,canGroupSelection,selectedGroup,groupArticleKey,assignGroupCatalogArticle } from './ElementGroups';
 import { captureSelectionMove,translateSelection,selectionCount } from './ElementSelection';
 import { ProjectHistory } from './ProjectHistory';
 import { MacroManager } from './MacroManager';
@@ -56,4 +56,80 @@ const inserted=MacroManager.instantiateWindowMacro(placed,0,0,[],project);assert
 const cloned=MacroManager.instantiatePageMacro(pageMacro,project);assert.equal(cloned.groups!.length,2);assert(cloned.groups!.flatMap(g=>g.members).some(m=>m.kind==='text'&&cloned.texts!.some(t=>t.id===m.id)));
 assert.notEqual(cloned.images![0].id,page.images![0].id);assert.deepEqual(cloned.components[0].pins['1'].wireIds,[cloned.wires[0].id]);
 assert.deepEqual(remapElementGroups(page.groups,{component:new Map()}),[]);
+
+// Test group article and selection features
+const articleComp1: PlacedComponent = {
+  id: 'c1',
+  symbolId: 'motor_3p',
+  x: 10,
+  y: 10,
+  rotation: 0,
+  pins: {},
+  bmk: '-M1',
+  articleNumber: '1LE1001-0DB22',
+  manufacturer: 'Siemens',
+  functionText: 'Antriebsmotor'
+};
+const articleComp2: PlacedComponent = {
+  id: 'c2',
+  symbolId: 'contactor_power_3p',
+  x: 50,
+  y: 50,
+  rotation: 0,
+  pins: {},
+  bmk: '-Q1',
+  articleNumber: '3RT2016-1BB41',
+  manufacturer: 'Siemens',
+  functionText: 'Schütz'
+};
+const groupPage: Page = {
+  id: 'gp',
+  title: 'Group Article Page',
+  pageNumber: '1',
+  pageType: 'schematic',
+  higherLevel: '=A1',
+  location: '+S1',
+  components: [articleComp1, articleComp2],
+  wires: [],
+  plotFrame: page.plotFrame
+};
+
+const newGroup = createElementGroup(groupPage, { componentIds: ['c1', 'c2'], cableIds: [] })!;
+assert(newGroup, 'Group must be created');
+assert.equal(newGroup.bmk, '-M1', 'Group should inherit primary component BMK');
+assert.equal(newGroup.articleNumber, '1LE1001-0DB22', 'Group should inherit primary component article');
+assert.equal(newGroup.manufacturer, 'Siemens');
+assert.equal(newGroup.higherLevelFunction, '=A1');
+assert.equal(newGroup.mountingLocation, '+S1');
+
+// selectedGroup helper
+const wholeSel = expandGroupedSelection(groupPage, { componentIds: ['c1'], cableIds: [] });
+const detected = selectedGroup(groupPage, wholeSel);
+assert.equal(detected?.id, newGroup.id, 'selectedGroup should detect single selected group');
+
+const partialSel = { componentIds: ['c1'], cableIds: [] };
+assert.equal(selectedGroup(groupPage, partialSel), undefined, 'Partial selection should not match group');
+
+// assignGroupCatalogArticle & groupArticleKey
+assignGroupCatalogArticle(newGroup, {
+  id: 'cat_art_1',
+  articleNumber: '3RM1001-1AA04',
+  manufacturer: 'Siemens AG',
+  variant: 'V1',
+  description: 'Motorstarter · 24V DC 0.5kW',
+  origin: 'user',
+  verification: 'unverified'
+});
+assert.equal(newGroup.articleNumber, '3RM1001-1AA04');
+assert.equal(newGroup.manufacturer, 'Siemens AG');
+assert.equal(newGroup.variant, 'V1');
+assert.equal(newGroup.functionText, 'Motorstarter');
+assert.equal(newGroup.technicalCharacteristics, '24V DC 0.5kW');
+assert.equal(newGroup.articleAssignment?.items.length, 1);
+assert.equal(groupArticleKey(newGroup), '["Siemens AG","3RM1001-1AA04","V1"]');
+
+// BMK remapping in remapElementGroups
+const remapped = remapElementGroups([newGroup], { component: new Map([['c1', 'c1_new'], ['c2', 'c2_new']]) }, new Map([['-M1', '-M2']]));
+assert.equal(remapped[0].bmk, '-M2', 'BMK should be remapped via bmkMap');
+
 console.log('✓ Persistent nested groups: selection, movement, dissolve, history, deletion, JSON/XML/archive roundtrips and independent window/page macro insertion');

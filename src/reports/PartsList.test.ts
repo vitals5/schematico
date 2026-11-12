@@ -218,4 +218,93 @@ const partsWithBox = PartsListGenerator.generatePartsList(projectWithDeviceBox);
 assert.equal(partsWithBox.length, 3, 'Device box must NOT be included in BOM');
 assert(!partsWithBox.some(p => p.articleNumber.includes('DEVICE_BOX')), 'No DEVICE_BOX article in BOM');
 
-console.log('✓ PartsList: Connection elements and device boxes are successfully filtered out of the Bill of Materials');
+// --- Test 4: Element groups are treated as single articles in BOM, member components are suppressed ---
+const projectWithGroup: Project = {
+  ...testProject,
+  pages: [
+    {
+      ...testPage,
+      groups: [
+        {
+          id: 'group_mot_starter',
+          bmk: '-Q1',
+          articleNumber: '3RM1001-1AA04',
+          manufacturer: 'Siemens',
+          functionText: 'Motorstarter-Kombination',
+          members: [
+            { kind: 'component', id: 'comp_m1' },
+            { kind: 'component', id: 'comp_k1' }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+const partsWithGroup = PartsListGenerator.generatePartsList(projectWithGroup);
+// In this project, comp_m1 (motor) and comp_k1 (contactor) belong to group_mot_starter.
+// Only the group (-Q1 / 3RM1001-1AA04) and the standalone terminal (comp_x1) should be in the BOM.
+assert.equal(partsWithGroup.length, 2, `Expected 2 parts in BOM with group, found ${partsWithGroup.length}`);
+
+const groupArticles = partsWithGroup.map(p => p.articleNumber);
+assert(groupArticles.includes('3RM1001-1AA04'), 'Group article 3RM1001-1AA04 must appear in BOM');
+assert(groupArticles.includes('STD-TERMINAL_SINGLE'), 'Standalone terminal must appear in BOM');
+assert(!groupArticles.includes('1LE1001-0DB22'), 'Grouped motor must NOT appear individually in BOM');
+assert(!groupArticles.includes('3RT2016-1BB41'), 'Grouped contactor must NOT appear individually in BOM');
+
+const groupPart = partsWithGroup.find(p => p.articleNumber === '3RM1001-1AA04')!;
+assert.equal(groupPart.quantity, 1, 'Group article quantity must be 1');
+assert.equal(groupPart.manufacturer, 'Siemens');
+assert.equal(groupPart.description, 'Motorstarter-Kombination');
+assert.deepEqual(groupPart.bmkList, ['=A1+S1-Q1']);
+
+// Test 4b: Group with manual article assignments (main + accessory)
+const projectWithGroupAccessories: Project = {
+  ...testProject,
+  pages: [
+    {
+      ...testPage,
+      groups: [
+        {
+          id: 'group_assembly',
+          bmk: '-A1',
+          articleAssignment: {
+            mode: 'manual',
+            items: [
+              {
+                articleNumber: 'PLC-MAIN-001',
+                manufacturer: 'Siemens',
+                variant: 'V1',
+                quantity: 1,
+                role: 'main'
+              },
+              {
+                articleNumber: 'PLC-EXP-002',
+                manufacturer: 'Siemens',
+                variant: '',
+                quantity: 2,
+                role: 'accessory'
+              }
+            ]
+          },
+          members: [
+            { kind: 'component', id: 'comp_m1' },
+            { kind: 'component', id: 'comp_k1' }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+const partsWithGroupAcc = PartsListGenerator.generatePartsList(projectWithGroupAccessories);
+assert.equal(partsWithGroupAcc.length, 3, `Expected 3 parts in BOM (main, accessory, standalone terminal), found ${partsWithGroupAcc.length}`);
+const accArticles = partsWithGroupAcc.map(p => p.articleNumber);
+assert(accArticles.includes('PLC-MAIN-001'), 'Group main article must be in BOM');
+assert(accArticles.includes('PLC-EXP-002'), 'Group accessory article must be in BOM');
+assert(!accArticles.includes('1LE1001-0DB22'), 'Member motor suppressed from BOM');
+assert(!accArticles.includes('3RT2016-1BB41'), 'Member contactor suppressed from BOM');
+const accessoryPart = partsWithGroupAcc.find(p => p.articleNumber === 'PLC-EXP-002')!;
+assert.equal(accessoryPart.quantity, 2, 'Group accessory quantity must be 2');
+
+console.log('✓ PartsList: Connection elements, device boxes, and group article logic verified');

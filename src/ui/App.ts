@@ -42,7 +42,8 @@ import { cableCrossings } from '../model/CableDefinition';
 // src/ui/App.ts
 // Main application controller for Schematico (Elektro-CAD CAE Suite)
 
-import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening } from '../model/types';
+import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening, ElementGroup } from '../model/types';
+import { selectedGroup, groupArticleKey, assignGroupCatalogArticle, groupSelection } from '../model/ElementGroups';
 import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm, getComponentSymbolLibrary } from '../model/symbols';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
@@ -591,7 +592,15 @@ export class App {
     const macroButton=document.getElementById('btnFloatingExportMacro');if(macroButton)macroButton.style.display=imageSelected||boxSelected||textSelected||wallSelected||openingSelected||!this.canvas?.getElementSelection().componentIds.length?'none':'';
     if (bar && tag) {
       let shouldShow = true;
-      if (multiple) {
+      const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
+      const activeGroup = activePage && this.canvas ? selectedGroup(activePage, this.canvas.getElementSelection()) : undefined;
+      if (activeGroup) {
+        tag.textContent = activeGroup.bmk
+          ? `📦 ${activeGroup.bmk}${activeGroup.articleNumber ? ` · ${activeGroup.articleNumber}` : ''} (${selectionCount(this.canvas.getElementSelection())} Elemente)`
+          : `📦 Baugruppe (${selectionCount(this.canvas.getElementSelection())} Elemente)`;
+        if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';
+        if(btnDel){btnDel.title=t('floatingSelectionDeleteTitle');btnDel.textContent='🗑️';}
+      } else if (multiple) {
         tag.textContent = `${this.canvas.canUngroupSelection() ? t('menuGroup') + ': ' : ''}${t('foundElements', { count: selectionCount(this.canvas.getElementSelection()) })}`;
         if(btnEdit)btnEdit.style.display='inline-flex';if(btnRot)btnRot.style.display='none';
         if(btnDel){btnDel.title=t('floatingSelectionDeleteTitle');btnDel.textContent='🗑️';}
@@ -2874,6 +2883,16 @@ export class App {
     if (!page) return;
 
     if (selectionCount(selection) > 1) {
+      const group = selectedGroup(page, selection);
+      if (group) {
+        PropertiesDialog.showGroupModal(page, this.project, group, () => {
+          this.notifyChange();
+          this.renderRightTab();
+          this.updateFloatingSelectionBar();
+          this.canvas?.render();
+        });
+        return;
+      }
       if (selection.componentIds.length > 1 && !selection.cableIds.length && !selection.boxIds?.length && !selection.imageIds?.length && !selection.wireIds?.length && !selection.textIds?.length) {
         const comps = page.components.filter(c => selection.componentIds.includes(c.id));
         new PropertiesDialog(comps, this.project, {
@@ -3862,7 +3881,189 @@ export class App {
     });
   }
 
+  private renderGroupProperties(container: HTMLElement, group: ElementGroup, page: Page): void {
+    container.innerHTML = `
+      <button class="btn btn-primary" id="btnOpenGroupPropModal" style="width: 100%; margin-bottom: 12px; font-weight: 600; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #3182ce; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+        <span>⚙️ ${escapeSvg(t('btnOpenFullPropModal'))}</span>
+        <span style="font-size: 10px; opacity: 0.8; font-family: monospace;">[Enter / F2]</span>
+      </button>
+
+      <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
+        📦 Baugruppe (${group.members.length} Elemente)
+      </div>
+      <div style="font-size: 13px; font-weight: bold; color: #63b3ed; margin-bottom: 12px;">
+        ${escapeSvg(group.bmk || 'Baugruppe')}${group.articleNumber ? ` · ${escapeSvg(group.articleNumber)}` : ''}
+      </div>
+
+      <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Identifikation & Texte</legend>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelBmk'))}</label>
+          <input class="form-input" id="propGroupBmk" value="${escapeSvg(group.bmk || '')}">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelDeviceTag'))}</label>
+          <input class="form-input" id="propGroupDeviceTag" value="${escapeSvg(group.deviceTag || '')}" placeholder="${escapeSvg(t('placeholderDeviceTag'))}">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelFunctionText'))}</label>
+          <textarea class="form-input" id="propGroupFunctionText" rows="2">${escapeSvg(group.functionText || '')}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelAdditionalText'))}</label>
+          <textarea class="form-input" id="propGroupAdditionalText" rows="2">${escapeSvg(group.additionalText || '')}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelTechnical'))}</label>
+          <input class="form-input" id="propGroupTechnical" value="${escapeSvg(group.technicalCharacteristics || '')}">
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Struktur (IEC 81346)</legend>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelStructure'))} (=Anlage)</label>
+          <input class="form-input" id="propGroupHigherLevel" value="${escapeSvg(group.higherLevelFunction || '')}" placeholder="=A1">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelStructure'))} (+Ort)</label>
+          <input class="form-input" id="propGroupLocation" value="${escapeSvg(group.mountingLocation || '')}" placeholder="+S1">
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Artikel & Stückliste (Baugruppe)</legend>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelAssignPart'))}</label>
+          <select class="form-input" id="propGroupAssignPartSelect" data-editor-article-select>
+            ${editorArticleOptions(groupArticleKey(group))}
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelArticleNumber'))}</label>
+          <input class="form-input" id="propGroupArticleNumber" value="${escapeSvg(group.articleNumber || '')}" placeholder="z.B. 3RM1001-1AA04">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('labelManufacturer'))}</label>
+          <input class="form-input" id="propGroupManufacturer" value="${escapeSvg(group.manufacturer || '')}" placeholder="z.B. Siemens">
+        </div>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label">${escapeSvg(t('articlesDescription'))}</label>
+          <input class="form-input" id="propGroupDescription" value="${escapeSvg(group.description || '')}" placeholder="z.B. Motorstarter 24V">
+        </div>
+      </fieldset>
+
+      <button class="btn btn-primary" id="btnGroupApply" style="width: 100%; margin-top: 4px;">${escapeSvg(t('btnApply'))}</button>
+      <button class="btn" id="btnGroupDissolve" style="width: 100%; margin-top: 6px;">${escapeSvg(t('menuUngroup'))}</button>
+      <button class="btn btn-danger" id="btnGroupDelete" style="width: 100%; margin-top: 6px; background: #742a2a; color: #fff; border: 1px solid #9b2c2c;">🗑️ Baugruppe löschen</button>
+    `;
+
+    container.querySelector('#btnOpenGroupPropModal')?.addEventListener('click', () => {
+      PropertiesDialog.showGroupModal(page, this.project, group, () => {
+        this.notifyChange();
+        this.renderRightTab();
+        this.updateFloatingSelectionBar();
+        this.canvas?.render();
+      });
+    });
+
+    const partSelect = container.querySelector('#propGroupAssignPartSelect') as HTMLSelectElement;
+    partSelect?.addEventListener('change', () => {
+      const entry = editorArticles().find(e => catalogKey(e.article) === partSelect.value);
+      if (entry) {
+        assignGroupCatalogArticle(group, entry.article);
+        const mfrInput = container.querySelector<HTMLInputElement>('#propGroupManufacturer');
+        const artInput = container.querySelector<HTMLInputElement>('#propGroupArticleNumber');
+        const descInput = container.querySelector<HTMLInputElement>('#propGroupDescription');
+        const fnInput = container.querySelector<HTMLTextAreaElement>('#propGroupFunctionText');
+        const techInput = container.querySelector<HTMLInputElement>('#propGroupTechnical');
+        if (mfrInput) mfrInput.value = group.manufacturer || '';
+        if (artInput) artInput.value = group.articleNumber || '';
+        if (descInput) descInput.value = group.description || '';
+        if (fnInput) fnInput.value = group.functionText || '';
+        if (techInput) techInput.value = group.technicalCharacteristics || '';
+        this.notifyChange();
+        this.updateFloatingSelectionBar();
+        this.canvas?.render();
+      }
+    });
+
+    container.querySelector('#btnGroupApply')?.addEventListener('click', () => {
+      const oldBmk = group.bmk;
+      const newBmk = (container.querySelector('#propGroupBmk') as HTMLInputElement)?.value.trim() ?? '';
+      group.bmk = newBmk;
+      group.deviceTag = (container.querySelector('#propGroupDeviceTag') as HTMLInputElement)?.value.trim();
+      group.functionText = (container.querySelector('#propGroupFunctionText') as HTMLTextAreaElement)?.value.trim();
+      group.additionalText = (container.querySelector('#propGroupAdditionalText') as HTMLTextAreaElement)?.value.trim();
+      group.technicalCharacteristics = (container.querySelector('#propGroupTechnical') as HTMLInputElement)?.value.trim();
+      group.higherLevelFunction = (container.querySelector('#propGroupHigherLevel') as HTMLInputElement)?.value.trim();
+      group.mountingLocation = (container.querySelector('#propGroupLocation') as HTMLInputElement)?.value.trim();
+      group.articleNumber = (container.querySelector('#propGroupArticleNumber') as HTMLInputElement)?.value.trim();
+      group.manufacturer = (container.querySelector('#propGroupManufacturer') as HTMLInputElement)?.value.trim();
+      group.description = (container.querySelector('#propGroupDescription') as HTMLInputElement)?.value.trim();
+
+      if (group.articleNumber) {
+        const primary = group.articleAssignment?.items?.find(a => a.role === 'main') ?? group.articleAssignment?.items?.[0];
+        if (!primary || primary.articleNumber !== group.articleNumber || primary.manufacturer !== group.manufacturer) {
+          group.articleAssignment = {
+            mode: 'manual',
+            items: [{
+              articleNumber: group.articleNumber,
+              manufacturer: group.manufacturer || '',
+              variant: group.variant || '',
+              quantity: 1,
+              role: 'main'
+            }]
+          };
+        }
+      }
+
+      // Propagate BMK / structure to member components
+      const memberCompIds = new Set(groupSelection(page, group.id).componentIds ?? []);
+      for (const comp of page.components) {
+        if (!memberCompIds.has(comp.id)) continue;
+        if (oldBmk && newBmk && oldBmk !== newBmk && comp.bmk === oldBmk) {
+          comp.bmk = newBmk;
+        }
+        if (group.higherLevelFunction) {
+          comp.higherLevelFunction = group.higherLevelFunction;
+        }
+        if (group.mountingLocation) {
+          comp.mountingLocation = group.mountingLocation;
+        }
+      }
+
+      this.notifyChange();
+      this.updateFloatingSelectionBar();
+      this.canvas?.render();
+
+      const applyBtn = container.querySelector('#btnGroupApply') as HTMLButtonElement | null;
+      if (applyBtn) {
+        const orig = applyBtn.innerHTML;
+        applyBtn.innerHTML = t('appliedSuccess');
+        setTimeout(() => { applyBtn.innerHTML = orig; }, 1200);
+      }
+    });
+
+    container.querySelector('#btnGroupDissolve')?.addEventListener('click', () => {
+      this.canvas?.ungroupSelected();
+    });
+
+    container.querySelector('#btnGroupDelete')?.addEventListener('click', () => {
+      this.canvas?.deleteSelected();
+    });
+  }
+
   private renderPropertiesTab(container: HTMLElement): void {
+    const page = this.project.pages.find(p => p.id === this.project.activePageId);
+    if (this.canvas && page) {
+      const selection = this.canvas.getElementSelection();
+      const group = selectedGroup(page, selection);
+      if (group) {
+        this.renderGroupProperties(container, group, page);
+        return;
+      }
+    }
     if (this.canvas && selectionCount(this.canvas.getElementSelection()) > 1) {
       this.renderSelectionProperties(container);
       return;

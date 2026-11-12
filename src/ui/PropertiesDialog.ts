@@ -6,7 +6,7 @@ import {renderInspectionFields,collectInspectionFields,applyInspectionFields} fr
 // Component properties modal ("Eigenschaften (Schaltzeichen)")
 
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
-import { Page, PlacedComponent, Project, TextFormatConfig } from '../model/types';
+import { Page, PlacedComponent, Project, TextFormatConfig, ElementGroup } from '../model/types';
 import { escapeSvg } from '../model/ImportedDrawing';
 import { getSymbolForComponent, getDrawingUnitsPerMm } from '../model/symbols';
 import { editorArticles, assignMainCatalogArticle } from '../model/EditorArticles';
@@ -20,6 +20,7 @@ import { resizeDeviceBox } from '../model/DeviceBoxElement';
 import { t, getLocalizedSymbol } from '../i18n';
 import { ElementSelection, selectionCount } from '../model/ElementSelection';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
+import { groupArticleKey, assignGroupCatalogArticle, groupSelection, dissolveElementGroups } from '../model/ElementGroups';
 
 export interface PropertiesDialogCallbacks {
   onManageArticles?:()=>void;
@@ -1551,6 +1552,254 @@ export class PropertiesDialog {
     });
 
     modal.querySelector('#btnSaveProp')?.addEventListener('click', () => {
+      executeApply();
+      closeModal();
+    });
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        executeApply();
+        closeModal();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    });
+  }
+
+  public static showGroupModal(page: Page, project: Project, group: ElementGroup, onSave: () => void): void {
+    const existing = document.getElementById('propertiesModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'propertiesModal';
+    modal.className = 'dialog-overlay';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2500;
+      backdrop-filter: blur(2px);
+    `;
+
+    modal.innerHTML = `
+      <div class="modal-card ecad-window" style="
+        background: #232731;
+        border: 1px solid #4a5568;
+        border-radius: 6px;
+        width: 100%;
+        max-width: 680px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        color: #edf2f7;
+        font-family: inherit;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      ">
+        <div class="ecad-window-header" style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 14px;
+          background: #2d323e;
+          border-bottom: 1px solid #3e4656;
+          user-select: none;
+        ">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
+            <span style="color: #63b3ed; font-weight: bold;">📦</span>
+            <span>Baugruppen-Eigenschaften: ${escapeSvg(group.bmk || 'Baugruppe')} (${group.members.length} Elemente)</span>
+          </div>
+          <button id="btnCloseGroupModal" style="background: none; border: none; color: #a0aec0; font-size: 20px; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+
+        <div style="padding: 16px; max-height: 70vh; overflow-y: auto;">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 0; margin-bottom: 14px;">
+            Diese Gruppe wird im Schaltplan und in der Stückliste (BOM) als ein einzelnes Betriebsmittel / Baugruppe geführt.
+          </p>
+
+          <fieldset style="border: 1px solid #3e4656; border-radius: 4px; padding: 10px 12px; margin-bottom: 14px;">
+            <legend style="font-size: 11px; font-weight: 600; color: #63b3ed; padding: 0 4px;">Identifikation & Texte</legend>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+              <div>
+                <label class="form-label">${escapeSvg(t('labelBmk'))}</label>
+                <input class="form-input" id="groupModalBmk" value="${escapeSvg(group.bmk || '')}">
+              </div>
+              <div>
+                <label class="form-label">${escapeSvg(t('labelDeviceTag'))}</label>
+                <input class="form-input" id="groupModalDeviceTag" value="${escapeSvg(group.deviceTag || '')}" placeholder="${escapeSvg(t('placeholderDeviceTag'))}">
+              </div>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <label class="form-label">${escapeSvg(t('labelFunctionText'))}</label>
+              <textarea class="form-input" id="groupModalFunctionText" rows="2">${escapeSvg(group.functionText || '')}</textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="form-label">${escapeSvg(t('labelAdditionalText'))}</label>
+                <textarea class="form-input" id="groupModalAdditionalText" rows="2">${escapeSvg(group.additionalText || '')}</textarea>
+              </div>
+              <div>
+                <label class="form-label">${escapeSvg(t('labelTechnical'))}</label>
+                <textarea class="form-input" id="groupModalTechnical" rows="2">${escapeSvg(group.technicalCharacteristics || '')}</textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset style="border: 1px solid #3e4656; border-radius: 4px; padding: 10px 12px; margin-bottom: 14px;">
+            <legend style="font-size: 11px; font-weight: 600; color: #63b3ed; padding: 0 4px;">Struktur (IEC 81346)</legend>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="form-label">${escapeSvg(t('labelStructure'))} (=Anlage)</label>
+                <input class="form-input" id="groupModalHigherLevel" value="${escapeSvg(group.higherLevelFunction || '')}" placeholder="=A1">
+              </div>
+              <div>
+                <label class="form-label">${escapeSvg(t('labelStructure'))} (+Ort)</label>
+                <input class="form-input" id="groupModalLocation" value="${escapeSvg(group.mountingLocation || '')}" placeholder="+S1">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset style="border: 1px solid #3e4656; border-radius: 4px; padding: 10px 12px; margin-bottom: 10px;">
+            <legend style="font-size: 11px; font-weight: 600; color: #63b3ed; padding: 0 4px;">Artikel & Stückliste (Baugruppenartikel)</legend>
+            <div style="margin-bottom: 10px;">
+              <label class="form-label">${escapeSvg(t('labelAssignPart'))}</label>
+              <select class="form-input" id="groupModalQuickArticle" data-editor-article-select>
+                ${editorArticleOptions(groupArticleKey(group))}
+              </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+              <div>
+                <label class="form-label">${escapeSvg(t('labelArticleNumber'))}</label>
+                <input class="form-input" id="groupModalArticleNumber" value="${escapeSvg(group.articleNumber || '')}" placeholder="z.B. 3RM1001-1AA04">
+              </div>
+              <div>
+                <label class="form-label">${escapeSvg(t('labelManufacturer'))}</label>
+                <input class="form-input" id="groupModalManufacturer" value="${escapeSvg(group.manufacturer || '')}" placeholder="z.B. Siemens">
+              </div>
+            </div>
+            <div>
+              <label class="form-label">${escapeSvg(t('articlesDescription'))}</label>
+              <input class="form-input" id="groupModalDescription" value="${escapeSvg(group.description || '')}" placeholder="z.B. Motorstarter 24V DC">
+            </div>
+          </fieldset>
+        </div>
+
+        <div style="
+          padding: 10px 16px;
+          border-top: 1px solid #3e4656;
+          background: #1c1f26;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        ">
+          <button id="btnGroupModalDissolve" class="btn" style="padding: 6px 12px; font-size: 12px; color: #e2e8f0;">
+            ${escapeSvg(t('menuUngroup'))}
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnGroupModalApply" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnApply'))}</button>
+            <button id="btnGroupModalSave" class="btn btn-primary" style="padding: 6px 16px; font-size: 12px; font-weight: 600;">${escapeSvg(t('propBtnOk'))}</button>
+            <button id="btnGroupModalCancel" class="btn" style="padding: 6px 14px; font-size: 12px;">${escapeSvg(t('propBtnCancel'))}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('#btnCloseGroupModal')?.addEventListener('click', closeModal);
+    modal.querySelector('#btnGroupModalCancel')?.addEventListener('click', closeModal);
+
+    const quickPart = modal.querySelector('#groupModalQuickArticle') as HTMLSelectElement;
+    quickPart?.addEventListener('change', () => {
+      const entry = editorArticles().find(e => catalogKey(e.article) === quickPart.value);
+      if (entry) {
+        assignGroupCatalogArticle(group, entry.article);
+        const mfrInput = modal.querySelector<HTMLInputElement>('#groupModalManufacturer');
+        const artInput = modal.querySelector<HTMLInputElement>('#groupModalArticleNumber');
+        const descInput = modal.querySelector<HTMLInputElement>('#groupModalDescription');
+        const fnInput = modal.querySelector<HTMLTextAreaElement>('#groupModalFunctionText');
+        const techInput = modal.querySelector<HTMLTextAreaElement>('#groupModalTechnical');
+        if (mfrInput) mfrInput.value = group.manufacturer || '';
+        if (artInput) artInput.value = group.articleNumber || '';
+        if (descInput) descInput.value = group.description || '';
+        if (fnInput) fnInput.value = group.functionText || '';
+        if (techInput) techInput.value = group.technicalCharacteristics || '';
+      }
+    });
+
+    const executeApply = () => {
+      const oldBmk = group.bmk;
+      const newBmk = (modal.querySelector('#groupModalBmk') as HTMLInputElement)?.value.trim() ?? '';
+      group.bmk = newBmk;
+      group.deviceTag = (modal.querySelector('#groupModalDeviceTag') as HTMLInputElement)?.value.trim();
+      group.functionText = (modal.querySelector('#groupModalFunctionText') as HTMLTextAreaElement)?.value.trim();
+      group.additionalText = (modal.querySelector('#groupModalAdditionalText') as HTMLTextAreaElement)?.value.trim();
+      group.technicalCharacteristics = (modal.querySelector('#groupModalTechnical') as HTMLTextAreaElement)?.value.trim();
+      group.higherLevelFunction = (modal.querySelector('#groupModalHigherLevel') as HTMLInputElement)?.value.trim();
+      group.mountingLocation = (modal.querySelector('#groupModalLocation') as HTMLInputElement)?.value.trim();
+      group.articleNumber = (modal.querySelector('#groupModalArticleNumber') as HTMLInputElement)?.value.trim();
+      group.manufacturer = (modal.querySelector('#groupModalManufacturer') as HTMLInputElement)?.value.trim();
+      group.description = (modal.querySelector('#groupModalDescription') as HTMLInputElement)?.value.trim();
+
+      if (group.articleNumber) {
+        const primary = group.articleAssignment?.items?.find(a => a.role === 'main') ?? group.articleAssignment?.items?.[0];
+        if (!primary || primary.articleNumber !== group.articleNumber || primary.manufacturer !== group.manufacturer) {
+          group.articleAssignment = {
+            mode: 'manual',
+            items: [{
+              articleNumber: group.articleNumber,
+              manufacturer: group.manufacturer || '',
+              variant: group.variant || '',
+              quantity: 1,
+              role: 'main'
+            }]
+          };
+        }
+      }
+
+      // Propagate BMK / structure to member components
+      const memberCompIds = new Set(groupSelection(page, group.id).componentIds ?? []);
+      for (const comp of page.components) {
+        if (!memberCompIds.has(comp.id)) continue;
+        if (oldBmk && newBmk && oldBmk !== newBmk && comp.bmk === oldBmk) {
+          comp.bmk = newBmk;
+        }
+        if (group.higherLevelFunction) {
+          comp.higherLevelFunction = group.higherLevelFunction;
+        }
+        if (group.mountingLocation) {
+          comp.mountingLocation = group.mountingLocation;
+        }
+      }
+
+      onSave();
+    };
+
+    modal.querySelector('#btnGroupModalDissolve')?.addEventListener('click', () => {
+      dissolveElementGroups(page, groupSelection(page, group.id));
+      closeModal();
+      onSave();
+    });
+
+    modal.querySelector('#btnGroupModalApply')?.addEventListener('click', () => {
+      executeApply();
+      const applyBtn = modal.querySelector('#btnGroupModalApply') as HTMLElement;
+      if (applyBtn) {
+        const origText = applyBtn.textContent || t('propBtnApply');
+        applyBtn.textContent = t('propAppliedBadge');
+        setTimeout(() => { applyBtn.textContent = origText; }, 1200);
+      }
+    });
+
+    modal.querySelector('#btnGroupModalSave')?.addEventListener('click', () => {
       executeApply();
       closeModal();
     });
