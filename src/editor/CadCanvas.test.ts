@@ -44,7 +44,7 @@ component.functionText = 'Geändert';
 const scene: any = { activePage: page, svg: { innerHTML: '' }, scale: 1, panX: 0, panY: 0,
   getEffectiveGridSize: () => 8, renderPlotFrame: () => '<g id="normal-frame"/>',
 };
-for (const name of ['renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderInteractiveWall', 'renderHoveredPin', 'renderGhostSymbol', 'renderGhostOpening', 'renderMagnifierSvg']) scene[name] = () => '';
+for (const name of ['renderInteraction', 'renderSelectionOverlay', 'renderCables', 'renderWires', 'renderComponents', 'renderImages', 'renderBoxes', 'renderTexts', 'renderAutoconnectPreview', 'renderInteractiveWire', 'renderInteractiveWall', 'renderHoveredPin', 'renderGhostSymbol', 'renderGhostOpening', 'renderMagnifierSvg']) scene[name] = () => '';
 CadCanvas.prototype.render.call(scene);
 assert.match(scene.svg.innerHTML, /fill="#1a202c"/);
 assert.match(scene.svg.innerHTML, /fill="url\(#cadGrid\)"/);
@@ -707,3 +707,32 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   c.setElementSelection({componentIds:['ga'],cableIds:[]});assert.deepEqual(c.getElementSelection().componentIds,['ga'],'After ungrouping individual selection is restored');
   console.log('✓ Group selection is atomic across mouse, touch, context menu, nested members, resize/route handles and movement; ungrouping restores individual selection');
 }
+
+// View-only navigation must retain the scene, even on dense imported pages.
+{
+  let rebuilds=0;const attributes:Record<string,string>={},handleAttrs:Record<string,string>={};
+  const view:any=Object.assign(Object.create(CadCanvas.prototype),{scale:1,panX:0,panY:0,container:{getBoundingClientRect:()=>({width:800,height:600})},
+    svg:{getElementById:()=>({setAttribute:(key:string,value:string)=>{attributes[key]=value;}}),querySelectorAll:()=>[{setAttribute:(key:string,value:string)=>{handleAttrs[key]=value;}}]},render:()=>{rebuilds++;}});
+  view.panBy(20,30);assert.equal(attributes.transform,'translate(20, 30) scale(1)');
+  view.zoomIn();assert.equal(handleAttrs.r,String(5/view.scale));view.zoomOut();
+  view.onWheel({clientX:400,clientY:300,deltaY:-1,preventDefault:()=>{}});
+  view.touchMode='pan';view.isPanning=true;view.startPan={x:0,y:0};
+  view.onTouchMove({touches:[{clientX:50,clientY:70}],preventDefault:()=>{}});
+  assert.equal(view.panX,50);assert.equal(view.panY,70);assert.equal(rebuilds,0,'Navigation updates only the viewport, never the full SVG');
+  let overlays=0;view.mode='select';view.isPanning=false;view.touchMode='none';view.screenToWorld=(x:number,y:number)=>({x,y});view.findPinAt=()=>({componentId:'a',pinId:'1'});view.updateInteractionLayer=()=>{overlays++;};
+  view.onMouseMove({clientX:10,clientY:10});assert.equal(overlays,1);assert.equal(rebuilds,0,'Hover updates only the interaction layer');
+}
+
+// Rendering many reference labels must build a project-wide index once per
+// operation; a subsequent edit must be visible without a persistent cache.
+{
+  const {fixture,add}=await import('../layout/testing/fixture');
+  const pr=fixture(),p=pr.pages[0];
+  const sources=Array.from({length:24},(_,i)=>{const c=add(pr,'ref-'+i,'contactor_coil');c.crossRef='/2.1';return c;});
+  let pageReads=0;
+  Object.defineProperty(pr,'pages',{get:()=>{pageReads++;return [p];}});
+  const c:any=Object.assign(Object.create(CadCanvas.prototype),{activePage:p,project:pr,mode:'select'});
+  const rendered=c.renderComponents();assert(rendered.includes('/2.1'));assert(pageReads<sources.length+10,`Expected one project index per render, got ${pageReads} project traversals`);
+  sources[0].crossRef='/3.2';assert(c.renderComponents().includes('/3.2'),'Rendering after an edit resolves current data');
+}
+console.log('✓ Rendering work stays bounded: shared reference index per pass; pan, zoom and hover preserve the drawing DOM');

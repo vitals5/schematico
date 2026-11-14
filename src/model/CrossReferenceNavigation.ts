@@ -179,9 +179,10 @@ export function referenceMarkup(
   source: PlacedComponent,
   svg = false,
   layout?: { x: number; fontSize: number },
+  index?: ProjectIndex,
 ): string {
   const text = source.crossRef ?? '',
-    targets = referenceTargets(project, source);
+    targets = text ? referenceTargets(project, source, index) : [];
   const segments: { start: number; end: number }[] = [];
   let segStart = 0;
   for (const sep of text.matchAll(/\s*(?:\||,|\r?\n)\s*/g)) {

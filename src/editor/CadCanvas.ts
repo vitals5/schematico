@@ -1,6 +1,7 @@
+import { ProjectIndex } from '../model/ProjectIndex';
 import {wrapLabelText} from '../model/LabelLayout';
 import type {InspectionLocation} from '../model/ElectricalInspection';
-import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup, groupSelection } from '../model/ElementGroups';
+import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup, groupSelection, memberKeys } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
 import { boxDrawing, boxSvg } from '../model/DeviceBox';
 import { nextDeviceTag } from '../model/DeviceTag';
@@ -409,7 +410,7 @@ export class CadCanvas {
     this.panX = cx - (cx - this.panX) * (newScale / this.scale);
     this.panY = cy - (cy - this.panY) * (newScale / this.scale);
     this.scale = newScale;
-    this.render();
+    this.updateViewport(true);
   }
 
   public zoomOut(factor: number = 0.8, centerX?: number, centerY?: number): void {
@@ -420,13 +421,13 @@ export class CadCanvas {
     this.panX = cx - (cx - this.panX) * (newScale / this.scale);
     this.panY = cy - (cy - this.panY) * (newScale / this.scale);
     this.scale = newScale;
-    this.render();
+    this.updateViewport(true);
   }
 
   public panBy(dx: number, dy: number): void {
     this.panX += dx;
     this.panY += dy;
-    this.render();
+    this.updateViewport();
   }
 
   public resetZoom(): void {
@@ -970,7 +971,7 @@ export class CadCanvas {
         const step = e.shiftKey ? 160 : 40;
         this.panX += e.key === 'ArrowLeft' ? step : e.key === 'ArrowRight' ? -step : 0;
         this.panY += e.key === 'ArrowUp' ? step : e.key === 'ArrowDown' ? -step : 0;
-        this.render(); return;
+        this.updateViewport(); return;
       }
       if (e.key === 'Tab' && (e.target as Element)?.closest?.('[data-crossref-source]')) return;
       if (e.ctrlKey || e.metaKey) {
@@ -1711,7 +1712,7 @@ export class CadCanvas {
     if (this.isPanning) {
       this.panX = e.clientX - this.startPan.x;
       this.panY = e.clientY - this.startPan.y;
-      this.render();
+      this.updateViewport();
       return;
     }
     if (this.mode === 'pan') {
@@ -1872,11 +1873,11 @@ export class CadCanvas {
       }
     }
 
-    if (this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || this.mode === 'place_opening' || (this.mode === 'draw_wall' && this.wallDraft) || this.wireStart || pinChanged) {
+    if (this.mode === 'place_text' || this.mode === 'place_image' || this.mode === 'cable' || this.mode === 'place_symbol' || this.mode === 'place_macro' || this.mode === 'place_opening' || (this.mode === 'draw_wall' && this.wallDraft) || this.wireStart || pinChanged) {
       if (this.mode === 'draw_wall' && this.wallDraft) {
         this.wallDraft.end = { x: this.snap(world.x), y: this.snap(world.y, false, 'y') };
       }
-      this.render();
+      this.updateInteractionLayer();
     }
   }
 
@@ -1952,7 +1953,7 @@ export class CadCanvas {
     this.panX = mouseX - (mouseX - this.panX) * (newScale / this.scale);
     this.panY = mouseY - (mouseY - this.panY) * (newScale / this.scale);
     this.scale = newScale;
-    this.render();
+    this.updateViewport(true);
   }
 
   private onTouchStart(e: TouchEvent): void {
@@ -2262,7 +2263,7 @@ export class CadCanvas {
         this.panY = originY - (originY - this.initialPan.y) * (targetScale / this.initialPinchScale) + deltaCenterY;
         this.scale = targetScale;
 
-        this.render();
+        this.updateViewport(true);
       }
       return;
     }
@@ -2273,7 +2274,7 @@ export class CadCanvas {
         e.preventDefault();
         this.panX = touch.clientX - this.startPan.x;
         this.panY = touch.clientY - this.startPan.y;
-        this.render();
+        this.updateViewport();
         return;
       }
 
@@ -2572,9 +2573,8 @@ export class CadCanvas {
       const sym = getSymbolForComponent(comp, this.project);
       if (!sym) continue;
       for (const pin of sym.pins) {
-        const pCoord = this.getPinCoordinates(comp.id, pin.id);
-        if (!pCoord) continue;
-        const dist = Math.hypot(x - pCoord.x, y - pCoord.y);
+        const info=AutoconnectEngine.getRotatedPinInfo(comp,pin,sym,this.getComponentScale(comp));
+        const dist = Math.hypot(x - info.worldX, y - info.worldY);
         if (dist <= pinRadius) {
           return { componentId: comp.id, pinId: pin.id };
         }
@@ -2688,22 +2688,34 @@ export class CadCanvas {
           ${this.renderAutoconnectPreview()}
         </g>
 
-        <!-- Interactive Temp Wire & Wall Draft -->
-        ${this.renderInteractiveWire()}
-        ${this.renderInteractiveWall?.() ?? ''}
-
-        <!-- Pin Hover Snap Highlight -->
-        ${this.renderHoveredPin()}
-
-        <!-- Ghost Symbol under Cursor (Placement Preview) -->
-        ${this.renderGhostSymbol()}
-        ${this.renderGhostOpening?.() ?? ''}
+        <g id="interactionLayer" pointer-events="none">${this.renderInteraction()}</g>
         <g id="selectionOverlayLayer" pointer-events="none">${this.renderSelectionOverlay()}</g>
       </g>
 
       <!-- Zoomed Touch Drag Loupe / Magnifier (Screen-Space Overlay) -->
       ${this.renderMagnifierSvg ? this.renderMagnifierSvg(pageWidth, pageHeight) : ''}
     `;
+  }
+
+  /** Navigation changes the view, not the drawing or its reference index. */
+  private updateViewport(zoomChanged=false):void {
+    const viewport=this.svg?.getElementById?.('viewportTransform');
+    if(!viewport){this.render();return;}
+    viewport.setAttribute('transform',`translate(${this.panX}, ${this.panY}) scale(${this.scale})`);
+    if(zoomChanged)for(const handle of this.svg.querySelectorAll('[data-wire-segment]')){
+      handle.setAttribute('r',String(5/this.scale));handle.setAttribute('stroke-width',String(1.5/this.scale));
+    }
+  }
+
+  private renderInteraction():string {
+    return this.renderInteractiveWire()+this.renderInteractiveWall()+this.renderHoveredPin()+this.renderGhostSymbol()+(this.renderGhostOpening?.()??'');
+  }
+
+  private updateInteractionLayer():void {
+    const layer=this.svg.getElementById('interactionLayer');
+    if(layer)layer.innerHTML=this.renderInteraction();
+    if(this.mode==='place_symbol')this.updateAutoconnectPreviewLayer();
+    if(this.mode==='cable'){const cables=this.svg.getElementById('cablesLayer');if(cables)cables.innerHTML=this.renderCables();}
   }
 
   private renderMagnifierSvg(pageWidth: number, pageHeight: number): string {
@@ -2964,7 +2976,8 @@ export class CadCanvas {
       this.lastMousePress=null;this.setElementSelection(membersSelection(members));return true;
     }
     const grouped=selectedRootGroups(this.activePage,hit).length>0;
-    if(grouped||!current[key]?.includes(id)&&(selectionCount(hit)>1||textId||box||image)){
+    const incompleteGroup=grouped&&selectionMembers(hit).some(m=>m.kind!=='group'&&!current[memberKeys[m.kind]]?.includes(m.id));
+    if(incompleteGroup||!current[key]?.includes(id)&&(selectionCount(hit)>1||textId||box||image)){
       this.setElementSelection(current[key]?.includes(id)?current:hit);current=this.getElementSelection();
     }
     if((this.multipleSelection||box||image||textId)&&current[key]?.includes(id)){
@@ -2997,7 +3010,7 @@ export class CadCanvas {
   }
 
   private moveElementSelection(dx:number,dy:number):void {
-    const drag=this.selectionDrag!;drag.dx=dx;drag.dy=dy;translateSelection(this.activePage,drag.snapshot,dx,dy);
+    const drag=this.selectionDrag!;if(drag.dx===dx&&drag.dy===dy)return;drag.dx=dx;drag.dy=dy;translateSelection(this.activePage,drag.snapshot,dx,dy);
     for(const original of drag.snapshot.components){
       const c=this.activePage.components.find(c=>c.id===original.id)!,sym=getSymbolForComponent(c,this.project);
       if(sym) {
@@ -3460,6 +3473,8 @@ export class CadCanvas {
   }
 
   private renderComponents(): string {
+    // One operation-scoped index for all printed references; never cache across edits.
+    let referenceIndex:ProjectIndex|undefined;
     const superseded = supersededConnectionGraphics(this.activePage, this.project);
     const graphicWires = connectionGraphicWires(this.activePage, this.project);
     const labelText = (text: string, x: number, size: number): string => {
@@ -3500,7 +3515,7 @@ export class CadCanvas {
       let crossRefDisplay = '';
       const refPos = computeCrossReferencePosition(comp, scaledSym, this.project);
       if (comp.crossRef && refPos.visible && (!isConn || isInterruptionSymbol(sym))) {
-        crossRefDisplay = `<text class="cross-reference" ${refPos.transform} x="${refPos.x}" y="${refPos.y}" font-size="${refPos.fontSize}" font-family="monospace" fill="#f6ad55" text-anchor="${refPos.anchor}">${referenceMarkup(this.project, comp, true, refPos)}</text>`;
+        crossRefDisplay = `<text class="cross-reference" ${refPos.transform} x="${refPos.x}" y="${refPos.y}" font-size="${refPos.fontSize}" font-family="monospace" fill="#f6ad55" text-anchor="${refPos.anchor}">${referenceMarkup(this.project, comp, true, refPos, referenceIndex??=new ProjectIndex(this.project))}</text>`;
       }
 
       // Pins render

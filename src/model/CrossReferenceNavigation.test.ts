@@ -74,3 +74,9 @@ assert.equal(targets2[0].pageId, 'source');
 assert.equal(targets2[0].componentId, 'p-arrow-1');
 
 console.log('✓ Reference links: split pages, structure, per-contact targets, reverse navigation, interruption points across locations, fallback and escaping');
+
+// Callers rendering a batch of labels may supply an operation-scoped index.
+const {ProjectIndex}=await import('./ProjectIndex');
+const sharedIndex=new ProjectIndex(project);
+assert.equal(referenceMarkup(project,pArrow1,true,undefined,sharedIndex),referenceMarkup(project,pArrow1,true));
+assert.deepEqual(referenceTargets(project,pArrow2,sharedIndex),referenceTargets(project,pArrow2));

@@ -22,9 +22,14 @@ export function groupSelection(page:Page,groupId:string):ElementSelection {
   visit(groupId);return normalizeSelection(page,membersSelection(members));
 }
 export function selectedRootGroups(page:Page,selection:ElementSelection):ElementGroup[] {
-  const picked=new Set(selectionMembers(selection).map(m=>`${m.kind}:${m.id}`));
-  const roots=(page.groups??[]).filter(g=>!(page.groups??[]).some(parent=>parent.members.some(m=>m.kind==='group'&&m.id===g.id)));
-  return roots.filter(g=>selectionMembers(groupSelection(page,g.id)).some(m=>picked.has(`${m.kind}:${m.id}`)));
+  if(!page.groups?.length||!selectionCount(selection))return [];
+  const picked=new Set(selectionMembers(normalizeSelection(page,selection)).map(m=>`${m.kind}:${m.id}`));
+  const byId=new Map(page.groups.map(g=>[g.id,g])),children=new Set(page.groups.flatMap(g=>g.members.filter(m=>m.kind==='group').map(m=>m.id)));
+  const matches=(id:string,seen:Set<string>):boolean=>{
+    if(seen.has(id))return false;seen.add(id);
+    return (byId.get(id)?.members??[]).some(m=>m.kind==='group'?matches(m.id,seen):picked.has(`${m.kind}:${m.id}`));
+  };
+  return page.groups.filter(g=>!children.has(g.id)&&matches(g.id,new Set()));
 }
 export function expandGroupedSelection(page:Page,selection:ElementSelection):ElementSelection {
   const all=[...selectionMembers(selection),...selectedRootGroups(page,selection).flatMap(g=>selectionMembers(groupSelection(page,g.id)))];
