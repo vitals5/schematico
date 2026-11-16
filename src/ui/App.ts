@@ -1,3 +1,4 @@
+import {ConnectorNavigatorDialog} from './ConnectorNavigatorDialog';
 import {ConnectionNavigatorDialog} from './ConnectionNavigatorDialog';
 import { refreshEditorArticles, editorArticles, onEditorArticlesChange, assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
 import { ArticleCatalog } from '../model/ArticleCatalog';
@@ -533,6 +534,15 @@ export class App {
 
   private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
   private openPotentialDefinitions(id?:string){this.canvas.finishInteraction();this.history.record(this.project);new PotentialDialog(()=>this.project,p=>this.applyProjectTransaction(p),id).show();}
+  private openConnectorNavigator():void {
+    this.canvas.finishInteraction();
+    new ConnectorNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{
+      const page=this.project.pages.find(p=>p.id===pageId),component=page?.components.find(c=>c.id===componentId);
+      if(page&&component)this.canvas.focusInspection({pageId,pageNumber:page.pageNumber,componentId,x:component.x,y:component.y});
+      this.updateUI();
+    }).show();
+  }
+
   private openConnectionNavigator():void {
     this.canvas.finishInteraction();
     new ConnectionNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId,wireId)=>{
@@ -1231,6 +1241,7 @@ export class App {
     bindMenuOpt('menuPotentialDefinitions',()=>this.openPotentialDefinitions());
     bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
     bindMenuOpt('menuConnectionNavigator',()=>this.openConnectionNavigator());
+    bindMenuOpt('menuConnectorNavigator',()=>this.openConnectorNavigator());
     bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
       this.canvas.finishInteraction();this.history.record(this.project);

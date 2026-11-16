@@ -450,6 +450,8 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  connectorAssemblies?:import('./Connectors').ConnectorAssembly[];
+  connectorPairings?:import('./Connectors').ConnectorPairing[];
   inspectionWorkflow?: import('./InspectionWorkflow').InspectionWorkflow;
   potentialDefinitions?:import('./PotentialDefinitions').PotentialDefinition[];
   plannedDevices?:PlannedDevice[];
