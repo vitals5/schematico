@@ -91,6 +91,10 @@ Open **Project → Connection list / wiring navigator** for project-wide connect
 
 The macro browser now offers **Parameter & Wertesätze…** for editable text/structure bindings, defaults, named value sets and a preview before placement. External and built-in macros save as local copies; portable macro exports retain configuration. Existing native variables use the same placement dialog. See [macro parameters](docs/macro-parameters.md).
 
+## PLC and bus engineering
+
+**Project → PLC and bus engineering** manages controllers, racks/slots, DI/DO/AI/AO channels, CPU-scoped addresses and signal texts. Signal, supply and common pins can be assigned separately. Documented bus networks include participants and port links, with configuration checks, preview/apply, undo, drawing navigation and CSV/PDF reports. These records do not alter electrical connectivity or configure hardware. See [PLC and bus engineering](docs/automation.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

@@ -35,7 +35,7 @@ export class MacroParametersDialog{
     q('[data-save-local]').onclick=()=>{try{const configured=this.preview();const saved=MacroManager.saveConfiguredMacro(configured,this.expected);this.expected=structuredClone(saved);this.draft=structuredClone(saved);q('[data-saved]').textContent=`Lokal gespeichert: ${saved.name}`;this.onSaved?.(saved);}catch(e){this.error(e);}};
     q('[data-close]').onclick=()=>this.el.remove();
     if(this.onPlace)q('[data-place]').onclick=()=>{try{const configured=this.preview();const pageIndex=Number((this.el.querySelector('[data-source-page]') as HTMLSelectElement)?.value??0);this.onPlace!(configured,pageIndex);this.el.remove();}catch(e){this.error(e);}};
-    finishEngineeringDialog(this.el,{kind:'device',description:'Parameterbindungen, benannte Wertesätze und geprüfte Einfügekopie',wide:true});focusArticleModal(this.el);
+    finishEngineeringDialog(this.el,{kind:'macro',description:'Parameterbindungen, benannte Wertesätze und geprüfte Einfügekopie',wide:true});focusArticleModal(this.el);
   }
   private binding(){try{const value=(key:string)=>(this.el.querySelector('[data-'+key+']') as HTMLInputElement).value;
     const name=value('param-name').trim(),copy=structuredClone(this.draft);copy.configuration??={parameters:[],valueSets:[]};

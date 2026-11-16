@@ -3,6 +3,8 @@ import type { CatalogArticle } from '../model/ArticleTypes';
 
 export type EngineeringIcon =
   | 'device'
+  | 'automation'
+  | 'macro'
   | 'articles'
   | 'wiring'
   | 'catalog'
@@ -18,6 +20,8 @@ export type EngineeringIcon =
   | 'trash'
   | 'check';
 const paths: Record<EngineeringIcon, string> = {
+  automation:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M2 8h3M2 12h3M2 16h3M19 8h3M19 12h3M19 16h3M9 8h6M9 12h6M9 16h3"/>',
+  macro:'<path d="m12 3 9 5-9 5-9-5 9-5zM3 8v9l9 5 9-5V8M12 13v9"/>',
   device:
     '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v18M12 8h4M12 12h4M12 16h4"/>',
   articles: '<path d="M7 3h10l3 4v13H4V7zM4 7h16M9 3v4M9 12h6M9 16h6"/>',

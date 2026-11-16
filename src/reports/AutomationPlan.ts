@@ -1,0 +1,15 @@
+import type {Project} from '../model/types';
+import type {AutomationEntity} from '../model/Automation';
+import {ProjectIndex,displayDesignation} from '../model/ProjectIndex';
+import {automationData,controllerLabel,inspectAutomation} from '../model/Automation';
+import {connectionPinLabel} from './ConnectionList';
+export interface AutomationPlanRow {entity:AutomationEntity;id:string;cells:string[];pageId?:string;componentId?:string}
+export const automationColumns=['Bereich','CPU / Netz','Baugruppe / Teilnehmer','Rack/Slot / Protokoll','Kanal / Ports','Typ','Adresse','Signaltext / Ziel','Status','Signalanschluss','Versorgung','Bezug','Hinweise'];
+export function automationPlan(project:Project):AutomationPlanRow[]{const d=automationData(project),index=new ProjectIndex(project),issues=inspectAutomation(project,index);
+ const label=(a?:{pageId:string;componentId:string;pinId:string})=>{const e=a&&index.component(a.componentId,a.pageId),p=e&&a&&index.pin(e,a.pinId);return p?connectionPinLabel(p):a?'? '+a.componentId+':'+a.pinId:'';};
+ const notes=(entity:string,id:string)=>issues.filter(i=>i.entity===entity&&i.recordId===id).map(i=>i.message).join('; ');
+ return [...d.controllers.map(c=>({entity:'controllers' as const,id:c.id,cells:['SPS',controllerLabel(c),'CPU','','','','',c.description,'','','','',notes('controllers',c.id)]})),...d.modules.map(m=>({entity:'modules' as const,id:m.id,cells:['SPS',(()=>{const c=d.controllers.find(c=>c.id===m.controllerId);return c?controllerLabel(c):'?';})(),m.bmk,m.rack+'/'+m.slot,'','','',m.description,'','','','',notes('modules',m.id)]})),...d.channels.map(c=>{const m=d.modules.find(m=>m.id===c.moduleId),cpu=d.controllers.find(v=>v.id===m?.controllerId);return {entity:'channels' as const,id:c.id,pageId:c.signal?.pageId,componentId:c.signal?.componentId,cells:['SPS',cpu?controllerLabel(cpu):'?',m?.bmk??'?',m?m.rack+'/'+m.slot:'',c.number,c.kind,c.address,c.signalText,c.reserve?'Reserve':c.signal?'Zugeordnet':'Ungeklärt',label(c.signal),label(c.supply),label(c.common),notes('channels',c.id)]};}),
+ ...d.nodes.map(n=>({entity:'nodes' as const,id:n.id,pageId:n.binding?.pageId,componentId:n.binding?.componentId,cells:['Bus',n.network,n.name,n.protocol,'','Teilnehmer',n.address,d.controllers.find(c=>c.id===n.controllerId)?.bmk??'','',(n.binding?(()=>{const e=index.component(n.binding.componentId,n.binding.pageId);return e?displayDesignation(e.structure,e.tag):'? '+n.binding.componentId;})():''),'','',notes('nodes',n.id)]})),
+ ...d.links.map(l=>({entity:'links' as const,id:l.id,cells:['Bus',d.nodes.find(n=>n.id===l.from)?.network??'?',d.nodes.find(n=>n.id===l.from)?.name??'?',d.nodes.find(n=>n.id===l.from)?.protocol??'',l.fromPort+' → '+l.toPort,'Verbindung','',d.nodes.find(n=>n.id===l.to)?.name??'?','','','','',notes('links',l.id)]}))];
+}
+export function automationCsv(rows:AutomationPlanRow[]):string{return '\uFEFF'+[automationColumns,...rows.map(r=>r.cells)].map(row=>row.map(v=>'"'+(/^[=+@\-\t\r]/.test(v)?"'":'')+v.replaceAll('"','""')+'"').join(';')).join('\r\n');}

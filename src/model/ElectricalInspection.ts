@@ -1,3 +1,4 @@
+import {inspectAutomation} from './Automation';
 import {connectorRows} from './Connectors';
 import {PotentialIndex} from './PotentialDefinitions';
 import {inspectWiring} from './WiringManagement';
@@ -12,7 +13,7 @@ import { referenceTargets } from './CrossReferenceNavigation';
 import { componentInsertionPoint, rotatedLocalPoint } from './SymbolGeometry';
 import { t } from '../i18n';
 import {articleDataContext,ARTICLE_DATA_STATES,type ArticleDataContext} from './ArticleDataAnalysis';
-export const ELECTRICAL_RULES = ['connector_configuration','potential_anchor_invalid','potential_definition_collision','potential_policy_mismatch','terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
+export const ELECTRICAL_RULES = ['plc_configuration','bus_configuration','connector_configuration','potential_anchor_invalid','potential_definition_collision','potential_policy_mismatch','terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
 export type ElectricalRule = typeof ELECTRICAL_RULES[number];
 export interface InspectionLocation {
     pageId: string;
@@ -84,6 +85,10 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
         messages.push({ id: JSON.stringify([ruleId, key]), ruleId, domain: 'electrical', severity, category: ruleId.includes('article') ? 'Stammdaten' : ruleId.includes('reference') ? 'Verweise' : ruleId.includes('device') || ruleId.includes('duplicate') ? 'Identität' : 'Verdrahtung', pageId: location.pageId, pageNumber: location.pageNumber, componentId: location.componentId, bmk: entry?.tag, articleData:entry?articles.get(entry):undefined, message, recommendation, cause: { code: ruleId, details }, location, relatedLocations });
     };
     for(const issue of new PotentialIndex(project,index,nets).findings){const entry=issue.componentId?index.component(issue.componentId,issue.pageId):undefined,wire=issue.wireId?index.connections.find(c=>c.wire.id===issue.wireId&&(c.page?.id??c.from?.owner.page.id)===issue.pageId):undefined;const location=inspectionLocation(index,entry??wire?.from?.owner,undefined,issue.wireId);add(issue.code,[issue.definitionId,issue.netId,issue.pageId,issue.wireId,issue.details],issue.code==='potential_definition_collision'?'error':'warning',location,t(issue.code),t('potentialFix'),{definitionId:issue.definitionId,details:issue.details});}
+    if(project.automation)for(const issue of inspectAutomation(project,index)){
+      const entry=issue.binding?index.component(issue.binding.componentId,issue.binding.pageId):undefined;
+      add(issue.domain==='plc'?'plc_configuration':'bus_configuration',issue.id,'warning',inspectionLocation(index,entry,issue.binding&&'pinId' in issue.binding?issue.binding.pinId:undefined),issue.message,t('automationFix'),{entity:issue.entity,recordId:issue.recordId});
+    }
     if(project.connectorAssemblies?.length)for(const row of connectorRows(project,index,nets))for(const issue of row.issues){
       const entry=row.binding?index.component(row.binding.componentId,row.binding.pageId):undefined;
       add('connector_configuration',[row.connectorId,row.position,issue],'warning',inspectionLocation(index,entry,row.binding?.pinId),`${row.bmk}:${row.position}: ${issue}`,t('connectorFix'),{connectorId:row.connectorId,position:row.position,issue});

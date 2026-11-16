@@ -1,3 +1,4 @@
+import {AutomationDialog} from './AutomationDialog';
 import {MacroParametersDialog} from './MacroParametersDialog';
 import {macroParameters} from '../model/MacroParameters';
 import {ConnectorNavigatorDialog} from './ConnectorNavigatorDialog';
@@ -535,6 +536,14 @@ export class App {
 
   private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
   private openPotentialDefinitions(id?:string){this.canvas.finishInteraction();this.history.record(this.project);new PotentialDialog(()=>this.project,p=>this.applyProjectTransaction(p),id).show();}
+  private openAutomationNavigator():void {
+    this.canvas.finishInteraction();
+    new AutomationDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{
+      const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);
+      if(page&&c)this.canvas.focusInspection({pageId,pageNumber:page.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();
+    }).show();
+  }
+
   private openConnectorNavigator():void {
     this.canvas.finishInteraction();
     new ConnectorNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{
@@ -1243,6 +1252,7 @@ export class App {
     bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
     bindMenuOpt('menuConnectionNavigator',()=>this.openConnectionNavigator());
     bindMenuOpt('menuConnectorNavigator',()=>this.openConnectorNavigator());
+    bindMenuOpt('menuAutomationNavigator',()=>this.openAutomationNavigator());
     bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
       this.canvas.finishInteraction();this.history.record(this.project);
