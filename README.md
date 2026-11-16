@@ -79,6 +79,10 @@ Evidence-based cable repair proposals, BMEcat manufacturer imports and exact art
 
 [Article package imports](docs/article-packages.md) support structured WSPAK article JSON and EDZ article XML in ZIP or 7z containers, with preview and local catalogue storage. Readable embedded 2D macros are retained with their articles and can be placed using their original library geometry. Unsupported binary libraries and 3D macros are preserved as original files with explicit diagnostics. The manufacturer portal can be opened in the browser for sign-in and downloads; portal access remains manual, without integrated API search. WSPAK metadata can also be paired with a matching DWG/DXF through a preview that confirms units, labels and directional pins. The result is an editable library symbol with normal autoconnect. DWG conversion runs locally in a separate, independently usable GPL-3.0 CAD converter; its license and complete corresponding source are included. The main application reads standard DXF without linking the DWG engine.
 
+## Connection list and wiring navigator
+
+Open **Project → Connection list / wiring navigator** for project-wide connections, search, page and issue filters, source/target navigation, cable/core assignments and CSV/PDF export. Explicit physical conductor lengths can be entered in millimetres with undo/redo; drawing geometry is never used to infer them. Reports list recorded connection segments and identify unresolved data. See [connection navigator](docs/connection-navigator.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.

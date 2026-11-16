@@ -1,3 +1,4 @@
+import {ConnectionNavigatorDialog} from './ConnectionNavigatorDialog';
 import { refreshEditorArticles, editorArticles, onEditorArticlesChange, assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
 import { ArticleCatalog } from '../model/ArticleCatalog';
 import { refreshEditorArticleSelectors, editorArticleOptions, componentArticleKey } from './EditorArticlePicker';
@@ -532,6 +533,19 @@ export class App {
 
   private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
   private openPotentialDefinitions(id?:string){this.canvas.finishInteraction();this.history.record(this.project);new PotentialDialog(()=>this.project,p=>this.applyProjectTransaction(p),id).show();}
+  private openConnectionNavigator():void {
+    this.canvas.finishInteraction();
+    new ConnectionNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId,wireId)=>{
+      const page=this.project.pages.find(p=>p.id===pageId);
+      if(!page)return;
+      const wire=page.wires.find(w=>w.id===wireId);
+      const component=page.components.find(c=>c.id===(componentId??wire?.from.componentId));
+      this.canvas.focusInspection({pageId,pageNumber:page.pageNumber,componentId,wireId,
+        x:component?.x??page.plotFrame.width/2,y:component?.y??page.plotFrame.height/2});
+      this.updateUI();
+    }).show();
+  }
+
   private openWiringWorkbench(initial?:import('../model/ElectricalInspection').InspectionLocation){this.canvas.finishInteraction();this.history.record(this.project);new WiringDialog(()=>this.project,p=>this.applyProjectTransaction(p),initial).show();}
   private openDeviceNavigator(){this.canvas.finishInteraction();this.history.record(this.project);new DeviceNavigatorDialog(()=>this.project,p=>this.applyProjectTransaction(p),a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(c)this.canvas.focusInspection({pageId:a.pageId,pageNumber:page!.pageNumber,componentId:c.id,x:c.x,y:c.y});this.updateUI();},a=>this.openArticleWorkbench(a)).show();}
   private openArticleWorkbench(initial:ComponentAddress[]=[]):void {
@@ -1216,6 +1230,7 @@ export class App {
     bindMenuOpt('menuDeviceNavigator',()=>this.openDeviceNavigator());
     bindMenuOpt('menuPotentialDefinitions',()=>this.openPotentialDefinitions());
     bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
+    bindMenuOpt('menuConnectionNavigator',()=>this.openConnectionNavigator());
     bindMenuOpt('menuArticles',()=>this.openArticleWorkbench(this.canvas.getElementSelection().componentIds.map(id=>({pageId:this.project.activePageId,componentId:id}))));
     bindMenuOpt('menuSyncArticles', () => {
       this.canvas.finishInteraction();this.history.record(this.project);

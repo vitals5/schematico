@@ -270,6 +270,8 @@ export interface PlacedComponent {
 }
 
 export interface Wire {
+  /** Explicit physical conductor length in mm; never derived from drawing geometry. */
+  lengthMm?: number;
   terminalBridge?:'plug'|'wire';
   id: string;
   from: {
