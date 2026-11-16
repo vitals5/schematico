@@ -65,4 +65,6 @@ Der gemeinsame Prüflauf verwendet `plc_configuration` und `bus_configuration` f
 
 Suche und seitenweise Tabellen begrenzen die sichtbaren Datensätze auf 100 pro Ansicht. CSV und PDF exportieren den vollständigen gefilterten Bereich. Bei CPU-Auswahl umfasst der Bericht die CPU mit ihren Baugruppen und Kanälen, bei Baugruppen deren Kanäle. Die übrigen Bereiche exportieren ihre gefilterten Einträge. Die Übersicht enthält Kanaltypen, Adressen, Signaltexte, Rollenanschlüsse, Netz-/Protokoll- und Portdaten sowie Hinweise.
 
-Die Daten werden mit dem Projekt gespeichert. Ein bidirektionaler Austausch mit SPS-Engineeringsoftware oder AutomationML ist in diesem Schritt noch nicht enthalten.
+Für die [tabellarische Massenbearbeitung](automation-exchange.md) stehen eigene Bearbeitungs-CSVs mit stabilen IDs, Standprüfung, Änderungsübersicht und atomarem Reimport bereit.
+
+Die Daten werden mit dem Projekt gespeichert. Ein nativer bidirektionaler Austausch mit SPS-Engineeringsoftware oder AutomationML ist in diesem Schritt noch nicht enthalten.
