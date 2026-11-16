@@ -93,7 +93,7 @@ The macro browser now offers **Parameter & Wertesätze…** for editable text/st
 
 ## PLC and bus engineering
 
-**Project → PLC and bus engineering** manages controllers, racks/slots, DI/DO/AI/AO channels, CPU-scoped addresses and signal texts. Signal, supply and common pins can be assigned separately. Documented bus networks include participants and port links, with configuration checks, preview/apply, undo, drawing navigation and CSV/PDF reports. These records do not alter electrical connectivity or configure hardware. See [PLC and bus engineering](docs/automation.md).
+**Project → PLC and bus engineering** manages controllers, racks/slots, DI/DO/AI/AO channels, CPU-scoped addresses and signal texts. Signal, supply and common pins can be assigned separately. Documented bus networks include participants and port links, with configuration checks, preview/apply, undo, drawing navigation and CSV/PDF reports. These records do not alter electrical connectivity or configure hardware. KNX TP/IP adds individual addresses, separate group addresses and communication-object/DPT assignments. Loxone Link, Tree and Air use explicit interfaces/branches with protocol-specific topology and capacity checks; Air associations remain wireless. Missing lengths and unknown limits stay visible. See [PLC and bus engineering](docs/automation.md) and the [official source register and limits](docs/automation-sources.md).
 
 ## About Schematico
 

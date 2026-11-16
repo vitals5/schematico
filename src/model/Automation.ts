@@ -1,16 +1,20 @@
 import type {Project} from './types';
+import {busProtocols,isKnx,sharedBusPort,knxIndividualAddress,type BusProtocol} from './BusProfiles';
+import {inspectBuildingAutomation} from './BuildingAutomation';
 import {ProjectIndex} from './ProjectIndex';
 import type {ConnectorPinAddress} from './Connectors';
 export interface PlcController {id:string;bmk:string;plant:string;location:string;description:string}
 export interface PlcModule {id:string;controllerId:string;rack:string;slot:string;bmk:string;description:string}
 export interface PlcChannel {id:string;moduleId:string;number:string;kind:'DI'|'DO'|'AI'|'AO';address:string;signalText:string;reserve:boolean;signal?:ConnectorPinAddress;supply?:ConnectorPinAddress;common?:ConnectorPinAddress}
-export interface BusNode {id:string;name:string;network:string;protocol:'PROFINET'|'EtherCAT'|'Modbus TCP'|'Modbus RTU'|'Other';address:string;controllerId?:string;binding?:{pageId:string;componentId:string}}
-export interface BusLink {id:string;from:string;to:string;fromPort:string;toPort:string}
-export interface AutomationData {controllers:PlcController[];modules:PlcModule[];channels:PlcChannel[];nodes:BusNode[];links:BusLink[]}
+export interface BusNode {id:string;name:string;network:string;protocol:BusProtocol;address:string;ipAddress?:string;interfaceRole?:'device'|'interface';interfaceId?:string;interfaceProfile?:'generic'|'air-base';capacity?:number;controllerId?:string;binding?:{pageId:string;componentId:string}}
+export interface BusLink {id:string;from:string;to:string;fromPort:string;toPort:string;lengthM?:number}
+export interface KnxGroup {id:string;network:string;name:string;address:string;dpt:string}
+export interface KnxObject {id:string;nodeId:string;number:string;name:string;groupId:string;dpt:string;direction:'send'|'receive'|'both'}
+export interface AutomationData {controllers:PlcController[];modules:PlcModule[];channels:PlcChannel[];nodes:BusNode[];links:BusLink[];knxGroups:KnxGroup[];knxObjects:KnxObject[]}
 export type AutomationEntity=keyof AutomationData;
-export type AutomationEdit={kind:'save';entity:AutomationEntity;value:PlcController|PlcModule|PlcChannel|BusNode|BusLink}|{kind:'remove';entity:AutomationEntity;id:string};
+export type AutomationEdit={kind:'save';entity:AutomationEntity;value:PlcController|PlcModule|PlcChannel|BusNode|BusLink|KnxGroup|KnxObject}|{kind:'remove';entity:AutomationEntity;id:string};
 export interface AutomationIssue {id:string;domain:'plc'|'bus';entity:AutomationEntity;recordId:string;message:string;binding?:ConnectorPinAddress|{pageId:string;componentId:string}}
-export const automationData=(p:Project):AutomationData=>({controllers:p.automation?.controllers??[],modules:p.automation?.modules??[],channels:p.automation?.channels??[],nodes:p.automation?.nodes??[],links:p.automation?.links??[]});
+export const automationData=(p:Project):AutomationData=>({controllers:p.automation?.controllers??[],modules:p.automation?.modules??[],channels:p.automation?.channels??[],nodes:p.automation?.nodes??[],links:p.automation?.links??[],knxGroups:p.automation?.knxGroups??[],knxObjects:p.automation?.knxObjects??[]});
 export const controllerLabel=(c:PlcController)=>[c.plant?'='+c.plant.replace(/^=+/,''):'',c.location?'+'+c.location.replace(/^\++/,''):'',c.bmk].join('');
 /** Recognised IEC/German I/O aliases share a bit range; other addresses remain symbolic. */
 export function plcAddress(value:string):{area:'I'|'Q';start:number;end:number}|undefined{
@@ -20,7 +24,7 @@ export function plcAddress(value:string):{area:'I'|'Q';start:number;end:number}|
 }
 export function inspectAutomation(project:Project,index=new ProjectIndex(project)):AutomationIssue[]{
  const d=automationData(project),issues:AutomationIssue[]=[];
- const issue=(entity:AutomationEntity,id:string,message:string,binding?:AutomationIssue['binding'])=>issues.push({id:JSON.stringify([entity,id,message]),domain:entity==='nodes'||entity==='links'?'bus':'plc',entity,recordId:id,message,binding});
+ const issue=(entity:AutomationEntity,id:string,message:string,binding?:AutomationIssue['binding'])=>issues.push({id:JSON.stringify([entity,id,message]),domain:['nodes','links','knxGroups','knxObjects'].includes(entity)?'bus':'plc',entity,recordId:id,message,binding});
  const one=<T extends {id:string}>(items:T[],id:string)=>items.filter(v=>v.id===id).length===1?items.find(v=>v.id===id):undefined;
  const portKey=(a:ConnectorPinAddress)=>JSON.stringify([a.pageId,a.componentId,a.pinId]);
  const pin=(a:ConnectorPinAddress)=>{const e=index.component(a.componentId,a.pageId);return !!e&&!!index.pin(e,a.pinId)?.definition&&index.componentsById.get(a.componentId)?.length===1;};
@@ -46,19 +50,20 @@ export function inspectAutomation(project:Project,index=new ProjectIndex(project
   if(!a&&/^%?[IEQA](?:\d|[BWD]\d)/i.test(c.address.trim()))issue('channels',c.id,'Numerische E/A-Adresse ist ungültig',binding);
   if(overlap.has(c))issue('channels',c.id,'E/A-Adresse überschneidet sich innerhalb der CPU',binding);
  }
- for(const n of d.nodes){if(!n.name.trim()||!n.network.trim()||!['PROFINET','EtherCAT','Modbus TCP','Modbus RTU','Other'].includes(n.protocol))issue('nodes',n.id,'Busname, Netz oder Protokoll fehlt/ist ungültig',n.binding);
+ for(const n of d.nodes){if(!n.name.trim()||!n.network.trim()||!busProtocols.includes(n.protocol))issue('nodes',n.id,'Busname, Netz oder Protokoll fehlt/ist ungültig',n.binding);
   if(n.controllerId&&!one(d.controllers,n.controllerId))issue('nodes',n.id,'Zugeordnete CPU fehlt',n.binding);
   if(n.binding&&(!index.component(n.binding.componentId,n.binding.pageId)||index.componentsById.get(n.binding.componentId)?.length!==1))issue('nodes',n.id,'Busgerät in der Zeichnung fehlt oder ist mehrdeutig',n.binding);
   if(n.protocol==='Modbus RTU'&&n.address&&(!/^\d+$/.test(n.address)||Number(n.address)<1||Number(n.address)>247))issue('nodes',n.id,'Modbus-RTU-Adresse muss zwischen 1 und 247 liegen',n.binding);
-  if(d.nodes.some(v=>v.id!==n.id&&v.network===n.network&&v.protocol===n.protocol&&((n.address.trim()&&v.address.trim().toLowerCase()===n.address.trim().toLowerCase())||v.name===n.name)))issue('nodes',n.id,'Busname oder Adresse im selben Netz ist mehrfach vergeben',n.binding);
+  if(d.nodes.some(v=>v.id!==n.id&&v.network===n.network&&(v.protocol===n.protocol||isKnx(v.protocol)&&isKnx(n.protocol))&&((n.address.trim()&&(isKnx(n.protocol)?knxIndividualAddress(v.address)===knxIndividualAddress(n.address):n.protocol==='Modbus RTU'?Number(v.address)===Number(n.address):v.address.trim().toLowerCase()===n.address.trim().toLowerCase()))||v.name===n.name)))issue('nodes',n.id,'Busname oder Adresse im selben Netz ist mehrfach vergeben',n.binding);
  }
  for(const l of d.links){const a=one(d.nodes,l.from),b=one(d.nodes,l.to);
   if(!a||!b||l.from===l.to)issue('links',l.id,'Busverbindung benötigt zwei eindeutige verschiedene Teilnehmer');
   else if(a.network!==b.network||a.protocol!==b.protocol)issue('links',l.id,'Teilnehmer gehören nicht zum selben Netz/Protokoll');
-  if(a&&a.protocol!=='Modbus RTU'&&a.protocol!=='Other'&&d.links.some(v=>v.id!==l.id&&[[l.from,l.fromPort],[l.to,l.toPort]].some(([node,port])=>v.from===node&&v.fromPort===port||v.to===node&&v.toPort===port)))issue('links',l.id,'Busport ist mehrfach belegt');
-  if(!l.fromPort.trim()||!l.toPort.trim())issue('links',l.id,'Busportbezeichnungen fehlen');
+  if(a&&!sharedBusPort(a.protocol)&&d.links.some(v=>v.id!==l.id&&[[l.from,l.fromPort],[l.to,l.toPort]].some(([node,port])=>v.from===node&&v.fromPort===port||v.to===node&&v.toPort===port)))issue('links',l.id,'Busport ist mehrfach belegt');
+  if(a?.protocol!=='Loxone Air'&&(!l.fromPort.trim()||!l.toPort.trim()))issue('links',l.id,'Busportbezeichnungen fehlen');
   if(d.links.some(v=>v.id!==l.id&&(v.from===l.from&&v.to===l.to&&v.fromPort===l.fromPort&&v.toPort===l.toPort||v.to===l.from&&v.from===l.to&&v.toPort===l.fromPort&&v.fromPort===l.toPort)))issue('links',l.id,'Busverbindung ist doppelt vorhanden');
  }
+ inspectBuildingAutomation(d,issue);
  return [...new Map(issues.map(i=>[i.id,i])).values()];
 }
 export function editAutomation(project:Project,edit:AutomationEdit):Project{
@@ -67,7 +72,8 @@ export function editAutomation(project:Project,edit:AutomationEdit):Project{
  }else{const removedModules=new Set(edit.entity==='controllers'?d.modules.filter(m=>m.controllerId===edit.id).map(m=>m.id):edit.entity==='modules'?[edit.id]:[]);if(d[edit.entity].filter(v=>v.id===edit.id).length!==1)throw new Error('Datensatz ist nicht eindeutig.');(d as any)[edit.entity]=d[edit.entity].filter(v=>v.id!==edit.id);
   if(edit.entity==='controllers'){d.modules=d.modules.filter(m=>m.controllerId!==edit.id);d.nodes=d.nodes.map(n=>{if(n.controllerId===edit.id)delete n.controllerId;return n;});}
   if(edit.entity==='controllers'||edit.entity==='modules')d.channels=d.channels.filter(c=>!removedModules.has(c.moduleId));
-  if(edit.entity==='nodes')d.links=d.links.filter(l=>l.from!==edit.id&&l.to!==edit.id);
+  if(edit.entity==='nodes'){d.links=d.links.filter(l=>l.from!==edit.id&&l.to!==edit.id);d.knxObjects=d.knxObjects.filter(o=>o.nodeId!==edit.id);d.nodes=d.nodes.map(n=>{if(n.interfaceId===edit.id)delete n.interfaceId;return n;});}
+  if(edit.entity==='knxGroups')d.knxObjects=d.knxObjects.filter(o=>o.groupId!==edit.id);
  }
  const before=new Set(inspectAutomation(project).map(i=>i.id)),introduced=inspectAutomation(next).filter(i=>!before.has(i.id));if(introduced.length)throw new Error(introduced.map(i=>i.message).join('\n'));return next;
 }
