@@ -1,3 +1,5 @@
+import {MacroParametersDialog} from './MacroParametersDialog';
+import {macroParameters} from '../model/MacroParameters';
 import {ConnectorNavigatorDialog} from './ConnectorNavigatorDialog';
 import {ConnectionNavigatorDialog} from './ConnectionNavigatorDialog';
 import { refreshEditorArticles, editorArticles, onEditorArticlesChange, assignMainCatalogArticle, type EditorArticle } from '../model/EditorArticles';
@@ -26,7 +28,6 @@ import {sessionDiagnostics} from '../ai/SessionDiagnostics';
 import { renderAppHeader, bindAppHeaderMenus } from './AppHeader';
 import { UpdateDialog } from './UpdateDialog';
 import { AboutDialog } from './AboutDialog';
-import { macroWithVariables } from '../model/NativeMacroVariables';
 import { deviceBoxFields, collectDeviceBoxFields } from './DeviceBoxFields';
 import { renderDeviceBoxProperties } from './DeviceBoxProperties';
 import { externalMacroLibrary } from '../model/ExternalMacroLibrary';
@@ -2273,7 +2274,7 @@ export class App {
     container.querySelectorAll<HTMLElement>('.btn-tab-add-page-macro').forEach(button=>button.addEventListener('click',()=>{
       const macro=MacroManager.getAllMacros().find(m=>m.id===button.dataset.macroId);
       if(macro?.type==='ems'){
-        if(macro.nativeData?.variables.length)this.configureMacro(macro,true);else this.addMacroPages(macro);
+        if(macroParameters(macro).length)this.configureMacro(macro,true);else this.addMacroPages(macro);
       }
     }));
     container.querySelectorAll('.btn-tab-place-macro').forEach(btn => {
@@ -2322,7 +2323,7 @@ export class App {
   }
 
   public startPlacingMacro(macro: MacroItem): void {
-    if((macro.nativeData?.variables.length??0)>0 || macro.type==='ems'&&(macro.pages?.length??0)>1){
+    if(macroParameters(macro).length>0 || macro.type==='ems'&&(macro.pages?.length??0)>1){
       this.configureMacro(macro);return;
     }
     try { this.startPlacingWindowMacro(MacroManager.forPlacement(macro)); }
@@ -2330,25 +2331,13 @@ export class App {
   }
 
   private configureMacro(macro:MacroItem,asPages=false):void {
-    document.getElementById('macroConfigureDialog')?.remove();
-    const dialog=document.createElement('dialog');dialog.id='macroConfigureDialog';dialog.className='about-dialog modal-backdrop';
-    const variables=macro.nativeData?.variables??[],pages=macro.type==='ems'?macro.pages??[macro.page]:[];
-    dialog.innerHTML=`<div class="about-heading"><h2>${t('macroConfigureTitle')}</h2><button class="btn" data-close aria-label="${t('btnClose')}">×</button></div>
-      <div class="about-body"><p>${escapeSvg(macro.name)}</p>${pages.length>1&&!asPages?`<label class="form-label">${t('macroSourcePage')}<select class="form-input" data-source-page>${pages.map((p,i)=>`<option value="${i}">${escapeSvg(p.title)}</option>`).join('')}</select></label>`:''}
-      ${variables.map((v,i)=>`<label class="form-label" style="display:block;margin:10px 0">${escapeSvg(v.name.replace(/_/g,' '))}<input class="form-input" data-variable="${i}" value="${escapeSvg(v.value)}"></label>`).join('')}
-      <button class="btn btn-primary" data-apply>${asPages?t('macroAddPages'):t('macroPlace')}</button></div>`;
-    document.body.appendChild(dialog);dialog.querySelector('[data-close]')!.addEventListener('click',()=>dialog.close());
-    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
-    dialog.querySelector('[data-apply]')!.addEventListener('click',()=>{
-      const values=Object.fromEntries([...dialog.querySelectorAll<HTMLInputElement>('[data-variable]')].filter(input=>input.value!==variables[Number(input.dataset.variable)].value)
-        .map(input=>[variables[Number(input.dataset.variable)].name,input.value]));
-      const configured=macroWithVariables(macro,values);dialog.close();
+    new MacroParametersDialog(macro,(configured,pageIndex)=>{
       if(asPages&&configured.type==='ems')this.addMacroPages(configured);
       else{
-        if(configured.type==='ems'){const index=Number(dialog.querySelector<HTMLSelectElement>('[data-source-page]')?.value??0);configured.page=configured.pages?.[index]??configured.page;}
-        try{this.startPlacingWindowMacro(MacroManager.forPlacement(configured));}catch(e){alert(e instanceof Error?e.message:t('macroCannotPlace'));}
+        if(configured.type==='ems')configured.page=configured.pages?.[pageIndex]??configured.page;
+        this.startPlacingWindowMacro(MacroManager.forPlacement(configured));
       }
-    });dialog.showModal();
+    },undefined,asPages).show();
   }
 
   private addMacroPages(macro:PageMacro):void {
@@ -2794,8 +2783,7 @@ export class App {
       const macro=structuredClone(source);
       const primary=[...macro.components].sort((a,b)=>{const area=(c:PlacedComponent)=>{const s=macro.symbolLibrary?.find(s=>s.id===c.symbolId);return (s?.width??0)*(s?.height??0);};return area(b)-area(a);})[0];
       if(primary)assignMainCatalogArticle(primary,entry.article);
-      mergeProjectSymbolLibrary(this.project,macro.symbolLibrary??[],macro.components);
-      this.canvas.setMacroToPlace(macro);
+      this.startPlacingMacro(macro);
     });
     for (const button of container.querySelectorAll<HTMLElement>('[data-place-article]')) button.addEventListener('click', () => {
       const entry=entries[Number(button.dataset.placeArticle)];

@@ -1,3 +1,4 @@
+import {MacroParametersDialog} from './MacroParametersDialog';
 import { externalMacroLibrary } from '../model/ExternalMacroLibrary';
 import { createMacroFolderPanel } from './MacroFolderPanel';
 import { escapeSvg } from '../model/ImportedDrawing';
@@ -408,6 +409,7 @@ export class MacroSelectionDialog {
         <button class="btn btn-primary" id="btnActionPrimary" style="width: 100%; justify-content: center; padding: 6px 12px; font-size: 11px; font-weight: 600;">
           ${escapeSvg(t('macroPlaceOnPlan'))}
         </button>
+        <button class="btn" id="btnMacroParameters">Parameter & Wertesätze…</button>
         <div style="display: flex; gap: 6px;">
           <button class="btn" id="btnExportMacroItem" style="flex: 1; justify-content: center; font-size: 11px;" title="${escapeSvg(t('export'))}">
             ${escapeSvg(t('macroExportBtn'))}
@@ -501,6 +503,7 @@ export class MacroSelectionDialog {
 
   private bindDetailEvents(modal: HTMLElement, onExecute: () => void): void {
     modal.querySelector('#btnActionPrimary')?.addEventListener('click', onExecute);
+    modal.querySelector('#btnMacroParameters')?.addEventListener('click',()=>{const macro=MacroManager.getAllMacros().find(m=>m.id===this.selectedMacroId);if(macro)new MacroParametersDialog(macro,undefined,saved=>{this.selectedMacroId=saved.id;this.selectedCategory='user';this.searchQuery='';(modal.querySelector('#macroSearchInput') as HTMLInputElement).value='';for(const node of modal.querySelectorAll<HTMLElement>('.macro-tree-node')){node.classList.toggle('active',node.dataset.cat==='user');node.style.background=node.dataset.cat==='user'?'rgba(99, 179, 237, 0.15)':'none';}this.updateGrid(modal);}).show();});
 
     modal.querySelector('#btnExportMacroItem')?.addEventListener('click', () => {
       const all = MacroManager.getAllMacros();

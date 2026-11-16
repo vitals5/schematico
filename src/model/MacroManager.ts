@@ -18,6 +18,7 @@ import { remapNativeMacroData } from './NativeMacroData';
 import type { NativeMacroData } from './NativeMacroData';
 
 export interface WindowMacro {
+  configuration?:import('./MacroParameters').MacroConfiguration;
   isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
   importDiagnostics?: string[];
@@ -45,6 +46,7 @@ export interface WindowMacro {
 }
 
 export interface PageMacro {
+  configuration?:import('./MacroParameters').MacroConfiguration;
   isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
   importDiagnostics?: string[];
@@ -902,6 +904,18 @@ export class MacroManager {
   /**
    * Adds a new macro to the user's library.
    */
+  public static saveConfiguredMacro(macro:MacroItem,expected?:MacroItem):MacroItem {
+    const all=this.getUserMacros(),existing=all.find(m=>m.id===macro.id);
+    const editable=!!existing&&!macro.isBuiltIn&&!macro.externalPath&&!macro.isArticlePackage;
+    if(expected&&(!editable||JSON.stringify(existing)!==JSON.stringify(expected)))throw new Error('Makro wurde zwischenzeitlich geändert. Bitte neu öffnen.');
+    const copy=structuredClone(macro);
+    if(!editable){copy.id='user_'+crypto.randomUUID();copy.name+=' · Konfiguriert';}
+    delete copy.externalPath;copy.isBuiltIn=false;copy.isArticlePackage=false;
+    const next=all.filter(m=>m.id!==copy.id);next.unshift(copy);
+    const json=JSON.stringify(next);localStorage.setItem(STORAGE_KEY,json);
+    if(localStorage.getItem(STORAGE_KEY)!==json)throw new Error('Makrokonfiguration konnte nicht gespeichert werden.');return copy;
+  }
+
   public static addMacro(macro: MacroItem): void {
     const macros = this.getUserMacros();
     // Replace if id exists, otherwise prepend
@@ -1331,7 +1345,7 @@ export class MacroManager {
         category: parsed.category || 'Importierte Seitenmakros',
         description: parsed.description || `Seitenmakro aus ${filename}`,
         symbolLibrary: parsed.symbolLibrary,
-        nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics, pages: parsed.pages,
+        configuration: parsed.configuration, nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics, pages: parsed.pages,
         unitsPerMm: parsed.unitsPerMm,
         page: parsed.page || {
           id: 'page_' + Math.random().toString(36).substring(2, 9),
@@ -1355,7 +1369,7 @@ export class MacroManager {
       category: parsed.category || 'Importierte Fenstermakros',
       description: parsed.description || `Fenstermakro aus ${filename}`,
       symbolLibrary: parsed.symbolLibrary,
-      nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics,
+      configuration: parsed.configuration, nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics,
       unitsPerMm: parsed.unitsPerMm,
       components: parsed.components || [],
       wires: parsed.wires || [],

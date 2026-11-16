@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {MacroManager,type WindowMacro,type PageMacro} from './MacroManager';
+import {fixture,add} from '../layout/testing/fixture';
+import {configureMacroValues,upsertMacroValueSet,validateMacroConfiguration,macroParameters} from './MacroParameters';
+const project=fixture(),a=add(project,'a'),b=add(project,'b');
+const m:WindowMacro={id:'test',name:'Motor',type:'ema',category:'Test',description:'',components:[a,b],wires:[{id:'w',from:{componentId:'a',pinId:'1'},to:{componentId:'b',pinId:'1'},potential:'L1'}],width:120,height:100,
+configuration:{parameters:[{name:'Power',value:'5.5',bindings:[{componentId:'a',property:20027,template:'<Power> kW'},{componentId:'b',property:20011,template:'Drive <Power>'}]}],valueSets:[]}};
+const original=JSON.stringify(m),configured=configureMacroValues(m);assert.equal(configured.components[0].technicalCharacteristics,'5.5 kW');assert.equal(configured.components[1].functionText,'Drive 5.5');assert.equal(JSON.stringify(m),original);assert.deepEqual(configured.wires,m.wires);assert.equal(configured.components[0].x,a.x);
+const withSet=upsertMacroValueSet(m,'Large',{Power:'11'});assert.equal(configureMacroValues(withSet,{},withSet.configuration!.valueSets[0].id).components[0].technicalCharacteristics,'11 kW');assert.equal(configureMacroValues(m,{Power:''}).components[0].technicalCharacteristics,' kW');
+assert.throws(()=>configureMacroValues(m,{Unknown:'a'}));assert.throws(()=>configureMacroValues(m,{},'gone'));assert.throws(()=>upsertMacroValueSet(withSet,'Large',{Power:'2'}));
+const invalid=structuredClone(m);invalid.configuration!.parameters[0].bindings[0].componentId='gone';assert.throws(()=>validateMacroConfiguration(invalid));
+const bad=structuredClone(m);bad.configuration!.parameters.push({...bad.configuration!.parameters[0]});assert.throws(()=>validateMacroConfiguration(bad));
+const conflict=structuredClone(m);conflict.configuration!.parameters[0].bindings.push({componentId:'a',property:20027,template:'<Power> A'});assert.throws(()=>validateMacroConfiguration(conflict));
+const imported=structuredClone(m);delete imported.configuration;imported.nativeData={kind:'WindowMacro',metadata:[],variables:[{name:'Import',value:'',bindings:[{componentId:'a',property:20011,template:'<Import>'}]}]};imported.components[0].functionText='Unparsed native default';assert.equal(configureMacroValues(imported).components[0].functionText,'Unparsed native default','Unchanged native defaults are not reapplied destructively');assert.equal(configureMacroValues(imported,{Import:'New'}).components[0].functionText,'New');
+const pageMacro:PageMacro={id:'page',name:'Page',type:'ems',category:'',description:'',page:project.pages[0],configuration:{parameters:[{name:'Title',value:'New title',bindings:[{pageId:project.pages[0].id,property:11011,template:'<Title>'}]}],valueSets:[]}};assert.equal(configureMacroValues(pageMacro).page.title,'New title');
+const exported=MacroManager.exportMacro(withSet),roundtrip=await MacroManager.parseMacroFile(new File([exported.blob],exported.filename));assert.deepEqual(roundtrip.configuration,withSet.configuration);assert.equal(macroParameters(roundtrip).length,1);
+const values=new Map<string,string>();Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)}});
+const local=MacroManager.saveConfiguredMacro({...withSet,isBuiltIn:true,externalPath:'/read-only/source.ema'});assert.notEqual(local.id,m.id);assert.equal(local.externalPath,undefined);assert.equal(local.isBuiltIn,false);assert.equal(MacroManager.getUserMacros().length,1);
+const saved=MacroManager.saveConfiguredMacro({...local,description:'updated'},local);assert.equal(saved.description,'updated');assert.throws(()=>MacroManager.saveConfiguredMacro(local,local));
+Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:()=>null,setItem:()=>{throw new Error('quota');}}});assert.throws(()=>MacroManager.saveConfiguredMacro(m));delete (globalThis as any).localStorage;
+console.log('✓ Macro parameters: defaults, empty values, named sets, conflicts, native preservation, page titles, source isolation, portable roundtrip, safe local copies and storage errors');

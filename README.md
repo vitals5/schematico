@@ -87,6 +87,10 @@ Open **Project → Connection list / wiring navigator** for project-wide connect
 
 **Project → Plug and socket navigator** manages housings, contact positions, explicit free/reserve states, library-pin assignments and one-to-one counterpart mappings. Changes use preview/apply and undo. Search, drawing navigation, shared inspection findings and CSV/PDF connector plans are included. Counterpart mappings document mechanical pairing without adding electrical connections or duplicate BOM articles. See [connector management](docs/connectors.md).
 
+## Macro parameters and named value sets
+
+The macro browser now offers **Parameter & Wertesätze…** for editable text/structure bindings, defaults, named value sets and a preview before placement. External and built-in macros save as local copies; portable macro exports retain configuration. Existing native variables use the same placement dialog. See [macro parameters](docs/macro-parameters.md).
+
 ## About Schematico
 
 **Schematico** is an open-source CAE and CAD suite engineered for electrical engineers, control panel builders, master electricians, and automation specialists.
