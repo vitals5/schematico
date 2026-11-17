@@ -2,13 +2,23 @@
 
 **Projekt → Stecker- und Buchsennavigator…** verwaltet Gehäuse, Kontaktpositionen und Gegenstücke projektweit. Neue Gehäuse können auch vor der Platzierung ihrer Schaltzeichen angelegt werden. Die Daten werden im Projekt unter `connectorAssemblies` und `connectorPairings` gespeichert. Bestehende Projekte benötigen keine Migration.
 
+## Grafische Kontaktübersicht
+
+Die Standardansicht **Grafik** zeigt Gehäuse als Karten mit schematischen Kontaktfeldern. Stifte sind gefüllt, Buchsen hohl dargestellt. Jede Position zeigt Nummer, Belegungsstatus und zugeordneten Zeichnungsanschluss. Farbe und Text unterscheiden **Zugeordnet**, **Ungeklärt**, **Frei** und **Reserve**; ein Ausrufezeichen markiert vorhandene Hinweise. Die Reihenfolge stammt aus der gespeicherten Positionsliste. Dies ist kein maßstäbliches Hersteller-Anschlussbild.
+
+Ein Klick auf den Gehäusenamen fokussiert dessen Belegung und Gegenstückpaarungen. Ein Kontakt öffnet rechts seine Belegung, **Eigenschaften** am Gehäuse öffnet dessen Stammdaten. Über **Zum Anschluss** im Kontaktpanel gelangt man direkt zur Zeichnung. Auf schmalen Bildschirmen erscheint das Panel unterhalb der Übersicht. Bei ausgewähltem Gehäuse zeigt eine zusätzliche Grafik die tatsächlich gespeicherten Kontaktpaarungen zum Gegenstück, einschließlich abweichender Positionsnummern. Diese Darstellung ist mechanische Dokumentation.
+
+**Grafik / Liste** wechselt die Darstellung, ohne offene Formulareingaben oder eine geprüfte Vorschau zu verlieren. Suche, Gehäuseauswahl und Belegungsstatus begrenzen die Treffermenge; die Kennzahlen oben beziehen sich auf den Projektbestand. Der Darstellungswechsel und die Suche verändern keine Projektdaten. Eine andere Gehäuseauswahl oder **Aktualisieren** verwirft offene Eingaben.
+
+Die Grafik zeigt bis zu zwölf Gehäuse pro Seite, höchstens 64 Positionen je Gehäuse und 192 Kontaktfelder insgesamt. Weitere Gehäuse sind über **Weiter**, weitere Positionen über Suche oder die Liste erreichbar. Die vollständige Liste zeigt 100 Treffer pro Seite. Die separate Gegenstückgrafik zeigt bis zu 60 gespeicherte Paarungen unabhängig vom Positionsfilter. **Daten & Berichte** bündelt CSV, PDF und Aktualisieren; Exporte enthalten alle gefilterten Kontaktpositionen.
+
 ## Gehäuse und Positionen
 
 **Neues Gehäuse** erfasst Anlage, Ort, BMK, Beschreibung, Stecker/Stift oder Buchse und eine kommagetrennte Positionsliste, etwa `1, 2, 3, PE`. Positionen müssen eindeutig sein. Gleiche sichtbare BMK bleiben bei unterschiedlichem Strukturkontext getrennt. Stecker und Buchse dürfen dasselbe BMK besitzen.
 
 Nach **Gehäusedaten prüfen** zeigt die Vorschau den künftigen Kontaktplan. Erst **Übernehmen** ändert das Projekt. Auch Änderungen, Löschen und Gegenstückzuordnungen unterstützen Rückgängig/Wiederholen. Eine zwischenzeitliche Projektänderung verlangt eine neue Aktualisierung. Veränderte Formulareingaben verwerfen eine zuvor erzeugte Vorschau und müssen erneut geprüft werden.
 
-Bei ausgewähltem Gehäuse lassen sich die Stammdaten bearbeiten. Änderungen an der Positionsliste erhalten Zuordnungen gleicher Positionen. Zum Entfernen gepaarter Positionen oder Wechseln des Kontakttyps muss zunächst das Gegenstück gelöst werden. Das Entfernen eines Gehäuses entfernt seine mechanischen Paarungen, aber keine Schaltzeichen oder Leitungen.
+Über **Eigenschaften** am Gehäuse oder **Gehäuse bearbeiten** für die ausgewählte Gehäusefilterung lassen sich die Stammdaten bearbeiten. Änderungen an der Positionsliste erhalten Zuordnungen gleicher Positionen. Zum Entfernen gepaarter Positionen oder Wechseln des Kontakttyps muss zunächst das Gegenstück gelöst werden. Das Entfernen eines Gehäuses entfernt seine mechanischen Paarungen, aber keine Schaltzeichen oder Leitungen.
 
 ## Kontaktbelegung
 

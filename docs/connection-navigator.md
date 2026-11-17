@@ -4,6 +4,16 @@ Unter **Projekt → Verbindungsliste / Verdrahtungsnavigator…** stehen die Ver
 
 Die Tabelle zeigt Blatt, Verbindungsnummer bzw. Kennung, Verbindungsart, Quelle, Ziel, Potenzial, Farbe, Querschnitt, Kabel, Ader, ausdrücklich erfasste reale Länge in Millimetern und Hinweise. Quelle und Ziel entsprechen den gespeicherten Anschluss-Endpunkten; sie behaupten keine Stromflussrichtung. Strukturkennzeichen und benutzerdefinierte Anschlussbezeichnungen werden berücksichtigt.
 
+## Grafische Quelle–Ziel-Ansicht
+
+Die Standardansicht **Grafik** stellt jeden erfassten Abschnitt als anklickbare Karte dar: Quelle, Ziel, Verbindungsart, Potenzial, hinterlegte Farbe, Querschnitt, Kabel/Ader, bekannte Länge und Hinweise. Die Verbindungslinie verwendet ausschließlich gespeicherte Farbangaben; etwa ein Potenzialname allein bestimmt keine Leiterfarbe. Logische Verbindungen sind gestrichelt dargestellt. Die Übersicht zeigt weder die räumliche Leitungslage noch eine Stromflussrichtung.
+
+Anklicken öffnet ein seitliches Detailpanel mit Zeichnungsnavigation, Fertigungsdaten und den Teilnehmern desselben elektrischen Netzes. Auf kleinen Bildschirmen steht dieses Panel unterhalb der Karten. Netzteilnehmer sind zunächst auf 60 Einträge begrenzt; **Alle Teilnehmer** erweitert die vollständige Liste.
+
+**Grafik / Liste** wechselt die Darstellung. Offene Längeneingaben bleiben dabei sowie beim Suchen und Filtern erhalten. Neben Blatt- und Hinweisfilter gibt es einen Filter für **Autoconnect**, **Manuell**, **Brücke** und **Logisch**. Grafiken zeigen 24 Verbindungen pro Seite, Tabellen 100; **Weiter** erschließt die übrigen Treffer. Die Kennzahlen oben beziehen sich auf den gesamten eingelesenen Projektstand.
+
+**Daten & Berichte** bündelt CSV, PDF und Aktualisieren. Exporte enthalten alle Treffer mit dem aktuellen Such-, Blatt-, Hinweis- und Artfilter, unabhängig von der sichtbaren Seite. **Aktualisieren** verwirft offene Eingaben und liest den Projektstand neu ein.
+
 ## Auswahl und Navigation
 
 Die Suche kombiniert mehrere Suchwörter. Der Blattfilter berücksichtigt bei logischen Verbindungen auch die Blätter ihrer Endpunkte. **Nur mit Hinweisen** grenzt unauflösbare Anschlüsse und Netze, doppelte Verbindungskennungen sowie widersprüchliche Aderdaten ein. Die Tabelle zeigt jeweils höchstens 100 Zeilen; die gesamte gefilterte Liste bleibt über die Blätter erreichbar.

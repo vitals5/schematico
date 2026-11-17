@@ -1,7 +1,9 @@
+import './WiringWorkspace.css';
 import type {Project} from '../model/types';
 import {connectionList,filterConnections,connectionColumns,connectionCells,withConnectionLength,type ConnectionRow} from '../reports/ConnectionList';
 import {connectionListPdf} from '../export/ConnectionListPdf';
 import {connectionCsv} from '../reports/ConnectionList';
+import {connectionCards,connectionKinds,wiringEmpty,wireColour} from './WiringVisuals';
 import {escapeSvg as esc} from '../model/ImportedDrawing';
 import {bindArticleModalKeys,focusArticleModal} from './ArticleModal';
 import {finishEngineeringDialog} from './EngineeringDialog';
@@ -10,45 +12,57 @@ import {projectRevision} from '../layout/types';
 export class ConnectionNavigatorDialog{
   private el=document.createElement('div');
   private rows:ConnectionRow[]=[];private revision='';private offset=0;private search='';private pageId='';private issuesOnly=false;
+  private view:'graphic'|'table'='graphic';private kind:''|ConnectionRow['kind']='';private activeKey?:string;private name='';private pages:{id:string;pageNumber:string;title:string}[]=[];
   constructor(private getProject:()=>Project,private onApply:(p:Project)=>void,private navigate:(pageId:string,componentId?:string,wireId?:string)=>void){}
   show():void{
     if(document.getElementById('connectionNavigator'))return;
     this.el.id='connectionNavigator';this.el.className='modal-backdrop';this.el.style.cssText='position:fixed;inset:0;z-index:4200;display:flex;align-items:center;justify-content:center;background:#000a';
     document.body.append(this.el);bindArticleModalKeys(this.el,()=>this.el.remove());this.refresh();
   }
-  private filtered(){return filterConnections(this.rows,this.search,this.pageId,this.issuesOnly);}
-  private refresh(){const p=this.getProject();this.rows=connectionList(p);this.revision=projectRevision(p);this.offset=0;this.render();}
-  private render(){
-    this.el.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="connectionTitle" style="width:96vw;max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:20px"><h2 id="connectionTitle">Verbindungsliste & Verdrahtungsnavigator</h2>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><input class="form-input" data-search aria-label="Verbindungen suchen" placeholder="BMK, Anschluss, Potenzial, Kabel oder Ader suchen" value="${esc(this.search)}" style="min-width:300px;flex:1"><select class="form-input" data-page aria-label="Blattfilter"><option value="">Alle Blätter</option>${this.getProject().pages.map(p=>`<option value="${esc(p.id)}" ${p.id===this.pageId?'selected':''}>${esc(p.pageNumber+' · '+p.title)}</option>`).join('')}</select><label><input type="checkbox" data-issues ${this.issuesOnly?'checked':''}> Nur mit Hinweisen</label><button class="btn" data-refresh>Aktualisieren</button></div>
-    <p>Stand beim Öffnen/Aktualisieren. Eine Zeile je erfasster Verbindung. Netzteilnehmer werden zusätzlich angezeigt. Leere Werte sind nicht erfasst; reale Längen werden nicht aus dem Planmaßstab berechnet.</p>
-    <div style="display:flex;gap:8px;align-items:center"><span data-count role="status" style="flex:1"></span><button class="btn" data-prev>Zurück</button><button class="btn" data-next>Weiter</button></div>
-    <div style="overflow:auto;max-height:49vh;margin-top:12px"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr>${connectionColumns.map(c=>`<th style="text-align:left;padding:7px">${esc(c)}</th>`).join('')}<th>Aktionen</th></tr></thead><tbody data-rows></tbody></table></div>
-    <div data-detail style="padding-top:12px"></div><p data-error role="alert" style="color:#fca5a5"></p>
-    <footer style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" data-csv>CSV: gefilterte Liste</button><button class="btn" data-pdf>PDF: gefilterte Liste</button><button class="btn" data-close>Schließen</button></footer></section>`;
+  private filtered(){return filterConnections(this.rows,this.search,this.pageId,this.issuesOnly).filter(r=>!this.kind||r.kind===this.kind);}
+  private refresh(){const p=this.getProject();this.rows=connectionList(p);this.name=p.name;this.pages=p.pages.map(({id,pageNumber,title})=>({id,pageNumber,title}));if(this.pageId&&!this.pages.some(p=>p.id===this.pageId))this.pageId='';this.revision=projectRevision(p);this.offset=0;this.render();}
+  private render(){this.activeKey=undefined;
+    this.el.innerHTML=`<section role="dialog" aria-modal="true"><h2>Verbindungen & Verdrahtung</h2>
+    <div class="wire-topbar"><div class="wire-kpis" aria-label="Projektbestand"><div class="wire-kpi"><strong>${this.rows.length}</strong>Erfasste Verbindungen</div><div class="wire-kpi"><strong>${this.rows.filter(r=>r.kind==='autoconnect').length}</strong>Autoconnect</div><div class="wire-kpi"><strong>${this.rows.filter(r=>r.lengthMm!==undefined).length}</strong>Mit erfasster realer Länge</div><div class="wire-kpi wire-kpi--warn"><strong>${this.rows.filter(r=>r.issues.length).length}</strong>Verbindungen mit Hinweisen</div></div><details class="eng-tools-menu wire-tools"><summary>Daten & Berichte</summary><div class="eng-tools-items"><button class="btn" data-csv>CSV: gefilterte Liste</button><button class="btn" data-pdf>PDF: gefilterte Liste</button><button class="btn" data-refresh>Aktualisieren</button></div></details></div>
+    <div class="wire-toolbar"><input class="form-input" data-search aria-label="Verbindungen suchen" placeholder="BMK, Anschluss, Potenzial, Kabel oder Ader suchen" value="${esc(this.search)}"><select class="form-input" data-page aria-label="Blattfilter"><option value="">Alle Blätter</option>${this.pages.map(p=>`<option value="${esc(p.id)}" ${p.id===this.pageId?'selected':''}>${esc(p.pageNumber+' · '+p.title)}</option>`).join('')}</select><select class="form-input" data-kind aria-label="Verbindungsart"><option value="">Alle Verbindungsarten</option>${Object.entries(connectionKinds).map(([kind,title])=>`<option value="${kind}" ${kind===this.kind?'selected':''}>${title}</option>`).join('')}</select><label class="eng-check"><input type="checkbox" data-issues ${this.issuesOnly?'checked':''}> Nur mit Hinweisen</label><div class="wire-view" role="group" aria-label="Darstellung"><button data-view="graphic" aria-pressed="${this.view==='graphic'}">Grafik</button><button data-view="table" aria-pressed="${this.view==='table'}">Liste</button></div></div>
+    <div class="wire-pager"><span data-count role="status"></span><button class="btn" data-prev>Zurück</button><button class="btn" data-next>Weiter</button></div>
+    <div class="wire-content"><div class="wire-primary"><div data-visual></div><div data-list class="wire-table"><table><thead><tr>${connectionColumns.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Aktionen</th></tr></thead><tbody data-rows></tbody></table></div></div><aside class="wire-properties" hidden><header><h3>Verbindungsdetails</h3><button class="btn" data-editor-close aria-label="Details schließen">×</button></header><div data-detail class="wire-editor-body"></div></aside></div>
+    <p class="wire-muted">Quelle–Ziel-Übersicht der erfassten Abschnitte. Leitungslage siehe Zeichnung; Quelle/Ziel bezeichnet keine Stromflussrichtung. Reale Längen werden ausdrücklich erfasst.</p><p data-error role="alert"></p>
+    <footer><span class="wire-footer-note">Projektstand beim Öffnen / Aktualisieren · Zeichnung über die Details öffnen</span><button class="btn" data-close>Schließen</button></footer></section>`;
     const q=(s:string)=>this.el.querySelector<HTMLElement>(s)!;
-    q('[data-search]').addEventListener('input',e=>{this.search=(e.target as HTMLInputElement).value;this.offset=0;this.renderRows();});
-    q('[data-page]').addEventListener('change',e=>{this.pageId=(e.target as HTMLSelectElement).value;this.offset=0;this.renderRows();});
-    q('[data-issues]').addEventListener('change',e=>{this.issuesOnly=(e.target as HTMLInputElement).checked;this.offset=0;this.renderRows();});
-    q('[data-prev]').onclick=()=>{this.offset=Math.max(0,this.offset-100);this.renderRows();};q('[data-next]').onclick=()=>{this.offset+=100;this.renderRows();};
-    q('[data-refresh]').onclick=()=>this.refresh();q('[data-close]').onclick=()=>this.el.remove();
+    q('[data-search]').oninput=e=>{this.search=(e.target as HTMLInputElement).value;this.offset=0;this.renderRows();};
+    q('[data-page]').onchange=e=>{this.pageId=(e.target as HTMLSelectElement).value;this.offset=0;this.renderRows();};
+    q('[data-kind]').onchange=e=>{this.kind=(e.target as HTMLSelectElement).value as typeof this.kind;this.offset=0;this.renderRows();};
+    q('[data-issues]').onchange=e=>{this.issuesOnly=(e.target as HTMLInputElement).checked;this.offset=0;this.renderRows();};
+    for(const b of this.el.querySelectorAll<HTMLButtonElement>('[data-view]'))b.onclick=()=>{this.view=b.dataset.view as 'graphic'|'table';this.offset=0;this.renderRows();};
+    q('[data-prev]').onclick=()=>{this.offset=Math.max(0,this.offset-(this.view==='graphic'?24:100));this.renderRows();};q('[data-next]').onclick=()=>{this.offset+=this.view==='graphic'?24:100;this.renderRows();};
+    q('[data-refresh]').onclick=()=>this.refresh();q('[data-close]').onclick=()=>this.el.remove();q('[data-editor-close]').onclick=()=>this.closeDetail();
     q('[data-csv]').onclick=()=>downloadArticleFile(connectionCsv(this.filtered()),'schematico-verbindungen.csv','text/csv;charset=utf-8');
-    q('[data-pdf]').onclick=()=>connectionListPdf(this.filtered(),this.getProject().name).save('schematico-verbindungen.pdf');
-    q('[data-rows]').onclick=e=>{const button=(e.target as Element).closest<HTMLButtonElement>('button[data-row]');if(button)this.detail(this.rows[Number(button.dataset.row)]);};
-    this.renderRows();finishEngineeringDialog(this.el,{kind:'wiring',description:'Projektweite Verbindungen, Netzteilnehmer und Fertigungsdaten',wide:true});focusArticleModal(this.el);
+    q('[data-pdf]').onclick=()=>connectionListPdf(this.filtered(),this.name).save('schematico-verbindungen.pdf');
+    const choose=(e:MouseEvent)=>{const button=(e.target as Element).closest<HTMLButtonElement>('button[data-row]');if(button){const row=this.rows[Number(button.dataset.row)];if(row)this.detail(row);}};
+    q('[data-rows]').onclick=choose;q('[data-visual]').onclick=choose;
+    q('.wire-tools .eng-tools-items').onclick=e=>{if((e.target as Element).closest('button'))(q('.wire-tools') as HTMLDetailsElement).open=false;};
+    this.renderRows();finishEngineeringDialog(this.el,{kind:'wiring',description:'Quelle, Ziel und Netzzusammenhang auf einen Blick',wide:true});focusArticleModal(this.el);
   }
-  private renderRows(){const rows=this.filtered();this.offset=Math.min(this.offset,Math.max(0,Math.floor((rows.length-1)/100)*100));
-    this.el.querySelector('[data-count]')!.textContent=`${rows.length} von ${this.rows.length} Verbindungen · ${rows.length?this.offset+1:0}–${Math.min(this.offset+100,rows.length)}`;
-    (this.el.querySelector('[data-prev]') as HTMLButtonElement).disabled=this.offset===0;(this.el.querySelector('[data-next]') as HTMLButtonElement).disabled=this.offset+100>=rows.length;
-    this.el.querySelector('[data-rows]')!.innerHTML=rows.slice(this.offset,this.offset+100).map(r=>`<tr>${connectionCells(r).map(c=>`<td style="padding:7px;border-top:1px solid #394555;max-width:240px;overflow-wrap:anywhere">${esc(c||'—')}</td>`).join('')}<td><button class="btn" data-row="${this.rows.indexOf(r)}">Details</button></td></tr>`).join('')||'<tr><td colspan="13">Keine Verbindungen gefunden.</td></tr>';
-    this.el.querySelector('[data-detail]')!.innerHTML='';
+  private renderRows(){const rows=this.filtered(),size=this.view==='graphic'?24:100;this.offset=Math.min(this.offset,Math.max(0,Math.floor((rows.length-1)/size)*size));
+    this.el.querySelector('[data-count]')!.textContent=`${rows.length} von ${this.rows.length} Verbindungen · ${rows.length?this.offset+1:0}–${Math.min(this.offset+size,rows.length)}`;
+    (this.el.querySelector('[data-prev]') as HTMLButtonElement).disabled=this.offset===0;(this.el.querySelector('[data-next]') as HTMLButtonElement).disabled=this.offset+size>=rows.length;
+    (this.el.querySelector('[data-visual]') as HTMLElement).hidden=this.view!=='graphic';(this.el.querySelector('[data-list]') as HTMLElement).hidden=this.view!=='table';for(const b of this.el.querySelectorAll<HTMLButtonElement>('[data-view]'))b.setAttribute('aria-pressed',String(b.dataset.view===this.view));
+    const indices=new Map(this.rows.map((r,i)=>[r,i]));
+    if(this.view==='graphic')this.el.querySelector('[data-visual]')!.innerHTML=rows.length?connectionCards(rows.slice(this.offset,this.offset+size),indices):wiringEmpty('Keine Verbindungen im aktuellen Filter.');
+    this.el.querySelector('[data-rows]')!.innerHTML=rows.slice(this.view==='table'?this.offset:0,(this.view==='table'?this.offset:0)+100).map(r=>`<tr>${connectionCells(r).map(c=>`<td style="padding:7px;max-width:240px;overflow-wrap:anywhere">${esc(c||'—')}</td>`).join('')}<td><button class="btn" data-row="${indices.get(r)}">Details</button></td></tr>`).join('')||'<tr><td colspan="13">Keine Verbindungen gefunden.</td></tr>';this.highlight();
   }
-  private detail(row:ConnectionRow){const detail=this.el.querySelector<HTMLElement>('[data-detail]')!;
-    detail.innerHTML=`<fieldset><legend>${esc(row.from+' → '+row.to)}</legend><p>Netzteilnehmer: ${esc(row.targets.join(' · ')||'nicht auflösbar')}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-source ${row.fromPageId?'':'disabled'}>Zur Quelle</button><button class="btn" data-target ${row.toPageId?'':'disabled'}>Zum Ziel</button><button class="btn" data-wire ${row.pageId?'':'disabled'}>Zur Verbindung</button><label>Reale Länge [mm] <input type="number" data-length class="form-input" min="0" step="any" value="${esc(String(row.lengthMm??''))}" placeholder="nicht erfasst"></label><button class="btn" data-save>Länge übernehmen</button></div></fieldset>`;
+  private highlight(){for(const button of this.el.querySelectorAll<HTMLButtonElement>('[data-row]'))button.classList.toggle('is-selected',this.rows[Number(button.dataset.row)]?.key===this.activeKey);}
+  private closeDetail(){this.activeKey=undefined;this.el.querySelector('[data-detail]')!.innerHTML='';(this.el.querySelector('.wire-properties') as HTMLElement).hidden=true;this.el.querySelector('.wire-content')!.classList.remove('has-editor');this.highlight();this.el.querySelector('[data-error]')!.textContent='';}
+  private detail(row:ConnectionRow){const detail=this.el.querySelector<HTMLElement>('[data-detail]')!;this.activeKey=row.key;(this.el.querySelector('.wire-properties') as HTMLElement).hidden=false;this.el.querySelector('.wire-content')!.classList.add('has-editor');this.el.querySelector('[data-error]')!.textContent='';
+    const fact=(label:string,value:string)=>`<div><dt>${label}</dt><dd>${esc(value||'Nicht erfasst')}</dd></div>`;
+    detail.innerHTML=`<fieldset><legend>${esc(row.number||row.wireId)} · ${connectionKinds[row.kind]}</legend><div class="wire-endpoints"><span><small>Quelle</small><strong>${esc(row.from)}</strong></span><span class="wire-conductor wire-conductor--${row.kind}" style="${wireColour(row.color)}" aria-hidden="true"></span><span><small>Ziel</small><strong>${esc(row.to)}</strong></span></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0"><button class="btn" data-source ${row.fromPageId?'':'disabled'}>Zur Quelle</button><button class="btn" data-target ${row.toPageId?'':'disabled'}>Zum Ziel</button><button class="btn" data-wire ${row.pageId?'':'disabled'}>Zur Verbindung</button></div><dl class="wire-detail-facts">${fact('Blatt',row.pageNumber)+fact('Potenzial',row.potential)+fact('Farbe',row.color)+fact('Querschnitt',row.crossSection)+fact('Kabel',row.cable)+fact('Ader',row.core)}</dl>${row.issues.length?`<div class="wire-warning"><strong>Hinweise</strong><ul>${row.issues.map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`:''}<label>Reale Länge [mm]<input type="number" data-length class="form-input" min="0" step="any" value="${esc(String(row.lengthMm??''))}" placeholder="nicht erfasst"></label><button class="btn" data-save>Länge übernehmen</button><p>Bekannte physische Länge eingeben; leer lassen zum Entfernen.</p><details open><summary>Netzteilnehmer (${row.targets.length})</summary><ul class="wire-net-targets">${row.targets.slice(0,60).map(t=>`<li>${esc(t)}</li>`).join('')||'<li>Nicht auflösbar</li>'}</ul>${row.targets.length>60?`<p>${row.targets.length-60} weitere Teilnehmer im Netz. Liste vollständig anzeigen: <button class="btn" data-all-targets>Alle Teilnehmer</button></p>`:''}</details></fieldset>`;
     const jump=(p?:string,c?:string,w?:string)=>{if(p){this.el.remove();this.navigate(p,c,w);}};
     detail.querySelector<HTMLButtonElement>('[data-source]')!.onclick=()=>jump(row.fromPageId,row.fromComponentId);
     detail.querySelector<HTMLButtonElement>('[data-target]')!.onclick=()=>jump(row.toPageId,row.toComponentId);
     detail.querySelector<HTMLButtonElement>('[data-wire]')!.onclick=()=>jump(row.pageId,undefined,row.wireId);
+    detail.querySelector<HTMLButtonElement>('[data-all-targets]')?.addEventListener('click',e=>{detail.querySelector('.wire-net-targets')!.innerHTML=row.targets.map(t=>`<li>${esc(t)}</li>`).join('');(e.target as Element).closest('p')!.remove();});
     detail.querySelector<HTMLButtonElement>('[data-save]')!.onclick=()=>{try{const p=this.getProject();if(projectRevision(p)!==this.revision)throw new Error('Projekt wurde verändert. Bitte zuerst aktualisieren.');const input=detail.querySelector<HTMLInputElement>('[data-length]')!;if(!input.validity.valid)throw new Error('Bitte eine gültige Länge eingeben.');this.onApply(withConnectionLength(p,row,input.value===''?undefined:Number(input.value)));this.refresh();}catch(e){this.el.querySelector('[data-error]')!.textContent=e instanceof Error?e.message:String(e);}};
+    this.highlight();this.el.querySelector('.wire-properties')!.scrollIntoView({block:'nearest'});detail.querySelector<HTMLInputElement>('[data-length]')!.focus({preventScroll:true});
   }
 }

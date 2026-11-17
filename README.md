@@ -81,11 +81,11 @@ Evidence-based cable repair proposals, BMEcat manufacturer imports and exact art
 
 ## Connection list and wiring navigator
 
-Open **Project → Connection list / wiring navigator** for project-wide connections, search, page and issue filters, source/target navigation, cable/core assignments and CSV/PDF export. Explicit physical conductor lengths can be entered in millimetres with undo/redo; drawing geometry is never used to infer them. Reports list recorded connection segments and identify unresolved data. See [connection navigator](docs/connection-navigator.md).
+Open **Project → Connection list / wiring navigator** for graphical source/target cards, a side panel with network participants, project-wide connections, search, connection type, page and issue filters, source/target navigation, cable/core assignments and CSV/PDF export. Explicit physical conductor lengths can be entered in millimetres with undo/redo; drawing geometry is never used to infer them. Reports list recorded connection segments and identify unresolved data. See [connection navigator](docs/connection-navigator.md).
 
 ## Plug and socket management
 
-**Project → Plug and socket navigator** manages housings, contact positions, explicit free/reserve states, library-pin assignments and one-to-one counterpart mappings. Changes use preview/apply and undo. Search, drawing navigation, shared inspection findings and CSV/PDF connector plans are included. Counterpart mappings document mechanical pairing without adding electrical connections or duplicate BOM articles. See [connector management](docs/connectors.md).
+**Project → Plug and socket navigator** shows clickable housing/contact cards and saved counterpart mappings alongside the full list. It manages housings, contact positions, explicit free/reserve states, library-pin assignments and one-to-one counterpart mappings. Changes use preview/apply and undo. Search, drawing navigation, shared inspection findings and CSV/PDF connector plans are included. Counterpart mappings document mechanical pairing without adding electrical connections or duplicate BOM articles. See [connector management](docs/connectors.md).
 
 ## Macro parameters and named value sets
 

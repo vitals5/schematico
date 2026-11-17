@@ -1,0 +1,119 @@
+:is(#connectorNavigator,#connectionNavigator) [hidden]{display:none!important}
+:is(#connectorNavigator,#connectionNavigator).engineering-overlay{padding:16px}
+:is(#connectorNavigator,#connectionNavigator) .eng-shell{width:min(1660px,100%);height:min(960px,calc(100dvh - 32px));max-height:calc(100dvh - 32px)}
+:is(#connectorNavigator,#connectionNavigator) .eng-eyebrow{display:none}
+:is(#connectorNavigator,#connectionNavigator) .eng-header{padding:18px 22px 14px}
+:is(#connectorNavigator,#connectionNavigator) .eng-body{padding:20px 22px;scrollbar-width:thin}
+:is(#connectorNavigator,#connectionNavigator) .wire-topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+:is(#connectorNavigator,#connectionNavigator) .wire-tools{margin-left:auto}
+:is(#connectorNavigator,#connectionNavigator) .wire-tools .eng-tools-items{z-index:20}
+:is(#connectorNavigator,#connectionNavigator) .wire-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;flex:1;min-width:400px}
+:is(#connectorNavigator,#connectionNavigator) .wire-kpi{border:1px solid var(--eng-line);border-radius:8px;background:#1c2c3e;color:var(--eng-muted);padding:12px 14px;font-size:11px}
+:is(#connectorNavigator,#connectionNavigator) .wire-kpi strong{display:block;font-size:23px;color:#e0edfc;font-weight:600}
+:is(#connectorNavigator,#connectionNavigator) .wire-kpi--warn strong{color:#e4ba7d}
+:is(#connectorNavigator,#connectionNavigator) .wire-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+:is(#connectorNavigator,#connectionNavigator) .wire-toolbar [data-search]{flex:1;min-width:180px;width:auto}
+:is(#connectorNavigator,#connectionNavigator) .wire-toolbar select{width:auto;max-width:320px}
+:is(#connectorNavigator,#connectionNavigator) .wire-view{display:inline-flex;border:1px solid var(--eng-line);border-radius:7px;padding:3px;background:var(--eng-deep)}
+:is(#connectorNavigator,#connectionNavigator) .wire-view button{border:0;border-radius:4px;background:none;color:var(--eng-muted);padding:6px 13px;font:inherit;font-size:12px;cursor:pointer}
+:is(#connectorNavigator,#connectionNavigator) .wire-view button[aria-pressed=true]{background:#304b66;color:#dbedff}
+:is(#connectorNavigator,#connectionNavigator) .wire-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--eng-muted);margin-bottom:14px}
+:is(#connectorNavigator,#connectionNavigator) .wire-legend span{display:flex;align-items:center;gap:5px}
+:is(#connectorNavigator,#connectionNavigator) .wire-status-dot{height:7px;width:7px;border-radius:50%;background:#7d92aa;display:inline-block}
+:is(#connectorNavigator,#connectionNavigator) .wire-dot--assigned{background:#77cdaa}
+:is(#connectorNavigator,#connectionNavigator) .wire-dot--open{background:#ebbe7f}
+:is(#connectorNavigator,#connectionNavigator) .wire-dot--free{background:#7db8eb}
+:is(#connectorNavigator,#connectionNavigator) .wire-dot--reserve{background:#ae9ed6}
+:is(#connectorNavigator,#connectionNavigator) .wire-pager{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:11px;color:var(--eng-muted)}
+:is(#connectorNavigator,#connectionNavigator) .wire-pager [data-count]{flex:1}
+:is(#connectorNavigator,#connectionNavigator) .wire-content{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+:is(#connectorNavigator,#connectionNavigator) .wire-content.has-editor{grid-template-columns:minmax(0,1fr) 350px}
+:is(#connectorNavigator,#connectionNavigator) .wire-primary{min-width:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-properties{position:sticky;top:0;min-width:0;border:1px solid #4c7296;border-radius:9px;background:#1b2a3b;overflow:hidden}
+:is(#connectorNavigator,#connectionNavigator) .wire-properties>header{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--eng-line);padding:10px 13px}
+:is(#connectorNavigator,#connectionNavigator) .wire-properties h3{margin:0;font-size:13px}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body{padding:13px;max-height:calc(100dvh - 310px);overflow:auto;scrollbar-width:thin}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body fieldset{min-width:0;margin:0;padding:0;border:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body legend{font-size:11px;color:var(--eng-muted);margin-bottom:14px;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body label{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 135px;color:#b0c5dc;font-size:11px;margin-bottom:9px}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body .form-input{width:100%;min-width:0;font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body p{font-size:11px;color:var(--eng-muted);overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body .btn{margin:5px 4px 2px 0}
+:is(#connectorNavigator,#connectionNavigator) .wire-editor-body [data-stage-contact],:is(#connectorNavigator,#connectionNavigator) .wire-editor-body [data-stage-save],:is(#connectorNavigator,#connectionNavigator) .wire-editor-body [data-save]{width:100%;background:#315778}
+:is(#connectorNavigator,#connectionNavigator) .wire-preview:empty{display:none}
+:is(#connectorNavigator,#connectionNavigator) .wire-preview:not(:empty){margin-top:16px;padding:14px;border:1px solid #477ba5;border-radius:8px;background:#15273a;max-height:32vh;overflow:auto;font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-table{overflow:auto;border:1px solid var(--eng-line);border-radius:8px;max-height:60vh}
+:is(#connectorNavigator,#connectionNavigator) .wire-table table{font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-muted{font-size:11px;line-height:1.65;color:#9ab0c9}
+:is(#connectorNavigator,#connectionNavigator) .wire-footer-note{margin-right:auto;font-size:11px;color:var(--eng-muted)}
+:is(#connectorNavigator,#connectionNavigator) .wire-empty{text-align:center;padding:45px 18px;color:#a5b9d2;border:1px dashed #3a536e;border-radius:9px}
+:is(#connectorNavigator,#connectionNavigator) .wire-empty svg{display:block;margin:0 auto 10px;width:45px;height:36px;stroke:#6b9bc5;fill:none;stroke-width:1.5}
+:is(#connectorNavigator,#connectionNavigator) .wire-housings{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing{border:1px solid #3c5570;background:#172738;border-radius:10px;overflow:hidden;min-width:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing>header{display:flex;gap:10px;align-items:center;padding:12px 14px;background:#203449;border-bottom:1px solid #344d66}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing-icon{font-size:28px;color:#8abfe9}
+:is(#connectorNavigator,#connectionNavigator) .wire-heading-button{display:block;text-align:left;border:0;background:none;color:#e0edfc;font:inherit;cursor:pointer;overflow-wrap:anywhere;min-width:0;padding:3px}
+:is(#connectorNavigator,#connectionNavigator) .wire-heading-button strong{display:block;font-size:14px}
+:is(#connectorNavigator,#connectionNavigator) .wire-heading-button small{display:block;font-size:10px;color:#9bb3ce;margin-top:3px}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing>header .btn{margin-left:auto;font-size:10px;flex:none}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing-description{font-size:11px;color:#9fb8d1;padding:0 15px;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing-body{margin:12px;border:2px solid #4c6987;border-radius:12px;background:#132231;position:relative}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing-body--female{border-style:double;border-width:4px}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;border:1px solid #405a75;background:#1a2e42;border-radius:7px;padding:11px 6px;color:#d8e8f9;cursor:pointer;min-width:0;font:inherit;font-size:11px}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact strong{font:600 15px monospace;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact small{font-size:9px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#9fb7ce}
+:is(#connectorNavigator,#connectionNavigator) .wire-pin{display:block;width:18px;height:18px;border:2px solid #dcb67a;border-radius:50%;margin-bottom:3px;background:#ceb17d}
+:is(#connectorNavigator,#connectionNavigator) .wire-pin--female{background:#122333;box-shadow:inset 0 0 0 3px #1a3148}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact--assigned{border-color:#559b85}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact--assigned>span:not(.wire-pin):not(.wire-alert-mark){color:#93d6be}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact--open>span:not(.wire-pin):not(.wire-alert-mark){color:#edc68f}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact--free>span:not(.wire-pin):not(.wire-alert-mark){color:#9bc8f1}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact--reserve>span:not(.wire-pin):not(.wire-alert-mark){color:#c3afe9}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact.has-issues{border-color:#d6a568}
+:is(#connectorNavigator,#connectionNavigator) .wire-alert-mark{position:absolute;right:5px;top:4px;color:#f4c380;font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-contact:hover,:is(#connectorNavigator,#connectionNavigator) .wire-contact:focus-visible,:is(#connectorNavigator,#connectionNavigator) .wire-contact.is-selected{outline:2px solid #8bc9fa;outline-offset:1px;background:#223f59}
+:is(#connectorNavigator,#connectionNavigator) .wire-housing>footer{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;padding:10px 14px;background:#142232;font-size:10px;color:#a1b9d0}
+:is(#connectorNavigator,#connectionNavigator) .wire-limit{padding:0 15px}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-visual{margin-top:18px;border:1px solid #3d5872;background:#172a3c;border-radius:9px;padding:15px;max-width:850px}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-visual>header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-visual h3{font-size:13px;margin:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-head,:is(#connectorNavigator,#connectionNavigator) .wire-pair-row{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:6px;align-items:center;margin-top:8px}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-head{margin-top:16px;color:#9fc5e6;font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-mate-link{text-align:center;color:#91b6d9}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-position{border:1px solid #456380;border-radius:6px;background:#20384e;color:#dfedff;cursor:pointer;padding:8px;text-align:left;font:600 12px monospace;min-width:0;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-position:hover,:is(#connectorNavigator,#connectionNavigator) .wire-pair-position:focus-visible,:is(#connectorNavigator,#connectionNavigator) .wire-pair-position.is-selected{outline:2px solid #8bc9fa;outline-offset:1px;background:#294962}
+:is(#connectorNavigator,#connectionNavigator) .wire-pair-position small{display:block;font:10px sans-serif;color:#a5bed7;margin-top:4px}
+:is(#connectorNavigator,#connectionNavigator) .wire-connection-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,410px),1fr));gap:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-connection-card{display:flex;flex-direction:column;gap:18px;min-width:0;padding:15px;border:1px solid #3b536e;border-radius:9px;background:#1b2c3e;text-align:left;color:#daeafa;cursor:pointer;font:inherit}
+:is(#connectorNavigator,#connectionNavigator) .wire-connection-card:hover,:is(#connectorNavigator,#connectionNavigator) .wire-connection-card:focus-visible,:is(#connectorNavigator,#connectionNavigator) .wire-connection-card.is-selected{border-color:#8fcaf8;outline:1px solid #8fcaf855;background:#20394f}
+:is(#connectorNavigator,#connectionNavigator) .wire-connection-card.has-issues{border-left:3px solid #dbab6f}
+:is(#connectorNavigator,#connectionNavigator) .wire-card-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+:is(#connectorNavigator,#connectionNavigator) .wire-card-heading>strong{overflow-wrap:anywhere;min-width:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-kind{display:inline-block;border-radius:10px;padding:2px 7px;font-size:10px;background:#314b64;color:#afd5f5}
+:is(#connectorNavigator,#connectionNavigator) .wire-kind--autoconnect{background:#234b43;color:#9cdbc2}
+:is(#connectorNavigator,#connectionNavigator) .wire-kind--logical{background:#40395a;color:#cbbce9}
+:is(#connectorNavigator,#connectionNavigator) .wire-kind--bridge{background:#4d4333;color:#e8cb98}
+:is(#connectorNavigator,#connectionNavigator) .wire-page{font-size:10px;color:#94aec8;margin-left:auto}
+:is(#connectorNavigator,#connectionNavigator) .wire-endpoints{display:grid;grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr);gap:14px;align-items:center}
+:is(#connectorNavigator,#connectionNavigator) .wire-endpoints>span:not(.wire-conductor){min-width:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-endpoints strong{display:block;font-size:12px;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-endpoints small{display:block;font-size:10px;color:#93abc4;margin-bottom:5px}
+:is(#connectorNavigator,#connectionNavigator) .wire-conductor{height:3px;position:relative;border-radius:2px}
+:is(#connectorNavigator,#connectionNavigator) .wire-conductor:before,:is(#connectorNavigator,#connectionNavigator) .wire-conductor:after{content:'';position:absolute;top:-3px;width:9px;height:9px;border:2px solid #a2c0d9;border-radius:50%;background:#1a2c40}
+:is(#connectorNavigator,#connectionNavigator) .wire-conductor:before{left:-3px}:is(#connectorNavigator,#connectionNavigator) .wire-conductor:after{right:-3px}
+:is(#connectorNavigator,#connectionNavigator) .wire-conductor--logical{mask-image:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 9px);height:3px}
+:is(#connectorNavigator,#connectionNavigator) .wire-conductor--bridge{height:5px}
+:is(#connectorNavigator,#connectionNavigator) .wire-card-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:#a7bed6}
+:is(#connectorNavigator,#connectionNavigator) .wire-card-meta>span{padding:3px 7px;background:#ffffff06;border:1px solid #56718b35;border-radius:4px;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-card-status{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#9cb8d2;font-size:10px;margin-top:auto}
+:is(#connectorNavigator,#connectionNavigator) .wire-warning{color:#efc084}
+:is(#connectorNavigator,#connectionNavigator) .wire-detail-facts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:15px 0}
+:is(#connectorNavigator,#connectionNavigator) .wire-detail-facts div{padding:7px;background:#ffffff04;border:1px solid #3d536b;border-radius:5px;min-width:0}
+:is(#connectorNavigator,#connectionNavigator) .wire-detail-facts dt{font-size:10px;color:#9fb8d2}
+:is(#connectorNavigator,#connectionNavigator) .wire-detail-facts dd{font-size:12px;margin:3px 0 0;overflow-wrap:anywhere}
+:is(#connectorNavigator,#connectionNavigator) .wire-net-targets{display:flex;gap:6px;flex-wrap:wrap;padding:0;list-style:none;margin:10px 0}
+:is(#connectorNavigator,#connectionNavigator) .wire-net-targets li{border:1px solid #3e5872;border-radius:5px;padding:5px 8px;font-size:11px;color:#bdd3e9;overflow-wrap:anywhere}
+@media(max-width:1000px){:is(#connectorNavigator,#connectionNavigator) .wire-content.has-editor{grid-template-columns:minmax(0,1fr) 310px}}
+@media(max-width:820px){:is(#connectorNavigator,#connectionNavigator) .wire-content.has-editor{grid-template-columns:1fr}:is(#connectorNavigator,#connectionNavigator) .wire-properties{position:static}:is(#connectorNavigator,#connectionNavigator) .wire-editor-body{max-height:none}:is(#connectorNavigator,#connectionNavigator) .wire-kpis{min-width:0;width:100%}}
+@media(max-width:540px){:is(#connectorNavigator,#connectionNavigator).engineering-overlay{padding:7px}:is(#connectorNavigator,#connectionNavigator) .eng-shell{height:calc(100dvh - 14px);max-height:calc(100dvh - 14px)}:is(#connectorNavigator,#connectionNavigator) .eng-header{padding:12px}:is(#connectorNavigator,#connectionNavigator) .eng-header-mark{display:none}:is(#connectorNavigator,#connectionNavigator) .eng-heading h2{font-size:17px}:is(#connectorNavigator,#connectionNavigator) .eng-body{padding:13px}:is(#connectorNavigator,#connectionNavigator) .wire-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;flex-basis:100%}:is(#connectorNavigator,#connectionNavigator) .wire-kpi{padding:9px 12px}:is(#connectorNavigator,#connectionNavigator) .wire-toolbar select{max-width:100%;width:100%}:is(#connectorNavigator,#connectionNavigator) .wire-footer-note{display:none}:is(#connectorNavigator,#connectionNavigator) .wire-tools{margin-left:auto}:is(#connectorNavigator,#connectionNavigator) .wire-tools .eng-tools-items{max-width:calc(100vw - 48px)}:is(#connectorNavigator,#connectionNavigator) .wire-endpoints{gap:8px;grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr)}}
