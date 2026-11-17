@@ -8,7 +8,7 @@ export interface PlcModule {id:string;controllerId:string;rack:string;slot:strin
 export interface PlcChannel {id:string;moduleId:string;number:string;kind:'DI'|'DO'|'AI'|'AO';address:string;signalText:string;reserve:boolean;signal?:ConnectorPinAddress;supply?:ConnectorPinAddress;common?:ConnectorPinAddress}
 export interface BusNode {id:string;name:string;network:string;protocol:BusProtocol;address:string;ipAddress?:string;interfaceRole?:'device'|'interface';interfaceId?:string;interfaceProfile?:'generic'|'air-base';capacity?:number;controllerId?:string;binding?:{pageId:string;componentId:string}}
 export interface BusLink {id:string;from:string;to:string;fromPort:string;toPort:string;lengthM?:number}
-export interface KnxGroup {id:string;network:string;name:string;address:string;dpt:string}
+export interface KnxGroup {id:string;network:string;name:string;address:string;dpt:string;description?:string;xmlSource?:import('./KnxXmlExchange').KnxXmlSource}
 export interface KnxObject {id:string;nodeId:string;number:string;name:string;groupId:string;dpt:string;direction:'send'|'receive'|'both'}
 export interface AutomationData {controllers:PlcController[];modules:PlcModule[];channels:PlcChannel[];nodes:BusNode[];links:BusLink[];knxGroups:KnxGroup[];knxObjects:KnxObject[]}
 export type AutomationEntity=keyof AutomationData;

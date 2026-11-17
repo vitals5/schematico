@@ -24,6 +24,8 @@ IEC 61082 und IEC 81346 liefern den fachlichen Rahmen für Dokumentation und Ken
 | [KNX Association – Gruppenadresspanel](https://support.knx.org/hc/en-us/articles/360007690479-Group-Address-panel) | Gruppenadressen verknüpfen Kommunikationsobjekte, keine physischen Kabelsegmente. Ein Objekt kann mehreren Gruppen zugeordnet werden. DPT-Schreibweise und explizite Widersprüche zwischen Objekt und Gruppen werden geprüft; kein vollständiger DPT-Katalog oder ETS-Flags-Modell. |
 | [Siemens – KNX-Installation und technische Details](https://sid.siemens.com/r/A6V13193565/20347804683___en-US_25568984971) | Für dokumentierte TP-Kabelsegmente werden geschlossene Ringe abgewiesen. Linien, Sterne und Bäume bleiben möglich. IP-Verbindungen erhalten diese TP-Regel nicht. |
 
+Der [KNX-Gruppenadress-XML-Austausch](knx-xml.md) verwendet ergänzend die offiziellen Beschreibungen für [Export](https://support.knx.org/hc/en-us/articles/360022237580-Group-Address-Export) und [Import](https://support.knx.org/hc/en-us/articles/360022237500-Group-Address-Import). Es werden Gruppendaten ausgetauscht, keine kompletten ETS-Projekte.
+
 ## Loxone
 
 | Primärquelle | Umgesetzte Regel |

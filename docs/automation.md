@@ -51,7 +51,7 @@ Busverbindungen dokumentieren die physischen Segmente, Gruppenadressen die logis
 
 Link erlaubt 30 Extensions pro Schnittstelle, Tree 50 Geräte pro Zweig, das Profil **Air Base Extension** 128 Air-Geräte. Bei anderen Air-Schnittstellen eine Grenze laut Datenblatt erfassen; andernfalls bleibt sie sichtbar ungeklärt. Kleinere geräteabhängige Grenzen sind möglich. Für Link/Tree werden ausdrücklich erfasste Kabellängen aufsummiert und gegen 500 m geprüft. Unvollständige Topologie, fehlende Längen und unklare Kapazitäten erscheinen im Status der Schnittstelle und in CSV/PDF; sie werden nicht als vollständig geprüft dargestellt.
 
-Vor dem Entfernen einer belegten Loxone-Schnittstelle müssen ihre Geräte umgeordnet oder entfernt werden. Es gibt noch keinen Import aus ETS oder Loxone Config, keine Programmierung und keine automatische Gebäudeautomations-Schaltungs- oder Busverdrahtung. Bestehende elektrische Netze und Autoconnect bleiben unverändert.
+Vor dem Entfernen einer belegten Loxone-Schnittstelle müssen ihre Geräte umgeordnet oder entfernt werden. Der [KNX-Gruppenadress-XML-Austausch](knx-xml.md) ist verfügbar; vollständige Projektimporte aus ETS oder Loxone Config sind noch nicht enthalten. Es gibt keine Programmierung und keine automatische Gebäudeautomations-Schaltungs- oder Busverdrahtung. Bestehende elektrische Netze und Autoconnect bleiben unverändert.
 
 ## Bearbeitung und Prüflauf
 
