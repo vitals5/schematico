@@ -2,6 +2,20 @@
 
 **Projekt → SPS- und Busprojektierung…** verwaltet CPUs, Baugruppen, E/A-Kanäle sowie dokumentierte Busnetze, Teilnehmer und Portverbindungen. Die Daten liegen unter `Project.automation` in der Projektdatei. Bestehende Projekte benötigen keine Migration.
 
+## Grafischer Arbeitsbereich
+
+Der Einstieg zeigt Steuerungen, zugeordnete aktive Kanäle, Busnetze und Konfigurationshinweise als Übersichtskarten. Über die linke Bereichsnavigation (auf schmalen Bildschirmen über **Bereich**) wechseln Sie zwischen SPS, Busnetzen und KNX. **Grafik / Liste** wechselt die Darstellung; bereits eingegebene Eigenschaften bleiben dabei erhalten.
+
+- **SPS:** Steuerung wählen. Baugruppen erscheinen als Karten auf einer Rack-Leiste, darunter die tatsächlich gespeicherten Kanäle mit Typ, Adresse, Signaltext und Zuordnungsstatus. DI, DO, AI und AO sind farblich und durch Text unterschieden. Die Anzeige erzeugt keine zusätzlichen Kanäle oder Hardware-Steckplätze. **Alle Steuerungen / nicht zugeordnet** zeigt auch Datensätze mit fehlender übergeordneter Zuordnung.
+- **Busnetze:** Netz und Protokoll wählen. Die Topologie zeigt dokumentierte Teilnehmer und Verbindungen. Durchgezogene Linien sind gespeicherte Verbindungen, gestrichelte Linien Funkzuordnungen. Gepunktete Linien zeigen Schnittstellenzuordnungen, für die kein eigenes Verbindungssegment dokumentiert ist. Die Darstellung ist keine elektrische Verdrahtung und kein gemessener Funkweg.
+- **KNX:** Gruppenadresskarten öffnen eine logische Ansicht **Senden → Gruppenadresse → Empfangen**. Kommunikationsobjekte mit beiden Richtungen erscheinen auf beiden Seiten; es bleibt derselbe Datensatz. Von dort lassen sich auch die beteiligten Geräte bearbeiten.
+
+Karten, Teilnehmer und Topologieverbindungen öffnen den Eigenschaftseditor rechts; auf kleinen Bildschirmen erscheint er unterhalb der Grafik. SVG-Teilnehmer und -Verbindungen lassen sich auch mit Tab und Enter/Leertaste öffnen. Änderungen zunächst mit **Vorschau prüfen** kontrollieren und anschließend mit **Übernehmen** speichern. Rückgängig/Wiederholen und die Prüfung auf einen zwischenzeitlich geänderten Projektstand bleiben verfügbar.
+
+Die Suche und **Nur Hinweise** helfen beim Eingrenzen. Steuerungs-, Netz- und Gruppenadressauswahl gelten für die Grafik; die Liste zeigt alle Datensätze des Bereichs mit dem aktuellen Such-/Hinweisfilter. Große Grafiken werden begrenzt (12 Steuerungen, 24 Baugruppen, 128 Kanalkarten; 80 Busteilnehmer, 240 Verbindungen; 80 KNX-Gruppen, 40 Kommunikationsobjekte je Richtung). Alle Datensätze bleiben über Liste und Suche erreichbar. Die Grafiken zeigen gespeicherte Projektierungsdaten, keine Live-Zustände.
+
+**Daten & Berichte** bündelt AutomationML, Bearbeitungs-CSV, CSV-/PDF-Übersichten und Aktualisieren. Bereichsbezogene Exporte berücksichtigen den Such-/Hinweisfilter der Liste. Der gesonderte KNX-Gruppenadress-XML-Austausch lässt sich im Bereich **KNX-Gruppenadressen → KNX-XML austauschen** aufklappen.
+
 ## SPS-Struktur
 
 1. Unter **CPUs / Steuerungen** ein BMK, Anlage, Ort und eine Beschreibung anlegen.

@@ -1,12 +1,12 @@
 import {isLoxone} from '../model/BusProfiles';
 import type {Project} from '../model/types';
-import type {AutomationEntity} from '../model/Automation';
+import type {AutomationEntity,AutomationIssue} from '../model/Automation';
 import {ProjectIndex,displayDesignation} from '../model/ProjectIndex';
 import {automationData,controllerLabel,inspectAutomation} from '../model/Automation';
 import {connectionPinLabel} from './ConnectionList';
 export interface AutomationPlanRow {entity:AutomationEntity;id:string;cells:string[];pageId?:string;componentId?:string}
 export const automationColumns=['Bereich','CPU / Netz','Baugruppe / Teilnehmer','Rack/Slot / Protokoll','Kanal / Ports','Typ','Adresse','Signaltext / Ziel','Status','Signalanschluss','Versorgung','Bezug','Hinweise'];
-export function automationPlan(project:Project):AutomationPlanRow[]{const d=automationData(project),index=new ProjectIndex(project),issues=inspectAutomation(project,index);
+export function automationPlan(project:Project,context?:{index:ProjectIndex;issues:AutomationIssue[]}):AutomationPlanRow[]{const d=automationData(project),index=context?.index??new ProjectIndex(project),issues=context?.issues??inspectAutomation(project,index);
  const label=(a?:{pageId:string;componentId:string;pinId:string})=>{const e=a&&index.component(a.componentId,a.pageId),p=e&&a&&index.pin(e,a.pinId);return p?connectionPinLabel(p):a?'? '+a.componentId+':'+a.pinId:'';};
  const notes=(entity:string,id:string)=>issues.filter(i=>i.entity===entity&&i.recordId===id).map(i=>i.message).join('; ');
  const nodeStatus=(id:string)=>{const n=d.nodes.find(n=>n.id===id)!;if(!isLoxone(n.protocol))return '';if(n.interfaceRole!=='interface')return n.interfaceId?'Zugeordnet':'Schnittstelle ungeklärt';const members=d.nodes.filter(v=>v.interfaceId===id),limit=n.capacity??(n.protocol==='Loxone Link'?30:n.protocol==='Loxone Tree'?50:n.interfaceProfile==='air-base'?128:undefined),ids=new Set([id,...members.map(v=>v.id)]),links=d.links.filter(l=>ids.has(l.from)&&ids.has(l.to));const reached=new Set([id]);for(let changed=true;changed;){changed=false;for(const l of links)if(reached.has(l.from)!==reached.has(l.to)){reached.add(l.from);reached.add(l.to);changed=true;}}return `${members.length} / ${limit??'?'} Geräte`+(limit===undefined?' (Grenze ungeklärt)':'')+(members.some(v=>!reached.has(v.id))?' · Topologie unvollständig':'')+(n.protocol==='Loxone Air'?'':links.some(l=>l.lengthM===undefined)?' · Kabellängen unvollständig':` · ${links.reduce((sum,l)=>sum+(l.lengthM??0),0)} m erfasst`);};

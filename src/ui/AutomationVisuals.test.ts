@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {automationWorkspaceFixture} from './testing/AutomationWorkspaceFixture';
+import {automationBusGraph,automationBusRoutes,automationNetworkKey,automationVisuals,type AutomationVisualOptions} from './AutomationVisuals';
+import {inspectAutomation} from '../model/Automation';
+const p=automationWorkspaceFixture(),original=structuredClone(p),issues=inspectAutomation(p);assert.equal(issues.length,0);
+const o:AutomationVisualOptions={section:'overview',query:'',issuesOnly:false,controllerId:'',network:'',groupId:''};
+const home=automationVisuals(p,issues,o);assert(home.includes('SPS-Struktur'));assert(home.includes('Busnetze'));assert(home.includes('16 / 28'));
+const plc=automationVisuals(p,issues,{...o,section:'channels'});assert(plc.includes('DI_Raum_1'));assert(plc.includes('AO_Raum_1'));assert(plc.includes('Signalanschluss zugeordnet'));assert(plc.includes('Reserve'));assert(plc.includes('data-visual-entity="channels"'));
+const filtered=automationVisuals(p,issues,{...o,section:'channels',query:'I0.0'});assert(filtered.includes('DI_Raum_1'));assert(!filtered.includes('DI_Raum_2'));
+const moduleSearch=automationVisuals(p,issues,{...o,section:'channels',query:'-A1.1'});assert(moduleSearch.includes('DI_Raum_1'),'Parent match preserves child context');
+const ether=automationNetworkKey(p.automation!.nodes.find(n=>n.id==='switch')!),g=automationBusGraph(p,ether);assert.equal(g.nodes.length,4);assert.equal(g.edges.length,3);assert(g.edges.every(e=>e.kind==='wire'&&e.entity==='links'));assert.deepEqual(automationBusGraph(p,ether),g);
+for(let i=0;i<g.nodes.length;i++)for(let j=i+1;j<g.nodes.length;j++){const a=g.nodes[i],b=g.nodes[j];assert(a.x+212<=b.x||b.x+212<=a.x||a.y+76<=b.y||b.y+76<=a.y,'Node boxes do not overlap');}
+const routes=automationBusRoutes(g);assert.equal(new Set(routes.map(r=>r.path)).size,3);assert.equal(new Set(routes.map(r=>r.points[0].y)).size,3,'Fanout uses distinct visible ports');
+const cyclic=structuredClone(p);cyclic.automation!.links.push({id:'cross',from:'io-eg',to:'io-og',fromPort:'P2',toPort:'P2'});const cycleGraph=automationBusGraph(cyclic,ether),cross=automationBusRoutes(cycleGraph).find(r=>r.edge.id==='cross')!;const sourceNode=cycleGraph.nodes.find(n=>n.id==='io-eg')!;assert(cross.points[1].x>sourceNode.x+212,'Same-rank link runs outside the cards');
+const tree=automationBusGraph(p,automationNetworkKey(p.automation!.nodes.find(n=>n.id==='tree-root')!));assert.equal(tree.edges.filter(e=>e.kind==='wire').length,2);assert.equal(tree.edges.filter(e=>e.kind==='assignment').length,1);assert.equal(tree.edges.find(e=>e.kind==='assignment')!.entity,'nodes');
+const air=automationBusGraph(p,automationNetworkKey(p.automation!.nodes.find(n=>n.id==='air-root')!));assert(air.edges.every(e=>e.kind==='air'));assert.equal(air.edges[0].entity,'nodes','Interface membership is not represented as a new wire record');
+const nodes=automationVisuals(p,issues,{...o,section:'nodes',network:ether});assert(nodes.includes('Dokumentierte Bustopologie'));assert(nodes.includes('role="button"'));assert(nodes.includes('keine elektrischen Leiter'));
+const knx=automationVisuals(p,issues,{...o,section:'knxObjects',groupId:'knx-light'});assert(knx.includes('Senden'));assert(knx.includes('Empfangen'));assert.equal(knx.split('data-visual-id="knx-push"').length-1,2,'Bidirectional object appears on both sides, same identity');
+const corrupt=structuredClone(p);corrupt.automation!.channels[0].moduleId='missing';const badIssues=inspectAutomation(corrupt);const orphan=automationVisuals(corrupt,badIssues,{...o,section:'channels',controllerId:'*',issuesOnly:true});assert(orphan.includes('Ohne gültige'));assert(orphan.includes('DI_Raum_1'));
+const malicious=structuredClone(p);malicious.automation!.nodes[0].name='<img src=x onerror="alert(1)">';const html=automationVisuals(malicious,[],{...o,section:'nodes',network:ether});assert(!html.includes('<img'));assert(html.includes('&lt;img'));
+const large=structuredClone(p);large.automation!.nodes=[];large.automation!.links=[];for(let i=0;i<150;i++)large.automation!.nodes.push({id:'n'+i,name:'Node '+i,network:'large',protocol:'Other',address:''});const capped=automationBusGraph(large,JSON.stringify(['Other','large']));assert.equal(capped.nodes.length,80);assert.equal(capped.omitted,70);assert(capped.height<3000);
+assert.deepEqual(p,original,'All visualizations leave project state unchanged');
+console.log('✓ Automation visuals: deterministic nonoverlapping topology, wired/wireless/declared membership distinctions, hardware and channel context, KNX direction, orphan visibility, filtering, bounded output and escaped labels');

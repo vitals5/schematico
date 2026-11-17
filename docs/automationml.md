@@ -1,6 +1,6 @@
 # Vorlagenbasierter SPS-Datenaustausch mit AutomationML
 
-**Projekt → SPS- und Busprojektierung → AutomationML…** öffnet den nativen SPS-Datenaustausch. Grundlage ist eine aus dem SPS-Werkzeug exportierte `.aml`-Vorlage nach **AutomationML Application Recommendation Automation Project Configuration (AR APC)**.
+**Projekt → SPS- und Busprojektierung → Daten & Berichte → AutomationML…** öffnet den nativen SPS-Datenaustausch. Grundlage ist eine aus dem SPS-Werkzeug exportierte `.aml`-Vorlage nach **AutomationML Application Recommendation Automation Project Configuration (AR APC)**.
 
 Schematico liest die unterstützten Steuerungen, Baugruppen und E/A-Kanäle in sein Projektmodell ein. Beim Rückexport wird die ursprüngliche XML-Datei aktualisiert: Hersteller-/Hardwaretypen, Firmware, Buskonfiguration, Bibliotheken und unbekannte Zusatzdaten werden nicht neu erfunden oder aus dem vereinfachten Schematico-Modell rekonstruiert. Die vollständige Vorlage und ihre Identitätszuordnungen werden im Projekt gespeichert; dadurch wird die Projektdatei entsprechend größer.
 

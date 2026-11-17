@@ -1,6 +1,6 @@
 # KNX-Gruppenadressen per XML austauschen
 
-Unter **Projekt → SPS- und Busprojektierung → KNX-Gruppenadressen** gibt es einen eigenen Bereich **KNX-Gruppenadress-XML**. Er ergänzt die Schematico-Bearbeitungs-CSV um einen Austausch im dokumentierten Gruppenadressformat von ETS.
+Unter **Projekt → SPS- und Busprojektierung → KNX-Gruppenadressen** gibt es den aufklappbaren Bereich **KNX-XML austauschen**. Er ergänzt die Schematico-Bearbeitungs-CSV um einen Austausch im dokumentierten Gruppenadressformat von ETS.
 
 ## Import
 

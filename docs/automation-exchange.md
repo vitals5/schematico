@@ -1,6 +1,6 @@
 # Tabellarische Massenbearbeitung für SPS und Busse
 
-Unter **Projekt → SPS- und Busprojektierung…** stehen **Bearbeitungs-CSV exportieren** und **Bearbeitungs-CSV importieren** bereit. Damit lassen sich CPU-, Baugruppen-, Kanal-, Bus-, KNX- und Loxone-Daten in einer Tabellenkalkulation bearbeiten. Die bisherigen CSV-/PDF-Übersichten bleiben lesbare Berichte; sie sind keine Importdateien.
+Unter **Projekt → SPS- und Busprojektierung…** stehen unter **Daten & Berichte** die Funktionen **Bearbeitungs-CSV exportieren** und **Bearbeitungs-CSV importieren** bereit. Damit lassen sich CPU-, Baugruppen-, Kanal-, Bus-, KNX- und Loxone-Daten in einer Tabellenkalkulation bearbeiten. Die bisherigen CSV-/PDF-Übersichten bleiben lesbare Berichte; sie sind keine Importdateien.
 
 ## Ablauf
 
