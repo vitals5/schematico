@@ -5,7 +5,7 @@ import {ProjectIndex} from './ProjectIndex';
 import type {ConnectorPinAddress} from './Connectors';
 export interface PlcController {id:string;bmk:string;plant:string;location:string;description:string}
 export interface PlcModule {id:string;controllerId:string;rack:string;slot:string;bmk:string;description:string}
-export interface PlcChannel {id:string;moduleId:string;number:string;kind:'DI'|'DO'|'AI'|'AO';address:string;signalText:string;reserve:boolean;signal?:ConnectorPinAddress;supply?:ConnectorPinAddress;common?:ConnectorPinAddress}
+export interface PlcChannel {id:string;moduleId:string;number:string;kind:'DI'|'DO'|'AI'|'AO';address:string;signalText:string;symbolicName?:string;dataType?:string;reserve:boolean;signal?:ConnectorPinAddress;supply?:ConnectorPinAddress;common?:ConnectorPinAddress}
 export interface BusNode {id:string;name:string;network:string;protocol:BusProtocol;address:string;ipAddress?:string;interfaceRole?:'device'|'interface';interfaceId?:string;interfaceProfile?:'generic'|'air-base';capacity?:number;controllerId?:string;binding?:{pageId:string;componentId:string}}
 export interface BusLink {id:string;from:string;to:string;fromPort:string;toPort:string;lengthM?:number}
 export interface KnxGroup {id:string;network:string;name:string;address:string;dpt:string;description?:string;xmlSource?:import('./KnxXmlExchange').KnxXmlSource}
@@ -41,7 +41,7 @@ export function inspectAutomation(project:Project,index=new ProjectIndex(project
  for(const c of d.channels){const module=one(d.modules,c.moduleId),binding=c.signal;
   if(!module)issue('channels',c.id,'Baugruppe fehlt oder ist mehrdeutig',binding);
   if(!c.number.trim()||!['DI','DO','AI','AO'].includes(c.kind))issue('channels',c.id,'Kanalnummer oder Kanaltyp ist ungültig',binding);
-  if(d.channels.some(v=>v.id!==c.id&&v.moduleId===c.moduleId&&v.number===c.number))issue('channels',c.id,'Kanalnummer in der Baugruppe ist mehrfach vorhanden',binding);
+  if(d.channels.some(v=>v.id!==c.id&&v.moduleId===c.moduleId&&v.kind===c.kind&&v.number===c.number))issue('channels',c.id,'Kanalnummer ist für diesen Kanaltyp in der Baugruppe mehrfach vorhanden',binding);
   if(c.reserve&&(c.signal||c.supply||c.common))issue('channels',c.id,'Reservekanal besitzt Anschlusszuordnungen',binding);
   for(const role of ['signal','supply','common'] as const)if(c[role]&&!pin(c[role]!))issue('channels',c.id,`${role}: Bibliotheksanschluss fehlt oder ist mehrdeutig`,c[role]);
   const ports=[c.signal,c.supply,c.common].filter(Boolean).map(a=>portKey(a!));if(new Set(ports).size!==ports.length)issue('channels',c.id,'Signal, Versorgung und Bezug dürfen nicht derselbe Anschluss sein',binding);

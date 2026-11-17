@@ -8,13 +8,13 @@
 2. Unter **Baugruppen** die CPU auswählen und Rack, Steckplatz, BMK und Beschreibung erfassen.
 3. Unter **E/A-Kanäle** die Baugruppe, Kanalnummer, DI/DO/AI/AO, E/A-Adresse und Signaltext festlegen.
 
-Kanalnummern sind innerhalb einer Baugruppe eindeutig, Rack/Steckplatz innerhalb einer CPU. Gleiche E/A-Adressen verschiedener CPUs sind unabhängig. Leere Adressen sind noch nicht erfasst. Ein Reservekanal ist ausdrücklich gekennzeichnet und darf keine Anschlussbindungen besitzen.
+Kanalnummern sind innerhalb einer Baugruppe je Kanaltyp eindeutig, Rack/Steckplatz innerhalb einer CPU. Gleiche E/A-Adressen verschiedener CPUs sind unabhängig. Leere Adressen sind noch nicht erfasst. Ein Reservekanal ist ausdrücklich gekennzeichnet und darf keine Anschlussbindungen besitzen.
 
 ### Adressprüfung
 
 Numerische E/A-Adressen verwenden einen gemeinsamen Bitbereich für die IEC- und deutschen Kennungen: beispielsweise `%I0.0`, `I0.0` und `E0.0` sowie `%QW2`, `QW2` und `AW2`. Unterstützt werden Bitadressen `.0` bis `.7` und Byte-, Wort- und Doppelwortbereiche `B/W/D`. Ein numerischer Bereich ohne Bitangabe zählt als Byte. Erkannte Adressen müssen zur Ein-/Ausgangsrichtung passen. Auch überlappende Bereiche, etwa `IW0` und `I1.0`, werden innerhalb derselben CPU erkannt.
 
-Andere Adressen bleiben symbolisch. Hier prüft die Anwendung doppelte vollständige Namen innerhalb derselben CPU ohne Beachtung der Groß-/Kleinschreibung; sie zerlegt keine beliebigen Herstellerformate in Speicherbereiche. Hardwareabhängige Adressgrenzen, Bitbelegungen einzelner Geräte und Analogskalierungen werden nicht berechnet.
+Symbolischer SPS-Name und Datentyp können zusätzlich im Kanal hinterlegt werden. Andere Adressen bleiben symbolisch. Hier prüft die Anwendung doppelte vollständige Namen innerhalb derselben CPU ohne Beachtung der Groß-/Kleinschreibung; sie zerlegt keine beliebigen Herstellerformate in Speicherbereiche. Hardwareabhängige Adressgrenzen, Bitbelegungen einzelner Geräte und Analogskalierungen werden nicht berechnet.
 
 ### Kanalorientierte Anschlusszuordnung
 
@@ -67,4 +67,4 @@ Suche und seitenweise Tabellen begrenzen die sichtbaren Datensätze auf 100 pro 
 
 Für die [tabellarische Massenbearbeitung](automation-exchange.md) stehen eigene Bearbeitungs-CSVs mit stabilen IDs, Standprüfung, Änderungsübersicht und atomarem Reimport bereit.
 
-Die Daten werden mit dem Projekt gespeichert. Ein nativer bidirektionaler Austausch mit SPS-Engineeringsoftware oder AutomationML ist in diesem Schritt noch nicht enthalten.
+Die Daten werden mit dem Projekt gespeichert. Der [vorlagenbasierte AutomationML-APC-Austausch](automationml.md) unterstützt den geprüften Import und Rückexport von Steuerungen, Baugruppen, Kanälen und zugeordneten Tags. Herstellerübergreifende Neuprojektierung der Hardware, vollständige Busübernahme und Online-Programmierung sind nicht enthalten.

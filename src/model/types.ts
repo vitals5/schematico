@@ -450,6 +450,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  automationMl?:import('./AutomationMl').AutomationMlSource;
   automation?:import('./Automation').AutomationData;
   connectorAssemblies?:import('./Connectors').ConnectorAssembly[];
   connectorPairings?:import('./Connectors').ConnectorPairing[];

@@ -14,16 +14,7 @@ export interface KnxXmlRead {entries:KnxXmlEntry[];issues:KnxXmlIssue[];notes:st
 export interface KnxXmlChange {id:string;entry:number;address:string;kind:'add'|'update';before?:KnxGroup;after:KnxGroup}
 export interface KnxXmlPreview {next?:Project;changes:KnxXmlChange[];unchanged:number;issues:KnxXmlIssue[];notes:string[]}
 const serializer=new XMLSerializer();
-/** XML byte encodings are decoded before parsing; invalid input is never silently replaced. */
-export function decodeKnxGroupXml(bytes:Uint8Array):string {
- if(bytes.byteLength>knxXmlMaxBytes)throw new Error('Datei ist größer als 4 MiB.');
- const utf16le=bytes[0]===255&&bytes[1]===254||bytes[0]===60&&bytes[1]===0;
- const utf16be=bytes[0]===254&&bytes[1]===255||bytes[0]===0&&bytes[1]===60;
- const utf8bom=bytes[0]===239&&bytes[1]===187&&bytes[2]===191;
- const declaration=new TextDecoder('windows-1252').decode(bytes.subarray(0,2048)).match(/<\?xml\s[^?]*encoding=["']([^"']+)["']/i)?.[1];
- const encoding=utf16le?'utf-16le':utf16be?'utf-16be':utf8bom?'utf-8':declaration??'utf-8';
- try{return new TextDecoder(encoding,{fatal:true}).decode(bytes);}catch{throw new Error('XML-Zeichenkodierung ist ungültig oder nicht unterstützt. Bitte erneut als UTF-8 exportieren.');}
-}
+export {decodeEngineeringXml as decodeKnxGroupXml} from './XmlInput';
 function xmlDocument(xml:string):Document {
  if(new TextEncoder().encode(xml).length>knxXmlMaxBytes||/<!DOCTYPE\b|<!ENTITY\b/i.test(xml))throw new Error('XML ist größer als 4 MiB oder enthält nicht unterstützte DTD-/Entity-Deklarationen.');
  let failed=false;const doc=new DOMParser({errorHandler:{warning:()=>{failed=true;},error:()=>{failed=true;},fatalError:()=>{failed=true;}}}).parseFromString(xml.replace(/^\uFEFF/,''),'text/xml');
