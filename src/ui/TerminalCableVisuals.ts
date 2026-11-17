@@ -1,0 +1,48 @@
+import type {Project,CableDefinition} from '../model/types';
+import {ProjectIndex,displayDesignation} from '../model/ProjectIndex';
+import {inspectWiring,cableSchedule,type WiringFinding} from '../model/WiringManagement';
+import {TerminalDiagramGenerator,type TerminalEntry} from '../reports/TerminalDiagram';
+import {escapeSvg as esc} from '../model/ImportedDrawing';
+import {t} from '../i18n';
+import {wireColour,wiringEmpty} from './WiringVisuals';
+
+export interface TerminalVisual {key:string;strip:string;entry:TerminalEntry;page:string;configured:boolean;sidesConfigured:boolean;issues:WiringFinding[]}
+export interface CoreVisual {key:string;core:CableDefinition['cores'][number];targets:string[];issues:WiringFinding[]}
+export interface CableVisual {key:string;pageId:string;page:string;cable:CableDefinition;cores:CoreVisual[];issues:WiringFinding[]}
+export interface BridgeVisual {id:string;from:string;to:string;kind:'plug'|'wire';strips:string[]}
+export interface TerminalCableSnapshot {report:Map<string,TerminalEntry[]>;schedule:ReturnType<typeof cableSchedule>;terminals:TerminalVisual[];cables:CableVisual[];bridges:BridgeVisual[];issues:WiringFinding[]}
+/** Derived once for the immutable workbench snapshot, never on search or view changes. */
+export function terminalCableSnapshot(project:Project,index=new ProjectIndex(project)):TerminalCableSnapshot {
+ const report=TerminalDiagramGenerator.generateTerminalReport(project),schedule=cableSchedule(project),issues=inspectWiring(project,index),byPage=new Map(project.pages.map(p=>[p.id,p.pageNumber]));
+ const terminalIssues=new Map<string,WiringFinding[]>(),cableIssues=new Map<string,WiringFinding[]>(),coreIssues=new Map<string,WiringFinding[]>();
+ for(const issue of issues){const add=(map:Map<string,WiringFinding[]>,key:string)=>{const list=map.get(key)??[];list.push(issue);map.set(key,list);};if(issue.componentId)add(terminalIssues,JSON.stringify([issue.pageId,issue.componentId]));if(issue.cableId)add(cableIssues,JSON.stringify([issue.pageId,issue.cableId]));if(issue.coreId)add(coreIssues,JSON.stringify([issue.pageId,issue.cableId,issue.coreId]));}
+ const terminals=[...report].flatMap(([strip,rows])=>rows.map(entry=>{const owner=index.component(entry.componentId??'',entry.pageId),pins=owner?index.pinsFor(owner):[];return {key:JSON.stringify([entry.pageId,entry.componentId]),strip,entry,page:byPage.get(entry.pageId??'')??'?',configured:!!owner?.component.terminal,sidesConfigured:pins.length>0&&pins.every(pin=>['internal','external'].includes(owner?.component.terminal?.pinSides[pin.id]??'')),issues:terminalIssues.get(JSON.stringify([entry.pageId,entry.componentId]))??[]};}));
+ const rowMap=new Map(schedule.map(r=>[JSON.stringify([r.pageId,r.cableId,r.coreId]),r]));
+ const cables=project.pages.flatMap(page=>(page.cables??[]).map(cable=>({key:JSON.stringify([page.id,cable.id]),pageId:page.id,page:page.pageNumber,cable,issues:cableIssues.get(JSON.stringify([page.id,cable.id]))??[],cores:cable.cores.map(core=>({key:JSON.stringify([page.id,cable.id,core.id]),core,targets:rowMap.get(JSON.stringify([page.id,cable.id,core.id]))?.targets??[],issues:coreIssues.get(JSON.stringify([page.id,cable.id,core.id]))??[]}))})));
+ const label=(ep:{componentId:string;pinId:string})=>{const matches=index.componentsById.get(ep.componentId);const e=matches?.length===1?matches[0]:undefined,pin=e&&index.pin(e,ep.pinId);return (e?displayDesignation(e.structure,e.tag):'? '+ep.componentId)+':'+(pin?.label??ep.pinId);};
+ const bridges=(project.logicalConnections??[]).filter(w=>w.terminalBridge).map(w=>({id:w.id,from:label(w.from),to:label(w.to),kind:w.terminalBridge!,strips:[...new Set(terminals.filter(r=>[w.from.componentId,w.to.componentId].includes(r.entry.componentId??'')).map(r=>r.strip))]}));
+ return {report,schedule,terminals,cables,bridges,issues};
+}
+const issueText=(issues:WiringFinding[])=>issues.map(i=>t(i.code)+' '+i.details).join(' ');
+const words=(q:string)=>q.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+const matches=(q:string,text:string)=>words(q).every(w=>text.toLocaleLowerCase().includes(w));
+export function visibleTerminals(s:TerminalCableSnapshot,q='',group='',onlyIssues=false){return s.terminals.filter(r=>(!group||r.strip===group)&&(!onlyIssues||r.issues.length>0)&&matches(q,[r.strip,r.entry.terminalNumber,r.entry.functionText,r.entry.internalTarget,r.entry.externalTarget,r.page,issueText(r.issues)].join(' ')));}
+export function visibleCables(s:TerminalCableSnapshot,q='',group='',onlyIssues=false):CableVisual[]{
+ return s.cables.filter(c=>(!group||c.key===group)&&(!onlyIssues||c.issues.length>0)).flatMap(c=>{
+  const parent=matches(q,[c.cable.bmk,c.cable.cableType,c.cable.description,c.page,c.cable.crossSection,issueText(c.issues.filter(i=>!i.coreId))].join(' '));
+  const cores=c.cores.filter(r=>(!onlyIssues||r.issues.length>0||c.issues.some(i=>!i.coreId))&&(parent||matches(q,[r.core.designation,r.core.color,r.core.crossSection,r.core.reserve?t('wiringReserve'):'',...r.core.wireIds??[],...r.targets,issueText(r.issues)].join(' '))));
+  return cores.length||parent? [{...c,cores}]:[];
+ });
+}
+export function terminalStripCards(rows:TerminalVisual[],bridges:BridgeVisual[]):string {
+ const strips=[...new Set(rows.map(r=>r.strip))];let room=192;
+ return strips.map(strip=>{const entries=rows.filter(r=>r.strip===strip),shown=entries.slice(0,Math.min(64,room));room-=shown.length;const links=bridges.filter(b=>b.strips.includes(strip));
+  return `<section class="tc-strip"><header><h3>${esc(strip)}</h3><span>${entries.length} ${t('wiringPositions')}${links.length?' · '+links.length+' '+t('wiringStoredBridges'):''}</span></header><div class="tc-rail">${shown.map(r=>`<button type="button" class="tc-terminal ${r.issues.length?'has-issues':''}" data-terminal-key="${esc(r.key)}" title="${esc([r.entry.functionText,r.sidesConfigured?t('wiringConfiguredSides'):t('wiringLegacySides'),...r.issues.map(i=>t(i.code))].join('\n'))}"><span class="tc-target"><small>${t('wiringInternal')}</small>${esc(r.entry.internalTarget)}</span><span class="tc-terminal-port" aria-hidden="true"></span><strong>${esc(r.entry.terminalNumber)}</strong><small>${r.configured?t(r.sidesConfigured?'wiringConfiguredSides':'wiringLegacySides'):t('wiringDerivedNumber')}</small><span class="tc-terminal-port" aria-hidden="true"></span><span class="tc-target"><small>${t('wiringExternal')}</small>${esc(r.entry.externalTarget)}</span><small>${t('page')} ${esc(r.page)}${r.issues.length?' · ! '+r.issues.length:''}</small></button>`).join('')||`<p class="wire-muted">${t('wiringMoreGraphic')}</p>`}</div>${shown.length<entries.length?`<p class="wire-muted tc-limit">${t('wiringMoreGraphic')}</p>`:''}${links.length?`<details class="tc-bridges"><summary>${t('wiringStoredBridges')} (${links.length})</summary>${links.slice(0,40).map(b=>`<div class="tc-bridge-row"><span>${esc(b.from)}</span><span class="tc-bridge-mark" aria-hidden="true">━━</span><span>${esc(b.to)}</span><small>${t(b.kind==='plug'?'wiringPlug':'wiringWireBridge')}</small></div>`).join('')}<p class="wire-muted">${t('wiringBridgeHint')}${links.length>40?' '+t('wiringMoreGraphic'):''}</p></details>`:''}</section>`;
+ }).join('');
+}
+export function cableCoreCards(cables:CableVisual[]):string {let room=96;
+ return `<div class="tc-cables">${cables.map(c=>{const shown=c.cores.slice(0,Math.min(24,room));room-=shown.length;
+ return `<section class="tc-cable"><header><button type="button" data-cable-key="${esc(c.key)}"><strong>${esc(c.cable.bmk||'?')}</strong><small>${esc(c.cable.cableType||t('wiringNoValue'))} · ${t('page')} ${esc(c.page)}</small></button><button class="btn" data-cable-key="${esc(c.key)}">${t('wiringCableProperties')}</button></header><div class="tc-cable-spec"><span>${c.cable.cores.length} ${t('wiringDefined')} / ${esc(String(c.cable.coreCount??'?'))} ${t('wiringDeclared')}</span><span>${esc(c.cable.crossSection||t('wiringNoValue'))}</span>${c.issues.length?`<span class="wire-warning">! ${c.issues.length} ${t('wiringHints')}</span>`:''}</div><div class="tc-core-bundle">${shown.map(r=>`<button type="button" class="tc-core ${r.issues.length?'has-issues':''} ${r.core.reserve?'is-reserve':''}" data-core-key="${esc(r.key)}"><span class="tc-core-line" style="${wireColour(r.core.color??'')}" aria-hidden="true"></span><span><strong>${esc(r.core.designation||'?')}</strong><small>${esc(r.core.color||t('wiringNoValue'))} · ${esc(r.core.crossSection||c.cable.crossSection||t('wiringNoValue'))}</small></span><span class="tc-core-state">${t(r.core.reserve?'wiringReserve':r.core.wireIds?.length?'wiringAssigned':'wiringOpen')}${r.issues.length?' · !':''}</span><small class="tc-core-targets">${esc(r.targets.join(' · ')||t('wiringNoValue'))}</small></button>`).join('')||`<p class="wire-muted">${t(c.cable.cores.length?'wiringMoreGraphic':'wiringEmptyCores')}</p>`}</div>${shown.length<c.cores.length?`<p class="wire-muted tc-limit">${t('wiringMoreGraphic')}</p>`:''}</section>`;
+ }).join('')}</div>`;
+}
+export {wiringEmpty};

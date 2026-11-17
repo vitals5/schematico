@@ -1,3 +1,7 @@
+import './WiringWorkspace.css';
+import './TerminalCableWorkspace.css';
+import {terminalCableSnapshot,type TerminalCableSnapshot} from './TerminalCableVisuals';
+import {mountTerminalCableWorkspace,type TerminalCableViewState} from './TerminalCableWorkspace';
 import { finishEngineeringDialog } from './EngineeringDialog';
 import {CableRepairDialog} from './CableRepairDialog';
 import type { Project } from '../model/types';
@@ -5,10 +9,8 @@ import { ProjectIndex } from '../model/ProjectIndex';
 import {
   WiringEditPlan,
   terminalSettings,
-  cableSchedule,
   type WiringEdit,
 } from '../model/WiringManagement';
-import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import { articleError, downloadArticleFile } from './ArticleCatalogDialog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
@@ -25,6 +27,8 @@ export class WiringDialog {
   private el = document.createElement('div');
   private source: Project;
   private index: ProjectIndex;
+  private snapshot:TerminalCableSnapshot;
+  private workspace:TerminalCableViewState={tab:'terminals',view:'graphic',search:'',group:'',offset:0,hints:false};
   private terminal = '';
   private cable = '';
   private core = '';
@@ -44,11 +48,14 @@ export class WiringDialog {
   ) {
     this.source = structuredClone(getProject());
     this.index = new ProjectIndex(this.source);
+    this.snapshot=terminalCableSnapshot(this.source,this.index);
     if (initial?.componentId)
       this.terminal = JSON.stringify([initial.pageId, initial.componentId]);
     if (initial?.cableId)
       this.cable = JSON.stringify([initial.pageId, initial.cableId]);
     if (initial?.coreId) this.core = initial.coreId;
+    if(initial?.componentId)this.workspace.panel='terminal';
+    if(initial?.cableId){this.workspace.tab='cables';this.workspace.panel=initial.coreId?'core':'cable';}
   }
   show() {
     if (document.getElementById('wiringDialog')) return;
@@ -133,11 +140,11 @@ export class WiringDialog {
       selectedCable = cables.find((c) => c.value === this.cable),
       baseCore = selectedCable?.c.cores.find((c) => c.id === this.core),
       selectedCore = baseCore
-        ? this.draft?.kind === 'core' && this.draft.coreId === baseCore.id
+        ? this.draft?.kind === 'core' && this.draft.coreId === baseCore.id && this.draft.cableId===selectedCable?.c.id && this.draft.pageId===selectedCable?.page.id
           ? { ...baseCore, ...this.draft }
           : baseCore
         : undefined,
-      report = TerminalDiagramGenerator.generateTerminalReport(this.source),
+      report = this.snapshot.report,
       endpoints = terminals.flatMap((e) =>
         this.index
           .pinsFor(e)
@@ -162,7 +169,7 @@ export class WiringDialog {
          )}</div><button class="btn" data-save-terminal>${t('articlesPreview')}</button>`
      : ''
  }
- <details><summary>${t('wiringTerminals')}</summary><table style="width:100%;text-align:left"><tr><th>BMK</th><th>${t('wiringNumber')}</th><th>${t('wiringInternal')}</th><th>${t('wiringExternal')}</th></tr>${[...report].flatMap(([strip, rows]) => rows.map((r) => `<tr><td>${esc(strip)}</td><td>${esc(r.terminalNumber)}</td><td>${esc(r.internalTarget)}</td><td>${esc(r.externalTarget)}</td></tr>`)).join('')}</table></details>
+ <details data-old-terminal-report></details>
  <details><summary>${t('wiringBridge')}</summary><div style="display:flex;gap:8px;flex-wrap:wrap">${['from', 'to'].map((k) => `<select class="form-input" data-bridge-${k}>${endpoints.map((p) => `<option value="${esc(p.value)}">${esc(p.label)}</option>`).join('')}</select>`).join('')}<select data-bridge-type><option value="plug">${t('wiringPlug')}</option><option value="wire">${t('wiringWireBridge')}</option></select><button class="btn" data-bridge>${t('articlesPreview')}</button></div>${(
    this.source.logicalConnections ?? []
  )
@@ -224,6 +231,8 @@ export class WiringDialog {
         ?.addEventListener('change', (e) => {
           this[key] = (e.target as HTMLSelectElement).value;
           if (key === 'cable') this.core = '';
+          this.workspace.tab=key==='terminal'?'terminals':'cables';
+          this.workspace.panel=key==='terminal'?'terminal':key==='core'?'core':'cable';
           this.preview = undefined;
           this.draft = undefined;
           this.render();
@@ -358,7 +367,7 @@ export class WiringDialog {
             'reserve',
             'targets',
           ],
-          ...cableSchedule(this.source).map((r) => [
+          ...this.snapshot.schedule.map((r) => [
             r.pageNumber,
             r.bmk,
             r.type,
@@ -412,6 +421,12 @@ export class WiringDialog {
           this.el.querySelector('[data-preview]')?.remove();
         });
     this.el.querySelector('[data-repairs]')?.addEventListener('click',()=>new CableRepairDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
+    mountTerminalCableWorkspace(this.el,this.snapshot,this.workspace,{
+      pickTerminal:key=>{this.terminal=key;this.workspace.tab='terminals';this.workspace.panel='terminal';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
+      pickCable:(key,core)=>{this.cable=key;this.core=core??'';this.workspace.tab='cables';this.workspace.panel=core?'core':'cable';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
+      refresh:()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.workspace.panel=undefined;this.render();},
+      closePanel:()=>{this.workspace.panel=undefined;this.preview=undefined;this.draft=undefined;this.error='';this.render();}
+    });
     finishEngineeringDialog(this.el, { kind: 'wiring', description: t('engineeringWiringHint'), wide: true });
     focusArticleModal(this.el);
   }

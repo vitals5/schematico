@@ -16,6 +16,19 @@ Eine gespeicherte Vorplanung kann einem ausdrücklich ausgewählten, bereits gez
 
 Jede Projektübernahme ist ein Rückgängig-Schritt. Zwischenzeitliche Projektänderungen blockieren eine veraltete Vorschau.
 
+## Grafischer Klemmen-/Kabelarbeitsbereich
+
+**Projekt → Klemmen und Kabel…** startet mit einer grafischen Übersicht und Kennzahlen zum eingelesenen Projektbestand. Die Register **Klemmen** und **Kabel / Adern** unterstützen auch Pfeiltasten sowie Home/End. Suche, Gruppenfilter und **Nur mit Hinweisen** begrenzen die Ansicht. **Grafik / Liste** wechselt die Darstellung, ohne offene Eingaben oder eine geprüfte Vorschau zu verlieren. Auch der Registerwechsel erhält vorhandene Formulareingaben.
+
+- **Klemmen:** Jede Leiste erscheint als schematische Reihe mit Nummer/Etage sowie internen und externen Zielen aus dem bestehenden Klemmenbericht. Aus der Darstellung oder Reihenfolge abgeleitete Nummern und die bisherige Anschlussseitenregel werden ausdrücklich gekennzeichnet. Die Grafik ist keine maßstäbliche Montagezeichnung. **Gespeicherte Brücken** zeigt ausschließlich die tatsächlich gespeicherten Anschlussverbindungen. Benachbarte Klemmen werden nicht automatisch verbunden.
+- **Kabel / Adern:** Kabelkarten zeigen Typ, Querschnitt und definierte/deklarierte Aderzahl. Einzelne Adern zeigen ihre gespeicherte Farbe, Kennung, Ziele und den Zuordnungs-/Reservestatus. Eine größere deklarierte Aderzahl erzeugt keine zusätzlichen Adergrafiken. Fehlende Adern werden erst über den geprüften Reserve-Befehl angelegt. Hinweise bleiben auch bei einer gespeicherten Reservekennzeichnung sichtbar, wenn diese widersprüchlich ist.
+
+Klemme, Kabel oder Ader anklicken, um rechts die passenden Eigenschaften zu öffnen; mobil erscheint das Panel darunter. Das Panel zeigt auch die vollständigen Ziele. Änderungen durchlaufen weiterhin **Vorschau → Übernehmen** und unterstützen Rückgängig/Wiederholen. Eine andere Datensatzauswahl verwirft offene Eingaben. **Aktualisieren** liest das Projekt erneut ein und verwirft offene Eingaben/Vorschauen; ein veralteter Stand kann neuere Projektdaten nicht überschreiben.
+
+Die Grafik zeigt sechs Leisten bzw. Kabel pro Seite. Klemmenkarten sind auf 64 je Leiste und insgesamt 192 begrenzt; Kabelkarten auf 24 Adern je Kabel und insgesamt 96. Weitere Datensätze bleiben über Suche, Gruppenfilter, **Weiter** und die Liste erreichbar. Die Liste zeigt 100 Positionen/Adern pro Seite. In der grafischen Brückenübersicht werden bis zu 40 Verbindungen je Leiste angezeigt; die Brückenbearbeitung enthält die vollständigen gespeicherten Brücken.
+
+**Daten & Berichte** bündelt die Kabel-Reparaturvorschläge, das Aktualisieren und den bisherigen Export aller drei Fertigungslisten. Der Export umfasst stets den gesamten eingelesenen Projektbestand und wird durch die Anzeigefilter nicht eingeschränkt. Die elektrische Auswertung wird für diesen Stand einmal berechnet und beim Suchen/Ansichtswechsel wiederverwendet.
+
 ## Klemmen und Brücken
 
 **Projekt → Klemmen und Kabel…** beziehungsweise die Aktion eines entsprechenden Prüfbefunds öffnet den Bearbeitungsdialog. Die Klemmenansicht enthält die aus dem gemeinsamen elektrischen Modell ermittelten internen und externen Ziele.

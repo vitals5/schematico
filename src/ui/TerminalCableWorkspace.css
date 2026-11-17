@@ -1,0 +1,56 @@
+#wiringDialog .tc-tabs{display:flex;gap:5px;background:#111e2c;border:1px solid #35516e;border-radius:8px;padding:4px}
+#wiringDialog .tc-tabs button{border:0;background:none;color:#9db4cf;padding:9px 22px;font:inherit;font-size:13px;cursor:pointer;border-radius:5px}
+#wiringDialog .tc-tabs button[aria-selected=true]{background:#2a4d6e;color:#e3f1ff}
+#wiringDialog .tc-tabs button strong{font-size:10px;color:#aec9e3;margin-left:8px}
+#wiringDialog .tc-strip{border:1px solid #3d5872;border-radius:9px;background:#162638;margin-bottom:16px;overflow:hidden}
+#wiringDialog .tc-strip>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#20384e;color:#a7bed5;font-size:11px}
+#wiringDialog .tc-strip h3{margin:0;font-size:15px;color:#dfedfc}
+#wiringDialog .tc-rail{display:flex;gap:8px;overflow:auto;padding:18px 14px;scrollbar-width:thin;background:linear-gradient(0deg,transparent 48%,#405b73 48%,#405b73 52%,transparent 52%)}
+#wiringDialog .tc-terminal{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 134px;border:1px solid #6b8297;border-radius:6px;padding:12px 8px;color:#dae9f8;background:#25394b;text-align:center;font:inherit;cursor:pointer}
+#wiringDialog .tc-terminal>strong{font:600 22px monospace;padding:7px 4px;color:#e7f1ff;width:100%;border-top:1px solid #9fb2bd4d;border-bottom:1px solid #9fb2bd4d}
+#wiringDialog .tc-terminal>small{font-size:9px;color:#abc1d7}
+#wiringDialog .tc-terminal-port{width:14px;height:14px;border-radius:50%;border:3px solid #bdcbd5;background:#102130;box-shadow:0 0 0 1px #0e1b28}
+#wiringDialog .tc-target{width:100%;height:47px;font-size:10px;overflow:hidden;overflow-wrap:anywhere;line-height:1.4;color:#b4cfe6}
+#wiringDialog .tc-target small{display:block;font-size:9px;color:#86a5c1;margin-bottom:3px}
+#wiringDialog .tc-terminal.has-issues{border-color:#d6aa70}
+#wiringDialog .tc-terminal:hover,#wiringDialog .tc-terminal:focus-visible,#wiringDialog .tc-terminal.is-selected{outline:2px solid #94cbf7;outline-offset:1px;background:#304f69}
+#wiringDialog .tc-limit{padding:0 15px}
+#wiringDialog .tc-bridges{margin:0 14px 14px;font-size:11px}
+#wiringDialog .tc-bridge-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:9px 0;padding:9px;border:1px solid #3a5671;border-radius:5px;background:#1c3044;color:#c6dbee;overflow-wrap:anywhere}
+#wiringDialog .tc-bridge-mark{color:#e3b57d}
+#wiringDialog .tc-bridge-row small{color:#9db4cd;margin-left:auto}
+#wiringDialog .tc-cables{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px}
+#wiringDialog .tc-cable{border:1px solid #3e5974;border-radius:9px;background:#192b3d;overflow:hidden;min-width:0}
+#wiringDialog .tc-cable>header{display:flex;gap:10px;align-items:center;padding:13px 14px;background:#203a52}
+#wiringDialog .tc-cable>header>button:first-child{border:0;background:none;color:#e2efff;text-align:left;font:inherit;min-width:0;cursor:pointer;padding:0}
+#wiringDialog .tc-cable>header strong{display:block;font-size:15px;overflow-wrap:anywhere}
+#wiringDialog .tc-cable>header small{display:block;font-size:10px;color:#a6c0d8;margin-top:3px;overflow-wrap:anywhere}
+#wiringDialog .tc-cable>header .btn{margin-left:auto;flex:none;font-size:10px}
+#wiringDialog .tc-cable-spec{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#a9bfd6;padding:10px 14px}
+#wiringDialog .tc-core-bundle{position:relative;padding:3px 12px 12px 28px;margin:0 12px 12px 8px;border-left:10px solid #101d2a;border-radius:12px;background:#162638}
+#wiringDialog .tc-core{display:grid;grid-template-columns:42px minmax(0,1fr) auto;column-gap:10px;row-gap:5px;align-items:center;position:relative;width:100%;padding:11px 10px;margin-top:8px;border:1px solid #3e5972;border-radius:6px;background:#20384e;text-align:left;color:#d9ebfb;font:inherit;cursor:pointer}
+#wiringDialog .tc-core strong{font:600 14px monospace}
+#wiringDialog .tc-core small{display:block;font-size:10px;color:#a6bfd7;overflow-wrap:anywhere}
+#wiringDialog .tc-core-line{height:4px;border-radius:2px;position:relative}
+#wiringDialog .tc-core-line:before{content:'';position:absolute;left:-42px;right:0;top:0;height:4px;background:inherit}
+#wiringDialog .tc-core-state{font-size:10px;color:#9bd4b9}
+#wiringDialog .tc-core.is-reserve{border-style:dashed}
+#wiringDialog .tc-core.is-reserve .tc-core-state{color:#c8b5e7}
+#wiringDialog .tc-core.has-issues{border-color:#b68b59}
+#wiringDialog .tc-core.has-issues .tc-core-state{color:#e8bb7b}
+#wiringDialog .tc-core-targets{grid-column:2/4}
+#wiringDialog .tc-core:hover,#wiringDialog .tc-core:focus-visible,#wiringDialog .tc-core.is-selected{outline:2px solid #90c9f6;outline-offset:1px;background:#294b68}
+#wiringDialog .tc-editor-group>legend{padding:0;margin-bottom:8px}
+#wiringDialog .tc-editor-group [data-terminal],#wiringDialog .tc-editor-group [data-cable]{margin-bottom:13px;width:100%}
+#wiringDialog .tc-bridge-form label{margin-bottom:6px}
+#wiringDialog .tc-bridge-form select{max-width:100%;width:100%;min-width:0}
+#wiringDialog .tc-bridge-form button{white-space:normal}
+#wiringDialog [data-tc-core-fields]{margin-top:12px}
+#wiringDialog [data-scope]{max-width:280px}
+#wiringDialog .tc-list td{padding:8px;overflow-wrap:anywhere;max-width:240px}
+@media(max-width:540px){#wiringDialog .tc-tabs{width:100%}#wiringDialog .tc-tabs button{flex:1;padding:8px 12px}#wiringDialog .tc-core{grid-template-columns:22px minmax(0,1fr);gap:6px}#wiringDialog .tc-core-state{grid-column:2}#wiringDialog .tc-core-targets{grid-column:2}#wiringDialog .tc-core-bundle{padding-left:10px;margin-left:10px}#wiringDialog .tc-core-line:before{left:-22px}#wiringDialog [data-scope]{max-width:100%;width:100%}}
+
+#wiringDialog [data-tc-search]{flex:1;min-width:180px;width:auto}
+#wiringDialog [data-tc-count]{flex:1}
+
+#wiringDialog .wire-editor-body label:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:7px}

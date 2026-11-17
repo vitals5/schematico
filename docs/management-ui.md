@@ -16,6 +16,6 @@ Auf schmalen Ansichten wandern Filter und Detailbereich in eine gestapelte Anord
 
 Im Artikelwerkzeug bündelt **Werkzeuge** den Katalog, die artikelweise Stammdatenpflege und die Funktionszuordnung. Der Katalog zeigt die Herkunft seiner Einträge und den Zustand des [gemeinsamen GitHub-Katalogs](github-catalog.md).
 
-**Klemmen und Kabel…** trennt Klemmen-/Brückenbearbeitung und Kabeldaten durch Register. Die aktive Ansicht bleibt beim Bearbeiten erhalten. Beim Öffnen eines Kabelbefunds wird direkt das zugehörige Register angezeigt. Die Register unterstützen Pfeiltasten sowie Home/End.
+**Klemmen und Kabel…** zeigt grafische Leisten mit Innen-/Außenzielen und Kabelkarten mit anklickbaren Adern sowie eine vollständige Listenansicht. Die Eigenschaften öffnen sich kontextabhängig daneben. Klemmen-/Brückenbearbeitung und Kabeldaten sind durch Register getrennt. Die aktive Ansicht bleibt beim Bearbeiten erhalten. Beim Öffnen eines Kabelbefunds wird direkt das zugehörige Register angezeigt. Die Register unterstützen Pfeiltasten sowie Home/End.
 
 Escape schließt ein geöffnetes Werkzeugmenü zuerst. Die Tabulatornavigation bleibt innerhalb des Dialogs. Die vorhandenen Vorschauen, Bestätigungen, Datenprüfungen und Rückgängig-Schritte bleiben erhalten.
