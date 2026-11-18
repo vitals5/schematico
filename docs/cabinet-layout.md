@@ -34,7 +34,7 @@ Die Auslastung bezeichnet ausschließlich die Rechteckfläche der Gerätekörper
 
 Aufbauten liegen unter `cabinetLayouts` in der Projektdatei und werden mit ihr übertragen. Alte Projekte benötigen keine Migration. Aus dem Gerätebestand übernommene Gerätekörper referenzieren vorhandene Darstellungen; Bibliotheksbauteile sind eigenständige mechanische Objekte. Beide fügen der Stückliste keine weiteren Artikel hinzu. Die geometrischen Schienen und Kanäle sind ebenfalls keine automatisch bestellten Stücklistenartikel.
 
-Der SVG-Export ist eine eigenständige Vektorgrafik mit Millimeterabmessungen. Der PDF-Export passt die gewählte Platte auf ein A3-Blatt ein und benennt ihre realen Maße sowie den Zeichnungsfaktor. Er ist dadurch nicht automatisch ein Ausdruck in 1:1. Die gespeicherten Körper bleiben unabhängig von der Bildschirmvergrößerung maßstäblich.
+Der SVG-Export ist eine eigenständige Vektorgrafik mit Millimeterabmessungen. Der PDF-Export passt die gewählte Platte im freien Bereich eines A3-Blatts mit Projektplankopf ein und benennt ihre realen Maße sowie den Zeichnungsfaktor. Die Projektangaben und die globale Blattnummer erscheinen auch bei Aufnahme in die gemeinsame PDF-Dokumentation. Er ist dadurch nicht automatisch ein Ausdruck in 1:1. Die gespeicherten Körper bleiben unabhängig von der Bildschirmvergrößerung maßstäblich.
 
 Der Bereich liefert einen geometrisch geprüften 2D-Aufbau. Er berechnet keine Wärmeabfuhr, Einbautiefe, elektrischen Sicherheitsabstände, Bohrbilder, Verdrahtungslängen oder 3D-Montagewege. Zusätzliche Abstände sind ausdrücklich eingegebene Entwurfswerte, keine aus einer Norm oder einem Datenblatt bewiesenen Herstellerabstände.
 

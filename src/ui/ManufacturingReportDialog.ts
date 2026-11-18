@@ -1,3 +1,4 @@
+import { documentFrame, documentFrameSvg } from "../model/DocumentSheet";
 import type { Project } from "../model/types";
 import { projectRevision } from "../layout/types";
 import {
@@ -87,6 +88,7 @@ export class ManufacturingReportDialog {
           this.template,
           rows,
           this.source.name,
+          documentFrame(this.source),
         );
       this.rows = rows;
       this.preview = preview;
@@ -107,7 +109,7 @@ export class ManufacturingReportDialog {
     const l = this.preview,
       fs = l.fontSize * 0.352778,
       fragments = l.pages[this.page];
-    let y = 14;
+    let y = l.area.top;
     const text = (
       value: string,
       x: number,
@@ -116,16 +118,21 @@ export class ManufacturingReportDialog {
       bold = false,
     ) =>
       `<text x="${x}" y="${y}" font-size="${size}" ${bold ? 'font-weight="bold"' : ""}>${esc(value)}</text>`;
-    let svg = "";
+    let svg = l.frame
+      ? documentFrameSvg(l.frame, l.title.join(" "), l.width, l.height, {
+          ordinal: this.page + 1,
+          total: l.pages.length,
+        })
+      : "";
     for (const line of l.title) {
-      svg += text(line, 12, y, (l.fontSize + 4) * 0.352778, true);
+      svg += text(line, l.area.left, y, (l.fontSize + 4) * 0.352778, true);
       y += (l.fontSize + 4) * 0.352778 * 1.25;
     }
     for (const line of l.caption) {
-      svg += text(line, 12, y);
+      svg += text(line, l.area.left, y);
       y += l.lineHeight;
     }
-    svg += `<rect x="12" y="${l.headingY - 3}" width="${l.width - 24}" height="${l.bodyY - l.headingY + 3}" fill="#e1eaf2"/>`;
+    svg += `<rect x="${l.area.left}" y="${l.headingY - 3}" width="${l.area.right - l.area.left}" height="${l.bodyY - l.headingY + 3}" fill="#e1eaf2"/>`;
     for (const c of l.columns)
       c.lines.forEach(
         (line, i) =>
@@ -139,7 +146,7 @@ export class ManufacturingReportDialog {
       );
     fragments.forEach((r, index) => {
       const row = this.rows.find((row) => row.key === r.key)!;
-      svg += `<g role="button" tabindex="0" data-report-row="${esc(r.key)}" ${visualMeta(visualKey("report", r.key), Object.values(row.cells).join(" · ").slice(0, 180))} aria-label="${esc(Object.values(row.cells).join(" · ").slice(0, 180))}"><rect x="12" y="${r.y}" width="${l.width - 24}" height="${r.height}" fill="${index % 2 === 0 ? "#f6f8fb" : "#fff"}"/>`;
+      svg += `<g role="button" tabindex="0" data-report-row="${esc(r.key)}" ${visualMeta(visualKey("report", r.key), Object.values(row.cells).join(" · ").slice(0, 180))} aria-label="${esc(Object.values(row.cells).join(" · ").slice(0, 180))}"><rect x="${l.area.left}" y="${r.y}" width="${l.area.right - l.area.left}" height="${r.height}" fill="${index % 2 === 0 ? "#f6f8fb" : "#fff"}"/>`;
       r.cells.forEach((lines, c) =>
         lines.forEach(
           (line, i) =>
@@ -150,9 +157,9 @@ export class ManufacturingReportDialog {
             )),
         ),
       );
-      svg += `<path d="M12 ${r.y + r.height} H${l.width - 12}" stroke="#bec9d3" stroke-width=".15"/></g>`;
+      svg += `<path d="M${l.area.left} ${r.y + r.height} H${l.area.right}" stroke="#bec9d3" stroke-width=".15"/></g>`;
     });
-    svg += `<text x="${l.width - 12}" y="${l.height - 7}" text-anchor="end" font-size="${7 * 0.352778}">${this.page + 1} / ${l.pages.length} · ${l.rowCount}</text>`;
+    svg += `<text x="${l.area.right}" y="${l.area.footerY}" text-anchor="end" font-size="${7 * 0.352778}">${this.page + 1} / ${l.pages.length} · ${l.rowCount}</text>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}" class="mr-sheet" style="font-family:Arial,Helvetica,sans-serif" role="group" aria-label="${t("reportPreview")}"><rect width="${l.width}" height="${l.height}" fill="white"/>${svg}</svg>`;
   }
   private render() {

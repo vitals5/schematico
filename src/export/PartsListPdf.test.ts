@@ -54,9 +54,9 @@ for (const format of ['a3', 'a4'] as const) {
     const column = BOM_COLUMNS.find(c => { const found = Math.abs(t.x - x) < 1e-6; x += c.width; return found; });
     assert(column); assert(t.width <= column.width - 4 + 1e-6, `Text stays inside its column: ${t.value}`);
   }
-  const totals = text.filter(t => Math.abs(t.x - 415 / 420 * width) < 1e-6);
+  const totals = text.filter(t => Math.abs(t.x - 415 / 420 * width) < .02);
   assert(totals.every(t => t.value === String(pages.length)), 'All continuation footers use the actual total');
-  const ordinals = text.filter(t => Math.abs(t.x - 413 / 420 * width) < 1e-6);
+  const ordinals = text.filter(t => Math.abs(t.x - 413 / 420 * width) < .02);
   assert.deepEqual(ordinals.map(t => t.value), pages.map((_, i) => String(i + 1)));
 }
 

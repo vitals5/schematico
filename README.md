@@ -89,7 +89,7 @@ A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable an
 
 ## Complete project PDF
 
-The central **PDF** dialog combines drawing sheets, saved cabinet layouts with vector device fronts, terminal/cable/connector/wiring reports using the saved designer templates, the complete PLC/bus/KNX/building-automation table and the BOM. Select sections independently, retain each report's paper/orientation and pagination, and navigate with bookmarks and links to exported drawing sheets. Cabinet-only and report-only documents have no leading blank sheet. See [PDF project documentation](docs/pdf-export.md).
+The central **PDF** dialog combines drawing sheets, saved cabinet layouts with vector device fronts, terminal/cable/connector/wiring reports using the saved designer templates, the complete PLC/bus/KNX/building-automation table and the BOM. Select sections independently, retain each report's paper/orientation and pagination, and navigate with bookmarks and links to exported drawing sheets. Cabinet-only and report-only documents have no leading blank sheet. Every generated page uses the project title block with reserved content space and actual PDF page counters; standalone cabinet and navigator reports use the same frame. See [PDF project documentation](docs/pdf-export.md).
 
 ## Cabinet layout in 2D
 

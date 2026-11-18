@@ -567,7 +567,7 @@ export class CabinetLayoutDialog {
     q("[data-pdf]").onclick = () =>
       safe(() => {
         new CabinetLayoutEdit(this.source, l).apply(this.getProject());
-        cabinetPdf(l, labels, this.source.name).save("schematico-cabinet.pdf");
+        cabinetPdf(l, labels, this.source.name, this.source).save("schematico-cabinet.pdf");
       });
     q("[data-svg]").onclick = () =>
       safe(() => {

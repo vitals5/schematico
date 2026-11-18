@@ -1,3 +1,6 @@
+import { documentFrame, sheetArea } from '../model/DocumentSheet';
+import { renderPdfSheetFrame, fitLegacyPdfContent } from './PdfSheetFrame';
+import { renderPdfGraphics } from "./PdfGraphics";
 import { prepareProjectPdfSections } from './ProjectPdfSections';
 import { appendManufacturingReportPdf } from './ManufacturingReportPdf';
 import { renderCabinetPdfPage } from '../ui/CabinetDrawing';
@@ -97,7 +100,7 @@ export class PdfExporter {
       ? layoutTerminalDiagramPdf(TerminalDiagramGenerator.generateTerminalReport(project), pageHeightMm)
       : [];
     const bomPages = options.includePartsList ? layoutPartsListPdf(doc, PartsListGenerator.generatePartsList(project), pageHeightMm, bomColumns) : [];
-    const additions = prepareProjectPdfSections(project, options.additionalSections, options.paperFormat);
+    const additions = prepareProjectPdfSections(project, options.additionalSections, options.paperFormat, options.plotFrame);
     const extraSheets = terminalPages.length + bomPages.length + additions.reduce((n,s)=>n+s.pages,0);
     const totalSheetsCount = pagesToExport.length + extraSheets;
 
@@ -165,7 +168,7 @@ export class PdfExporter {
           doc.outline.add(null, project.language === 'en' ? 'Report: Terminal Diagram (-X1)' : 'Auswertung: Klemmenplan (-X1)', { pageNumber: pdfPageNum });
         } catch {}
       }
-      this.renderTerminalDiagramPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, terminalPages);
+      this.renderTerminalDiagramPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, terminalPages, options.plotFrame);
     }
 
     // Render Optional Stückliste Page
@@ -177,29 +180,29 @@ export class PdfExporter {
           doc.outline.add(null, project.language === 'en' ? 'Report: Bill of Materials (BOM)' : 'Auswertung: Stückliste (BOM)', { pageNumber: pdfPageNum });
         } catch {}
       }
-      this.renderPartsListPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, bomPages);
+      this.renderPartsListPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, bomPages, options.plotFrame);
     }
 
     for(const section of additions) {
       const start=doc.getNumberOfPages()+1;
       if(section.kind==='cabinet') {
         doc.addPage(options.paperFormat,section.board.widthMm>section.board.heightMm?'landscape':'portrait');
-        renderCabinetPdfPage(doc,section.board,section.labels,project.name,{monochrome:options.colorMode==='monochrome',pageTargets:options.interactiveCrossReferences?pageIdToPdfPageIndex:undefined});
+        renderCabinetPdfPage(doc,section.board,section.labels,project.name,{monochrome:options.colorMode==='monochrome',pageTargets:options.interactiveCrossReferences?pageIdToPdfPageIndex:undefined,frame:options.plotFrame?documentFrame(project):false,ordinal:start,total:totalSheetsCount});
       } else {
-        appendManufacturingReportPdf(doc,section.layout,true,options.colorMode==='monochrome');
+        appendManufacturingReportPdf(doc,section.layout,true,options.colorMode==='monochrome',{ordinal:start,total:totalSheetsCount});
         if(options.interactiveCrossReferences) {
           const rows=new Map(section.rows.map(r=>[r.key,r]));
           section.layout.pages.forEach((fragments,i)=>{
             doc.setPage(start+i);
             for(const f of fragments) {
               const target=rows.get(f.key)?.targets.find(t=>pageIdToPdfPageIndex.has(t.pageId));
-              if(target)doc.link(12,f.y,section.layout.width-24,f.height,{pageNumber:pageIdToPdfPageIndex.get(target.pageId)!});
+              if(target)doc.link(section.layout.area.left,f.y,section.layout.area.right-section.layout.area.left,f.height,{pageNumber:pageIdToPdfPageIndex.get(target.pageId)!});
             }
           });
         }
       }
       if(options.includeBookmarks&&doc.outline)doc.outline.add(null,section.title,{pageNumber:start});
-      for(let page=start;page<=start+section.pages-1;page++) {
+      for(let page=start;!options.plotFrame&&page<=start+section.pages-1;page++) {
         doc.setPage(page);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(0);
         doc.text(`${page} / ${totalSheetsCount}`,doc.internal.pageSize.getWidth()-12,doc.internal.pageSize.getHeight()-3,{align:'right'});
       }
@@ -231,25 +234,9 @@ export class PdfExporter {
     totalSheets: number,
     project?: Project
   ): void {
-    const template = project?.plotFrameTemplate ?? defaultPlotFrame();
     const context = project ?? { pages: [page], description: page.plotFrame.titleBlock.projectTitle, company: page.plotFrame.titleBlock.company, author: page.plotFrame.titleBlock.author } as Project;
-    const sx = wMm / template.width, sy = hMm / template.height;
-    this.renderImportedGraphics(doc, template.graphics, sx, sy, colorMode, 0, 0, '#7ca552');
-    for (const text of template.texts) {
-      const value = text.property === 10300 ? String(totalSheets)
-        : text.property === 25020 ? String(doc.getCurrentPageInfo().pageNumber) : frameTextValue(text, page, context, template);
-      if (!value) continue;
-      const cell = frameTextCell(text, template), fit = fitFrameText(value, text, cell);
-      doc.saveGraphicsState();
-      doc.rect(cell.x * sx, cell.y * sy, cell.width * sx, cell.height * sy, null);
-      doc.clip(); doc.discardPath();
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(fit.size * sy * 72 / 25.4);
-      doc.setTextColor(...(colorMode === 'color' ? [124, 165, 82] : [0, 0, 0]) as [number, number, number]);
-      fit.lines.forEach((line, i) => doc.text(line, fit.x * sx, (fit.y + i * fit.size * 1.2) * sy,
-        { align: text.anchor === 'middle' ? 'center' : text.anchor === 'end' ? 'right' : 'left' }));
-      doc.restoreGraphicsState();
-    }
+    const frame=documentFrame(context),t=frame.template;
+    renderPdfSheetFrame(doc,frame,page.title,{ordinal:doc.getCurrentPageInfo().pageNumber,total:totalSheets,code:page.pageNumber,source:page,previous:frameTextValue({id:'prev',x:0,y:0,size:1,anchor:'start',property:11041},page,context,t),next:frameTextValue({id:'next',x:0,y:0,size:1,anchor:'start',property:11040},page,context,t)},colorMode==='monochrome');
   }
 
   private static renderCoverPage(doc:jsPDF,page:Page,project:Project,wMm:number,hMm:number,colorMode:'color'|'monochrome',totalSheets=project.pages.length):void {
@@ -981,7 +968,8 @@ export class PdfExporter {
     hMm: number,
     colorMode: 'color' | 'monochrome',
     totalSheets: number,
-    pages?: TerminalPdfPage[]
+    pages?: TerminalPdfPage[],
+    framed = true
   ): void {
     const isEn = project.language === 'en';
     const pagePrefix = isEn ? 'TD' : 'KP';
@@ -991,8 +979,8 @@ export class PdfExporter {
       pageNumber: pagePrefix,
       pageType: 'terminal_diagram',
       title: isEn ? 'Report: Terminal Diagram' : 'Auswertung: Klemmenplan',
-      higherLevel: '=A1',
-      location: '+S1',
+      higherLevel: '',
+      location: '',
       components: [],
       wires: [],
       plotFrame: {
@@ -1003,11 +991,11 @@ export class PdfExporter {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: project.name,
-          commission: 'KOM-2026',
+          commission: documentFrame(project).commission,
           company: project.company,
           author: project.author,
-          date: new Date().toISOString().split('T')[0],
-          revision: '1.0',
+          date: documentFrame(project).date,
+          revision: project.version || '',
           sheetNumber: pagePrefix,
           totalSheets: totalSheets.toString()
         }
@@ -1027,8 +1015,9 @@ export class PdfExporter {
 
       dummyPage.pageNumber = terminalPages.length > 1 ? `${pagePrefix}${index + 1}` : pagePrefix;
       dummyPage.plotFrame.titleBlock.sheetNumber = dummyPage.pageNumber;
-      this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets, project);
+      if(framed)this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets, project);
 
+      const restoreContent=fitLegacyPdfContent(doc,sheetArea(framed?documentFrame(project):false,wMm,hMm),colWidths.reduce((n,w)=>n+w,0),hMm-25-24);
       let curY = 30;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
@@ -1045,8 +1034,8 @@ export class PdfExporter {
           : '';
         doc.text(
           isEn
-            ? `Terminal Strip: ${chunk.stripName} (Cabinet +S1)${contSuffix}`
-            : `Klemmenleiste: ${chunk.stripName} (Schaltschrank +S1)${contSuffix}`,
+            ? `Terminal Strip: ${chunk.stripName}${contSuffix}`
+            : `Klemmenleiste: ${chunk.stripName}${contSuffix}`,
           tableX,
           curY
         );
@@ -1096,6 +1085,7 @@ export class PdfExporter {
 
         curY += 10;
       }
+      restoreContent();
     }
   }
 
@@ -1109,7 +1099,8 @@ export class PdfExporter {
     hMm: number,
     colorMode: 'color' | 'monochrome',
     totalSheets: number,
-    pages: BomPage[]
+    pages: BomPage[],
+    framed = true
   ): void {
     const isEn = project.language === 'en';
     const pagePrefix = isEn ? 'BOM' : 'ST';
@@ -1118,8 +1109,8 @@ export class PdfExporter {
       pageNumber: pagePrefix,
       pageType: 'parts_list',
       title: isEn ? 'Report: Bill of Materials' : 'Auswertung: Stückliste',
-      higherLevel: '=A1',
-      location: '+S1',
+      higherLevel: '',
+      location: '',
       components: [],
       wires: [],
       plotFrame: {
@@ -1130,11 +1121,11 @@ export class PdfExporter {
         rows: ['A', 'B', 'C', 'D', 'E', 'F'],
         titleBlock: {
           projectTitle: project.name,
-          commission: 'KOM-2026',
+          commission: documentFrame(project).commission,
           company: project.company,
           author: project.author,
-          date: new Date().toISOString().split('T')[0],
-          revision: '1.0',
+          date: documentFrame(project).date,
+          revision: project.version || '',
           sheetNumber: pagePrefix,
           totalSheets: totalSheets.toString()
         }
@@ -1148,7 +1139,8 @@ export class PdfExporter {
       if (index) doc.addPage(wMm > 300 ? 'a3' : 'a4', 'landscape');
       dummyPage.pageNumber = pages.length > 1 ? `${pagePrefix}${index + 1}` : pagePrefix;
       dummyPage.plotFrame.titleBlock.sheetNumber = dummyPage.pageNumber;
-      this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets);
+      if(framed)this.renderPlotFrame(doc, dummyPage, wMm, hMm, colorMode, totalSheets, project);
+      const restoreContent=fitLegacyPdfContent(doc,sheetArea(framed?documentFrame(project):false,wMm,hMm),tableWidth,hMm-25-24);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
       doc.text(isEn ? 'BILL OF MATERIALS (BOM)' : 'ARTIKELSTÜCKLISTE (BILL OF MATERIALS)', tableX, 30);
       doc.setFillColor(240, 240, 240);
@@ -1171,6 +1163,7 @@ export class PdfExporter {
         doc.setDrawColor(220, 220, 220); doc.setLineWidth(.15);
         doc.line(tableX, curY, tableX + tableWidth, curY);
       }
+      restoreContent();
     }
   }
 
@@ -1188,46 +1181,7 @@ export class PdfExporter {
 
   private static renderImportedGraphics(doc: jsPDF, graphics: DrawingPrimitive[], sx: number, sy: number,
     mode: 'color' | 'monochrome', ox = 0, oy = 0, foreground?: string): void {
-    const x = (n: number) => (n + ox) * sx, y = (n: number) => (n + oy) * sy;
-    const rgb = (value: string): number[] => {
-      const hex = value.replace('#', '');
-      if (mode === 'monochrome' || !/^(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(hex)) return [0, 0, 0];
-      const full = hex.length === 3 ? [...hex].map(c => c + c).join('') : hex;
-      const channels = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16));
-      // White and light editor foregrounds must remain visible on white PDF paper.
-      return channels.every(c => c >= 200) ? [0, 0, 0] : channels;
-    };
-    for (const g of graphics) {
-      const color = rgb(foreground ?? g.color);
-      doc.setDrawColor(color[0], color[1], color[2]); doc.setTextColor(color[0], color[1], color[2]);
-      const width = g.kind === 'rect' ? g.lineWidth ?? 0.6 : 'width' in g ? g.width ?? 0.6 : 0.5;
-      doc.setLineWidth(width * sx);
-      doc.setLineDashPattern('dash' in g ? g.dash?.map(n => n * sx) ?? [] : [], 0);
-      if (g.kind === 'line') doc.line(x(g.x1), y(g.y1), x(g.x2), y(g.y2));
-      else if (g.kind === 'rect') doc.rect(x(g.x), y(g.y), g.width * sx, g.height * sy);
-      else if (g.kind === 'circle') {
-        if (g.fill) {
-          const fill = rgb(foreground ?? g.fill);
-          doc.setFillColor(fill[0], fill[1], fill[2]);
-        }
-        doc.circle(x(g.x), y(g.y), g.radius * sx, g.fill ? 'FD' : 'S');
-      } else if (g.kind === 'polygon' || g.kind === 'arc') {
-        const points = g.kind === 'polygon' ? g.points : arcPoints(g);
-        if (points.length < 2) continue;
-        if (g.kind === 'polygon' && g.fill) {
-          const fill = rgb(foreground ?? g.fill);
-          doc.setFillColor(fill[0], fill[1], fill[2]);
-        }
-        const path = points.map((point, i) => ({ op: i ? 'l' : 'm', c: [x(point.x), y(point.y)] }));
-        if (g.kind === 'polygon') path.push({ op: 'h', c: [] });
-        doc.path(path);
-        if (g.kind === 'polygon' && g.fill) doc.fillStroke(); else doc.stroke();
-      } else {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(g.size * sy * 72 / 25.4);
-        doc.text(g.text, x(g.x), y(g.y), { align: g.anchor === 'end' ? 'right' : g.anchor === 'middle' ? 'center' : 'left', angle: -(g.rotation ?? 0) });
-      }
-    }
-    doc.setLineDashPattern([], 0);
+    renderPdfGraphics(doc,graphics,sx,sy,mode,ox,oy,foreground);
   }
 
   private static getPotentialRgb(potential: string, color?: string): { r: number; g: number; b: number } {

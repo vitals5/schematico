@@ -1,3 +1,11 @@
+import type { Project } from "../model/types";
+import {
+  documentFrame,
+  sheetArea,
+  type SheetFrameData,
+  type SheetNumbering,
+} from "../model/DocumentSheet";
+import { renderPdfSheetFrame } from "../export/PdfSheetFrame";
 import { cabinetStandard } from "../model/CabinetLibrary";
 import { cabinetDeviceFace, cabinetFaceSvg } from "./CabinetDeviceFace";
 import { jsPDF } from "jspdf";
@@ -62,16 +70,20 @@ export function cabinetPdf(
   layout: CabinetLayout,
   labels: Map<string, string>,
   projectName: string,
+  project?: Project,
 ) {
   const doc = new jsPDF({
     format: "a3",
     orientation: layout.widthMm > layout.heightMm ? "landscape" : "portrait",
     unit: "mm",
   });
-  renderCabinetPdfPage(doc, layout, labels, projectName);
+  renderCabinetPdfPage(doc, layout, labels, projectName, {
+    frame: documentFrame(project ?? projectName),
+  });
   return doc;
 }
-export interface CabinetPdfOptions {
+export interface CabinetPdfOptions extends SheetNumbering {
+  frame?: SheetFrameData | false;
   monochrome?: boolean;
   pageTargets?: ReadonlyMap<string, number>;
 }
@@ -84,7 +96,13 @@ export function renderCabinetPdfPage(
   options: CabinetPdfOptions = {},
 ) {
   const w = doc.internal.pageSize.getWidth(),
-    h = doc.internal.pageSize.getHeight();
+    h = doc.internal.pageSize.getHeight(),
+    frame =
+      options.frame ??
+      (options.frame === false ? false : documentFrame(projectName)),
+    area = sheetArea(frame, w, h);
+  if (frame)
+    renderPdfSheetFrame(doc, frame, layout.name, options, !!options.monochrome);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
   doc.setLineWidth(0.2);
@@ -98,26 +116,32 @@ export function renderCabinetPdfPage(
     return `#${v.toString(16).padStart(2, "0").repeat(3)}`;
   };
   doc.setFontSize(13);
-  const title = doc.splitTextToSize(layout.name, w - 24) as string[];
-  doc.text(title, 12, 12);
+  const title = doc.splitTextToSize(
+    layout.name,
+    area.right - area.left,
+  ) as string[];
+  doc.text(title, area.left, area.top);
   doc.setFontSize(8);
   const caption = doc
-      .splitTextToSize(projectName.slice(0, 160), w - 24)
+      .splitTextToSize(projectName.slice(0, 160), area.right - area.left)
       .slice(0, 2) as string[],
-    captionY = 12 + title.length * 5.3 + 2;
-  doc.text(caption, 12, captionY);
+    captionY = area.top + title.length * 5.3 + 2;
+  doc.text(caption, area.left, captionY);
   const top = captionY + caption.length * 3.3 + 5,
-    s = Math.min((w - 24) / layout.widthMm, (h - top - 15) / layout.heightMm);
+    s = Math.min(
+      (area.right - area.left) / layout.widthMm,
+      (area.bottom - top) / layout.heightMm,
+    );
   doc.text(
     `${layout.widthMm} × ${layout.heightMm} mm · Faktor ${s.toFixed(3)}`,
-    12,
-    h - 8,
+    area.left,
+    area.footerY,
   );
   doc.setDrawColor(options.monochrome ? "#000000" : "#465564");
-  doc.rect(12, top, layout.widthMm * s, layout.heightMm * s);
+  doc.rect(area.left, top, layout.widthMm * s, layout.heightMm * s);
   for (const i of layout.items) {
     const b = cabinetBounds(i),
-      x = 12 + b.x * s,
+      x = area.left + b.x * s,
       y = top + b.y * s;
     doc.setFillColor(
       color(

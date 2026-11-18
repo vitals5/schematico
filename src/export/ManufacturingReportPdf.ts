@@ -1,3 +1,11 @@
+import {
+  documentFrame,
+  sheetArea,
+  type SheetFrameData,
+  type SheetNumbering,
+  type SheetArea,
+} from "../model/DocumentSheet";
+import { renderPdfSheetFrame } from "./PdfSheetFrame";
 import { jsPDF } from "jspdf";
 import {
   validateReportTemplate,
@@ -23,14 +31,22 @@ export interface ReportLayout {
   bodyY: number;
   pages: ReportFragment[][];
   rowCount: number;
+  frame: SheetFrameData | false;
+  area: SheetArea;
 }
 /** A single measured layout drives both browser preview and PDF. Long rows continue on later sheets. */
 export function layoutManufacturingReport(
   input: ReportTemplate,
   rows: ReportRow[],
   projectName: string,
+  frame: SheetFrameData | false = documentFrame(projectName),
 ): ReportLayout {
-  return layoutPdfTable(validateReportTemplate(input), rows, projectName);
+  return layoutPdfTable(
+    validateReportTemplate(input),
+    rows,
+    projectName,
+    frame,
+  );
 }
 export type PdfTableTemplate = Pick<
   ReportTemplate,
@@ -41,6 +57,7 @@ export function layoutPdfTable(
   template: PdfTableTemplate,
   rows: ReportRow[],
   projectName: string,
+  frame: SheetFrameData | false = documentFrame(projectName),
 ): ReportLayout {
   if (
     !template.title?.trim() ||
@@ -71,8 +88,9 @@ export function layoutPdfTable(
     }),
     width = doc.internal.pageSize.getWidth(),
     height = doc.internal.pageSize.getHeight(),
+    area = sheetArea(frame, width, height),
     lineHeight = template.fontSize * 0.352778 * 1.25,
-    space = width - 24,
+    space = area.right - area.left,
     min = 12,
     remainder = space - template.columns.length * min,
     total = template.columns.reduce((n, c) => n + c.weight, 0);
@@ -87,11 +105,11 @@ export function layoutPdfTable(
       space,
     ) as string[],
     headingY =
-      14 +
+      area.top +
       title.length * (template.fontSize + 4) * 0.352778 * 1.25 +
       caption.length * lineHeight +
       5;
-  let x = 12;
+  let x = area.left;
   doc.setFont("helvetica", "bold");
   const columns = template.columns.map((c) => {
       const w = min + (remainder * c.weight) / total,
@@ -108,7 +126,7 @@ export function layoutPdfTable(
       headingY +
       Math.max(...columns.map((c) => c.lines.length)) * lineHeight +
       4,
-    bottom = height - 15;
+    bottom = area.bottom;
   if (bodyY + lineHeight + 4 > bottom) throw Error("reportInvalid");
   const pages: ReportFragment[][] = [[]];
   let y = bodyY;
@@ -154,6 +172,8 @@ export function layoutPdfTable(
     bodyY,
     pages,
     rowCount: rows.length,
+    frame,
+    area,
   };
 }
 export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
@@ -171,6 +191,7 @@ export function appendManufacturingReportPdf(
   layout: ReportLayout,
   append = true,
   monochrome = false,
+  numbering: SheetNumbering = {},
 ) {
   layout.pages.forEach((fragments, page) => {
     if (append || page)
@@ -178,20 +199,31 @@ export function appendManufacturingReportPdf(
         [layout.width, layout.height],
         layout.width > layout.height ? "landscape" : "portrait",
       );
+    if (layout.frame)
+      renderPdfSheetFrame(
+        doc,
+        layout.frame,
+        layout.title.join(" "),
+        {
+          ordinal: (numbering.ordinal ?? 1) + page,
+          total: numbering.total ?? layout.pages.length,
+        },
+        monochrome,
+      );
     doc.setTextColor(0);
     doc.setDrawColor(0);
     doc.setLineDashPattern([], 0);
-    let y = 14;
+    let y = layout.area.top;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.fontSize + 4);
     for (const line of layout.title) {
-      doc.text(line, 12, y);
+      doc.text(line, layout.area.left, y);
       y += (layout.fontSize + 4) * 0.352778 * 1.25;
     }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(layout.fontSize);
     for (const line of layout.caption) {
-      doc.text(line, 12, y);
+      doc.text(line, layout.area.left, y);
       y += layout.lineHeight;
     }
     doc.setFillColor(
@@ -202,9 +234,9 @@ export function appendManufacturingReportPdf(
       ]),
     );
     doc.rect(
-      12,
+      layout.area.left,
       layout.headingY - 3,
-      layout.width - 24,
+      layout.area.right - layout.area.left,
       layout.bodyY - layout.headingY + 3,
       "F",
     );
@@ -223,7 +255,13 @@ export function appendManufacturingReportPdf(
             number,
           ]),
         );
-        doc.rect(12, r.y, layout.width - 24, r.height, "F");
+        doc.rect(
+          layout.area.left,
+          r.y,
+          layout.area.right - layout.area.left,
+          r.height,
+          "F",
+        );
       }
       r.cells.forEach((lines, c) =>
         lines.forEach((line, i) =>
@@ -242,13 +280,18 @@ export function appendManufacturingReportPdf(
         ]),
       );
       doc.setLineWidth(0.15);
-      doc.line(12, r.y + r.height, layout.width - 12, r.y + r.height);
+      doc.line(
+        layout.area.left,
+        r.y + r.height,
+        layout.area.right,
+        r.y + r.height,
+      );
     });
     doc.setFontSize(7);
     doc.text(
       `${page + 1} / ${layout.pages.length} · ${layout.rowCount}`,
-      layout.width - 12,
-      layout.height - 7,
+      layout.area.right,
+      layout.area.footerY,
       { align: "right" },
     );
   });

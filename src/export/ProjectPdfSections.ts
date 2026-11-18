@@ -1,3 +1,4 @@
+import { documentFrame } from "../model/DocumentSheet";
 import type { Project } from "../model/types";
 import {
   cabinetLayouts,
@@ -103,6 +104,7 @@ export function prepareProjectPdfSections(
   project: Project,
   requested?: readonly string[],
   paper: "a3" | "a4" = "a3",
+  framed = true,
 ): ProjectPdfSection[] {
   const choices = projectPdfChoices(project);
   if (
@@ -153,7 +155,12 @@ export function prepareProjectPdfSections(
         cache.set(t.kind, manufacturingRows(project, t.kind));
       const rows = selectReportRows(cache.get(t.kind)!, t);
       if (!rows.length) continue;
-      const layout = layoutManufacturingReport(t, rows, project.name);
+      const layout = layoutManufacturingReport(
+        t,
+        rows,
+        project.name,
+        framed ? documentFrame(project) : false,
+      );
       result.push({
         kind: "report",
         id: choice.id,
@@ -197,6 +204,7 @@ export function prepareProjectPdfSections(
         },
         rows,
         project.name,
+        framed ? documentFrame(project) : false,
       );
       result.push({
         kind: "report",

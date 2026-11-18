@@ -21,7 +21,7 @@ Vorlagen lassen sich als JSON im Format `schematico-report-template`, Version 1,
 
 ## Vorschau und Export
 
-Vorschau und PDF benutzen dieselbe mit der Standardschrift gemessene Layoutstruktur: Spalten, Textzeilen, Kopfzeilen, Zeilenhöhen und Seitenumbrüche. Lange Zellen werden umbrochen. Passt eine Zeile nicht vollständig auf ein Blatt, wird ihr verbleibender Text auf der nächsten Seite fortgesetzt; Überschriften werden wiederholt. Die Blattwahl und Pfeile zeigen jeweils eine Vorschauseite, auch bei langen Berichten.
+Vorschau und PDF benutzen dieselbe mit der Standardschrift gemessene Layoutstruktur: Spalten, Textzeilen, Kopfzeilen, Zeilenhöhen und Seitenumbrüche. Lange Zellen werden umbrochen. Passt eine Zeile nicht vollständig auf ein Blatt, wird ihr verbleibender Text auf der nächsten Seite fortgesetzt; Überschriften werden wiederholt. Die Blattwahl und Pfeile zeigen jeweils eine Vorschauseite, auch bei langen Berichten. Jede Vorschau- und PDF-Seite verwendet den Plankopf des Projekts; Tabellenzeilen und lokale Seitenzähler bleiben im freien Bereich darüber. Der gemeinsame Projekt-PDF-Export setzt die globale Blattnummer und Gesamtzahl ein.
 
 CSV übernimmt dieselbe sichtbare Spaltenauswahl, Benennung, Reihenfolge, Filterung und Sortierung. Es enthält die vollständigen Originalzelltexte, einschließlich Zeilenumbrüchen. Formelartige Zellanfänge werden für den Tabellenimport als Text geschützt.
 

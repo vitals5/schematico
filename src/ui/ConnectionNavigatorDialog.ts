@@ -8,11 +8,11 @@ import {connectionCards,connectionKinds,wiringEmpty,wireColour} from './WiringVi
 import {escapeSvg as esc} from '../model/ImportedDrawing';
 import {bindArticleModalKeys,focusArticleModal} from './ArticleModal';
 import {finishEngineeringDialog} from './EngineeringDialog';
-import {downloadArticleFile} from './ArticleCatalogDialog';
+import {downloadArticleFile,articleError} from './ArticleCatalogDialog';
 import {projectRevision} from '../layout/types';
 export class ConnectionNavigatorDialog{
   private el=document.createElement('div');
-  private rows:ConnectionRow[]=[];private revision='';private offset=0;private search='';private pageId='';private issuesOnly=false;
+  private source!:Project;private rows:ConnectionRow[]=[];private revision='';private offset=0;private search='';private pageId='';private issuesOnly=false;
   private view:'graphic'|'table'='graphic';private kind:''|ConnectionRow['kind']='';private activeKey?:string;private name='';private pages:{id:string;pageNumber:string;title:string}[]=[];
   constructor(private getProject:()=>Project,private onApply:(p:Project)=>void,private navigate:(pageId:string,componentId?:string,wireId?:string)=>void){}
   show():void{
@@ -21,7 +21,7 @@ export class ConnectionNavigatorDialog{
     document.body.append(this.el);bindArticleModalKeys(this.el,()=>this.el.remove());this.refresh();
   }
   private filtered(){return filterConnections(this.rows,this.search,this.pageId,this.issuesOnly).filter(r=>!this.kind||r.kind===this.kind);}
-  private refresh(){const p=this.getProject();this.rows=connectionList(p);this.name=p.name;this.pages=p.pages.map(({id,pageNumber,title})=>({id,pageNumber,title}));if(this.pageId&&!this.pages.some(p=>p.id===this.pageId))this.pageId='';this.revision=projectRevision(p);this.offset=0;this.render();}
+  private refresh(){const p=this.source=structuredClone(this.getProject());this.rows=connectionList(p);this.name=p.name;this.pages=p.pages.map(({id,pageNumber,title})=>({id,pageNumber,title}));if(this.pageId&&!this.pages.some(p=>p.id===this.pageId))this.pageId='';this.revision=projectRevision(p);this.offset=0;this.render();}
   private render(){this.activeKey=undefined;
     this.el.innerHTML=`<section role="dialog" aria-modal="true"><h2>Verbindungen & Verdrahtung</h2>
     <div class="wire-topbar"><div class="wire-kpis" aria-label="Projektbestand"><div class="wire-kpi"><strong>${this.rows.length}</strong>Erfasste Verbindungen</div><div class="wire-kpi"><strong>${this.rows.filter(r=>r.kind==='autoconnect').length}</strong>Autoconnect</div><div class="wire-kpi"><strong>${this.rows.filter(r=>r.lengthMm!==undefined).length}</strong>Mit erfasster realer Länge</div><div class="wire-kpi wire-kpi--warn"><strong>${this.rows.filter(r=>r.issues.length).length}</strong>Verbindungen mit Hinweisen</div></div><details class="eng-tools-menu wire-tools"><summary>Daten & Berichte</summary><div class="eng-tools-items"><button class="btn" data-csv>CSV: gefilterte Liste</button><button class="btn" data-pdf>PDF: gefilterte Liste</button><button class="btn" data-refresh>Aktualisieren</button></div></details></div>
@@ -39,7 +39,7 @@ export class ConnectionNavigatorDialog{
     q('[data-prev]').onclick=()=>{this.offset=Math.max(0,this.offset-(this.view==='graphic'?24:100));this.renderRows();};q('[data-next]').onclick=()=>{this.offset+=this.view==='graphic'?24:100;this.renderRows();};
     q('[data-refresh]').onclick=()=>this.refresh();q('[data-close]').onclick=()=>this.el.remove();q('[data-editor-close]').onclick=()=>this.closeDetail();
     q('[data-csv]').onclick=()=>downloadArticleFile(connectionCsv(this.filtered()),'schematico-verbindungen.csv','text/csv;charset=utf-8');
-    q('[data-pdf]').onclick=()=>connectionListPdf(this.filtered(),this.name).save('schematico-verbindungen.pdf');
+    q('[data-pdf]').onclick=()=>{try{connectionListPdf(this.filtered(),this.name,this.source).save('schematico-verbindungen.pdf');}catch(e){q('[data-error]').textContent=articleError(e);}};
     const choose=(e:MouseEvent)=>{const button=(e.target as Element).closest<HTMLButtonElement>('button[data-row]');if(button){const row=this.rows[Number(button.dataset.row)];if(row)this.detail(row);}};
     q('[data-rows]').onclick=choose;q('[data-visual]').onclick=choose;
     q('.wire-tools .eng-tools-items').onclick=e=>{if((e.target as Element).closest('button'))(q('.wire-tools') as HTMLDetailsElement).open=false;};

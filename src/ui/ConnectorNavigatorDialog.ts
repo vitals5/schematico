@@ -9,7 +9,7 @@ import {projectRevision} from '../layout/types';
 import {escapeSvg as esc} from '../model/ImportedDrawing';
 import {bindArticleModalKeys,focusArticleModal} from './ArticleModal';
 import {finishEngineeringDialog} from './EngineeringDialog';
-import {downloadArticleFile} from './ArticleCatalogDialog';
+import {downloadArticleFile,articleError} from './ArticleCatalogDialog';
 export class ConnectorNavigatorDialog{
   private el=document.createElement('div');private source!:Project;private revision='';private selected='';private search='';private offset=0;private view:'graphic'|'table'='graphic';private status:ContactFilter='all';private activeContact?:number;
   private rows:ReturnType<typeof connectorRows>=[];private preview?:Project;private index!:ProjectIndex;
@@ -36,7 +36,7 @@ export class ConnectorNavigatorDialog{
     q('[data-refresh]').onclick=()=>this.refresh();q('[data-new]').onclick=()=>this.editor();q('[data-editor-close]').onclick=()=>this.closePanel();q('[data-close]').onclick=()=>this.el.remove();
     q('[data-edit-selected]').onclick=()=>this.editHousing(this.selected);
     q('[data-prev]').onclick=()=>{this.offset=Math.max(0,this.offset-(this.view==='graphic'?12:100));this.renderRows();};q('[data-next]').onclick=()=>{this.offset+=this.view==='graphic'?12:100;this.renderRows();};
-    q('[data-csv]').onclick=()=>downloadArticleFile(connectorCsv(this.filtered()),'schematico-steckerplan.csv','text/csv;charset=utf-8');q('[data-pdf]').onclick=()=>connectorPlanPdf(this.filtered(),this.source.name).save('schematico-steckerplan.pdf');
+    q('[data-csv]').onclick=()=>downloadArticleFile(connectorCsv(this.filtered()),'schematico-steckerplan.csv','text/csv;charset=utf-8');q('[data-pdf]').onclick=()=>{try{connectorPlanPdf(this.filtered(),this.source.name,this.source).save('schematico-steckerplan.pdf');}catch(e){q('[data-error]').textContent=articleError(e);}};
     q('[data-apply]').onclick=()=>{try{if(!this.preview)return;if(projectRevision(this.getProject())!==this.revision)throw new Error('Projekt wurde verändert. Bitte zuerst aktualisieren.');this.onApply(this.preview);this.refresh();}catch(e){this.error(e);}};
     q('[data-rows]').onclick=e=>{const button=(e.target as Element).closest<HTMLButtonElement>('[data-contact-row],[data-jump]');if(!button)return;const r=this.rows[Number(button.dataset.contactRow??button.dataset.jump)];if(button.hasAttribute('data-jump')&&r.binding){this.el.remove();this.navigate(r.binding.pageId,r.binding.componentId);}else this.contact(r.connectorId,r.position);};
     q('[data-visual]').onclick=e=>{const button=(e.target as Element).closest<HTMLButtonElement>('[data-visual-contact],[data-housing],[data-focus-housing]');if(!button)return;if(button.hasAttribute('data-focus-housing')){this.selected=button.dataset.focusHousing!;this.offset=0;this.preview=undefined;this.render();}else if(button.hasAttribute('data-housing'))this.editHousing(button.dataset.housing!);else {const row=this.rows[Number(button.dataset.visualContact)];if(row)this.contact(row.connectorId,row.position);}};

@@ -16,11 +16,17 @@ Die Auswahl **Nur aktive Zeichnungsseite** filtert ausschließlich die Zeichnung
 
 ## Formate und Navigation
 
+Der Schalter **Plankopf und Zeichnungsrahmen auf allen Seiten** ist standardmäßig eingeschaltet und gilt für Zeichnungen, Stückliste, klassischen Klemmenplan sowie sämtliche gewählten Aufbau- und Berichtsseiten. Verwendet wird die Schriftfeldvorlage des Projekts, ersatzweise die Standardvorlage. Firma, Bearbeiter, Datum und Projektbeschreibung stammen aus den Projektangaben; der Blatttitel entspricht dem jeweiligen Dokumentabschnitt. Generierte Blätter erhalten ihre PDF-Position als Blattnummer. Zeichnungsseiten behalten ihre gespeicherten Blattkennungen. Die globale Seitennummer und Gesamtzahl werden auf jedem Blatt gesetzt.
+
+Auch die Einzel-PDFs aus Schaltschrankdesigner, Berichtsdesigner und den SPS-/Bus-, Stecker- und Verbindungsnavigatoren enthalten den Projektplankopf auf allen Fortsetzungsseiten. Die Vorschau des Berichtsdesigners zeigt denselben Rahmen und Inhaltsbereich. Entsprechende API-Funktionen akzeptieren den Projektkontext zusätzlich zum bisherigen Projektnamen; ohne Kontext wird das Standardschriftfeld verwendet.
+
+Der verfügbare Inhaltsbereich wird aus den Begrenzungslinien und Beschriftungsbereichen der Vorlage ermittelt. Tabellen werden vor der Seitenaufteilung darin gemessen; die Montageplatte wird mit unveränderten gespeicherten Millimetermaßen proportional eingepasst. Die beiden klassischen Tabellenrenderer werden einschließlich ihrer Schrift proportional in diesen Bereich eingepasst. Hoch-/Querformat und lange Rahmenfelder berücksichtigen die tatsächlichen Zellbreiten; einzelne Schriftfeldzellen bleiben zusätzlich beschnitten. Eine Vorlage ohne ausreichenden freien Bereich erzeugt eine Fehlermeldung.
+
 Die allgemeine Papierwahl A3/A4 gilt für Zeichnungen und Montageplatten. Zeichnungen bleiben im Querformat. Montageplatten wählen Hoch- oder Querformat passend zu ihrer gespeicherten Form; sie werden mit ihrem benannten realen Maß und einem Zeichnungsfaktor auf das Blatt eingepasst. Das ist kein automatischer 1:1-Ausdruck. Berichtsvorlagen behalten ihr eigenes Format und ihre eigene Ausrichtung; die SPS-/Busübersicht verwendet das gewählte allgemeine Format im Querformat.
 
 Farbe beziehungsweise Schwarz-Weiß/Graustufen wird auch auf die neuen Vektorabschnitte angewendet. Eingebettete Rasterbilder und Logos bleiben die vorhandenen Bilddaten.
 
-Lesezeichen führen zu Zeichnungsseiten und zum Beginn jedes gewählten Zusatzabschnitts. Zusätzliche Seiten tragen ihre globale PDF-Position; die lokalen Berichtsseitenzahlen bleiben daneben erhalten. Schriftfelder und das berechnete Seitenanzahlfeld des Deckblatts verwenden die Gesamtzahl der ausgegebenen Seiten, einschließlich aller Fortsetzungen und Zusatzabschnitte.
+Lesezeichen führen zu Zeichnungsseiten und zum Beginn jedes gewählten Zusatzabschnitts. Das Schriftfeld jeder Seite trägt ihre globale PDF-Position; die lokalen Berichtsseitenzahlen stehen oberhalb des Schriftfelds. Schriftfelder und das berechnete Seitenanzahlfeld des Deckblatts verwenden die Gesamtzahl der ausgegebenen Seiten, einschließlich aller Fortsetzungen und Zusatzabschnitte.
 
 Interaktive Querverweise bleiben nutzbar. Zugeordnete Projektgeräte im Aufbau erhalten Links zu ihrer tatsächlich ausgegebenen Zeichnungsseite. Berichtszeilen führen zur Zeichnungsseite des ersten eindeutig zugeordneten, im PDF enthaltenen Planobjekts ihrer Zielmenge. Es werden keine Links zu nicht exportierten Seiten, freien Standardbauteilen oder unzugeordneten Kontakten erzeugt.
 
