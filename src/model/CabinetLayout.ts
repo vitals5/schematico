@@ -5,10 +5,11 @@ import { DeviceRegistry, addressKey } from "./DeviceRegistry";
 import { effectiveArticles } from "./ArticleAssignments";
 import { getSymbolForComponent } from "./symbols";
 import { isConnectionSymbol } from "./ConnectionSymbols";
+import { cabinetStandard } from "./CabinetLibrary";
 import { projectRevision } from "../layout/types";
 export interface CabinetItem {
   id: string;
-  kind: "device" | "rail" | "duct";
+  kind: "device" | "standard" | "rail" | "duct";
   label: string;
   x: number;
   y: number;
@@ -20,7 +21,9 @@ export interface CabinetItem {
   source?: ComponentAddress;
   physicalDeviceId?: string;
   articleKey?: string;
-  sizeOrigin?: "article" | "manual";
+  sizeOrigin?: "article" | "manual" | "standard";
+  /** Generic front view; dimensions are stored on this placement, never silently refreshed. */
+  standardId?: string;
 }
 export interface CabinetLayout {
   schemaVersion: 1;
@@ -120,7 +123,7 @@ export function cabinetLayouts(project: Project): CabinetLayout[] {
           typeof i.id === "string" &&
           typeof i.label === "string" &&
           i.label.length <= 160 &&
-          ["device", "rail", "duct"].includes(i.kind) &&
+          ["device", "standard", "rail", "duct"].includes(i.kind) &&
           [0, 90].includes(i.rotation) &&
           finite(i.x, -10000, 10000) &&
           finite(i.y, -10000, 10000) &&
@@ -165,7 +168,7 @@ export function inspectCabinet(
       !i.id ||
       typeof i.label !== "string" ||
       i.label.length > 160 ||
-      !["device", "rail", "duct"].includes(i.kind) ||
+      !["device", "standard", "rail", "duct"].includes(i.kind) ||
       ![0, 90].includes(i.rotation) ||
       !finite(i.x, -10000, 10000) ||
       !finite(i.y, -10000, 10000) ||
@@ -210,18 +213,30 @@ export function inspectCabinet(
         )
           add("cabinetArticleChanged", [i.id], "warning");
       }
-      if (i.railId) {
-        const r = l.items.filter(
-          (r) => r.id === i.railId && r.kind === "rail" && r.rotation === 0,
-        );
-        if (
-          r.length !== 1 ||
-          Math.abs(b.y + b.height / 2 - r[0].y - r[0].heightMm / 2) > 0.01 ||
-          b.x < r[0].x - 0.001 ||
-          b.x + b.width > r[0].x + r[0].widthMm + 0.001
-        )
-          add("cabinetRailInvalid", [i.id, i.railId]);
-      }
+    }
+    if (i.standardId !== undefined && !cabinetStandard(i.standardId))
+      add("cabinetInvalid", [i.id]);
+    if (
+      i.kind === "standard" &&
+      (!cabinetStandard(i.standardId) ||
+        i.source ||
+        i.physicalDeviceId ||
+        i.articleKey)
+    )
+      add("cabinetInvalid", [i.id]);
+    if ((i.kind === "device" || i.kind === "standard") && i.railId) {
+      if (i.kind === "standard" && !cabinetStandard(i.standardId)?.railMount)
+        add("cabinetRailInvalid", [i.id]);
+      const r = l.items.filter(
+        (r) => r.id === i.railId && r.kind === "rail" && r.rotation === 0,
+      );
+      if (
+        r.length !== 1 ||
+        Math.abs(b.y + b.height / 2 - r[0].y - r[0].heightMm / 2) > 0.01 ||
+        b.x < r[0].x - 0.001 ||
+        b.x + b.width > r[0].x + r[0].widthMm + 0.001
+      )
+        add("cabinetRailInvalid", [i.id, i.railId]);
     }
   }
   for (const [key, ids] of identities) {
@@ -239,8 +254,12 @@ export function inspectCabinet(
       const i = valid[a],
         j = valid[b];
       if (
-        (i.kind === "device" && i.railId === j.id && j.kind === "rail") ||
-        (j.kind === "device" && j.railId === i.id && i.kind === "rail")
+        ((i.kind === "device" || i.kind === "standard") &&
+          i.railId === j.id &&
+          j.kind === "rail") ||
+        ((j.kind === "device" || j.kind === "standard") &&
+          j.railId === i.id &&
+          i.kind === "rail")
       )
         continue;
       const x = cabinetBounds(i),
@@ -270,14 +289,17 @@ export function moveCabinetItem(
     dy = snap(y) - item.y;
   item.x += dx;
   item.y += dy;
-  if (item.kind === "device" && item.railId) {
+  if ((item.kind === "device" || item.kind === "standard") && item.railId) {
     const rail = l.items.find((i) => i.id === item.railId && i.kind === "rail");
     if (rail)
       item.y = rail.y + rail.heightMm / 2 - cabinetBounds(item).height / 2;
   }
   if (item.kind === "rail")
     for (const i of l.items)
-      if (i.kind === "device" && i.railId === item.id) {
+      if (
+        (i.kind === "device" || i.kind === "standard") &&
+        i.railId === item.id
+      ) {
         i.x += dx;
         i.y += dy;
       }
@@ -287,7 +309,9 @@ export function railCapacity(l: CabinetLayout, id: string) {
   const rail = l.items.find((i) => i.id === id && i.kind === "rail");
   if (!rail) return undefined;
   const intervals = l.items
-    .filter((i) => i.kind === "device" && i.railId === id)
+    .filter(
+      (i) => (i.kind === "device" || i.kind === "standard") && i.railId === id,
+    )
     .map((i) => {
       const b = cabinetBounds(i);
       return [
@@ -399,4 +423,49 @@ export function findCabinetPlacement(
     }
     if (x + width <= maxX + 0.001) return { x, y };
   }
+}
+
+/** Insert a complete batch or fail without changing the draft. Generic parts create no circuit devices. */
+export function insertCabinetStandard(
+  layout: CabinetLayout,
+  standardId: string,
+  railId?: string,
+  quantity = 1,
+): CabinetLayout {
+  const d = cabinetStandard(standardId);
+  if (
+    !d ||
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > 24 ||
+    layout.items.length + quantity > 1000
+  )
+    throw Error("cabinetInvalid");
+  if (railId && !d.railMount) throw Error("cabinetRailInvalid");
+  const next = structuredClone(layout),
+    used = new Set(next.items.map((i) => i.label));
+  for (let n = 0; n < quantity; n++) {
+    const position = findCabinetPlacement(next, d.widthMm, d.heightMm, railId);
+    if (!position) throw Error("cabinetNoSpace");
+    let index = 1;
+    const name = (index: number) =>
+      d.prefix ? `-${d.prefix}${index}` : `${d.badge || "RES"} ${index}`;
+    while (used.has(name(index))) index++;
+    const label = name(index);
+    used.add(label);
+    next.items.push({
+      id: crypto.randomUUID(),
+      kind: "standard",
+      label,
+      ...position,
+      widthMm: d.widthMm,
+      heightMm: d.heightMm,
+      rotation: 0,
+      clearanceMm: 0,
+      standardId: d.id,
+      sizeOrigin: "standard",
+      ...(railId ? { railId } : {}),
+    });
+  }
+  return next;
 }

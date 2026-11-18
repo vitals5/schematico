@@ -2,6 +2,7 @@ import { visualDrawingTargets } from "./EngineeringDrawing";
 import type { Project } from "../model/types";
 import {
   findCabinetPlacement,
+  insertCabinetStandard,
   CabinetLayoutEdit,
   cabinetCandidates,
   cabinetLayouts,
@@ -12,6 +13,15 @@ import {
   type CabinetLayout,
   type CabinetItem,
 } from "../model/CabinetLayout";
+import {
+  cabinetStandard,
+  cabinetStandardLibrary,
+  cabinetLibraryCategories,
+  findCabinetStandards,
+  type CabinetLibraryCategory,
+} from "../model/CabinetLibrary";
+import { cabinetLibraryPreview } from "./CabinetDeviceFace";
+import { getUiLanguage } from "../i18n";
 import { cabinetSvg, cabinetPdf } from "./CabinetDrawing";
 import { finishEngineeringDialog } from "./EngineeringDialog";
 import { bindArticleModalKeys, focusArticleModal } from "./ArticleModal";
@@ -28,6 +38,14 @@ export class CabinetLayoutDialog {
     source: Project;
     issues: ReturnType<typeof inspectCabinet>;
   };
+  private plateExpanded = false;
+  private panel: "project" | "standard" = "project";
+  private librarySearch = "";
+  private libraryCategory: CabinetLibraryCategory | "" = "";
+  private libraryOffset = 0;
+  private standardId = "rcd-4p";
+  private standardRail?: string;
+  private quantity = 1;
   private selected = "";
   private candidate = "";
   private search = "";
@@ -45,6 +63,7 @@ export class CabinetLayoutDialog {
   ) {
     this.source = structuredClone(getProject());
     this.candidates = cabinetCandidates(this.source);
+    if (!this.candidates.length) this.panel = "standard";
     this.layout = structuredClone(
       cabinetLayouts(this.source)[0] ?? this.fresh(),
     );
@@ -200,7 +219,7 @@ export class CabinetLayoutDialog {
     const rails = l.items.filter((i) => i.kind === "rail" && i.rotation === 0),
       area =
         (l.items
-          .filter((i) => i.kind === "device")
+          .filter((i) => i.kind === "device" || i.kind === "standard")
           .reduce((n, i) => n + i.widthMm * i.heightMm, 0) /
           (l.widthMm * l.heightMm)) *
         100;
@@ -213,7 +232,7 @@ export class CabinetLayoutDialog {
       )
       .join(
         "",
-      )}${!cabinetLayouts(this.source).some((b) => b.id === l.id) ? `<option selected value="${esc(l.id)}">${esc(l.name)} *</option>` : ""}</select></label><button class="btn" data-new>${t("cabinetNew")}</button><button class="btn" data-reload>${t("cabinetReload")}</button><button class="btn" data-undo ${this.past.length ? "" : "disabled"}>${t("cabinetUndo")}</button><button class="btn" data-redo ${this.future.length ? "" : "disabled"}>${t("cabinetRedo")}</button><button class="btn" data-pdf ${errors.length ? "disabled" : ""}>PDF</button><button class="btn" data-svg ${errors.length ? "disabled" : ""}>SVG</button></div><div class="cb-layout"><aside class="cb-tools"><h3>${t("cabinetBoard")}</h3><label>${t("cabinetName")}<input class="form-input" data-board="name" value="${esc(l.name)}" maxlength="120"></label><div class="cb-fields">${[
+      )}${!cabinetLayouts(this.source).some((b) => b.id === l.id) ? `<option selected value="${esc(l.id)}">${esc(l.name)} *</option>` : ""}</select></label><button class="btn" data-new>${t("cabinetNew")}</button><button class="btn" data-reload>${t("cabinetReload")}</button><button class="btn" data-undo ${this.past.length ? "" : "disabled"}>${t("cabinetUndo")}</button><button class="btn" data-redo ${this.future.length ? "" : "disabled"}>${t("cabinetRedo")}</button><button class="btn" data-pdf ${errors.length ? "disabled" : ""}>PDF</button><button class="btn" data-svg ${errors.length ? "disabled" : ""}>SVG</button></div><div class="cb-layout"><aside class="cb-tools"><details class="cb-board-settings" data-board-settings ${this.plateExpanded ? "open" : ""}><summary>${t("cabinetBoard")} · ${l.widthMm} × ${l.heightMm} mm</summary><label>${t("cabinetName")}<input class="form-input" data-board="name" value="${esc(l.name)}" maxlength="120"></label><div class="cb-fields">${[
       ["widthMm", t("cabinetWidth")],
       ["heightMm", t("cabinetHeight")],
       ["marginMm", t("cabinetMargin")],
@@ -225,15 +244,19 @@ export class CabinetLayoutDialog {
       )
       .join(
         "",
-      )}</div><button class="btn" data-board-apply>${t("cabinetPropertiesApply")}</button><div class="cb-actions"><button class="btn" data-add-rail>${t("cabinetAddRail")}</button><button class="btn" data-add-duct>${t("cabinetAddDuct")}</button></div><h3>${t("cabinetDevices")}</h3><input class="form-input" data-search aria-label="${t("cabinetSearch")}" placeholder="${t("cabinetSearch")}" value="${esc(this.search)}"><div class="cb-candidates">${filtered
-      .slice(this.offset, this.offset + 30)
-      .map(
-        (c) =>
-          `<button class="cb-candidate" data-candidate="${esc(c.identity)}" aria-pressed="${c.identity === this.candidate}" ${placed.has(JSON.stringify([c.main.pageId, c.main.componentId])) ? "disabled" : ""}><strong>${esc(c.designation)}</strong><small>${esc(c.items.map((a) => a.articleNumber).join(" / ") || c.description)} · ${c.dimensions ? c.dimensions.widthMm + " × " + c.dimensions.heightMm + " mm" : t("cabinetNoDimensions")}</small></button>`,
-      )
-      .join(
-        "",
-      )}</div><div class="cb-actions"><button class="btn" data-prev ${this.offset ? "" : "disabled"}>‹</button><span>${this.offset + 1}–${Math.min(filtered.length, this.offset + 30)} / ${filtered.length}</span><button class="btn" data-next ${this.offset + 30 >= filtered.length ? "disabled" : ""}>›</button></div>${entry ? `<p>${esc(entry.designation)} · ${t(this.manual ? "cabinetManualSize" : "cabinetSizeFromArticle")}</p><div class="cb-fields"><label>${t("cabinetWidth")}<input class="form-input" data-size="width" type="number" min=".1" value="${esc(this.width)}"></label><label>${t("cabinetHeight")}<input class="form-input" data-size="height" type="number" min=".1" value="${esc(this.height)}"></label></div><label>${t("cabinetRail")}<select class="form-input" data-new-rail><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join("")}</select></label><button class="btn" data-place ${Number(this.width) > 0 && Number(this.height) > 0 && !placed.has(JSON.stringify([entry.main.pageId, entry.main.componentId])) ? "" : "disabled"}>${t("cabinetPlace")}</button>` : ""}</aside><main class="cb-main"><div class="cb-metrics"><span>${l.widthMm} × ${l.heightMm} mm</span><span>${Number.isFinite(area) ? area.toFixed(1) : "—"} % ${t("cabinetDeviceArea")}</span><span>${errors.length} ${t("cabinetErrors")} · ${issues.length - errors.length} ${t("wiringHints")}</span></div><div class="cb-canvas"><div data-cabinet-surface>${cabinetSvg(l, labels, this.selected, issues)}</div></div><p data-coordinates data-lens-transient>${t("cabinetDragHint")}</p>${rails
+      )}</div><button class="btn" data-board-apply>${t("cabinetPropertiesApply")}</button></details><div class="cb-actions"><button class="btn" data-add-rail>${t("cabinetAddRail")}</button><button class="btn" data-add-duct>${t("cabinetAddDuct")}</button></div><div class="cb-library-tabs" role="group" aria-label="${t("cabinetLibrarySources")}"><button class="btn" data-library-tab="project" aria-pressed="${this.panel === "project"}">${t("cabinetDevices")}</button><button class="btn" data-library-tab="standard" aria-pressed="${this.panel === "standard"}">${t("cabinetLibrary")} (${cabinetStandardLibrary.length})</button></div>${
+      this.panel === "standard"
+        ? this.libraryPanel(rails)
+        : `<input class="form-input" data-search aria-label="${t("cabinetSearch")}" placeholder="${t("cabinetSearch")}" value="${esc(this.search)}"><div class="cb-candidates">${filtered
+            .slice(this.offset, this.offset + 30)
+            .map(
+              (c) =>
+                `<button class="cb-candidate" data-candidate="${esc(c.identity)}" aria-pressed="${c.identity === this.candidate}" ${placed.has(JSON.stringify([c.main.pageId, c.main.componentId])) ? "disabled" : ""}><strong>${esc(c.designation)}</strong><small>${esc(c.items.map((a) => a.articleNumber).join(" / ") || c.description)} · ${c.dimensions ? c.dimensions.widthMm + " × " + c.dimensions.heightMm + " mm" : t("cabinetNoDimensions")}</small></button>`,
+            )
+            .join(
+              "",
+            )}</div><div class="cb-actions"><button class="btn" data-prev ${this.offset ? "" : "disabled"}>‹</button><span>${filtered.length ? this.offset + 1 : 0}–${Math.min(filtered.length, this.offset + 30)} / ${filtered.length}</span><button class="btn" data-next ${this.offset + 30 >= filtered.length ? "disabled" : ""}>›</button></div>${entry ? `<p>${esc(entry.designation)} · ${t(this.manual ? "cabinetManualSize" : "cabinetSizeFromArticle")}</p><div class="cb-fields"><label>${t("cabinetWidth")}<input class="form-input" data-size="width" type="number" min=".1" value="${esc(this.width)}"></label><label>${t("cabinetHeight")}<input class="form-input" data-size="height" type="number" min=".1" value="${esc(this.height)}"></label></div><label>${t("cabinetRail")}<select class="form-input" data-new-rail><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join("")}</select></label><button class="btn" data-place ${Number(this.width) > 0 && Number(this.height) > 0 && !placed.has(JSON.stringify([entry.main.pageId, entry.main.componentId])) ? "" : "disabled"}>${t("cabinetPlace")}</button>` : ""}`
+    }</aside><main class="cb-main"><div class="cb-metrics"><span>${l.widthMm} × ${l.heightMm} mm</span><span>${Number.isFinite(area) ? area.toFixed(1) : "—"} % ${t("cabinetDeviceArea")}</span><span>${errors.length} ${t("cabinetErrors")} · ${issues.length - errors.length} ${t("wiringHints")}</span></div>${l.items.some((i) => i.kind === "standard") ? `<p class="cb-note cb-standard-origin">${t("cabinetStandardOnly")}</p>` : ""}<div class="cb-canvas"><div data-cabinet-surface>${cabinetSvg(l, labels, this.selected, issues)}</div></div><p data-coordinates data-lens-transient>${t("cabinetDragHint")}</p>${rails
       .map((r) => {
         const capacity = railCapacity(l, r.id)!;
         return `<span class="cb-capacity">${esc(r.label)} · ${capacity.used.toFixed(1)} / ${r.widthMm} mm · ${capacity.free.toFixed(1)} mm ${t("cabinetRemaining")}</span>`;
@@ -255,7 +278,7 @@ export class CabinetLayoutDialog {
             )
             .join(
               "",
-            )}</div><label>${t("cabinetRotation")}<select class="form-input" data-item="rotation"><option value="0" ${!item.rotation ? "selected" : ""}>0°</option><option value="90" ${item.rotation ? "selected" : ""}>90°</option></select></label>${item.kind === "device" ? `<label>${t("cabinetRail")}<select class="form-input" data-item="railId"><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}" ${r.id === item.railId ? "selected" : ""}>${esc(r.label)}</option>`).join("")}</select></label><label><input type="checkbox" data-manual ${item.sizeOrigin === "manual" ? "checked" : ""}> ${t("cabinetManualSize")}</label><button class="btn" data-article-size>${t("cabinetTakeSize")}</button>` : ""}<div class="cb-actions"><button class="btn" data-item-apply>${t("cabinetPropertiesApply")}</button><button class="btn" data-remove>${t("cabinetRemove")}</button></div>`
+            )}</div><label>${t("cabinetRotation")}<select class="form-input" data-item="rotation"><option value="0" ${!item.rotation ? "selected" : ""}>0°</option><option value="90" ${item.rotation ? "selected" : ""}>90°</option></select></label>${item.kind === "device" || (item.kind === "standard" && cabinetStandard(item.standardId)?.railMount) ? `<label>${t("cabinetRail")}<select class="form-input" data-item="railId"><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}" ${r.id === item.railId ? "selected" : ""}>${esc(r.label)}</option>`).join("")}</select></label>` : ""}${item.kind === "device" ? `<label>${t("cabinetLibraryFace")}<select class="form-input" data-item="standardId"><option value="">${t("cabinetLibraryNoFace")}</option>${cabinetStandardLibrary.map((d) => `<option value="${d.id}" ${item.standardId === d.id ? "selected" : ""}>${esc(d.name[getUiLanguage()])}</option>`).join("")}</select></label><p class="cb-note">${t("cabinetLibraryFaceHint")}</p><label><input type="checkbox" data-manual ${item.sizeOrigin === "manual" ? "checked" : ""}> ${t("cabinetManualSize")}</label><button class="btn" data-article-size>${t("cabinetTakeSize")}</button>` : ""}${item.kind === "standard" ? `<p class="cb-note">${esc(cabinetStandard(item.standardId)?.name[getUiLanguage()] ?? "")} · ${t(item.sizeOrigin === "manual" ? "cabinetManualSize" : "cabinetStandardSize")}</p><button class="btn" data-standard-reset>${t("cabinetStandardReset")}</button>` : ""}<div class="cb-actions"><button class="btn" data-item-apply>${t("cabinetPropertiesApply")}</button><button class="btn" data-remove>${t("cabinetRemove")}</button></div>`
         : `<p>${t("cabinetSelect")}</p>`
     }</aside></div><p role="alert">${esc(this.error)}</p><footer><span>${t("cabinetDraftHint")}</span><button class="btn" data-close>${t("cabinetCancel")}</button><button class="btn" data-delete-board ${cabinetLayouts(this.source).some((b) => b.id === l.id) ? "" : "disabled"}>${t("cabinetDeleteBoard")}</button><button class="btn btn-primary" data-apply ${errors.length ? "disabled" : ""}>${t("cabinetApply")}</button></footer></section>`;
     const q = <T extends HTMLElement = HTMLElement>(s: string) =>
@@ -272,6 +295,10 @@ export class CabinetLayoutDialog {
       }
       this.render();
     };
+    q<HTMLDetailsElement>("[data-board-settings]").ontoggle = (e) => {
+      this.plateExpanded = (e.target as HTMLDetailsElement).open;
+    };
+    this.bindLibrary();
     q("[data-close]").onclick = () => this.el.remove();
     q("[data-new]").onclick = () => {
       this.layout = this.fresh();
@@ -360,7 +387,7 @@ export class CabinetLayoutDialog {
     };
     q("[data-add-rail]").onclick = () => structure("rail");
     q("[data-add-duct]").onclick = () => structure("duct");
-    q<HTMLInputElement>("[data-search]").oninput = (e) => {
+    q<HTMLInputElement>("[data-search]")?.addEventListener("input", (e) => {
       const input = e.target as HTMLInputElement,
         at = input.selectionStart;
       this.search = input.value;
@@ -368,15 +395,15 @@ export class CabinetLayoutDialog {
       this.render();
       q<HTMLInputElement>("[data-search]").focus();
       q<HTMLInputElement>("[data-search]").setSelectionRange(at, at);
-    };
-    q("[data-prev]").onclick = () => {
+    });
+    q("[data-prev]")?.addEventListener("click", () => {
       this.offset = Math.max(0, this.offset - 30);
       this.render();
-    };
-    q("[data-next]").onclick = () => {
+    });
+    q("[data-next]")?.addEventListener("click", () => {
       this.offset += 30;
       this.render();
-    };
+    });
     for (const button of this.el.querySelectorAll<HTMLButtonElement>(
       "[data-candidate]",
     ))
@@ -413,9 +440,6 @@ export class CabinetLayoutDialog {
         id = crypto.randomUUID(),
         w = Number(this.width),
         h = Number(this.height),
-        devices = next.items.filter(
-          (i) => i.kind === "device" && i.railId === rail?.id,
-        ),
         position = findCabinetPlacement(l, w, h, rail?.id);
       if (!position) {
         this.error = t("cabinetNoSpace");
@@ -448,30 +472,49 @@ export class CabinetLayoutDialog {
         "[data-item]",
       ))
         if (!field.disabled)
-          (i as any)[field.dataset.item!] = ["label", "railId"].includes(
-            field.dataset.item!,
-          )
+          (i as any)[field.dataset.item!] = [
+            "label",
+            "railId",
+            "standardId",
+          ].includes(field.dataset.item!)
             ? field.value
             : Number(field.value);
       if (i.kind === "rail")
         for (const child of next.items)
-          if (child.kind === "device" && child.railId === i.id) {
+          if (
+            (child.kind === "device" || child.kind === "standard") &&
+            child.railId === i.id
+          ) {
             child.x += i.x - item!.x;
             child.y += i.y - item!.y + (i.heightMm - item!.heightMm) / 2;
           }
       if (!i.railId) delete i.railId;
+      if (!i.standardId) delete i.standardId;
       if (
         i.widthMm !== item!.widthMm ||
         i.heightMm !== item!.heightMm ||
         this.el.querySelector<HTMLInputElement>("[data-manual]")?.checked
       ) {
         i.sizeOrigin = "manual";
-        i.articleKey = this.candidates.find(
-          (c) =>
-            c.main.pageId === i.source?.pageId &&
-            c.main.componentId === i.source?.componentId,
-        )?.articleKey;
+        i.articleKey =
+          i.kind === "device"
+            ? this.candidates.find(
+                (c) =>
+                  c.main.pageId === i.source?.pageId &&
+                  c.main.componentId === i.source?.componentId,
+              )?.articleKey
+            : undefined;
       }
+      this.change(moveCabinetItem(next, i.id, i.x, i.y));
+    });
+    q("[data-standard-reset]")?.addEventListener("click", () => {
+      const d = cabinetStandard(item?.standardId);
+      if (!d) return;
+      const next = structuredClone(l),
+        i = next.items.find((i) => i.id === item!.id)!;
+      i.widthMm = d.widthMm;
+      i.heightMm = d.heightMm;
+      i.sizeOrigin = "standard";
       this.change(moveCabinetItem(next, i.id, i.x, i.y));
     });
     q("[data-remove]")?.addEventListener("click", () => this.removeItem());
@@ -542,6 +585,121 @@ export class CabinetLayoutDialog {
     });
     focusArticleModal(this.el);
   }
+  private libraryPanel(rails: CabinetItem[]) {
+    const list = findCabinetStandards(this.librarySearch, this.libraryCategory),
+      d = cabinetStandard(this.standardId)!;
+    this.libraryOffset = Math.min(
+      this.libraryOffset,
+      Math.max(0, Math.floor((list.length - 1) / 30) * 30),
+    );
+    const rail =
+      this.standardRail === undefined
+        ? (rails[0]?.id ?? "")
+        : this.standardRail;
+    return `<p class="cb-note">${t("cabinetLibraryHint")}</p><label>${t("cabinetLibraryCategory")}<select class="form-input" data-library-category><option value="">${t("cabinetLibraryAll")}</option>${cabinetLibraryCategories.map((c) => `<option value="${c}" ${c === this.libraryCategory ? "selected" : ""}>${t(("cabinetCategory_" + c) as TranslationKey)}</option>`).join("")}</select></label><input class="form-input" data-library-search aria-label="${t("cabinetLibrarySearch")}" placeholder="${t("cabinetLibrarySearch")}" value="${esc(this.librarySearch)}"><div class="cb-candidates cb-library-list">${
+      list
+        .slice(this.libraryOffset, this.libraryOffset + 30)
+        .map(
+          (d) =>
+            `<button class="cb-candidate cb-library-card" data-standard="${d.id}" aria-pressed="${d.id === this.standardId}"><span class="cb-library-icon">${cabinetLibraryPreview(d)}</span><span><strong>${esc(d.name[getUiLanguage()])}</strong><small>${d.widthMm} × ${d.heightMm} mm${d.modules ? ` · ${d.modules} ${t("cabinetModules")}` : ""}</small></span></button>`,
+        )
+        .join("") || `<p>${t("cabinetLibraryEmpty")}</p>`
+    }</div><div class="cb-actions"><button class="btn" data-library-prev ${this.libraryOffset ? "" : "disabled"}>‹</button><span>${list.length ? this.libraryOffset + 1 : 0}–${Math.min(list.length, this.libraryOffset + 30)} / ${list.length}</span><button class="btn" data-library-next ${this.libraryOffset + 30 >= list.length ? "disabled" : ""}>›</button></div><div class="cb-library-choice"><div class="cb-library-preview">${cabinetLibraryPreview(d)}</div><strong>${esc(d.name[getUiLanguage()])}</strong><p>${d.widthMm} × ${d.heightMm} mm${d.modules ? ` · ${d.modules} ${t("cabinetModules")}` : ""}</p><p class="cb-note">${t("cabinetStandardSize")}</p><label>${t("cabinetRail")}<select class="form-input" data-standard-rail ${d.railMount ? "" : "disabled"}><option value="">${t("cabinetFree")}</option>${d.railMount ? rails.map((r) => `<option value="${esc(r.id)}" ${r.id === rail ? "selected" : ""}>${esc(r.label)}</option>`).join("") : ""}</select></label><label>${t("cabinetLibraryQuantity")}<input class="form-input" type="number" min="1" max="24" step="1" data-standard-quantity value="${this.quantity}"></label><button class="btn btn-primary" data-standard-place ${Number.isInteger(this.quantity) && this.quantity >= 1 && this.quantity <= 24 ? "" : "disabled"}>${t("cabinetLibraryPlace")}</button></div>`;
+  }
+  private bindLibrary() {
+    for (const b of this.el.querySelectorAll<HTMLButtonElement>(
+      "[data-library-tab]",
+    ))
+      b.onclick = () => {
+        this.panel = b.dataset.libraryTab as "project" | "standard";
+        this.render();
+      };
+    const category = this.el.querySelector<HTMLSelectElement>(
+      "[data-library-category]",
+    );
+    if (category)
+      category.onchange = () => {
+        this.libraryCategory = category.value as CabinetLibraryCategory | "";
+        this.libraryOffset = 0;
+        this.render();
+      };
+    const search = this.el.querySelector<HTMLInputElement>(
+      "[data-library-search]",
+    );
+    if (search)
+      search.oninput = () => {
+        const at = search.selectionStart;
+        this.librarySearch = search.value;
+        this.libraryOffset = 0;
+        this.render();
+        const input = this.el.querySelector<HTMLInputElement>(
+          "[data-library-search]",
+        )!;
+        input.focus();
+        input.setSelectionRange(at, at);
+      };
+    for (const b of this.el.querySelectorAll<HTMLButtonElement>(
+      "[data-standard]",
+    ))
+      b.onclick = () => {
+        this.standardId = b.dataset.standard!;
+        this.render();
+      };
+    const previous = this.el.querySelector<HTMLButtonElement>(
+        "[data-library-prev]",
+      ),
+      next = this.el.querySelector<HTMLButtonElement>("[data-library-next]");
+    if (previous)
+      previous.onclick = () => {
+        this.libraryOffset = Math.max(0, this.libraryOffset - 30);
+        this.render();
+      };
+    if (next)
+      next.onclick = () => {
+        this.libraryOffset += 30;
+        this.render();
+      };
+    const rail = this.el.querySelector<HTMLSelectElement>(
+      "[data-standard-rail]",
+    );
+    if (rail)
+      rail.onchange = () => {
+        this.standardRail = rail.value;
+      };
+    const quantity = this.el.querySelector<HTMLInputElement>(
+        "[data-standard-quantity]",
+      ),
+      place = this.el.querySelector<HTMLButtonElement>("[data-standard-place]");
+    if (quantity && place)
+      quantity.oninput = () => {
+        this.quantity = Number(quantity.value);
+        place.disabled =
+          !Number.isInteger(this.quantity) ||
+          this.quantity < 1 ||
+          this.quantity > 24;
+      };
+    if (place)
+      place.onclick = () => {
+        try {
+          const next = insertCabinetStandard(
+            this.layout,
+            this.standardId,
+            rail?.disabled ? undefined : rail?.value || undefined,
+            this.quantity,
+          );
+          this.selected = next.items.at(-1)!.id;
+          this.change(next);
+        } catch (e) {
+          this.error = t(
+            (e instanceof Error &&
+            ["cabinetNoSpace", "cabinetRailInvalid"].includes(e.message)
+              ? e.message
+              : "cabinetInvalid") as TranslationKey,
+          );
+          this.render();
+        }
+      };
+  }
   private bindDrag() {
     const svg = this.el.querySelector<SVGSVGElement>(".cb-svg")!;
     const itemById = new Map(this.layout.items.map((i) => [i.id, i])),
@@ -600,7 +758,7 @@ export class CabinetLayoutDialog {
           Math.round(n / this.layout.gridMm) * this.layout.gridMm,
         dx = snap(drag.startX + p.x - drag.x) - drag.startX,
         dy =
-          i.kind === "device" && i.railId
+          (i.kind === "device" || i.kind === "standard") && i.railId
             ? 0
             : snap(drag.startY + p.y - drag.y) - drag.startY;
       for (const node of nodes) {

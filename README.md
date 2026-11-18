@@ -91,6 +91,8 @@ A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable an
 
 **Project → Cabinet layout 2D** provides millimetre-based mounting plates, rails, wiring ducts and device footprints linked to the schematic. Use structured main-article dimensions or explicitly entered sizes, place devices in free grid-aligned gaps, drag rails together with their mounted devices and inspect collisions, clearances, plate bounds and duplicate placements. Local draft undo/redo, checked project transactions, SVG/PDF export and drawing navigation are included. Layout references do not duplicate BOM articles or alter electrical wires. See [cabinet layout](docs/cabinet-layout.md).
 
+A built-in standard library adds 104 generic cabinet forms: circuit breakers, RCDs/RCBOs, fuses, surge protection, contactors, terminals, power supplies, meters, PLC/KNX devices, drives and accessories. Search by family, preview fronts, insert batches on rails or assign a front view to an existing project device. Generic dimensions remain editable planning defaults; these mechanical parts do not create circuit devices or BOM entries.
+
 ## Manufacturing report designer
 
 **Reports → Manufacturing reports & designer** provides terminal, cable/core, connector and wiring tables with project-saved templates. Choose columns, headings, order, width weights, font size, A3/A4 and orientation; filter and sort the report, inspect paginated previews and export PDF/CSV. Preview and PDF share measured line wrapping and page breaks, including continued long rows. Templates support JSON exchange, copying, removal and undo. Report navigation can inspect assigned devices without rebuilding autoconnect. See [report designer](docs/report-designer.md).

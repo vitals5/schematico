@@ -1,3 +1,5 @@
+import { cabinetStandard } from "../model/CabinetLibrary";
+import { cabinetDeviceFace, cabinetFaceSvg } from "./CabinetDeviceFace";
 import { jsPDF } from "jspdf";
 import {
   cabinetBounds,
@@ -44,9 +46,13 @@ export function cabinetSvg(
         return [];
       const label = labels.get(item.id) || item.label,
         problem = issues.some((i) => i.ids.includes(item.id)),
-        id = visualKey("cabinet", layout.id, item.id);
+        id = visualKey("cabinet", layout.id, item.id),
+        standard = cabinetStandard(item.standardId),
+        face = standard
+          ? `<g transform="translate(${item.x + (item.rotation === 90 ? item.heightMm : 0)} ${item.y})${item.rotation === 90 ? " rotate(90)" : ""}" pointer-events="none">${cabinetFaceSvg(cabinetDeviceFace(standard, item.widthMm, item.heightMm))}</g>`
+          : "";
       return [
-        `<g ${interactive ? `data-cabinet-item="${esc(item.id)}" tabindex="0" role="button" aria-label="${esc(label)}" ${visualMeta(id, label, { issue: problem, neighbors: item.railId ? [visualKey("cabinet", layout.id, item.railId)] : [] })}` : ""} class="cb-item ${item.id === selected ? "is-selected" : ""}"><title>${esc(label + " · " + b.width + " × " + b.height + " mm")}</title><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${item.kind === "device" ? 1 : 0}" fill="${item.kind === "device" ? "#dceafa" : item.kind === "rail" ? "#c3cbd2" : "#e6e0d3"}" stroke="${problem ? "#c35635" : item.id === selected ? "#226aa4" : "#546676"}" stroke-width="${item.id === selected ? 0.8 : 0.4}"/>${item.kind === "rail" ? `<path d="M${b.x} ${b.y + 3}h${b.width} M${b.x} ${b.y + b.height - 3}h${b.width} M${b.x} ${b.y + b.height / 2}h${b.width}" stroke="#8895a0" stroke-width=".5"/>` : ""}<clipPath id="cb-label-${index}"><rect x="${b.x + 1}" y="${b.y + 1}" width="${Math.max(0.1, b.width - 2)}" height="${Math.max(0.1, b.height - 2)}"/></clipPath><text clip-path="url(#cb-label-${index})" x="${b.x + 2}" y="${b.y + Math.min(b.height / 2 + 1, 7)}" font-size="3" fill="#24394b">${esc(label)}</text></g>`,
+        `<g ${interactive ? `data-cabinet-item="${esc(item.id)}" tabindex="0" role="button" aria-label="${esc(label)}" ${visualMeta(id, label, { issue: problem, neighbors: item.railId ? [visualKey("cabinet", layout.id, item.railId)] : [] })}` : ""} class="cb-item ${item.id === selected ? "is-selected" : ""}"><title>${esc(label + " · " + b.width + " × " + b.height + " mm")}</title><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${item.kind === "device" || item.kind === "standard" ? 1 : 0}" fill="${item.kind === "standard" ? "#f4f6f7" : item.kind === "device" ? "#dceafa" : item.kind === "rail" ? "#c3cbd2" : "#e6e0d3"}" stroke="${problem ? "#c35635" : item.id === selected ? "#226aa4" : "#546676"}" stroke-width="${item.id === selected ? 0.8 : 0.4}"/>${item.kind === "rail" ? `<path d="M${b.x} ${b.y + 3}h${b.width} M${b.x} ${b.y + b.height - 3}h${b.width} M${b.x} ${b.y + b.height / 2}h${b.width}" stroke="#8895a0" stroke-width=".5"/>` : ""}${face}<clipPath id="cb-label-${index}"><rect x="${b.x + 1}" y="${b.y + 1}" width="${Math.max(0.1, b.width - 2)}" height="${Math.max(0.1, b.height - 2)}"/></clipPath><text clip-path="url(#cb-label-${index})" x="${b.x + 2}" y="${b.y + Math.min(b.height / 2 + 1, 7)}" font-size="3" fill="#24394b">${esc(label)}</text></g>`,
       ];
     })
     .join("");
@@ -89,11 +95,47 @@ export function cabinetPdf(
     doc.setFillColor(
       ...((i.kind === "device"
         ? [220, 234, 250]
-        : i.kind === "rail"
-          ? [195, 203, 210]
-          : [230, 224, 211]) as [number, number, number]),
+        : i.kind === "standard"
+          ? [244, 246, 247]
+          : i.kind === "rail"
+            ? [195, 203, 210]
+            : [230, 224, 211]) as [number, number, number]),
     );
     doc.rect(x, y, b.width * s, b.height * s, "FD");
+    const standard = cabinetStandard(i.standardId);
+    if (standard) {
+      const point = (px: number, py: number) =>
+        i.rotation === 90
+          ? [x + (i.heightMm - py) * s, y + px * s]
+          : [x + px * s, y + py * s];
+      for (const p of cabinetDeviceFace(standard, i.widthMm, i.heightMm)) {
+        const [px, py] = point(p.x, p.y);
+        if (p.kind === "text") {
+          doc.setTextColor("#24394b");
+          doc.setFontSize((p.size * s) / 0.352778);
+          doc.text(p.text, px, py, {
+            align: "center",
+            angle: i.rotation === 90 ? 270 : 0,
+          });
+        } else {
+          doc.setDrawColor(p.stroke);
+          doc.setLineWidth(0.3 * s);
+          if (p.kind === "line") {
+            const [tx, ty] = point(p.x2, p.y2);
+            doc.line(px, py, tx, ty);
+          } else {
+            doc.setFillColor(p.fill);
+            if (p.kind === "circle") doc.circle(px, py, p.r * s, "FD");
+            else if (i.rotation === 90)
+              doc.rect(px - p.h * s, py, p.h * s, p.w * s, "FD");
+            else doc.rect(px, py, p.w * s, p.h * s, "FD");
+          }
+        }
+      }
+    }
+    doc.setDrawColor(70, 85, 100);
+    doc.setTextColor("#24394b");
+    doc.setLineWidth(0.2);
     doc.setFontSize((3 * s) / 0.352778);
     const lines = doc.splitTextToSize(
       labels.get(i.id) || i.label,
@@ -101,9 +143,9 @@ export function cabinetPdf(
     );
     if (b.height * s > 4 * s)
       doc.text(
-        lines.slice(0, Math.max(1, Math.floor(b.height / 4))),
+        lines.slice(0, standard ? 1 : Math.max(1, Math.floor(b.height / 4))),
         x + s,
-        y + 3 * s,
+        y + (standard ? Math.min(b.height / 2 + 1, 7) : 3) * s,
       );
   }
   return doc;

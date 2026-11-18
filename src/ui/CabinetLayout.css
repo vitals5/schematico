@@ -164,3 +164,140 @@
     max-height: 190px;
   }
 }
+.cb-library-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 18px 0 12px;
+}
+.cb-library-tabs .btn {
+  flex: 1;
+  white-space: normal;
+}
+.cb-library-tabs [aria-pressed="true"] {
+  background: #285273;
+  border-color: #81b4da;
+}
+.cb-library-card {
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.cb-library-card strong,
+.cb-library-card small {
+  display: block;
+  line-height: 1.4;
+}
+.cb-library-card small {
+  margin-top: 6px;
+}
+.cb-library-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58px;
+  border-radius: 4px;
+  background: #ebf0f4;
+}
+.cb-library-icon svg {
+  width: 40px;
+  height: 52px;
+}
+.cb-library-choice {
+  border: 1px solid #4b6780;
+  border-radius: 6px;
+  background: #152c40;
+  padding: 12px;
+  margin-top: 12px;
+}
+.cb-library-choice strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cb-library-choice p {
+  font-size: 12px;
+}
+.cb-library-choice > label {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.cb-library-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 118px;
+  background: #edf2f6;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.cb-library-preview svg {
+  width: 160px;
+  height: 108px;
+}
+.cb-standard-origin {
+  border-left: 3px solid #6b9cbb;
+  padding-left: 10px;
+}
+.cb-board-settings {
+  padding: 10px;
+  border: 1px solid #3d5973;
+  border-radius: 6px;
+}
+.cb-board-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cb-board-settings > label {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0;
+}
+.cb-library-choice {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 4px 10px;
+}
+.cb-library-choice .cb-library-preview {
+  grid-row: 1/4;
+  height: 85px;
+  margin: 0;
+}
+.cb-library-choice .cb-library-preview svg {
+  width: 58px;
+  height: 78px;
+}
+.cb-library-choice > p {
+  margin: 2px 0;
+}
+.cb-library-choice > label,
+.cb-library-choice > button {
+  grid-column: 1/-1;
+}
+@media (min-width: 761px) {
+  .cb-tools {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+}
+@media (min-width: 1151px) {
+  #cabinetLayoutDialog .eng-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #cabinetLayoutDialog .cb-layout {
+    flex: 1;
+    min-height: 0;
+  }
+  #cabinetLayoutDialog .cb-tools,
+  #cabinetLayoutDialog .cb-main,
+  #cabinetLayoutDialog .cb-properties {
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+}

@@ -32,8 +32,26 @@ Die Auslastung bezeichnet ausschließlich die Rechteckfläche der Gerätekörper
 
 ## Speicherung und Export
 
-Aufbauten liegen unter `cabinetLayouts` in der Projektdatei und werden mit ihr übertragen. Alte Projekte benötigen keine Migration. Gerätekörper sind Referenzen auf vorhandene Darstellungen; sie fügen der Stückliste keine weiteren Artikel hinzu. Die geometrischen Schienen und Kanäle sind ebenfalls keine automatisch bestellten Stücklistenartikel.
+Aufbauten liegen unter `cabinetLayouts` in der Projektdatei und werden mit ihr übertragen. Alte Projekte benötigen keine Migration. Aus dem Gerätebestand übernommene Gerätekörper referenzieren vorhandene Darstellungen; Bibliotheksbauteile sind eigenständige mechanische Objekte. Beide fügen der Stückliste keine weiteren Artikel hinzu. Die geometrischen Schienen und Kanäle sind ebenfalls keine automatisch bestellten Stücklistenartikel.
 
 Der SVG-Export ist eine eigenständige Vektorgrafik mit Millimeterabmessungen. Der PDF-Export passt die gewählte Platte auf ein A3-Blatt ein und benennt ihre realen Maße sowie den Zeichnungsfaktor. Er ist dadurch nicht automatisch ein Ausdruck in 1:1. Die gespeicherten Körper bleiben unabhängig von der Bildschirmvergrößerung maßstäblich.
 
 Der Bereich liefert einen geometrisch geprüften 2D-Aufbau. Er berechnet keine Wärmeabfuhr, Einbautiefe, elektrischen Sicherheitsabstände, Bohrbilder, Verdrahtungslängen oder 3D-Montagewege. Zusätzliche Abstände sind ausdrücklich eingegebene Entwurfswerte, keine aus einer Norm oder einem Datenblatt bewiesenen Herstellerabstände.
+
+## Standardbibliothek
+
+Im Gerätebereich stehen **Gerätebestand** und **Standardbibliothek** als getrennte Quellen bereit. Die Bibliothek ist lokal in der Anwendung enthalten und ohne Katalogdienst nutzbar. 104 herstellerneutrale Bauformen sind nach sieben Gerätegruppen filterbar; die Suche versteht deutsche und englische Namen sowie übliche Abkürzungen. Jede Form hat eine Vorschau und eine erkennbare Frontansicht, die auch im SVG- und PDF-Export verwendet wird.
+
+- **Schutzgeräte:** LS 1-/2-/3-/4-polig und 1P+N/3P+N, FI 2-/4-polig, FI/LS, AFDD, SLS, Motorschutz, D01/D02-, Diazed-, Zylinder- und NH-Sicherungen, Überspannungsschutz und Kompaktleistungsschalter.
+- **Schalten und Steuern:** Haupt-/Lasttrennschalter, Umschalter, Installations- und Leistungsschütze, Stromstoß-, Koppel-, Zeit-, Sicherheits- und Halbleiterrelais sowie Zeitschaltuhren.
+- **Klemmen und Verteilung:** Durchgangs-, PE-, N-, Doppelstock-, Installations-, Trenn- und Sicherungsklemmen, Potenzialverteiler und Hauptleitungsabzweigklemmen.
+- **Versorgung und Messung:** Netzteile, Transformatoren, DC/DC-Wandler, DC-USV, Batteriemodule, Energiezähler, Multifunktionsmessgerät und Stromwandler.
+- **Automatisierung:** Kompakt-SPS, CPU, DI/DO/AI/AO, Buskoppler, Ethernet-Switch, KNX-Versorgung und -Aktoren, DALI- und Schnittstellen-Gateways und Gebäudeautomations-Controller.
+- **Antriebe:** Frequenzumrichter, Sanftstarter, Bremswiderstand und Netzfilter.
+- **Zubehör:** Servicesteckdose, Reserveplätze, Endhalter, Thermostat, Heizung, Filterlüfter und Schrankleuchte.
+
+Die mechanischen Planungswerte sind keine freigegebenen Herstellermaße. Modulare Bauformen verwenden hier nominell **18 mm pro Teilungseinheit (TE)** und 90 mm Höhe; Produktserien können davon abweichen. Die Varianten bilden die Baugröße ab. Auslösecharakteristik, Bemessungsstrom, Fehlerstromtyp und eine elektrische Schutzwirkung werden daraus nicht abgeleitet. Breite/Höhe, Bezeichnung, Drehung und Abstand sind nach dem Einfügen bearbeitbar; **Bibliotheksmaße wiederherstellen** übernimmt die Standardgröße gezielt erneut.
+
+Eine Form kann 1–24 Mal auf einmal eingefügt werden. Schienenfähige Geräte werden auf der gewählten horizontalen Schiene platziert; sonst erfolgt die freie Montage auf der Platte. Die Einfügehilfe sucht jeweils eine freie Lage auf dem eingestellten Plattenraster. Für enge modulare Reihen kann das Raster auf 1 mm eingestellt werden. Passt eine ganze Serie nicht, bleibt der Entwurf unverändert. Eine erfolgreiche Serie ist ein gemeinsamer Entwurfsschritt. Die Bezeichnungen werden innerhalb des Aufbaus fortlaufend vorgeschlagen und bleiben editierbar.
+
+Standardbauteile sind eigenständige mechanische Aufbauobjekte. Sie erzeugen keine Schaltplan-Betriebsmittel, Artikelbestellungen oder elektrischen Anschlüsse und benötigen keinen Gerätebezug. Bereits aus dem Projekt übernommene Geräte können im Eigenschaftenbereich eine **Frontansicht aus Bibliothek** erhalten: Dies verändert ausschließlich ihre Darstellung, nicht ihre Artikelmaße oder Gerätezuordnung. Beim Speichern bleiben Bibliothekskennung, individuelle Maße, Beschriftung und Schienenzuordnung in der Projektdatei erhalten; erneutes Öffnen überschreibt keine angepassten Maße.
