@@ -89,7 +89,7 @@ A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable an
 
 ## Complete project PDF
 
-The central **PDF** dialog combines drawing sheets, saved cabinet layouts with vector device fronts, terminal/cable/connector/wiring reports using the saved designer templates, the complete PLC/bus/KNX/building-automation table and the BOM. Select sections independently, retain each report's paper/orientation and pagination, and navigate with bookmarks and links to exported drawing sheets. Cabinet-only and report-only documents have no leading blank sheet. Every generated page uses the project title block with reserved content space and actual PDF page counters; standalone cabinet and navigator reports use the same frame. See [PDF project documentation](docs/pdf-export.md).
+The central **PDF** dialog combines drawing sheets, saved cabinet layouts with vector device fronts, terminal/cable/connector/wiring reports using the saved designer templates, the complete PLC/bus/KNX/building-automation table and the BOM. Select sections independently, retain each report's paper size with landscape wrapping and pagination, and navigate with bookmarks and links to exported drawing sheets. Cabinet-only and report-only documents have no leading blank sheet. Every generated page uses the project title block with reserved content space and actual PDF page counters; standalone cabinet and navigator reports use the same frame. See [PDF project documentation](docs/pdf-export.md).
 
 ## Cabinet layout in 2D
 
@@ -99,7 +99,7 @@ A built-in standard library adds 104 generic cabinet forms: circuit breakers, RC
 
 ## Manufacturing report designer
 
-**Reports → Manufacturing reports & designer** provides terminal, cable/core, connector and wiring tables with project-saved templates. Choose columns, headings, order, width weights, font size, A3/A4 and orientation; filter and sort the report, inspect paginated previews and export PDF/CSV. Preview and PDF share measured line wrapping and page breaks, including continued long rows. Templates support JSON exchange, copying, removal and undo. Report navigation can inspect assigned devices without rebuilding autoconnect. See [report designer](docs/report-designer.md).
+**Reports → Manufacturing reports & designer** provides terminal, cable/core, connector and wiring tables with project-saved templates. Choose columns, headings, order, width weights, font size and A3/A4 landscape; filter and sort the report, inspect paginated previews and export PDF/CSV. Preview and PDF share measured line wrapping and page breaks, including continued long rows. Templates support JSON exchange, copying, removal and undo. Report navigation can inspect assigned devices without rebuilding autoconnect. See [report designer](docs/report-designer.md).
 
 ## Plug and socket management
 
@@ -273,7 +273,7 @@ Schematico provides a dedicated **Installation Plan Page Type** for residential,
 - Export and import individual installation or schematic sheets as JSON for modular reuse.
 
 ### 7. Print-Ready Vector PDF Exports &amp; Bill of Materials (BOM)
-- Generate razor-sharp vector PDFs in DIN A3 and DIN A4 (landscape or portrait).
+- Generate razor-sharp vector PDFs in DIN A3 and DIN A4, always in landscape orientation.
 - Switch between full-color and high-contrast monochrome printing modes.
 - Fully linked cross-reference navigation for interactive digital reviews.
 - Automated Bill of Materials (BOM) generation with part numbers, manufacturers, ratings, and quantity rollups.

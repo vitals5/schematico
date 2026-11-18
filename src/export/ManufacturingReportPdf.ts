@@ -83,7 +83,9 @@ export function layoutPdfTable(
     throw Error("reportInvalid");
   const doc = new jsPDF({
       format: template.paper,
-      orientation: template.orientation,
+      // Older saved templates may still specify portrait. Measure the actual
+      // landscape sheet before wrapping and paginating, without editing them.
+      orientation: "landscape",
       unit: "mm",
     }),
     width = doc.internal.pageSize.getWidth(),
@@ -180,7 +182,7 @@ export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
   const doc = new jsPDF({
     unit: "mm",
     format: [layout.width, layout.height],
-    orientation: layout.width > layout.height ? "landscape" : "portrait",
+    orientation: "landscape",
   });
   appendManufacturingReportPdf(doc, layout, false);
   return doc;
@@ -197,7 +199,7 @@ export function appendManufacturingReportPdf(
     if (append || page)
       doc.addPage(
         [layout.width, layout.height],
-        layout.width > layout.height ? "landscape" : "portrait",
+        "landscape",
       );
     if (layout.frame)
       renderPdfSheetFrame(

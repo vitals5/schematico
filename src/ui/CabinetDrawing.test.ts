@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { cabinetSvg, cabinetPdf } from "./CabinetDrawing";
+import { cabinetSvg, cabinetPdf, renderCabinetPdfPage } from "./CabinetDrawing";
+import { jsPDF } from "jspdf";
+import { sheetArea } from "../model/DocumentSheet";
 import type { CabinetLayout } from "../model/CabinetLayout";
 const l: CabinetLayout = {
     schemaVersion: 1,
@@ -34,6 +36,35 @@ assert(!svg.includes("data-eng-id"));
 assert(cabinetSvg(l, new Map()).includes("data-eng-id"));
 assert.equal(cabinetPdf(l, new Map(), "Test").getNumberOfPages(), 1);
 assert(cabinetPdf(l, new Map(), "Test").output().startsWith("%PDF"));
+for (const format of ["a3", "a4"] as const) {
+  const doc = new jsPDF({ format, orientation: "landscape", unit: "mm" });
+  const rectangles: number[][] = [],
+    original = doc.rect.bind(doc);
+  doc.rect = ((...args: Parameters<typeof doc.rect>) => {
+    rectangles.push(args.slice(0, 4) as number[]);
+    return original(...args);
+  }) as typeof doc.rect;
+  renderCabinetPdfPage(doc, l, new Map(), "Test", { frame: false });
+  const [x, y, width, height] = rectangles[0];
+  const area = sheetArea(
+    false,
+    doc.internal.pageSize.getWidth(),
+    doc.internal.pageSize.getHeight(),
+  );
+  assert(
+    Math.abs(width / height - l.widthMm / l.heightMm) < 0.0001,
+    "Tall plates keep their physical proportions",
+  );
+  assert(
+    x >= area.left && y >= area.top &&
+      x + width <= area.right + 0.001 && y + height <= area.bottom + 0.001,
+    "The plate fits above the footer on A3 and A4 landscape",
+  );
+}
+const standalone = cabinetPdf(l, new Map(), "Test");
+assert(
+  standalone.internal.pageSize.getWidth() > standalone.internal.pageSize.getHeight(),
+);
 assert.deepEqual(l, before);
 const invalid = {
   ...l,

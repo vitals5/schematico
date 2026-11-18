@@ -11,13 +11,13 @@
 
 ## Vorlagen bearbeiten
 
-Eine Vorlage legt Berichtstyp, Titel, A3/A4, Hoch-/Querformat, Schriftgröße (6–12 pt), sichtbare Spalten, deren Überschriften, Reihenfolge und relative Breitengewichte (1–20) fest. Mindestbreiten halten Textspalten nutzbar; die restliche Blattbreite wird nach Gewichten verteilt. Ein Gewicht ist kein Millimetermaß. Sortierung ist optional. Ohne eigene Sortierung bleibt die fachliche Reihenfolge des jeweiligen Quelldienstes erhalten; eine eigene Sortierung verändert keine Klemmen- oder Geräteposition im Projekt.
+Eine Vorlage legt Berichtstyp, Titel, A3/A4 im Querformat, Schriftgröße (6–12 pt), sichtbare Spalten, deren Überschriften, Reihenfolge und relative Breitengewichte (1–20) fest. Mindestbreiten halten Textspalten nutzbar; die restliche Blattbreite wird nach Gewichten verteilt. Ein Gewicht ist kein Millimetermaß. Sortierung ist optional. Ohne eigene Sortierung bleibt die fachliche Reihenfolge des jeweiligen Quelldienstes erhalten; eine eigene Sortierung verändert keine Klemmen- oder Geräteposition im Projekt.
 
 Die Pfeile verschieben Spalten. Mindestens eine gültige Spalte muss sichtbar bleiben. Überschriften dürfen bis zu 80 Zeichen und der Berichtstitel bis zu 120 Zeichen enthalten. **Vorschau aktualisieren** berechnet Zeilenumbrüche und Seiten neu. Bis dahin sind PDF und CSV nach einer Einstellungsänderung gesperrt; die zuletzt berechnete Vorschau bleibt mit einem Hinweis sichtbar.
 
 **Vorlage im Projekt speichern** übernimmt ausschließlich die Vorlage unter `manufacturingReportTemplates`. Die Speicherung ist ein Rückgängig-Schritt. Berichtszeilen und vorberechnete PDF-Seiten werden nicht mitgespeichert. **Als Kopie bearbeiten** erzeugt eine neue Vorlagenidentität. Eine gespeicherte Kopie kann entfernt werden. Beim Entfernen einer gespeicherten Anpassung einer Grundvorlage wird deren Standard wieder angeboten.
 
-Vorlagen lassen sich als JSON im Format `schematico-report-template`, Version 1, exportieren und importieren. Der Import prüft Berichtstyp, eindeutige erlaubte Spalten, Größen und Breiten. Die Dateigröße ist auf 128 KiB begrenzt. Ein Import ersetzt im Projekt erst nach ausdrücklichem Speichern die Vorlage mit derselben ID. Fehlerhafte oder doppelte gespeicherte Vorlagen werden mit einer Anzahl gemeldet und nicht beliebig ausgewählt. Normale ältere Projekte benötigen keine Migration.
+Vorlagen lassen sich als JSON im Format `schematico-report-template`, Version 1, exportieren und importieren. Der Import prüft Berichtstyp, eindeutige erlaubte Spalten, Größen und Breiten. Die Dateigröße ist auf 128 KiB begrenzt. Ein Import ersetzt im Projekt erst nach ausdrücklichem Speichern die Vorlage mit derselben ID. Fehlerhafte oder doppelte gespeicherte Vorlagen werden mit einer Anzahl gemeldet und nicht beliebig ausgewählt. Normale ältere Projekte benötigen keine Migration. Auch Hochformatvorlagen bleiben importierbar; Vorschau und PDF werden immer im Querformat berechnet. Erst beim ausdrücklichen Speichern der Vorlage wird deren Ausrichtung im Projekt auf Querformat gesetzt.
 
 ## Vorschau und Export
 

@@ -60,7 +60,7 @@ export function projectPdfChoices(project: Project): ProjectPdfChoice[] {
       id: key("report", t.id),
       kind: "report",
       title: t.title,
-      detail: `${t.paper.toUpperCase()} · ${t.orientation}`,
+      detail: `${t.paper.toUpperCase()} · landscape`,
     });
   if (reports.invalid)
     choices.push({

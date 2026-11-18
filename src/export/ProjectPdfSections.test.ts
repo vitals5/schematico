@@ -24,7 +24,10 @@ assert(sections.some((s) => s.title === "CABINET_MAIN"));
 assert(sections.some((s) => s.title === "CUSTOM_WIRING"));
 const terminal = sections.find((s) => s.title === "TERMINAL_PROJECT")!;
 assert(terminal.kind === "report");
-assert(terminal.layout.width < terminal.layout.height);
+assert(terminal.layout.width > terminal.layout.height);
+assert(
+  choices.filter((c) => c.kind === "report").every((c) => c.detail.endsWith("landscape")),
+);
 assert(
   terminal.rows[0].cells.c1.localeCompare(
     terminal.rows.at(-1)!.cells.c1,
@@ -104,14 +107,14 @@ for (const dest of complete.raw.matchAll(/\/Dest \[(\d+) 0 R/g))
   );
 assert(complete.raw.includes("/Subtype /Link"));
 assert(
-  complete.pages.some((m) => {
+  complete.pages.every((m) => {
     const box = m[2]
       .match(/\/MediaBox \[([\d. ]+)\]/)![1]
       .split(" ")
       .map(Number);
-    return box[2] < box[3];
+    return box[2] > box[3];
   }),
-  "Saved portrait reports and cabinet pages retain orientation",
+  "Every drawing, saved portrait report and tall cabinet uses landscape",
 );
 const withBom = await pdf({ includePartsList: true });
 assert(withBom.pages.length > complete.pages.length);

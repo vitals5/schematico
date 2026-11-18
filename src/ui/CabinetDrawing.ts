@@ -74,7 +74,7 @@ export function cabinetPdf(
 ) {
   const doc = new jsPDF({
     format: "a3",
-    orientation: layout.widthMm > layout.heightMm ? "landscape" : "portrait",
+    orientation: "landscape",
     unit: "mm",
   });
   renderCabinetPdfPage(doc, layout, labels, projectName, {

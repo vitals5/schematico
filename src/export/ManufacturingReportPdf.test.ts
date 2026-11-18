@@ -31,6 +31,20 @@ for (const paper of ["a4", "a3"] as const)
       fragments = l.pages.flat();
     assert(l.pages.length > 1);
     assert(
+      l.width > l.height,
+      "Legacy portrait templates are measured in landscape too",
+    );
+    const landscape = layoutManufacturingReport(
+      { ...template, paper, orientation: "landscape" },
+      [row],
+      "Testprojekt",
+    );
+    assert.deepEqual(
+      l,
+      landscape,
+      "Same paper and data have identical preview geometry and pagination",
+    );
+    assert(
       fragments.every(
         (f) => f.y >= l.bodyY && f.y + f.height <= l.height - 15 + 0.001,
       ),
@@ -53,6 +67,10 @@ for (const paper of ["a4", "a3"] as const)
     );
     const doc = manufacturingReportPdf(l);
     assert.equal(doc.getNumberOfPages(), l.pages.length);
+    for (let page = 1; page <= doc.getNumberOfPages(); page++) {
+      doc.setPage(page);
+      assert(doc.internal.pageSize.getWidth() > doc.internal.pageSize.getHeight());
+    }
     assert(doc.output().startsWith("%PDF"));
   }
 const full = layoutManufacturingReport(
@@ -84,5 +102,5 @@ assert.equal(two.pages[0].length, 2);
 assert(two.pages[0][0].y + two.pages[0][0].height <= two.pages[0][1].y);
 assert.deepEqual(row.cells, { c4: text });
 console.log(
-  "✓ Shared preview/PDF layout: A3/A4 both orientations, bounded widths, exact line continuation across sheets, stable geometry and PDF page parity",
+  "✓ Shared landscape preview/PDF layout: A3/A4, legacy portrait templates, bounded widths, exact continuation across sheets and PDF page parity",
 );

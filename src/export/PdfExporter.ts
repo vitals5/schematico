@@ -186,7 +186,7 @@ export class PdfExporter {
     for(const section of additions) {
       const start=doc.getNumberOfPages()+1;
       if(section.kind==='cabinet') {
-        doc.addPage(options.paperFormat,section.board.widthMm>section.board.heightMm?'landscape':'portrait');
+        doc.addPage(options.paperFormat, 'landscape');
         renderCabinetPdfPage(doc,section.board,section.labels,project.name,{monochrome:options.colorMode==='monochrome',pageTargets:options.interactiveCrossReferences?pageIdToPdfPageIndex:undefined,frame:options.plotFrame?documentFrame(project):false,ordinal:start,total:totalSheetsCount});
       } else {
         appendManufacturingReportPdf(doc,section.layout,true,options.colorMode==='monochrome',{ordinal:start,total:totalSheetsCount});

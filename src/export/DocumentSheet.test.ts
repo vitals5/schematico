@@ -146,6 +146,10 @@ function check(raw: string) {
   const count = (raw.match(/\/Type \/Page\b/g) ?? []).length,
     text = streams(raw);
   assert(count > 0);
+  for (const m of raw.matchAll(/\/MediaBox \[([\d. ]+)\]/g)) {
+    const box = m[1].split(" ").map(Number);
+    assert(box[2] > box[3], "Every combined and standalone PDF page is landscape");
+  }
   assert.equal(
     (text.match(/FRAME-MARK/g) ?? []).length,
     count,
