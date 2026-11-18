@@ -83,6 +83,8 @@ Evidence-based cable repair proposals, BMEcat manufacturer imports and exact art
 
 Open **Project → Connection list / wiring navigator** for graphical source/target cards, a side panel with network participants, project-wide connections, search, connection type, page and issue filters, source/target navigation, cable/core assignments and CSV/PDF export. Explicit physical conductor lengths can be entered in millimetres with undo/redo; drawing geometry is never used to infer them. Reports list recorded connection segments and identify unresolved data. See [connection navigator](docs/connection-navigator.md).
 
+A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable and terminal assembly workspaces adds graphic-only zoom, fit, a clickable overview map and keyboard-accessible object navigation. Highlight saved relationships or jump through displayed objects with findings while keeping property drafts intact. Focus is based on explicit memberships, mappings and real net identities; the current filters and graphic limits still apply. See [graphical workspace navigation](docs/management-ui.md#fokuslinse-für-grafische-arbeitsbereiche).
+
 ## Plug and socket management
 
 **Project → Plug and socket navigator** shows clickable housing/contact cards and saved counterpart mappings alongside the full list. It manages housings, contact positions, explicit free/reserve states, library-pin assignments and one-to-one counterpart mappings. Changes use preview/apply and undo. Search, drawing navigation, shared inspection findings and CSV/PDF connector plans are included. Counterpart mappings document mechanical pairing without adding electrical connections or duplicate BOM articles. See [connector management](docs/connectors.md).

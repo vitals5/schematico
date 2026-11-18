@@ -1,5 +1,6 @@
 import { t, getUiLanguage } from '../i18n';
 import type { CatalogArticle } from '../model/ArticleTypes';
+import {mountEngineeringVisualLens} from './EngineeringVisualLens';
 
 export type EngineeringIcon =
   | 'device'
@@ -368,4 +369,5 @@ export function finishEngineeringDialog(
     }
   }
   if (active?.isConnected) active.focus({ preventScroll: true });
+  mountEngineeringVisualLens(root);
 }
