@@ -95,11 +95,12 @@ export function projectArticles(p: Project): CatalogArticle[] {
       old = byKey.get(key);
     if (!old) byKey.set(key, a);
     else if (
-      old.functions &&
-      a.functions &&
-      JSON.stringify(old.functions) !== JSON.stringify(a.functions)
+      (old.functions && a.functions && JSON.stringify(old.functions) !== JSON.stringify(a.functions)) ||
+      (old.dimensions && a.dimensions && (old.dimensions.widthMm!==a.dimensions.widthMm || old.dimensions.heightMm!==a.dimensions.heightMm || (old.dimensions.depthMm!==undefined && a.dimensions.depthMm!==undefined && old.dimensions.depthMm!==a.dimensions.depthMm)))
     )
       throw new Error('articlesCatalogDuplicate');
+    else if ((old.dimensions || a.dimensions) && ((!old.dimensions && a.dimensions) || (old.dimensions?.depthMm===undefined&&a.dimensions?.depthMm!==undefined) || (!old.functions && a.functions) || (!old.description && a.description)))
+      byKey.set(key, {...old, ...a, dimensions:{...(a.dimensions??old.dimensions!),...(a.dimensions?.depthMm===undefined&&old.dimensions?.depthMm!==undefined?{depthMm:old.dimensions.depthMm}:{})}, functions:a.functions??old.functions, description:a.description||old.description, verification:old.verification==='user_checked'&&a.verification==='user_checked'?'user_checked':'unverified'});
     else if (
       (!old.functions && a.functions) ||
       (!old.description && a.description)
@@ -111,7 +112,7 @@ export function projectArticles(p: Project): CatalogArticle[] {
 export function catalogToCsv(articles: CatalogArticle[]): string {
   const cell = (s: string) => '"' + s.replace(/"/g, '""') + '"';
   return [
-    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions', 'symbolId'],
+    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions', 'symbolId', 'dimensions'],
     ...articles.map((a) => [
       a.articleNumber,
       a.manufacturer,
@@ -119,6 +120,7 @@ export function catalogToCsv(articles: CatalogArticle[]): string {
       a.description,
       a.functions ? JSON.stringify(a.functions) : '',
       a.symbolId ?? '',
+      a.dimensions ? JSON.stringify(a.dimensions) : '',
     ]),
   ]
     .map((row) => row.map(cell).join(';'))
@@ -205,6 +207,7 @@ export function parseCatalogFile(
         description: fields.description,
         functions: fields.functions ? JSON.parse(fields.functions) : undefined,
         symbolId: fields.symbolId || undefined,
+        dimensions: fields.dimensions ? JSON.parse(fields.dimensions) : undefined,
         origin: 'user',
         verification: 'unverified',
       };

@@ -40,7 +40,7 @@ export async function importArticlePackage(file:File,language='de'):Promise<{art
       const details=[languageValue(name),languageValue(description),item.typeName,
         ...['orderNumber','voltage','current','actuationVoltage','weight','externalDocuments'].map(k=>item[k]?`${k}: ${item[k]}`:''),
         ...['width','height','length'].map(k=>item.cabinet?.[k]!==undefined?`${k}: ${item.cabinet[k]} mm`:'')].filter(v=>typeof v==='string'&&v);
-      articles.push(validateCatalogArticle({articleNumber:item.orderNumber||item.number,manufacturer:item.manufacturerName,variant:'',description:[`Type: ${item.number}`,...details].join('\n'),origin:'user',verification:'unverified'}));
+      articles.push(validateCatalogArticle({articleNumber:item.orderNumber||item.number,manufacturer:item.manufacturerName,variant:'',description:[`Type: ${item.number}`,...details].join('\n'),origin:'user',verification:'unverified',...(Number.isFinite(item.cabinet?.width)&&item.cabinet.width>0&&item.cabinet.width<=10000&&Number.isFinite(item.cabinet?.height)&&item.cabinet.height>0&&item.cabinet.height<=10000?{dimensions:{widthMm:item.cabinet.width,heightMm:item.cabinet.height,...(Number.isFinite(item.cabinet.length)&&item.cabinet.length>0&&item.cabinet.length<=10000?{depthMm:item.cabinet.length}:{})}}:{})}));
     }
   } else {
     const docs=[];

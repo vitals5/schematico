@@ -11,7 +11,8 @@ import {
   type VisualRecord,
 } from "./EngineeringVisualModel";
 const surfaces: Record<string, string> = {
-  manufacturingReportDialog:"[data-report-preview]",
+  cabinetLayoutDialog: "[data-cabinet-surface]",
+  manufacturingReportDialog: "[data-report-preview]",
   automationDialog: "[data-visual]",
   connectorNavigator: "[data-visual]",
   connectionNavigator: "[data-visual]",
@@ -76,7 +77,10 @@ class VisualLens {
     this.observer = new MutationObserver((records) => {
       if (
         records.some(
-          (r) => !(r.target as Element).closest?.("[data-lens-toolbar]"),
+          (r) =>
+            !(r.target as Element).closest?.(
+              "[data-lens-toolbar],[data-lens-transient]",
+            ),
         )
       )
         this.schedule();
@@ -132,6 +136,20 @@ class VisualLens {
       },
       { capture: true, signal },
     );
+    if (root.id === "cabinetLayoutDialog")
+      root.addEventListener(
+        "wheel",
+        (e) => {
+          if (
+            e.ctrlKey &&
+            (e.target as Element).closest("[data-cabinet-surface]")
+          ) {
+            e.preventDefault();
+            this.zoom(this.scale * Math.exp(-e.deltaY * 0.002));
+          }
+        },
+        { passive: false, signal },
+      );
     root.addEventListener("scroll", () => this.schedule(), {
       capture: true,
       signal,
@@ -180,8 +198,14 @@ class VisualLens {
       );
       if (target) this.peekDrawing(target);
     };
-    q("[data-lens-in]").onclick = () => this.zoom(this.scale + 0.15);
-    q("[data-lens-out]").onclick = () => this.zoom(this.scale - 0.15);
+    q("[data-lens-in]").onclick = () =>
+      this.zoom(
+        this.scale + (this.root.id === "cabinetLayoutDialog" ? 0.5 : 0.15),
+      );
+    q("[data-lens-out]").onclick = () =>
+      this.zoom(
+        this.scale - (this.root.id === "cabinetLayoutDialog" ? 0.5 : 0.15),
+      );
     q("[data-lens-reset]").onclick = () => this.zoom(1);
     q("[data-lens-fit]").onclick = () => this.fit();
     q("[data-lens-trace]").onclick = () => {
@@ -287,7 +311,10 @@ class VisualLens {
     }
   }
   private zoom(value: number) {
-    this.scale = clampVisualScale(value);
+    this.scale =
+      this.root.id === "cabinetLayoutDialog"
+        ? clampVisualScale(value, 0.25, 8)
+        : clampVisualScale(value);
     this.root.style.setProperty("--eng-visual-scale", String(this.scale));
     this.schedule();
   }

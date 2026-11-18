@@ -3,6 +3,7 @@ import service from './index.mjs';
 import { publishCatalogArticle } from '../../scripts/publish-catalog-article.mjs';
 const article = {
   articleNumber: '001',
+  dimensions: {widthMm:18,heightMm:90,depthMm:70},
   manufacturer: 'Maker',
   variant: '',
   description: 'Example',
@@ -51,6 +52,7 @@ try {
   assert.equal(payload.event_type, 'schematico.article.submitted');
   assert.equal(payload.client_payload.article.verification, 'unverified');
   assert.equal(payload.client_payload.article.symbolId, 'rcd_4p');
+  assert.deepEqual(payload.client_payload.article.dimensions,article.dimensions);
   assert(!JSON.stringify(payload).includes('test-server-secret'));
   calls = [];
   assert.equal(

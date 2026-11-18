@@ -34,9 +34,9 @@ export function relatedVisualIds(
       result.add(r.id);
   return result;
 }
-export function clampVisualScale(value: number) {
+export function clampVisualScale(value: number, min = 0.55, max = 1.5) {
   return Number.isFinite(value)
-    ? Math.max(0.55, Math.min(1.5, Math.round(value * 100) / 100))
+    ? Math.max(min, Math.min(max, Math.round(value * 100) / 100))
     : 1;
 }
 export interface VisualBox {

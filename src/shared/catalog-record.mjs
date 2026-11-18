@@ -47,8 +47,10 @@ export function validateCatalogArticle(a) {
       ))
   )
     throw new Error('articlesCatalogInvalid');
+  if(a.dimensions!==undefined&&(!a.dimensions||typeof a.dimensions!=='object'||['widthMm','heightMm'].some(k=>!Number.isFinite(a.dimensions[k])||a.dimensions[k]<=0||a.dimensions[k]>10000)||(a.dimensions.depthMm!==undefined&&(!Number.isFinite(a.dimensions.depthMm)||a.dimensions.depthMm<=0||a.dimensions.depthMm>10000))))throw new Error('articlesCatalogInvalid');
   const result = {
     id: '',
+    ...(a.dimensions?{dimensions:{widthMm:a.dimensions.widthMm,heightMm:a.dimensions.heightMm,...(a.dimensions.depthMm!==undefined?{depthMm:a.dimensions.depthMm}:{})}}:{}),
     articleNumber: a.articleNumber.trim(),
     manufacturer: a.manufacturer.trim(),
     variant: a.variant.trim(),

@@ -4,6 +4,7 @@ import type {DrawingAccess} from './EngineeringDrawing';
 import {mountEngineeringVisualLens} from './EngineeringVisualLens';
 
 export type EngineeringIcon =
+  | 'cabinet'
   | 'device'
   | 'automation'
   | 'macro'
@@ -22,6 +23,7 @@ export type EngineeringIcon =
   | 'trash'
   | 'check';
 const paths: Record<EngineeringIcon, string> = {
+  cabinet:'<rect x="4" y="2" width="16" height="20" rx="1"/><path d="M7 7h10M7 12h10M7 17h10M9 5v4m5 1v4m-3 1v4"/>',
   automation:'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M2 8h3M2 12h3M2 16h3M19 8h3M19 12h3M19 16h3M9 8h6M9 12h6M9 16h3"/>',
   macro:'<path d="m12 3 9 5-9 5-9-5 9-5zM3 8v9l9 5 9-5V8M12 13v9"/>',
   device:

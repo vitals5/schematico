@@ -180,3 +180,5 @@ assert(automationHtml.includes("data-eng-neighbors"));
 console.log(
   "✓ Focus lens: scoped direct/reverse relationships, truthful saved mappings and net identity, ambiguity, safe attributes, bounded scale/map geometry and immutable inputs",
 );
+
+assert.equal(clampVisualScale(9,.25,8),8);assert.equal(clampVisualScale(.1,.25,8),.25);

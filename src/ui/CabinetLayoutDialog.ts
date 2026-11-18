@@ -1,0 +1,638 @@
+import { visualDrawingTargets } from "./EngineeringDrawing";
+import type { Project } from "../model/types";
+import {
+  findCabinetPlacement,
+  CabinetLayoutEdit,
+  cabinetCandidates,
+  cabinetLayouts,
+  cabinetBounds,
+  inspectCabinet,
+  moveCabinetItem,
+  railCapacity,
+  type CabinetLayout,
+  type CabinetItem,
+} from "../model/CabinetLayout";
+import { cabinetSvg, cabinetPdf } from "./CabinetDrawing";
+import { finishEngineeringDialog } from "./EngineeringDialog";
+import { bindArticleModalKeys, focusArticleModal } from "./ArticleModal";
+import { articleError, downloadArticleFile } from "./ArticleCatalogDialog";
+import { escapeSvg as esc } from "../model/ImportedDrawing";
+import { t, type TranslationKey } from "../i18n";
+export class CabinetLayoutDialog {
+  private el = document.createElement("div");
+  private source: Project;
+  private layout: CabinetLayout;
+  private candidates: ReturnType<typeof cabinetCandidates>;
+  private checked?: {
+    layout: CabinetLayout;
+    source: Project;
+    issues: ReturnType<typeof inspectCabinet>;
+  };
+  private selected = "";
+  private candidate = "";
+  private search = "";
+  private offset = 0;
+  private width = "";
+  private height = "";
+  private manual = false;
+  private error = "";
+  private past: CabinetLayout[] = [];
+  private future: CabinetLayout[] = [];
+  constructor(
+    private getProject: () => Project,
+    private onApply: (p: Project) => void,
+    private navigate: (p: string, c: string) => void,
+  ) {
+    this.source = structuredClone(getProject());
+    this.candidates = cabinetCandidates(this.source);
+    this.layout = structuredClone(
+      cabinetLayouts(this.source)[0] ?? this.fresh(),
+    );
+  }
+  private fresh(): CabinetLayout {
+    return {
+      schemaVersion: 1,
+      id: crypto.randomUUID(),
+      name: t("cabinetDefault"),
+      widthMm: 600,
+      heightMm: 800,
+      marginMm: 10,
+      gridMm: 5,
+      items: [],
+    };
+  }
+  show() {
+    if (document.getElementById("cabinetLayoutDialog")) return;
+    this.el.id = "cabinetLayoutDialog";
+    this.el.className = "modal-backdrop";
+    this.el.style.cssText =
+      "position:fixed;inset:0;z-index:4100;display:flex;align-items:center;justify-content:center";
+    document.body.append(this.el);
+    bindArticleModalKeys(this.el, () => this.el.remove());
+    this.el.addEventListener("keydown", (e) => {
+      if ((e.target as Element).matches("input,textarea,select")) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        this.history(e.shiftKey);
+        return;
+      }
+      if (
+        (e.key === "Enter" || e.key === " ") &&
+        (e.target as Element).matches("g[data-cabinet-item]")
+      ) {
+        e.preventDefault();
+        (e.target as Element).dispatchEvent(
+          new MouseEvent("click", { bubbles: true }),
+        );
+        return;
+      }
+      if ((e.target as Element).closest(".cb-svg") && this.selected) {
+        if (e.key === "Delete") {
+          e.preventDefault();
+          this.removeItem();
+        } else if (
+          ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
+        ) {
+          e.preventDefault();
+          const i = this.layout.items.find((i) => i.id === this.selected)!;
+          this.change(
+            moveCabinetItem(
+              this.layout,
+              i.id,
+              i.x +
+                (e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0) *
+                  this.layout.gridMm,
+              i.y +
+                (e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0) *
+                  this.layout.gridMm,
+            ),
+          );
+          this.focusItem();
+        }
+      }
+    });
+    this.render();
+  }
+  private focusItem() {
+    [...this.el.querySelectorAll<SVGElement>("[data-cabinet-item]")]
+      .find((n) => n.dataset.cabinetItem === this.selected)
+      ?.focus();
+  }
+  private change(next: CabinetLayout) {
+    if (JSON.stringify(next) !== JSON.stringify(this.layout)) {
+      this.past.push(structuredClone(this.layout));
+      if (this.past.length > 50) this.past.shift();
+      this.future = [];
+      this.layout = next;
+    }
+    this.error = "";
+    this.render();
+  }
+  private history(redo = false) {
+    const from = redo ? this.future : this.past,
+      to = redo ? this.past : this.future,
+      next = from.pop();
+    if (next) {
+      to.push(structuredClone(this.layout));
+      this.layout = next;
+      this.render();
+    }
+  }
+  private removeItem() {
+    const l = structuredClone(this.layout),
+      id = this.selected;
+    l.items = l.items.filter((i) => i.id !== id);
+    for (const i of l.items) if (i.railId === id) delete i.railId;
+    this.selected = "";
+    this.change(l);
+  }
+  private render() {
+    const l = this.layout;
+    if (this.checked?.layout !== l || this.checked?.source !== this.source)
+      this.checked = {
+        layout: l,
+        source: this.source,
+        issues: inspectCabinet(this.source, l),
+      };
+    const issues = this.checked.issues,
+      errors = issues.filter((i) => i.severity === "error"),
+      item = l.items.find((i) => i.id === this.selected),
+      entry = this.candidates.find((c) => c.identity === this.candidate),
+      labels = new Map(
+        l.items.map((i) => [
+          i.id,
+          i.kind === "device"
+            ? (this.candidates.find(
+                (c) =>
+                  c.main.pageId === i.source?.pageId &&
+                  c.main.componentId === i.source?.componentId,
+              )?.designation ?? i.label)
+            : i.label,
+        ]),
+      ),
+      placed = new Set(
+        [
+          ...cabinetLayouts(this.source)
+            .filter((b) => b.id !== l.id)
+            .flatMap((b) => b.items),
+          ...l.items,
+        ]
+          .filter((i) => i.source)
+          .map((i) =>
+            JSON.stringify([i.source!.pageId, i.source!.componentId]),
+          ),
+      ),
+      filtered = this.candidates.filter((c) =>
+        (
+          c.designation +
+          " " +
+          c.description +
+          " " +
+          c.items.map((i) => i.articleNumber).join(" ")
+        )
+          .toLocaleLowerCase()
+          .includes(this.search.toLocaleLowerCase()),
+      );
+    this.offset = Math.min(
+      this.offset,
+      Math.max(0, Math.floor((filtered.length - 1) / 30) * 30),
+    );
+    const rails = l.items.filter((i) => i.kind === "rail" && i.rotation === 0),
+      area =
+        (l.items
+          .filter((i) => i.kind === "device")
+          .reduce((n, i) => n + i.widthMm * i.heightMm, 0) /
+          (l.widthMm * l.heightMm)) *
+        100;
+    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t("cabinetTitle")}</h2><p class="cb-note">${t("cabinetHint")}</p>${(Array.isArray(this.source.cabinetLayouts) ? this.source.cabinetLayouts.length : this.source.cabinetLayouts === undefined ? 0 : 1) > cabinetLayouts(this.source).length ? `<p role="status">${t("cabinetInvalidRecords")}</p>` : ""}<div class="cb-actions"><label>${t("cabinetBoard")}<select class="form-input" data-layout>${cabinetLayouts(
+      this.source,
+    )
+      .map(
+        (b) =>
+          `<option value="${esc(b.id)}" ${b.id === l.id ? "selected" : ""}>${esc(b.name)}</option>`,
+      )
+      .join(
+        "",
+      )}${!cabinetLayouts(this.source).some((b) => b.id === l.id) ? `<option selected value="${esc(l.id)}">${esc(l.name)} *</option>` : ""}</select></label><button class="btn" data-new>${t("cabinetNew")}</button><button class="btn" data-reload>${t("cabinetReload")}</button><button class="btn" data-undo ${this.past.length ? "" : "disabled"}>${t("cabinetUndo")}</button><button class="btn" data-redo ${this.future.length ? "" : "disabled"}>${t("cabinetRedo")}</button><button class="btn" data-pdf ${errors.length ? "disabled" : ""}>PDF</button><button class="btn" data-svg ${errors.length ? "disabled" : ""}>SVG</button></div><div class="cb-layout"><aside class="cb-tools"><h3>${t("cabinetBoard")}</h3><label>${t("cabinetName")}<input class="form-input" data-board="name" value="${esc(l.name)}" maxlength="120"></label><div class="cb-fields">${[
+      ["widthMm", t("cabinetWidth")],
+      ["heightMm", t("cabinetHeight")],
+      ["marginMm", t("cabinetMargin")],
+      ["gridMm", t("cabinetGrid")],
+    ]
+      .map(
+        ([k, label]) =>
+          `<label>${label}<input class="form-input" type="number" data-board="${k}" value="${l[k as "widthMm"]}" min="0" max="10000"></label>`,
+      )
+      .join(
+        "",
+      )}</div><button class="btn" data-board-apply>${t("cabinetPropertiesApply")}</button><div class="cb-actions"><button class="btn" data-add-rail>${t("cabinetAddRail")}</button><button class="btn" data-add-duct>${t("cabinetAddDuct")}</button></div><h3>${t("cabinetDevices")}</h3><input class="form-input" data-search aria-label="${t("cabinetSearch")}" placeholder="${t("cabinetSearch")}" value="${esc(this.search)}"><div class="cb-candidates">${filtered
+      .slice(this.offset, this.offset + 30)
+      .map(
+        (c) =>
+          `<button class="cb-candidate" data-candidate="${esc(c.identity)}" aria-pressed="${c.identity === this.candidate}" ${placed.has(JSON.stringify([c.main.pageId, c.main.componentId])) ? "disabled" : ""}><strong>${esc(c.designation)}</strong><small>${esc(c.items.map((a) => a.articleNumber).join(" / ") || c.description)} · ${c.dimensions ? c.dimensions.widthMm + " × " + c.dimensions.heightMm + " mm" : t("cabinetNoDimensions")}</small></button>`,
+      )
+      .join(
+        "",
+      )}</div><div class="cb-actions"><button class="btn" data-prev ${this.offset ? "" : "disabled"}>‹</button><span>${this.offset + 1}–${Math.min(filtered.length, this.offset + 30)} / ${filtered.length}</span><button class="btn" data-next ${this.offset + 30 >= filtered.length ? "disabled" : ""}>›</button></div>${entry ? `<p>${esc(entry.designation)} · ${t(this.manual ? "cabinetManualSize" : "cabinetSizeFromArticle")}</p><div class="cb-fields"><label>${t("cabinetWidth")}<input class="form-input" data-size="width" type="number" min=".1" value="${esc(this.width)}"></label><label>${t("cabinetHeight")}<input class="form-input" data-size="height" type="number" min=".1" value="${esc(this.height)}"></label></div><label>${t("cabinetRail")}<select class="form-input" data-new-rail><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join("")}</select></label><button class="btn" data-place ${Number(this.width) > 0 && Number(this.height) > 0 && !placed.has(JSON.stringify([entry.main.pageId, entry.main.componentId])) ? "" : "disabled"}>${t("cabinetPlace")}</button>` : ""}</aside><main class="cb-main"><div class="cb-metrics"><span>${l.widthMm} × ${l.heightMm} mm</span><span>${Number.isFinite(area) ? area.toFixed(1) : "—"} % ${t("cabinetDeviceArea")}</span><span>${errors.length} ${t("cabinetErrors")} · ${issues.length - errors.length} ${t("wiringHints")}</span></div><div class="cb-canvas"><div data-cabinet-surface>${cabinetSvg(l, labels, this.selected, issues)}</div></div><p data-coordinates data-lens-transient>${t("cabinetDragHint")}</p>${rails
+      .map((r) => {
+        const capacity = railCapacity(l, r.id)!;
+        return `<span class="cb-capacity">${esc(r.label)} · ${capacity.used.toFixed(1)} / ${r.widthMm} mm · ${capacity.free.toFixed(1)} mm ${t("cabinetRemaining")}</span>`;
+      })
+      .join(
+        "",
+      )}<details class="cb-issues" ${issues.length ? "open" : ""}><summary>${t("cabinetChecks")} (${issues.length})</summary>${issues.map((i, n) => `<button class="btn" data-issue="${n}">${esc(t(i.code as TranslationKey))} · ${esc(i.ids.map((id) => labels.get(id) || id).join(" / "))}</button>`).join("")}</details></main><aside class="cb-properties"><h3>${t("cabinetProperties")}</h3>${
+      item
+        ? `<strong>${esc(labels.get(item.id) || item.label)}</strong><label>${t("cabinetName")}<input class="form-input" data-item="label" value="${esc(item.kind === "device" ? labels.get(item.id) || item.label : item.label)}" ${item.kind === "device" ? "disabled" : ""} maxlength="160"></label><div class="cb-fields">${[
+            ["x", "X [mm]"],
+            ["y", "Y [mm]"],
+            ["widthMm", t("cabinetWidth")],
+            ["heightMm", t("cabinetHeight")],
+            ["clearanceMm", t("cabinetClearance")],
+          ]
+            .map(
+              ([key, label]) =>
+                `<label>${label}<input class="form-input" type="number" data-item="${key}" step=".1" value="${item[key as "x"]}"></label>`,
+            )
+            .join(
+              "",
+            )}</div><label>${t("cabinetRotation")}<select class="form-input" data-item="rotation"><option value="0" ${!item.rotation ? "selected" : ""}>0°</option><option value="90" ${item.rotation ? "selected" : ""}>90°</option></select></label>${item.kind === "device" ? `<label>${t("cabinetRail")}<select class="form-input" data-item="railId"><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}" ${r.id === item.railId ? "selected" : ""}>${esc(r.label)}</option>`).join("")}</select></label><label><input type="checkbox" data-manual ${item.sizeOrigin === "manual" ? "checked" : ""}> ${t("cabinetManualSize")}</label><button class="btn" data-article-size>${t("cabinetTakeSize")}</button>` : ""}<div class="cb-actions"><button class="btn" data-item-apply>${t("cabinetPropertiesApply")}</button><button class="btn" data-remove>${t("cabinetRemove")}</button></div>`
+        : `<p>${t("cabinetSelect")}</p>`
+    }</aside></div><p role="alert">${esc(this.error)}</p><footer><span>${t("cabinetDraftHint")}</span><button class="btn" data-close>${t("cabinetCancel")}</button><button class="btn" data-delete-board ${cabinetLayouts(this.source).some((b) => b.id === l.id) ? "" : "disabled"}>${t("cabinetDeleteBoard")}</button><button class="btn btn-primary" data-apply ${errors.length ? "disabled" : ""}>${t("cabinetApply")}</button></footer></section>`;
+    const q = <T extends HTMLElement = HTMLElement>(s: string) =>
+      this.el.querySelector<T>(s)!;
+    const safe = (fn: () => void) => {
+      try {
+        fn();
+        this.error = "";
+      } catch (e) {
+        this.error =
+          e instanceof Error && e.message === "cabinetInvalid"
+            ? t("cabinetInvalid")
+            : articleError(e);
+      }
+      this.render();
+    };
+    q("[data-close]").onclick = () => this.el.remove();
+    q("[data-new]").onclick = () => {
+      this.layout = this.fresh();
+      this.past = [];
+      this.future = [];
+      this.selected = "";
+      this.render();
+    };
+    q("[data-layout]").onchange = (e) => {
+      const found = cabinetLayouts(this.source).find(
+        (b) => b.id === (e.target as HTMLSelectElement).value,
+      );
+      if (found) {
+        this.layout = structuredClone(found);
+        this.selected = "";
+        this.past = [];
+        this.future = [];
+        this.render();
+      }
+    };
+    q("[data-reload]").onclick = () => {
+      this.source = structuredClone(this.getProject());
+      this.candidates = cabinetCandidates(this.source);
+      this.layout = structuredClone(
+        cabinetLayouts(this.source).find((b) => b.id === l.id) ?? this.fresh(),
+      );
+      this.selected = "";
+      this.past = [];
+      this.future = [];
+      this.error = "";
+      this.render();
+    };
+    q("[data-undo]").onclick = () => this.history();
+    q("[data-redo]").onclick = () => this.history(true);
+    q("[data-apply]").onclick = () =>
+      safe(() => {
+        this.onApply(
+          new CabinetLayoutEdit(this.source, l).apply(this.getProject()),
+        );
+        this.source = structuredClone(this.getProject());
+        this.past = [];
+        this.future = [];
+      });
+    q("[data-delete-board]").onclick = () =>
+      safe(() => {
+        this.onApply(
+          new CabinetLayoutEdit(this.source, l, true).apply(this.getProject()),
+        );
+        this.source = structuredClone(this.getProject());
+        this.layout = structuredClone(
+          cabinetLayouts(this.source)[0] ?? this.fresh(),
+        );
+        this.selected = "";
+        this.past = [];
+        this.future = [];
+      });
+    q("[data-board-apply]").onclick = () => {
+      const next = structuredClone(l);
+      for (const field of this.el.querySelectorAll<HTMLInputElement>(
+        "[data-board]",
+      ))
+        (next as any)[field.dataset.board!] =
+          field.dataset.board === "name" ? field.value : Number(field.value);
+      this.change(next);
+    };
+    const structure = (kind: "rail" | "duct") => {
+      const next = structuredClone(l),
+        count = l.items.filter((i) => i.kind === kind).length,
+        id = crypto.randomUUID();
+      next.items.push({
+        id,
+        kind,
+        label:
+          t(kind === "rail" ? "cabinetRail" : "cabinetDuct") +
+          " " +
+          (count + 1),
+        x: kind === "rail" ? 60 : 10 + count * 50,
+        y: kind === "rail" ? 150 + count * 150 : 10,
+        widthMm: kind === "rail" ? Math.max(50, l.widthMm - 120) : 40,
+        heightMm: kind === "rail" ? 35 : Math.max(50, l.heightMm - 20),
+        rotation: 0,
+        clearanceMm: 0,
+      });
+      this.selected = id;
+      this.change(next);
+    };
+    q("[data-add-rail]").onclick = () => structure("rail");
+    q("[data-add-duct]").onclick = () => structure("duct");
+    q<HTMLInputElement>("[data-search]").oninput = (e) => {
+      const input = e.target as HTMLInputElement,
+        at = input.selectionStart;
+      this.search = input.value;
+      this.offset = 0;
+      this.render();
+      q<HTMLInputElement>("[data-search]").focus();
+      q<HTMLInputElement>("[data-search]").setSelectionRange(at, at);
+    };
+    q("[data-prev]").onclick = () => {
+      this.offset = Math.max(0, this.offset - 30);
+      this.render();
+    };
+    q("[data-next]").onclick = () => {
+      this.offset += 30;
+      this.render();
+    };
+    for (const button of this.el.querySelectorAll<HTMLButtonElement>(
+      "[data-candidate]",
+    ))
+      button.onclick = () => {
+        this.candidate = button.dataset.candidate!;
+        const e = this.candidates.find((c) => c.identity === this.candidate)!;
+        this.width = e.dimensions ? String(e.dimensions.widthMm) : "";
+        this.height = e.dimensions ? String(e.dimensions.heightMm) : "";
+        this.manual = !e.dimensions;
+        this.render();
+      };
+    for (const input of this.el.querySelectorAll<HTMLInputElement>(
+      "[data-size]",
+    ))
+      input.oninput = () => {
+        input.dataset.size === "width"
+          ? (this.width = input.value)
+          : (this.height = input.value);
+        this.manual = true;
+        q<HTMLButtonElement>("[data-place]").disabled = !(
+          Number(this.width) > 0 && Number(this.height) > 0
+        );
+      };
+    q("[data-place]")?.addEventListener("click", () => {
+      if (
+        !entry ||
+        placed.has(JSON.stringify([entry.main.pageId, entry.main.componentId]))
+      )
+        return;
+      const next = structuredClone(l),
+        rail = next.items.find(
+          (i) => i.id === q<HTMLSelectElement>("[data-new-rail]").value,
+        ),
+        id = crypto.randomUUID(),
+        w = Number(this.width),
+        h = Number(this.height),
+        devices = next.items.filter(
+          (i) => i.kind === "device" && i.railId === rail?.id,
+        ),
+        position = findCabinetPlacement(l, w, h, rail?.id);
+      if (!position) {
+        this.error = t("cabinetNoSpace");
+        this.render();
+        return;
+      }
+      next.items.push({
+        id,
+        kind: "device",
+        label: entry.designation,
+        x: position.x,
+        y: position.y,
+        widthMm: w,
+        heightMm: h,
+        clearanceMm: 0,
+        rotation: 0,
+        ...(rail ? { railId: rail.id } : {}),
+        source: structuredClone(entry.main),
+        physicalDeviceId: entry.state === "verified" ? entry.id : undefined,
+        articleKey: entry.articleKey,
+        sizeOrigin: this.manual ? "manual" : "article",
+      });
+      this.selected = id;
+      this.change(next);
+    });
+    q("[data-item-apply]")?.addEventListener("click", () => {
+      const next = structuredClone(l),
+        i = next.items.find((i) => i.id === this.selected)!;
+      for (const field of this.el.querySelectorAll<HTMLInputElement>(
+        "[data-item]",
+      ))
+        if (!field.disabled)
+          (i as any)[field.dataset.item!] = ["label", "railId"].includes(
+            field.dataset.item!,
+          )
+            ? field.value
+            : Number(field.value);
+      if (i.kind === "rail")
+        for (const child of next.items)
+          if (child.kind === "device" && child.railId === i.id) {
+            child.x += i.x - item!.x;
+            child.y += i.y - item!.y + (i.heightMm - item!.heightMm) / 2;
+          }
+      if (!i.railId) delete i.railId;
+      if (
+        i.widthMm !== item!.widthMm ||
+        i.heightMm !== item!.heightMm ||
+        this.el.querySelector<HTMLInputElement>("[data-manual]")?.checked
+      ) {
+        i.sizeOrigin = "manual";
+        i.articleKey = this.candidates.find(
+          (c) =>
+            c.main.pageId === i.source?.pageId &&
+            c.main.componentId === i.source?.componentId,
+        )?.articleKey;
+      }
+      this.change(moveCabinetItem(next, i.id, i.x, i.y));
+    });
+    q("[data-remove]")?.addEventListener("click", () => this.removeItem());
+    q("[data-article-size]")?.addEventListener("click", () => {
+      const e = this.candidates.find(
+        (c) =>
+          c.main.pageId === item?.source?.pageId &&
+          c.main.componentId === item?.source?.componentId,
+      );
+      if (!e?.dimensions) {
+        this.error = t("cabinetNoDimensions");
+        this.render();
+        return;
+      }
+      const next = structuredClone(l),
+        i = next.items.find((i) => i.id === item!.id)!;
+      i.widthMm = e.dimensions.widthMm;
+      i.heightMm = e.dimensions.heightMm;
+      i.articleKey = e.articleKey;
+      i.sizeOrigin = "article";
+      this.change(moveCabinetItem(next, i.id, i.x, i.y));
+    });
+    for (const button of this.el.querySelectorAll<HTMLButtonElement>(
+      "[data-issue]",
+    ))
+      button.onclick = () => {
+        this.selected = issues[Number(button.dataset.issue)].ids[0] ?? "";
+        this.render();
+        this.focusItem();
+      };
+    q("[data-pdf]").onclick = () =>
+      safe(() => {
+        new CabinetLayoutEdit(this.source, l).apply(this.getProject());
+        cabinetPdf(l, labels, this.source.name).save("schematico-cabinet.pdf");
+      });
+    q("[data-svg]").onclick = () =>
+      safe(() => {
+        new CabinetLayoutEdit(this.source, l).apply(this.getProject());
+        downloadArticleFile(
+          cabinetSvg(l, labels, "", [], false),
+          "schematico-cabinet.svg",
+          "image/svg+xml",
+        );
+      });
+    this.bindDrag();
+    finishEngineeringDialog(this.el, {
+      kind: "cabinet",
+      description: t("cabinetSubtitle"),
+      wide: true,
+      drawing: {
+        project: this.getProject,
+        navigate: this.navigate,
+        targets: (id) => {
+          const i = l.items.find(
+            (i) => JSON.stringify(["cabinet", l.id, i.id]) === id,
+          );
+          return i?.source
+            ? visualDrawingTargets(
+                this.getProject(),
+                JSON.stringify([
+                  "terminal",
+                  JSON.stringify([i.source.pageId, i.source.componentId]),
+                ]),
+              )
+            : [];
+        },
+      },
+    });
+    focusArticleModal(this.el);
+  }
+  private bindDrag() {
+    const svg = this.el.querySelector<SVGSVGElement>(".cb-svg")!;
+    const itemById = new Map(this.layout.items.map((i) => [i.id, i])),
+      nodes = [...this.el.querySelectorAll<SVGElement>("[data-cabinet-item]")];
+    let drag:
+      | {
+          id: string;
+          pointer: number;
+          x: number;
+          y: number;
+          startX: number;
+          startY: number;
+        }
+      | undefined;
+    const point = (e: PointerEvent) => {
+      const matrix = svg.getScreenCTM();
+      return matrix
+        ? new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse())
+        : new DOMPoint();
+    };
+    svg.onclick = (e) => {
+      const node = (e.target as Element).closest<SVGElement>(
+        "[data-cabinet-item]",
+      );
+      if (node && this.selected !== node.dataset.cabinetItem) {
+        this.selected = node.dataset.cabinetItem!;
+        this.render();
+        this.focusItem();
+      }
+    };
+    svg.onpointerdown = (e) => {
+      if (e.button !== 0) return;
+      const g = (e.target as Element).closest<SVGElement>(
+        "[data-cabinet-item]",
+      );
+      if (!g) return;
+      e.preventDefault();
+      this.selected = g.dataset.cabinetItem!;
+      const i = this.layout.items.find((i) => i.id === this.selected)!,
+        p = point(e);
+      drag = {
+        id: i.id,
+        pointer: e.pointerId,
+        x: p.x,
+        y: p.y,
+        startX: i.x,
+        startY: i.y,
+      };
+      svg.setPointerCapture(e.pointerId);
+    };
+    svg.onpointermove = (e) => {
+      if (!drag || e.pointerId !== drag.pointer) return;
+      const p = point(e),
+        i = itemById.get(drag!.id)!,
+        snap = (n: number) =>
+          Math.round(n / this.layout.gridMm) * this.layout.gridMm,
+        dx = snap(drag.startX + p.x - drag.x) - drag.startX,
+        dy =
+          i.kind === "device" && i.railId
+            ? 0
+            : snap(drag.startY + p.y - drag.y) - drag.startY;
+      for (const node of nodes) {
+        const child = itemById.get(node.dataset.cabinetItem!);
+        if (child?.id === i.id || (i.kind === "rail" && child?.railId === i.id))
+          node.setAttribute("transform", `translate(${dx} ${dy})`);
+      }
+      this.el.querySelector("[data-coordinates]")!.textContent =
+        `X ${(drag.startX + dx).toFixed(1)} mm · Y ${(drag.startY + dy).toFixed(1)} mm`;
+    };
+    svg.onpointerup = (e) => {
+      if (!drag || e.pointerId !== drag.pointer) return;
+      const p = point(e),
+        d = drag;
+      drag = undefined;
+      if (svg.hasPointerCapture(e.pointerId))
+        svg.releasePointerCapture(e.pointerId);
+      if (Math.abs(p.x - d.x) + Math.abs(p.y - d.y) > 0.1)
+        this.change(
+          moveCabinetItem(
+            this.layout,
+            d.id,
+            d.startX + p.x - d.x,
+            d.startY + p.y - d.y,
+          ),
+        );
+      else this.render();
+      this.focusItem();
+    };
+    svg.onpointercancel = () => {
+      drag = undefined;
+      this.render();
+    };
+  }
+}

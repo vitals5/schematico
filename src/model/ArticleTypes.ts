@@ -7,6 +7,8 @@ export interface CatalogArticle {
   description: string;
   origin: 'user' | 'project_import' | 'starter';
   verification: 'unverified' | 'user_checked';
+  /** Explicit mechanical dimensions in millimetres; independent of symbol geometry. */
+  dimensions?: {widthMm:number;heightMm:number;depthMm?:number};
   /** Preferred library symbol for placement; assigning an article never replaces existing geometry. */
   symbolId?: string;
   symbol?: import('./types').SymbolDefinition;
