@@ -104,7 +104,9 @@
   display: block;
   max-width: none;
   user-select: none;
-  touch-action: pan-x pan-y;
+  /* SVG <g> touch-action does not stop Chromium's native scroll arbitration.
+     The SVG must own the gesture; blank-sheet panning is handled explicitly. */
+  touch-action: none;
   box-shadow: 0 4px 20px #0006;
 }
 .cb-svg g[data-cabinet-item] {
@@ -300,4 +302,10 @@
     max-height: 100%;
     overflow-y: auto;
   }
+}
+
+.cb-svg.is-dragging,
+.cb-svg.is-dragging g[data-cabinet-item],
+.cb-svg.is-panning {
+  cursor: grabbing;
 }

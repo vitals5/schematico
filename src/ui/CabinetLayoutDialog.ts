@@ -46,6 +46,7 @@ export class CabinetLayoutDialog {
   private standardId = "rcd-4p";
   private standardRail?: string;
   private quantity = 1;
+  private renderedLayoutId?: string;
   private selected = "";
   private candidate = "";
   private search = "";
@@ -135,7 +136,7 @@ export class CabinetLayoutDialog {
   private focusItem() {
     [...this.el.querySelectorAll<SVGElement>("[data-cabinet-item]")]
       .find((n) => n.dataset.cabinetItem === this.selected)
-      ?.focus();
+      ?.focus({ preventScroll: true });
   }
   private change(next: CabinetLayout) {
     if (JSON.stringify(next) !== JSON.stringify(this.layout)) {
@@ -167,6 +168,24 @@ export class CabinetLayoutDialog {
   }
   private render() {
     const l = this.layout;
+    const view =
+      this.renderedLayoutId === l.id
+        ? [
+            ".eng-body",
+            ".cb-tools",
+            ".cb-main",
+            ".cb-properties",
+            ".cb-canvas",
+          ].map((selector) => {
+            const node = this.el.querySelector<HTMLElement>(selector);
+            return {
+              selector,
+              left: node?.scrollLeft ?? 0,
+              top: node?.scrollTop ?? 0,
+            };
+          })
+        : [];
+    this.renderedLayoutId = l.id;
     if (this.checked?.layout !== l || this.checked?.source !== this.source)
       this.checked = {
         layout: l,
@@ -256,7 +275,7 @@ export class CabinetLayoutDialog {
             .join(
               "",
             )}</div><div class="cb-actions"><button class="btn" data-prev ${this.offset ? "" : "disabled"}>‹</button><span>${filtered.length ? this.offset + 1 : 0}–${Math.min(filtered.length, this.offset + 30)} / ${filtered.length}</span><button class="btn" data-next ${this.offset + 30 >= filtered.length ? "disabled" : ""}>›</button></div>${entry ? `<p>${esc(entry.designation)} · ${t(this.manual ? "cabinetManualSize" : "cabinetSizeFromArticle")}</p><div class="cb-fields"><label>${t("cabinetWidth")}<input class="form-input" data-size="width" type="number" min=".1" value="${esc(this.width)}"></label><label>${t("cabinetHeight")}<input class="form-input" data-size="height" type="number" min=".1" value="${esc(this.height)}"></label></div><label>${t("cabinetRail")}<select class="form-input" data-new-rail><option value="">${t("cabinetFree")}</option>${rails.map((r) => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join("")}</select></label><button class="btn" data-place ${Number(this.width) > 0 && Number(this.height) > 0 && !placed.has(JSON.stringify([entry.main.pageId, entry.main.componentId])) ? "" : "disabled"}>${t("cabinetPlace")}</button>` : ""}`
-    }</aside><main class="cb-main"><div class="cb-metrics"><span>${l.widthMm} × ${l.heightMm} mm</span><span>${Number.isFinite(area) ? area.toFixed(1) : "—"} % ${t("cabinetDeviceArea")}</span><span>${errors.length} ${t("cabinetErrors")} · ${issues.length - errors.length} ${t("wiringHints")}</span></div>${l.items.some((i) => i.kind === "standard") ? `<p class="cb-note cb-standard-origin">${t("cabinetStandardOnly")}</p>` : ""}<div class="cb-canvas"><div data-cabinet-surface>${cabinetSvg(l, labels, this.selected, issues)}</div></div><p data-coordinates data-lens-transient>${t("cabinetDragHint")}</p>${rails
+    }</aside><main class="cb-main"><div class="cb-metrics"><span>${l.widthMm} × ${l.heightMm} mm</span><span>${Number.isFinite(area) ? area.toFixed(1) : "—"} % ${t("cabinetDeviceArea")}</span><span>${errors.length} ${t("cabinetErrors")} · ${issues.length - errors.length} ${t("wiringHints")}</span></div>${l.items.some((i) => i.kind === "standard") ? `<p class="cb-note cb-standard-origin">${t("cabinetStandardOnly")}</p>` : ""}<div class="cb-canvas"><div data-cabinet-surface data-eng-surface>${cabinetSvg(l, labels, this.selected, issues)}</div></div><p data-coordinates data-lens-transient>${t("cabinetDragHint")}</p>${rails
       .map((r) => {
         const capacity = railCapacity(l, r.id)!;
         return `<span class="cb-capacity">${esc(r.label)} · ${capacity.used.toFixed(1)} / ${r.widthMm} mm · ${capacity.free.toFixed(1)} mm ${t("cabinetRemaining")}</span>`;
@@ -583,6 +602,13 @@ export class CabinetLayoutDialog {
         },
       },
     });
+    for (const { selector, left, top } of view) {
+      const node = this.el.querySelector<HTMLElement>(selector);
+      if (node) {
+        node.scrollLeft = left;
+        node.scrollTop = top;
+      }
+    }
     focusArticleModal(this.el);
   }
   private libraryPanel(rails: CabinetItem[]) {
@@ -704,6 +730,24 @@ export class CabinetLayoutDialog {
     const svg = this.el.querySelector<SVGSVGElement>(".cb-svg")!;
     const itemById = new Map(this.layout.items.map((i) => [i.id, i])),
       nodes = [...this.el.querySelectorAll<SVGElement>("[data-cabinet-item]")];
+    let pan: { pointer: number; x: number; y: number } | undefined;
+    const panBy = (dx: number, dy: number) => {
+      // Keep blank-sheet panning while the SVG owns touch gestures. Consume the
+      // movement in the canvas first, then in its scrollable workspace ancestors.
+      for (
+        let node = svg.parentElement;
+        node && node !== this.el;
+        node = node.parentElement
+      ) {
+        const style = getComputedStyle(node),
+          left = node.scrollLeft,
+          top = node.scrollTop;
+        if (/auto|scroll/.test(style.overflowX)) node.scrollLeft += dx;
+        if (/auto|scroll/.test(style.overflowY)) node.scrollTop += dy;
+        dx -= node.scrollLeft - left;
+        dy -= node.scrollTop - top;
+      }
+    };
     let drag:
       | {
           id: string;
@@ -731,11 +775,18 @@ export class CabinetLayoutDialog {
       }
     };
     svg.onpointerdown = (e) => {
-      if (e.button !== 0) return;
+      if (drag || pan || !e.isPrimary || (e.button !== 0 && e.button !== 1))
+        return;
       const g = (e.target as Element).closest<SVGElement>(
         "[data-cabinet-item]",
       );
-      if (!g) return;
+      if (!g || e.button === 1) {
+        e.preventDefault();
+        pan = { pointer: e.pointerId, x: e.clientX, y: e.clientY };
+        svg.classList.add("is-panning");
+        svg.setPointerCapture(e.pointerId);
+        return;
+      }
       e.preventDefault();
       this.selected = g.dataset.cabinetItem!;
       const i = this.layout.items.find((i) => i.id === this.selected)!,
@@ -748,9 +799,17 @@ export class CabinetLayoutDialog {
         startX: i.x,
         startY: i.y,
       };
+      svg.classList.add("is-dragging");
       svg.setPointerCapture(e.pointerId);
     };
     svg.onpointermove = (e) => {
+      if (pan?.pointer === e.pointerId) {
+        e.preventDefault();
+        panBy(pan.x - e.clientX, pan.y - e.clientY);
+        pan.x = e.clientX;
+        pan.y = e.clientY;
+        return;
+      }
       if (!drag || e.pointerId !== drag.pointer) return;
       const p = point(e),
         i = itemById.get(drag!.id)!,
@@ -770,10 +829,18 @@ export class CabinetLayoutDialog {
         `X ${(drag.startX + dx).toFixed(1)} mm · Y ${(drag.startY + dy).toFixed(1)} mm`;
     };
     svg.onpointerup = (e) => {
+      if (pan?.pointer === e.pointerId) {
+        pan = undefined;
+        svg.classList.remove("is-panning");
+        if (svg.hasPointerCapture(e.pointerId))
+          svg.releasePointerCapture(e.pointerId);
+        return;
+      }
       if (!drag || e.pointerId !== drag.pointer) return;
       const p = point(e),
         d = drag;
       drag = undefined;
+      svg.classList.remove("is-dragging");
       if (svg.hasPointerCapture(e.pointerId))
         svg.releasePointerCapture(e.pointerId);
       if (Math.abs(p.x - d.x) + Math.abs(p.y - d.y) > 0.1)
@@ -788,9 +855,19 @@ export class CabinetLayoutDialog {
       else this.render();
       this.focusItem();
     };
-    svg.onpointercancel = () => {
-      drag = undefined;
-      this.render();
+    const cancel = (e: PointerEvent) => {
+      if (pan?.pointer === e.pointerId) {
+        pan = undefined;
+        svg.classList.remove("is-panning");
+      }
+      if (drag?.pointer === e.pointerId) {
+        drag = undefined;
+        svg.classList.remove("is-dragging");
+        this.render();
+        this.focusItem();
+      }
     };
+    svg.onpointercancel = cancel;
+    svg.onlostpointercapture = cancel;
   }
 }

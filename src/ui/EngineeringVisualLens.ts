@@ -361,11 +361,14 @@ class VisualLens {
   }
   private update() {
     if (this.restoreDrawing) return;
-    for (const el of this.root.querySelectorAll("[data-eng-surface]"))
-      el.removeAttribute("data-eng-surface");
     const active = [
       ...this.root.querySelectorAll<HTMLElement>(surfaces[this.root.id]),
     ].filter((e) => e.getClientRects().length && !e.closest("[hidden]"));
+    // Never temporarily unzoom an active surface: geometry reads would clamp
+    // its parent's scroll position before the zoom is restored.
+    const activeSet = new Set<Element>(active);
+    for (const el of this.root.querySelectorAll("[data-eng-surface]"))
+      if (!activeSet.has(el)) el.removeAttribute("data-eng-surface");
     active.forEach((e) => e.setAttribute("data-eng-surface", ""));
     this.entries = [...this.root.querySelectorAll<HTMLElement>("[data-eng-id]")]
       .filter(
