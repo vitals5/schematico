@@ -25,6 +25,8 @@ export interface ComponentAddress {
   componentId: string;
 }
 export interface PhysicalDevice {
+  /** Explicit multi-level terminal ownership, checked against the strip configuration. */
+  terminalPositionId?:string;
   id: string;
   main: ComponentAddress;
   members: ComponentAddress[];

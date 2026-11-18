@@ -1,4 +1,5 @@
 import {terminalSettings} from '../model/WiringManagement';
+import {orderedTerminalEntries,terminalStripBindings,terminalStripKey,type TerminalStripIdentity} from '../model/TerminalStripTypes';
 // src/reports/TerminalDiagram.ts
 // Generates terminal diagrams (Klemmenplan) according to DIN EN 81346 standards
 
@@ -7,6 +8,8 @@ import {ProjectIndex,scopedDesignation,displayDesignation,type ProjectStructure}
 import {ElectricalNetService} from '../model/ElectricalNetService';
 
 export interface TerminalEntry {
+  stripIdentity?:TerminalStripIdentity;
+  assemblyPosition?:number;
   terminalStrip: string;      // e.g. "-X1"
   terminalNumber: string;     // e.g. "1", "2", "PE"
   internalTarget: string;     // e.g. "-K1:2"
@@ -109,12 +112,15 @@ export class TerminalDiagramGenerator {
       const designation=colon>0?entry.tag.slice(colon+1).trim():'',legacy=comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0];
       record.entries.push({terminalStrip:tag,terminalNumber:configured?(configured.number+(configured.level?'/'+configured.level:'')):designation||legacy||String(record.entries.length+1),numberSource:designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:(comp.functionText||'Durchgangsklemme')+((project.logicalConnections??[]).some(w=>w.terminalBridge&&(w.from.componentId===comp.id||w.to.componentId===comp.id))?' · Brücke':''),wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
     }
-    const strips=new Map<string,TerminalEntry[]>();
+    const strips=new Map<string,TerminalEntry[]>(),configuration=terminalStripBindings(project);
     for(const record of records.values()){
       const repeated=[...records.values()].filter(r=>r.tag===record.tag).length>1;
       const name=repeated?displayDesignation(record.structure,record.tag):record.tag;
-      for(const entry of record.entries)entry.terminalStrip=name;
-      strips.set(name,record.entries);
+      const identity={...record.structure,strip:record.tag};
+      for(const entry of record.entries){entry.terminalStrip=name;entry.stripIdentity=identity;}
+      const ordered=orderedTerminalEntries(project,identity,record.entries,configuration),config=project.terminalStrips?.find(s=>terminalStripKey(s)===terminalStripKey(identity));
+      if(config)for(const entry of ordered){const at=config.positions.findIndex(pos=>pos.kind==='terminal'&&configuration.bindings.get(pos.id)?.valid&&pos.members.some(a=>a.pageId===entry.pageId&&a.componentId===entry.componentId));if(at>=0)entry.assemblyPosition=at+1;}
+      strips.set(name,ordered);
     }
     return strips;
   }

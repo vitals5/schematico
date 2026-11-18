@@ -45,6 +45,7 @@ export class ArticleEditPlan {
         )
       )
         throw new Error('articlesSelectionInvalid');
+      for(const device of result.physicalDevices??[])if(edit.deviceIds.includes(device.id)&&device.terminalPositionId)for(const strip of result.terminalStrips??[]){const at=strip.positions.findIndex(pos=>pos.kind==='terminal'&&pos.id===device.terminalPositionId&&pos.deviceId===device.id);const position=strip.positions[at];if(position?.kind==='terminal')strip.positions.splice(at,1,...position.members.map(a=>({id:crypto.randomUUID(),kind:'terminal' as const,members:[structuredClone(a)]})));}
       result.physicalDevices = result.physicalDevices?.filter(
         (d) => !edit.deviceIds.includes(d.id),
       );

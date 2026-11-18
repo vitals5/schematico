@@ -29,6 +29,10 @@ Die Grafik zeigt sechs Leisten bzw. Kabel pro Seite. Klemmenkarten sind auf 64 j
 
 **Daten & Berichte** bündelt die Kabel-Reparaturvorschläge, das Aktualisieren und den bisherigen Export aller drei Fertigungslisten. Der Export umfasst stets den gesamten eingelesenen Projektbestand und wird durch die Anzeigefilter nicht eingeschränkt. Die elektrische Auswertung wird für diesen Stand einmal berechnet und beim Suchen/Ansichtswechsel wiederverwendet.
 
+## Klemmenleisten konfigurieren
+
+**Leiste konfigurieren** öffnet den [Klemmenleisten-Konfigurator](terminal-strip-configurator.md) für die jeweilige Leiste: Bestückungsreihenfolge, ausdrückliche Etagenzuordnung, gemeinsamer Artikel und eigenständige Zubehörpositionen mit Stücklistenauswertung. Zeichnung und elektrische Brücken bleiben davon getrennt.
+
 ## Klemmen und Brücken
 
 **Projekt → Klemmen und Kabel…** beziehungsweise die Aktion eines entsprechenden Prüfbefunds öffnet den Bearbeitungsdialog. Die Klemmenansicht enthält die aus dem gemeinsamen elektrischen Modell ermittelten internen und externen Ziele.

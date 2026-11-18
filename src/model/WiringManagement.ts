@@ -7,6 +7,7 @@ import {
 } from './ProjectIndex';
 import { ElectricalNetService } from './ElectricalNetService';
 import { projectRevision } from '../layout/types';
+import {terminalStripBindings,terminalIdentity,terminalStripKey} from './TerminalStripTypes';
 export interface TerminalSettings {
   strip: string;
   number: string;
@@ -16,6 +17,7 @@ export interface TerminalSettings {
 export interface WiringFinding {
   code:
     | 'terminal_number_duplicate'
+    | 'terminal_strip_configuration'
     | 'cable_core_duplicate'
     | 'cable_wire_missing'
     | 'cable_wire_reused'
@@ -71,6 +73,7 @@ export function inspectWiring(
           componentId: e.component.id,
           details: key,
         });
+  for(const issue of terminalStripBindings(project).issues){const a=issue.members[0];messages.push({code:'terminal_strip_configuration',pageId:a?.pageId??project.pages[0]?.id??'',componentId:a?.componentId,details:issue.reason+' · '+issue.stripId+(issue.positionId?' · '+issue.positionId:'')});}
   for (const page of project.pages)
     for (const cable of page.cables ?? []) {
       const labels = new Map<string, number>(),
@@ -210,6 +213,8 @@ export class WiringEditPlan {
       e.component.terminal.level = edit.settings.level.trim();
       e.component.bmk =
         e.component.terminal.strip + ':' + e.component.terminal.number;
+      const owner=project.terminalStrips?.find(s=>s.positions.some(pos=>pos.kind==='terminal'&&pos.members.some(a=>a.pageId===edit.target.pageId&&a.componentId===edit.target.componentId)));
+      if(owner&&terminalStripKey(terminalIdentity(e.page,e.component))!==terminalStripKey(owner))throw new Error('terminalStripMoveFirst');
     } else if (edit.kind === 'bridge') {
       const a = index.component(edit.from.componentId, edit.from.pageId),
         b = index.component(edit.to.componentId, edit.to.pageId),

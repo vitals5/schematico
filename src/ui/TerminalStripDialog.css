@@ -1,0 +1,37 @@
+#terminalStripDialog [hidden]{display:none!important}
+#terminalStripDialog.engineering-overlay{padding:16px}
+#terminalStripDialog .eng-shell{width:min(1620px,100%);height:min(960px,calc(100dvh - 32px));max-height:calc(100dvh - 32px)}
+#terminalStripDialog .eng-eyebrow{display:none}
+#terminalStripDialog .ts-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+#terminalStripDialog .ts-bar select{width:auto;max-width:420px}
+#terminalStripDialog .ts-bar [data-search]{flex:1;min-width:160px;width:auto}
+#terminalStripDialog .ts-tools{margin-left:auto}
+#terminalStripDialog .ts-rail{display:flex;align-items:stretch;gap:10px;overflow:auto;padding:18px 12px;min-height:210px;border:1px solid #40566e;border-radius:8px;background:linear-gradient(0deg,#142232 47%,#3e5870 47%,#3e5870 53%,#142232 53%);scrollbar-width:thin}
+#terminalStripDialog .ts-position{flex:0 0 210px;background:#21374c;border:1px solid #647b91;border-radius:7px;padding:10px;min-width:0;display:flex;flex-direction:column;gap:8px}
+#terminalStripDialog .ts-position.is-accessory{background:#2b3144;border-style:dashed}
+#terminalStripDialog .ts-position.is-selected{outline:2px solid #91ceff;outline-offset:1px}
+#terminalStripDialog .ts-position>header{display:flex;align-items:center;gap:8px;font-size:12px;color:#bdd6ed}
+#terminalStripDialog .ts-drag{cursor:grab;font-size:21px;line-height:1}
+#terminalStripDialog .ts-position label{margin:0;display:flex;gap:7px;align-items:center}
+#terminalStripDialog .ts-level{border:1px solid #5b758d;border-radius:5px;background:#182b3e;padding:9px;font-size:11px;overflow-wrap:anywhere}
+#terminalStripDialog .ts-level strong{display:block;color:#e3f0fc;font:600 16px monospace}
+#terminalStripDialog .ts-level small{display:block;color:#9cb7d0;margin-top:4px;font-size:10px}
+#terminalStripDialog .ts-position .ts-article{font-size:10px;color:#acc6dd;margin-top:auto;overflow-wrap:anywhere;padding-top:4px}
+#terminalStripDialog .ts-position .ts-actions{display:flex;gap:5px;flex-wrap:wrap}
+#terminalStripDialog .ts-position .btn{font-size:10px;padding:6px 8px;white-space:normal}
+#terminalStripDialog .ts-position .ts-article-button{width:100%}
+#terminalStripDialog .ts-group{border:1px solid #436a8b;border-radius:8px;background:#192d40;padding:14px;margin:16px 0}
+#terminalStripDialog .ts-group h3{margin:0 0 8px;font-size:14px}
+#terminalStripDialog .ts-level-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+#terminalStripDialog .ts-level-inputs label{font-size:11px;overflow-wrap:anywhere;min-width:0}
+#terminalStripDialog .ts-level-inputs input{width:100%}
+#terminalStripDialog .ts-preview{border:1px solid #5181a6;background:#142a3c;border-radius:8px;padding:14px;margin-top:16px;max-height:33vh;overflow:auto}
+#terminalStripDialog .ts-preview h3{font-size:14px;margin:0 0 6px}
+#terminalStripDialog .ts-note{color:#a1b8cf;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+#terminalStripDialog .ts-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#abc4dc;margin:10px 0}
+#terminalStripDialog .ts-accessory-form{border:1px solid #496882;border-radius:8px;background:#1b3043;padding:15px;margin-top:16px}
+#terminalStripDialog .ts-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
+#terminalStripDialog .ts-fields label{font-size:11px;min-width:0}
+#terminalStripDialog .ts-fields input{width:100%}
+#terminalStripDialog .ts-footer-note{margin-right:auto;font-size:11px;color:#9bb5cc}
+@media(max-width:600px){#terminalStripDialog.engineering-overlay{padding:7px}#terminalStripDialog .eng-shell{height:calc(100dvh - 14px);max-height:calc(100dvh - 14px)}#terminalStripDialog .eng-header{padding:12px}#terminalStripDialog .eng-header-mark{display:none}#terminalStripDialog .eng-body{padding:13px}#terminalStripDialog .eng-heading h2{font-size:17px}#terminalStripDialog .ts-bar select{max-width:100%;width:100%}#terminalStripDialog .ts-footer-note{display:none}}

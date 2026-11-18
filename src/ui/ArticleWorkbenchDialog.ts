@@ -61,6 +61,7 @@ export class ArticleWorkbenchDialog {
         this.registry.placement(this.addresses()[0])!.component,
         this.snapshot,
       );
+    else if(this.selected.size>1){const addresses=this.addresses(),device=this.registry.forComponent(addresses[0]);if(device&&device.members.length===addresses.length&&addresses.every(a=>this.registry.forComponent(a)?.id===device.id))this.items=effectiveArticles(this.registry.placement(device.main)!.component,this.snapshot);}
   }
   show() {
     if (document.getElementById('articleWorkbenchDialog')) return;
@@ -135,9 +136,10 @@ export class ArticleWorkbenchDialog {
   private load(source = false) {
     try {
       const addresses = this.addresses();
-      if (addresses.length !== 1) throw new Error('articlesOneRequired');
+      const device=addresses.length>1?this.registry.forComponent(addresses[0]):undefined;
+      if (addresses.length !== 1&&(!device||device.members.length!==addresses.length||!addresses.every(a=>this.registry.forComponent(a)?.id===device.id))) throw new Error('articlesOneRequired');
       const c = structuredClone(
-        this.registry.placement(addresses[0])!.component,
+        this.registry.placement(device?.main??addresses[0])!.component,
       );
       if (source) {
         delete c.articleAssignment;

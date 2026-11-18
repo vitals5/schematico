@@ -1,6 +1,7 @@
 import type { ComponentAddress, PhysicalDevice } from './ArticleTypes';
 import type { Page, PlacedComponent, Project } from './types';
 import { articleSignature, effectiveArticles } from './ArticleAssignments';
+import {terminalStripBindings,terminalDeviceBinding} from './TerminalStripTypes';
 export const addressKey = (a: ComponentAddress) =>
   JSON.stringify([a.pageId, a.componentId]);
 export const componentAddress = (
@@ -30,7 +31,8 @@ export interface DeviceIssue {
     | 'empty_designation'
     | 'different_designation'
     | 'conflicting_articles'
-    | 'unconfirmed';
+    | 'unconfirmed'
+    | 'invalid_terminal_position';
   members: ComponentAddress[];
 }
 export class DeviceRegistry {
@@ -57,9 +59,12 @@ export class DeviceRegistry {
       for (const a of d.members)
         membership.set(addressKey(a), (membership.get(addressKey(a)) ?? 0) + 1);
     }
+    const terminalBindings=project.physicalDevices?.some(d=>d.terminalPositionId)?terminalStripBindings(project).bindings:undefined;
     for (const d of project.physicalDevices ?? []) {
       const errors = new Set<DeviceIssue['code']>(),
         main = this.placement(d.main);
+      const terminalBinding=terminalBindings&&terminalDeviceBinding(d,terminalBindings);
+      if(d.terminalPositionId&&!terminalBinding)errors.add('invalid_terminal_position');
       if (ids.get(d.id) !== 1) errors.add('duplicate_id');
       if (d.verification !== 'user_confirmed') errors.add('unconfirmed');
       if (!main || !d.members.some((a) => addressKey(a) === addressKey(d.main)))
@@ -74,7 +79,7 @@ export class DeviceRegistry {
         if (membership.get(addressKey(member)) !== 1)
           errors.add('duplicate_member');
         if (
-          main &&
+          main && !terminalBinding &&
           designationContext(e.page, e.component) !==
             designationContext(main.page, main.component)
         )
@@ -113,6 +118,7 @@ export function linkPhysicalDevice(
   members: ComponentAddress[],
   main: ComponentAddress,
 ): void {
+  if(project.terminalStrips?.some(s=>s.positions.some(pos=>pos.kind==='terminal'&&pos.members.some(a=>members.some(m=>addressKey(a)===addressKey(m))))))throw new Error('terminalStripOwnership');
   if (
     members.length < 2 ||
     new Set(members.map(addressKey)).size !== members.length

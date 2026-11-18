@@ -5,6 +5,7 @@ import { groupSelection } from '../model/ElementGroups';
 import { Project, PlacedComponent, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
 import { isConnectionSymbol } from '../model/ConnectionSymbols';
+import {terminalStripBindings} from '../model/TerminalStripTypes';
 
 export interface PartEntry {
   articleNumber: string;
@@ -147,6 +148,11 @@ export class PartsListGenerator {
       }
     }
 
+    for(const {strip,position,valid} of terminalStripBindings(project).bindings.values())if(valid&&position.kind==='accessory'){
+      const a=position.article,key=JSON.stringify([a.articleNumber,a.manufacturer,a.variant]),tag=`${strip.plant?'='+strip.plant:''}${strip.location?'+'+strip.location:''}${strip.strip}`;
+      if(!partsMap.has(key))partsMap.set(key,{articleNumber:a.articleNumber,manufacturer:a.manufacturer,variant:a.variant||undefined,description:a.snapshot?.description||position.description||'Zubehör',technicalCharacteristics:'-',quantity:0,bmkList:[],quantityBasis:'manual_assignment'});
+      const row=partsMap.get(key)!;row.quantity+=a.quantity!;if(row.quantityBasis!=='manual_assignment')row.quantityBasis='mixed';if(!row.bmkList.includes(tag))row.bmkList.push(tag);
+    }
     return Array.from(partsMap.values()).sort((a, b) => a.articleNumber.localeCompare(b.articleNumber));
   }
 }
