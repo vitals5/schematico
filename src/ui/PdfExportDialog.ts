@@ -1,225 +1,143 @@
-import { Project } from '../model/types';
-import { PdfExporter, PdfExportOptions } from '../export/PdfExporter';
-import { getUiLanguage } from '../i18n';
+import type { Project } from "../model/types";
+import { PdfExporter, type PdfExportOptions } from "../export/PdfExporter";
+import {
+  projectPdfChoices,
+  type ProjectPdfChoice,
+} from "../export/ProjectPdfSections";
+import { escapeSvg as esc } from "../model/ImportedDrawing";
+import { t, translations, type TranslationKey } from "../i18n";
+import { finishEngineeringDialog } from "./EngineeringDialog";
+import { bindArticleModalKeys, focusArticleModal } from "./ArticleModal";
 
 export class PdfExportDialog {
   private project: Project;
-  private activePageId: string;
-  private modalOverlay: HTMLElement | null = null;
-
-  constructor(project: Project, activePageId: string) {
-    this.project = project;
-    this.activePageId = activePageId;
+  private modalOverlay?: HTMLDivElement;
+  private choices: ProjectPdfChoice[];
+  constructor(
+    project: Project,
+    private activePageId: string,
+  ) {
+    this.project = structuredClone(project);
+    this.choices = projectPdfChoices(this.project);
   }
-
-  public show(): void {
-    this.createModal();
-  }
-
-  private createModal(): void {
-    const isEn = getUiLanguage() === 'en';
-    this.modalOverlay = document.createElement('div');
-    this.modalOverlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    `;
-
-    this.modalOverlay.innerHTML = `
-      <div style="
-        background: #1a202c;
-        border: 1px solid #4a5568;
-        border-radius: 8px;
-        width: 520px;
-        max-width: 90vw;
-        color: #edf2f7;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        overflow: hidden;
-      ">
-        <!-- Dialog Header -->
-        <div style="
-          padding: 14px 18px;
-          background: #2d3748;
-          border-bottom: 1px solid #4a5568;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        ">
-          <div style="font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-            📑 Schematico – ${isEn ? 'PDF Export' : 'PDF-Export'}
-          </div>
-          <button id="btnPdfClose" style="background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 16px;">✕</button>
-        </div>
-
-        <!-- Dialog Body -->
-        <div style="padding: 18px; font-size: 12px; line-height: 1.5; max-height: 75vh; overflow-y: auto;">
-          <!-- 1. Seitenumfang -->
-          <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">1. ${isEn ? 'Page Range' : 'Seitenbereich'}</div>
-            <div style="display: flex; gap: 16px;">
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <input type="radio" name="pdfPageRange" value="all" checked>
-                ${isEn ? `Entire Project (${this.project.pages.length} pages)` : `Gesamtes Projekt (${this.project.pages.length} Seiten)`}
-              </label>
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <input type="radio" name="pdfPageRange" value="current">
-                ${isEn ? 'Current active page only' : 'Nur aktive Seite'}
-              </label>
-            </div>
-          </div>
-
-          <!-- 2. Format & Papier -->
-          <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">2. ${isEn ? 'Paper Size' : 'Papierformat'}</div>
-            <select id="pdfFormatSelect" style="width: 100%; padding: 6px; background: #2d3748; border: 1px solid #4a5568; color: white; border-radius: 4px;">
-              <option value="a3" selected>${isEn ? 'DIN A3 Landscape (420 × 297 mm - Standard)' : 'DIN A3 Querformat (420 × 297 mm - Standard)'}</option>
-              <option value="a4">${isEn ? 'DIN A4 Landscape (297 × 210 mm)' : 'DIN A4 Querformat (297 × 210 mm)'}</option>
-            </select>
-          </div>
-
-          <!-- 3. Farbmodus -->
-          <div style="margin-bottom: 14px;">
-            <div style="font-weight: bold; color: #63b3ed; margin-bottom: 6px; text-transform: uppercase; font-size: 11px;">3. ${isEn ? 'Color Mode' : 'Farbmodus'}</div>
-            <div style="display: flex; gap: 16px;">
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <input type="radio" name="pdfColorMode" value="color" checked>
-                ${isEn ? 'Color (Standard color scheme)' : 'Farbe (Standard Farbschema)'}
-              </label>
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <input type="radio" name="pdfColorMode" value="monochrome">
-                ${isEn ? 'Black / White (Print optimized)' : 'Schwarz / Weiß (Druckoptimiert)'}
-              </label>
-            </div>
-          </div>
-
-          <!-- 4. Smart PDF Optionen -->
-          <div style="margin-bottom: 16px; background: #232d3d; padding: 12px; border-radius: 6px; border: 1px solid #3e4c63;">
-            <div style="font-weight: bold; color: #f6e05e; margin-bottom: 8px; font-size: 11px; text-transform: uppercase;">
-              ✨ ${isEn ? 'Smart PDF Features' : 'Intelligente PDF-Funktionen'}
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="chkInteractiveLinks" checked>
-                <strong>${isEn ? 'Interactive Cross-References' : 'Interaktive Querverweise'}</strong> (${isEn ? 'Clickable navigation between coils & contacts' : 'Klickbare Sprungmarken zwischen Spule & Kontakten'})
-              </label>
-              
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="chkBookmarks" checked>
-                <strong>${isEn ? 'Document Outline / Bookmarks' : 'Lesezeichenbaum'}</strong> (${isEn ? 'Structured by DIN EN 81346 =Location+Aspect' : 'Strukturierung nach DIN EN 81346 =Anlage+Ort'})
-              </label>
-
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="chkTerminalDiagram" checked>
-                <strong>${isEn ? 'Terminal Diagram Report' : 'Klemmenplan-Auswertung'}</strong> ${isEn ? 'appended as extra PDF page' : 'als zusätzliche PDF-Seite anhängen'}
-              </label>
-
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="chkPartsList" checked>
-                <strong>${isEn ? 'Bill of Materials (BOM)' : 'Stückliste (BOM)'}</strong> ${isEn ? 'appended to PDF' : 'an das PDF anhängen'}
-              </label>
-
-              <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="chkPlotFrame" checked>
-                ${isEn ? 'Print plot frame & title block according to DIN EN ISO 7200' : 'Normblatt & Schriftfeld nach DIN EN ISO 7200 drucken'}
-              </label>
-            </div>
-          </div>
-
-          <div id="pdfExportStatus" style="display: none; padding: 8px; border-radius: 4px; background: #2b6cb0; color: white; text-align: center; margin-bottom: 12px;">
-            ⏳ ${isEn ? 'Generating vector PDF...' : 'Vektor-PDF wird generiert...'}
-          </div>
-        </div>
-
-        <!-- Dialog Footer -->
-        <div style="
-          padding: 12px 18px;
-          background: #2d3748;
-          border-top: 1px solid #4a5568;
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-        ">
-          <button id="btnPdfCancel" style="padding: 6px 14px; font-size: 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            ${isEn ? 'Cancel' : 'Abbrechen'}
-          </button>
-          <button id="btnPdfDoExport" style="padding: 6px 16px; font-size: 12px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
-            📥 ${isEn ? 'Export PDF' : 'PDF Exportieren'}
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(this.modalOverlay);
-
-    // Event Bindings
-    document.getElementById('btnPdfClose')?.addEventListener('click', () => this.close());
-    document.getElementById('btnPdfCancel')?.addEventListener('click', () => this.close());
-    document.getElementById('btnPdfDoExport')?.addEventListener('click', () => this.executeExport());
-  }
-
-  private async executeExport(): Promise<void> {
-    const statusEl = document.getElementById('pdfExportStatus');
-    const btnExport = document.getElementById('btnPdfDoExport') as HTMLButtonElement;
-    if (statusEl) statusEl.style.display = 'block';
-    if (btnExport) btnExport.disabled = true;
-
-    try {
-      const pageRangeRadio = document.querySelector('input[name="pdfPageRange"]:checked') as HTMLInputElement;
-      const colorModeRadio = document.querySelector('input[name="pdfColorMode"]:checked') as HTMLInputElement;
-      const formatSelect = document.getElementById('pdfFormatSelect') as HTMLSelectElement;
-      
-      const chkLinks = document.getElementById('chkInteractiveLinks') as HTMLInputElement;
-      const chkBookmarks = document.getElementById('chkBookmarks') as HTMLInputElement;
-      const chkTerminals = document.getElementById('chkTerminalDiagram') as HTMLInputElement;
-      const chkParts = document.getElementById('chkPartsList') as HTMLInputElement;
-      const chkPlotFrame = document.getElementById('chkPlotFrame') as HTMLInputElement;
-
-      const options: PdfExportOptions = {
-        paperFormat: (formatSelect?.value as any) || 'a3',
-        colorMode: (colorModeRadio?.value as any) || 'color',
-        pageRange: (pageRangeRadio?.value as any) || 'all',
-        currentPageId: this.activePageId,
-        interactiveCrossReferences: chkLinks?.checked ?? true,
-        includeBookmarks: chkBookmarks?.checked ?? true,
-        includeTerminalDiagram: chkTerminals?.checked ?? true,
-        includePartsList: chkParts?.checked ?? true,
-        plotFrame: chkPlotFrame?.checked ?? true
-      };
-
-      const pdfBlob = await PdfExporter.exportToPdf(this.project, options);
-      
-      // Trigger download
-      const filename = `${this.project.name.replace(/[^a-zA-Z0-9_\-]/g, '_')}_Stromlaufplan.pdf`;
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+  show() {
+    if (document.getElementById("pdfExportDialog")) return;
+    const root = (this.modalOverlay = document.createElement("div"));
+    root.id = "pdfExportDialog";
+    root.className = "modal-backdrop";
+    root.style.cssText =
+      "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center";
+    const group = (kind: ProjectPdfChoice["kind"], title: string) => {
+      const list = this.choices.filter((c) => c.kind === kind);
+      if (!list.length) return "";
+      return `<fieldset><legend>${esc(title)}</legend>${list.map((c) => `<label class="pdf-section"><input type="checkbox" data-pdf-section="${esc(c.id)}" ${c.problem ? "disabled" : "checked"}><span><strong>${esc(c.title)}</strong><small>${esc(c.detail.replace("portrait", t("pdfPortrait")).replace("landscape", t("pdfLandscape")))}${c.kind === "cabinet" ? " " + t("pdfObjects") : ""}${c.problem ? " · " + esc(t(c.problem as TranslationKey)) : ""}</small></span></label>`).join("")}</fieldset>`;
+    };
+    root.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t("pdfProjectTitle")}</h2><p class="pdf-hint">${t("pdfSnapshotHint")}</p><div class="pdf-export-columns"><div><fieldset><legend>${t("pdfDrawings")}</legend><label><input type="checkbox" id="chkPdfDrawings" checked> ${t("pdfIncludeDrawings")}</label><label><input type="radio" name="pdfPageRange" value="all" checked> ${t("pdfAllPages", { count: this.project.pages.length })}</label><label><input type="radio" name="pdfPageRange" value="current"> ${t("pdfCurrentPage")}</label><label>${t("pdfPaper")}<select class="form-input" id="pdfFormatSelect"><option value="a3">A3 · 420 × 297 mm</option><option value="a4">A4 · 297 × 210 mm</option></select></label><label><input type="radio" name="pdfColorMode" value="color" checked> ${t("pdfColor")}</label><label><input type="radio" name="pdfColorMode" value="monochrome"> ${t("pdfMonochrome")}</label><label><input type="checkbox" id="chkPlotFrame" checked> ${t("pdfPlotFrame")}</label></fieldset><fieldset><legend>${t("pdfNavigation")}</legend><label><input type="checkbox" id="chkInteractiveLinks" checked> ${t("pdfLinks")}</label><label><input type="checkbox" id="chkBookmarks" checked> ${t("pdfBookmarks")}</label></fieldset><fieldset><legend>${t("pdfAdditionalLists")}</legend><label><input type="checkbox" id="chkPartsList" checked> ${t("pdfBom")}</label><label><input type="checkbox" id="chkTerminalDiagram"> ${t("pdfLegacyTerminals")}</label></fieldset></div><div><div class="pdf-section-actions"><strong>${t("pdfSavedSections")}</strong><button class="btn" data-pdf-all>${t("pdfSelectAll")}</button><button class="btn" data-pdf-none>${t("pdfSelectNone")}</button></div><p class="pdf-hint">${t("pdfSectionsHint")}</p>${group("cabinet", t("pdfCabinets"))}${group("report", t("pdfReports"))}${group("automation", t("pdfAutomation"))}${this.choices
+      .filter((c) => c.kind === "invalid")
+      .map(
+        (c) =>
+          `<p role="status" class="pdf-warning">${esc(t(c.problem as TranslationKey))} (${esc(c.detail)}) · ${t("pdfInvalidNotIncluded")}</p>`,
+      )
+      .join(
+        "",
+      )}</div></div><p id="pdfExportStatus" role="status"></p><p data-pdf-error role="alert"></p><footer><button class="btn" id="btnPdfCancel">${t("pdfCancel")}</button><button class="btn btn-primary eng-primary" id="btnPdfDoExport">${t("pdfDoExport")}</button></footer></section>`;
+    document.body.append(root);
+    bindArticleModalKeys(root, () => this.close());
+    root.querySelector<HTMLButtonElement>("#btnPdfCancel")!.onclick = () =>
       this.close();
-    } catch (err: any) {
-      alert(`Fehler beim PDF-Export: ${err.message}`);
-      if (statusEl) statusEl.style.display = 'none';
-      if (btnExport) btnExport.disabled = false;
+    root.querySelector<HTMLButtonElement>("#btnPdfDoExport")!.onclick = () =>
+      void this.executeExport();
+    for (const [selector, checked] of [
+      ["[data-pdf-all]", true],
+      ["[data-pdf-none]", false],
+    ] as const)
+      root.querySelector<HTMLButtonElement>(selector)!.onclick = () =>
+        root
+          .querySelectorAll<HTMLInputElement>(
+            "[data-pdf-section]:not(:disabled)",
+          )
+          .forEach((c) => (c.checked = checked));
+    root.querySelector<HTMLInputElement>("#chkPdfDrawings")!.onchange = (e) => {
+      const checked = (e.target as HTMLInputElement).checked;
+      root
+        .querySelectorAll<HTMLInputElement>('[name="pdfPageRange"]')
+        .forEach((c) => (c.disabled = !checked));
+    };
+    finishEngineeringDialog(root, {
+      kind: "wiring",
+      description: t("pdfProjectSubtitle"),
+      wide: true,
+      closeSelector: "#btnPdfCancel",
+    });
+    focusArticleModal(root);
+  }
+  private async executeExport() {
+    const root = this.modalOverlay;
+    if (!root?.isConnected) return;
+    const check = (id: string) =>
+      root.querySelector<HTMLInputElement>("#" + id)?.checked ?? false;
+    const options: PdfExportOptions = {
+      paperFormat: root.querySelector<HTMLSelectElement>("#pdfFormatSelect")!
+        .value as "a3" | "a4",
+      colorMode: root.querySelector<HTMLInputElement>(
+        '[name="pdfColorMode"]:checked',
+      )!.value as "color" | "monochrome",
+      pageRange: root.querySelector<HTMLInputElement>(
+        '[name="pdfPageRange"]:checked',
+      )!.value as "all" | "current",
+      currentPageId: this.activePageId,
+      includeDrawings: check("chkPdfDrawings"),
+      interactiveCrossReferences: check("chkInteractiveLinks"),
+      includeBookmarks: check("chkBookmarks"),
+      includeTerminalDiagram: check("chkTerminalDiagram"),
+      includePartsList: check("chkPartsList"),
+      plotFrame: check("chkPlotFrame"),
+      additionalSections: [
+        ...root.querySelectorAll<HTMLInputElement>(
+          "[data-pdf-section]:checked",
+        ),
+      ].map((c) => c.dataset.pdfSection!),
+    };
+    const button = root.querySelector<HTMLButtonElement>("#btnPdfDoExport")!,
+      status = root.querySelector<HTMLElement>("#pdfExportStatus")!,
+      error = root.querySelector<HTMLElement>("[data-pdf-error]")!;
+    button.disabled = true;
+    status.textContent = t("pdfGenerating");
+    error.textContent = "";
+    root.setAttribute("aria-busy", "true");
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (!root.isConnected) return;
+      const blob = await PdfExporter.exportToPdf(this.project, options);
+      if (!root.isConnected) return;
+      const url = URL.createObjectURL(blob),
+        a = document.createElement("a");
+      a.href = url;
+      a.download =
+        this.project.name.replace(/[^a-zA-Z0-9_\-]/g, "_") +
+        "_Dokumentation.pdf";
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.close();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e),
+        code = message.split(":")[0];
+      error.textContent =
+        code === "pdfCabinetInvalid"
+          ? t("pdfCabinetInvalid", { name: message.slice(code.length + 1) })
+          : Object.hasOwn(translations.de, code)
+            ? t(code as TranslationKey)
+            : message;
+      status.textContent = "";
+    } finally {
+      button.disabled = false;
+      root.removeAttribute("aria-busy");
     }
   }
-
-  private close(): void {
-    if (this.modalOverlay) {
-      document.body.removeChild(this.modalOverlay);
-      this.modalOverlay = null;
-    }
+  private close() {
+    this.modalOverlay?.remove();
+    this.modalOverlay = undefined;
   }
 }

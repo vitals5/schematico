@@ -87,6 +87,10 @@ Open **Project → Connection list / wiring navigator** for graphical source/tar
 
 A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable and terminal assembly workspaces adds graphic-only zoom, fit, a clickable overview map and keyboard-accessible object navigation. Highlight saved relationships or jump through displayed objects with findings while keeping property drafts intact. Previous/next navigation and a properties action support stepwise inspection. **View in drawing** focuses an explicitly assigned device and provides a return button that preserves open workspace drafts; multiple device targets can be selected. Focus is based on explicit memberships, mappings and real net identities; the current filters and graphic limits still apply. See [graphical workspace navigation](docs/management-ui.md#fokuslinse-für-grafische-arbeitsbereiche).
 
+## Complete project PDF
+
+The central **PDF** dialog combines drawing sheets, saved cabinet layouts with vector device fronts, terminal/cable/connector/wiring reports using the saved designer templates, the complete PLC/bus/KNX/building-automation table and the BOM. Select sections independently, retain each report's paper/orientation and pagination, and navigate with bookmarks and links to exported drawing sheets. Cabinet-only and report-only documents have no leading blank sheet. See [PDF project documentation](docs/pdf-export.md).
+
 ## Cabinet layout in 2D
 
 **Project → Cabinet layout 2D** provides millimetre-based mounting plates, rails, wiring ducts and device footprints linked to the schematic. Use structured main-article dimensions or explicitly entered sizes, place devices in free grid-aligned gaps, drag rails together with their mounted devices and inspect collisions, clearances, plate bounds and duplicate placements. Local draft undo/redo, checked project transactions, SVG/PDF export and drawing navigation are included. Layout references do not duplicate BOM articles or alter electrical wires. See [cabinet layout](docs/cabinet-layout.md).

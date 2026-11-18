@@ -1,0 +1,71 @@
+.pdf-export-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 22px;
+}
+#pdfExportDialog .eng-shell {
+  width: min(980px, 100%);
+}
+#pdfExportDialog fieldset {
+  border: 1px solid #3d526b;
+  border-radius: 7px;
+  padding: 12px;
+  margin: 12px 0;
+  min-width: 0;
+}
+#pdfExportDialog legend {
+  color: #a6cee9;
+  font-weight: 600;
+  padding: 0 5px;
+}
+#pdfExportDialog fieldset label {
+  margin: 10px 0;
+}
+#pdfExportDialog .pdf-section {
+  align-items: flex-start;
+}
+.pdf-section span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pdf-section strong,
+.pdf-section small {
+  display: block;
+}
+.pdf-section small {
+  margin-top: 4px;
+  color: #a9bfd4;
+}
+.pdf-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pdf-section-actions strong {
+  flex: 1;
+}
+.pdf-hint {
+  color: #a9bfd4;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.pdf-warning {
+  padding: 10px;
+  color: #e6bb78;
+  border-left: 3px solid #997844;
+  margin-top: 10px;
+}
+@media (max-width: 760px) {
+  .pdf-export-columns {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+#pdfExportDialog fieldset .eng-check {
+  display: flex;
+  width: 100%;
+}
+#pdfExportDialog fieldset .eng-field {
+  width: 100%;
+}

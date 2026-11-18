@@ -30,8 +30,41 @@ export function layoutManufacturingReport(
   rows: ReportRow[],
   projectName: string,
 ): ReportLayout {
-  const template = validateReportTemplate(input),
-    doc = new jsPDF({
+  return layoutPdfTable(validateReportTemplate(input), rows, projectName);
+}
+export type PdfTableTemplate = Pick<
+  ReportTemplate,
+  "title" | "paper" | "orientation" | "fontSize" | "columns"
+>;
+/** Common measured table layout, also used for the wider PLC/bus report. */
+export function layoutPdfTable(
+  template: PdfTableTemplate,
+  rows: ReportRow[],
+  projectName: string,
+): ReportLayout {
+  if (
+    !template.title?.trim() ||
+    template.title.length > 120 ||
+    !["a3", "a4"].includes(template.paper) ||
+    !["landscape", "portrait"].includes(template.orientation) ||
+    !Number.isFinite(template.fontSize) ||
+    template.fontSize < 6 ||
+    template.fontSize > 12 ||
+    !template.columns.length ||
+    template.columns.length > 20 ||
+    new Set(template.columns.map((c) => c.id)).size !==
+      template.columns.length ||
+    template.columns.some(
+      (c) =>
+        !c.label?.trim() ||
+        c.label.length > 80 ||
+        !Number.isFinite(c.weight) ||
+        c.weight < 1 ||
+        c.weight > 20,
+    )
+  )
+    throw Error("reportInvalid");
+  const doc = new jsPDF({
       format: template.paper,
       orientation: template.orientation,
       unit: "mm",
@@ -98,15 +131,13 @@ export function layoutManufacturingReport(
       );
       if (take < 1) throw Error("reportInvalid");
       const h = take * lineHeight + 3;
-      pages
-        .at(-1)!
-        .push({
-          key: row.key,
-          offset,
-          y,
-          height: h,
-          cells: cells.map((c) => c.slice(offset, offset + take)),
-        });
+      pages.at(-1)!.push({
+        key: row.key,
+        offset,
+        y,
+        height: h,
+        cells: cells.map((c) => c.slice(offset, offset + take)),
+      });
       y += h;
       offset += take;
     }
@@ -131,12 +162,25 @@ export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
     format: [layout.width, layout.height],
     orientation: layout.width > layout.height ? "landscape" : "portrait",
   });
+  appendManufacturingReportPdf(doc, layout, false);
+  return doc;
+}
+/** Append vector pages without converting them to images or changing their measured layout. */
+export function appendManufacturingReportPdf(
+  doc: jsPDF,
+  layout: ReportLayout,
+  append = true,
+  monochrome = false,
+) {
   layout.pages.forEach((fragments, page) => {
-    if (page)
+    if (append || page)
       doc.addPage(
         [layout.width, layout.height],
         layout.width > layout.height ? "landscape" : "portrait",
       );
+    doc.setTextColor(0);
+    doc.setDrawColor(0);
+    doc.setLineDashPattern([], 0);
     let y = 14;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(layout.fontSize + 4);
@@ -150,7 +194,13 @@ export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
       doc.text(line, 12, y);
       y += layout.lineHeight;
     }
-    doc.setFillColor(225, 234, 242);
+    doc.setFillColor(
+      ...((monochrome ? [232, 232, 232] : [225, 234, 242]) as [
+        number,
+        number,
+        number,
+      ]),
+    );
     doc.rect(
       12,
       layout.headingY - 3,
@@ -166,7 +216,13 @@ export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
     doc.setFont("helvetica", "normal");
     fragments.forEach((r, i) => {
       if (i % 2 === 0) {
-        doc.setFillColor(246, 248, 251);
+        doc.setFillColor(
+          ...((monochrome ? [248, 248, 248] : [246, 248, 251]) as [
+            number,
+            number,
+            number,
+          ]),
+        );
         doc.rect(12, r.y, layout.width - 24, r.height, "F");
       }
       r.cells.forEach((lines, c) =>
@@ -178,7 +234,13 @@ export function manufacturingReportPdf(layout: ReportLayout): jsPDF {
           ),
         ),
       );
-      doc.setDrawColor(190, 201, 211);
+      doc.setDrawColor(
+        ...((monochrome ? [200, 200, 200] : [190, 201, 211]) as [
+          number,
+          number,
+          number,
+        ]),
+      );
       doc.setLineWidth(0.15);
       doc.line(12, r.y + r.height, layout.width - 12, r.y + r.height);
     });

@@ -1,3 +1,6 @@
+import { prepareProjectPdfSections } from './ProjectPdfSections';
+import { appendManufacturingReportPdf } from './ManufacturingReportPdf';
+import { renderCabinetPdfPage } from '../ui/CabinetDrawing';
 import {wrapLabelText} from '../model/LabelLayout';
 import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
@@ -40,6 +43,9 @@ export interface PdfExportOptions {
   includeTerminalDiagram: boolean;
   includePartsList: boolean;
   plotFrame: boolean;
+  includeDrawings?: boolean;
+  /** Undefined includes all saved additions; [] exports only the legacy selected sections. */
+  additionalSections?: readonly string[];
 }
 
 export class PdfExporter {
@@ -59,18 +65,20 @@ export class PdfExporter {
 
     // Set Document Properties
     doc.setProperties({
-      title: `${project.name} - Stromlaufplan`,
-      subject: `Kommission: ${project.pages[0]?.plotFrame.titleBlock.commission || 'KOM-2026'}`,
+      title: `${project.name} - ${project.language === 'en' ? 'Project documentation' : 'Projektdokumentation'}`,
+      subject: `Kommission: ${project.pages[0]?.plotFrame.titleBlock.commission || ''}`,
       author: project.author || 'Schematico Engineer',
-      creator: 'Schematico CAE Suite',
+      creator: 'Schematico',
       keywords: 'Schematico, DIN EN 81346, IEC 60617, Schaltplan, CAD, ECAD'
     });
 
     // Filter pages to export
     let pagesToExport: Page[] = [];
-    if (options.pageRange === 'current' && options.currentPageId) {
+    if (options.includeDrawings === false) pagesToExport=[];
+    else if (options.pageRange === 'current') {
       const page = project.pages.find(p => p.id === options.currentPageId);
-      pagesToExport = page ? [page] : [project.pages[0]];
+      if(!page)throw Error('pdfPageMissing');
+      pagesToExport = [page];
     } else {
       pagesToExport = [...project.pages];
     }
@@ -89,8 +97,12 @@ export class PdfExporter {
       ? layoutTerminalDiagramPdf(TerminalDiagramGenerator.generateTerminalReport(project), pageHeightMm)
       : [];
     const bomPages = options.includePartsList ? layoutPartsListPdf(doc, PartsListGenerator.generatePartsList(project), pageHeightMm, bomColumns) : [];
-    const extraSheets = terminalPages.length + bomPages.length;
+    const additions = prepareProjectPdfSections(project, options.additionalSections, options.paperFormat);
+    const extraSheets = terminalPages.length + bomPages.length + additions.reduce((n,s)=>n+s.pages,0);
     const totalSheetsCount = pagesToExport.length + extraSheets;
+
+    if(!totalSheetsCount)throw Error('pdfNoContent');
+    if(!pagesToExport.length)doc.deletePage(1);
 
     // Render schematic pages
     for (let i = 0; i < pagesToExport.length; i++) {
@@ -115,7 +127,7 @@ export class PdfExporter {
       if (options.plotFrame) {
         this.renderPlotFrame(doc, page, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, project);
       }
-      if(page.pageType==='cover')this.renderCoverPage(doc,page,project,pageWidthMm,pageHeightMm,options.colorMode);
+      if(page.pageType==='cover')this.renderCoverPage(doc,page,project,pageWidthMm,pageHeightMm,options.colorMode,totalSheetsCount);
 
       // Render Floor Plan (Walls, Openings, Blueprint Background, Installation Wires)
       if (page.floorPlan) {
@@ -168,6 +180,31 @@ export class PdfExporter {
       this.renderPartsListPage(doc, project, pageWidthMm, pageHeightMm, options.colorMode, totalSheetsCount, bomPages);
     }
 
+    for(const section of additions) {
+      const start=doc.getNumberOfPages()+1;
+      if(section.kind==='cabinet') {
+        doc.addPage(options.paperFormat,section.board.widthMm>section.board.heightMm?'landscape':'portrait');
+        renderCabinetPdfPage(doc,section.board,section.labels,project.name,{monochrome:options.colorMode==='monochrome',pageTargets:options.interactiveCrossReferences?pageIdToPdfPageIndex:undefined});
+      } else {
+        appendManufacturingReportPdf(doc,section.layout,true,options.colorMode==='monochrome');
+        if(options.interactiveCrossReferences) {
+          const rows=new Map(section.rows.map(r=>[r.key,r]));
+          section.layout.pages.forEach((fragments,i)=>{
+            doc.setPage(start+i);
+            for(const f of fragments) {
+              const target=rows.get(f.key)?.targets.find(t=>pageIdToPdfPageIndex.has(t.pageId));
+              if(target)doc.link(12,f.y,section.layout.width-24,f.height,{pageNumber:pageIdToPdfPageIndex.get(target.pageId)!});
+            }
+          });
+        }
+      }
+      if(options.includeBookmarks&&doc.outline)doc.outline.add(null,section.title,{pageNumber:start});
+      for(let page=start;page<=start+section.pages-1;page++) {
+        doc.setPage(page);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(0);
+        doc.text(`${page} / ${totalSheetsCount}`,doc.internal.pageSize.getWidth()-12,doc.internal.pageSize.getHeight()-3,{align:'right'});
+      }
+      doc.setPage(doc.getNumberOfPages());
+    }
     return doc.output('blob');
   }
 
@@ -215,7 +252,7 @@ export class PdfExporter {
     }
   }
 
-  private static renderCoverPage(doc:jsPDF,page:Page,project:Project,wMm:number,hMm:number,colorMode:'color'|'monochrome'):void {
+  private static renderCoverPage(doc:jsPDF,page:Page,project:Project,wMm:number,hMm:number,colorMode:'color'|'monochrome',totalSheets=project.pages.length):void {
     const template=coverPageTemplate(project),sx=wMm/template.width,sy=hMm/template.height;
     this.renderImportedGraphics(doc,template.graphics,sx,sy,colorMode,0,0,'#7ca552');
     const logo=coverPageLogo(page,project);
@@ -224,7 +261,8 @@ export class PdfExporter {
       const width=image.width*factor,height=image.height*factor;
       doc.addImage(logo.dataUrl,logo.dataUrl.startsWith('data:image/png')?'PNG':'JPEG',logo.x*sx+(logo.width*sx-width)/2,logo.y*sy+(logo.height*sy-height)/2,width,height);
     }
-    for(const {text,value,cell,fit} of coverPageTextRuns(page,project)){
+    for(const run of coverPageTextRuns(page,project)){
+      const {text,cell}=run,value=text.property===10300&&text.text===undefined?String(totalSheets):run.value,fit=value===run.value?run.fit:fitFrameText(value,text,cell);
       if(!value)continue;
       doc.saveGraphicsState();doc.rect(cell.x*sx,cell.y*sy,cell.width*sx,cell.height*sy,null);doc.clip();doc.discardPath();
       doc.setFont('helvetica','normal');doc.setFontSize(fit.size*sy*72/25.4);

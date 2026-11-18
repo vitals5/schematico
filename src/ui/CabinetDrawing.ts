@@ -64,12 +64,39 @@ export function cabinetPdf(
   projectName: string,
 ) {
   const doc = new jsPDF({
-      format: "a3",
-      orientation: layout.widthMm > layout.heightMm ? "landscape" : "portrait",
-      unit: "mm",
-    }),
-    w = doc.internal.pageSize.getWidth(),
+    format: "a3",
+    orientation: layout.widthMm > layout.heightMm ? "landscape" : "portrait",
+    unit: "mm",
+  });
+  renderCabinetPdfPage(doc, layout, labels, projectName);
+  return doc;
+}
+export interface CabinetPdfOptions {
+  monochrome?: boolean;
+  pageTargets?: ReadonlyMap<string, number>;
+}
+/** Shared vector renderer for the standalone and complete project PDF. */
+export function renderCabinetPdfPage(
+  doc: jsPDF,
+  layout: CabinetLayout,
+  labels: Map<string, string>,
+  projectName: string,
+  options: CabinetPdfOptions = {},
+) {
+  const w = doc.internal.pageSize.getWidth(),
     h = doc.internal.pageSize.getHeight();
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
+  doc.setLineWidth(0.2);
+  doc.setLineDashPattern([], 0);
+  const color = (hex: string) => {
+    if (!options.monochrome) return hex;
+    const n = parseInt(hex.slice(1), 16),
+      v = Math.round(
+        0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255),
+      );
+    return `#${v.toString(16).padStart(2, "0").repeat(3)}`;
+  };
   doc.setFontSize(13);
   const title = doc.splitTextToSize(layout.name, w - 24) as string[];
   doc.text(title, 12, 12);
@@ -86,22 +113,33 @@ export function cabinetPdf(
     12,
     h - 8,
   );
-  doc.setDrawColor(70, 85, 100);
+  doc.setDrawColor(options.monochrome ? "#000000" : "#465564");
   doc.rect(12, top, layout.widthMm * s, layout.heightMm * s);
   for (const i of layout.items) {
     const b = cabinetBounds(i),
       x = 12 + b.x * s,
       y = top + b.y * s;
     doc.setFillColor(
-      ...((i.kind === "device"
-        ? [220, 234, 250]
-        : i.kind === "standard"
-          ? [244, 246, 247]
-          : i.kind === "rail"
-            ? [195, 203, 210]
-            : [230, 224, 211]) as [number, number, number]),
+      color(
+        i.kind === "device"
+          ? "#dceafa"
+          : i.kind === "standard"
+            ? "#f4f6f7"
+            : i.kind === "rail"
+              ? "#c3cbd2"
+              : "#e6e0d3",
+      ),
     );
     doc.rect(x, y, b.width * s, b.height * s, "FD");
+    if (i.kind === "rail") {
+      doc.setDrawColor(color("#8895a0"));
+      doc.setLineWidth(0.5 * s);
+      for (const offset of [3, b.height - 3, b.height / 2])
+        doc.line(x, y + offset * s, x + b.width * s, y + offset * s);
+    }
+    const target = i.source && options.pageTargets?.get(i.source.pageId);
+    if (i.kind === "device" && target)
+      doc.link(x, y, b.width * s, b.height * s, { pageNumber: target });
     const standard = cabinetStandard(i.standardId);
     if (standard) {
       const point = (px: number, py: number) =>
@@ -111,20 +149,20 @@ export function cabinetPdf(
       for (const p of cabinetDeviceFace(standard, i.widthMm, i.heightMm)) {
         const [px, py] = point(p.x, p.y);
         if (p.kind === "text") {
-          doc.setTextColor("#24394b");
+          doc.setTextColor(options.monochrome ? "#000000" : "#24394b");
           doc.setFontSize((p.size * s) / 0.352778);
           doc.text(p.text, px, py, {
             align: "center",
             angle: i.rotation === 90 ? 270 : 0,
           });
         } else {
-          doc.setDrawColor(p.stroke);
+          doc.setDrawColor(color(p.stroke));
           doc.setLineWidth(0.3 * s);
           if (p.kind === "line") {
             const [tx, ty] = point(p.x2, p.y2);
             doc.line(px, py, tx, ty);
           } else {
-            doc.setFillColor(p.fill);
+            doc.setFillColor(color(p.fill));
             if (p.kind === "circle") doc.circle(px, py, p.r * s, "FD");
             else if (i.rotation === 90)
               doc.rect(px - p.h * s, py, p.h * s, p.w * s, "FD");
@@ -133,20 +171,27 @@ export function cabinetPdf(
         }
       }
     }
-    doc.setDrawColor(70, 85, 100);
-    doc.setTextColor("#24394b");
+    doc.setDrawColor(options.monochrome ? "#000000" : "#465564");
+    doc.setTextColor(options.monochrome ? "#000000" : "#24394b");
     doc.setLineWidth(0.2);
     doc.setFontSize((3 * s) / 0.352778);
-    const lines = doc.splitTextToSize(
-      labels.get(i.id) || i.label,
-      Math.max(0.1, b.width * s - 2 * s),
+    // Match the editor's single clipped label, including its physical anchor.
+    doc.saveGraphicsState();
+    doc.rect(
+      x + s,
+      y + s,
+      Math.max(0.1, b.width - 2) * s,
+      Math.max(0.1, b.height - 2) * s,
+      null,
     );
-    if (b.height * s > 4 * s)
-      doc.text(
-        lines.slice(0, standard ? 1 : Math.max(1, Math.floor(b.height / 4))),
-        x + s,
-        y + (standard ? Math.min(b.height / 2 + 1, 7) : 3) * s,
-      );
+    doc.clip();
+    doc.discardPath();
+    doc.text(
+      (labels.get(i.id) || i.label).replace(/\s+/g, " "),
+      x + 2 * s,
+      y + Math.min(b.height / 2 + 1, 7) * s,
+    );
+    doc.restoreGraphicsState();
   }
   return doc;
 }
