@@ -1,5 +1,6 @@
 import { t, getUiLanguage } from '../i18n';
 import type { CatalogArticle } from '../model/ArticleTypes';
+import type {DrawingAccess} from './EngineeringDrawing';
 import {mountEngineeringVisualLens} from './EngineeringVisualLens';
 
 export type EngineeringIcon =
@@ -97,6 +98,7 @@ export function finishEngineeringDialog(
     title?: string;
     wide?: boolean;
     closeSelector?: string;
+    drawing?: DrawingAccess;
   },
 ) {
   const active = root.contains(document.activeElement)
@@ -369,5 +371,5 @@ export function finishEngineeringDialog(
     }
   }
   if (active?.isConnected) active.focus({ preventScroll: true });
-  mountEngineeringVisualLens(root);
+  mountEngineeringVisualLens(root,options.drawing);
 }

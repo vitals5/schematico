@@ -176,3 +176,37 @@
   stroke: #efba78 !important;
   stroke-width: 3 !important;
 }
+.eng-drawing-return {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  max-width: calc(100vw - 24px);
+  padding: 12px 18px;
+  background: #122b40;
+  border: 1px solid #79b9e5;
+  border-radius: 8px;
+  color: #d8ecff;
+  box-shadow: 0 8px 30px #0008;
+  font-size: 13px;
+}
+.eng-drawing-return span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eng-drawing-return button {
+  flex: none;
+  background: #315c7d;
+  color: #fff;
+  border: 1px solid #79b9e5;
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.modal-backdrop[hidden] {
+  display: none !important;
+}

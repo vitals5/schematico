@@ -46,6 +46,7 @@ export class WiringDialog {
       cableId?: string;
       coreId?: string;
     },
+    private navigate?: (pageId:string,componentId:string)=>void,
   ) {
     this.source = structuredClone(getProject());
     this.index = new ProjectIndex(this.source);
@@ -423,14 +424,14 @@ export class WiringDialog {
         });
     this.el.querySelector('[data-repairs]')?.addEventListener('click',()=>new CableRepairDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
     mountTerminalCableWorkspace(this.el,this.snapshot,this.workspace,{
-      openConfigurator:()=>{const identity=this.snapshot.terminals[0]?.entry.stripIdentity??this.source.terminalStrips?.[0]??{plant:'',location:'',strip:''};new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();}).show();},
-      configure:identity=>new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();}).show(),
+      openConfigurator:()=>{const identity=this.snapshot.terminals[0]?.entry.stripIdentity??this.source.terminalStrips?.[0]??{plant:'',location:'',strip:''};new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show();},
+      configure:identity=>new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show(),
       pickTerminal:key=>{this.terminal=key;this.workspace.tab='terminals';this.workspace.panel='terminal';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
       pickCable:(key,core)=>{this.cable=key;this.core=core??'';this.workspace.tab='cables';this.workspace.panel=core?'core':'cable';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
       refresh:()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.workspace.panel=undefined;this.render();},
       closePanel:()=>{this.workspace.panel=undefined;this.preview=undefined;this.draft=undefined;this.error='';this.render();}
     });
-    finishEngineeringDialog(this.el, { kind: 'wiring', description: t('engineeringWiringHint'), wide: true });
+    finishEngineeringDialog(this.el, { kind: 'wiring', description: t('engineeringWiringHint'), wide: true, drawing:this.navigate?{project:this.getProject,navigate:this.navigate}:undefined });
     focusArticleModal(this.el);
   }
 }

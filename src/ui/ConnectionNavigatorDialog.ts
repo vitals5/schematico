@@ -1,3 +1,4 @@
+import {visualDrawingTargets} from './EngineeringDrawing';
 import './WiringWorkspace.css';
 import type {Project} from '../model/types';
 import {connectionList,filterConnections,connectionColumns,connectionCells,withConnectionLength,type ConnectionRow} from '../reports/ConnectionList';
@@ -42,7 +43,7 @@ export class ConnectionNavigatorDialog{
     const choose=(e:MouseEvent)=>{const button=(e.target as Element).closest<HTMLButtonElement>('button[data-row]');if(button){const row=this.rows[Number(button.dataset.row)];if(row)this.detail(row);}};
     q('[data-rows]').onclick=choose;q('[data-visual]').onclick=choose;
     q('.wire-tools .eng-tools-items').onclick=e=>{if((e.target as Element).closest('button'))(q('.wire-tools') as HTMLDetailsElement).open=false;};
-    this.renderRows();finishEngineeringDialog(this.el,{kind:'wiring',description:'Quelle, Ziel und Netzzusammenhang auf einen Blick',wide:true});focusArticleModal(this.el);
+    this.renderRows();finishEngineeringDialog(this.el,{kind:'wiring',description:'Quelle, Ziel und Netzzusammenhang auf einen Blick',wide:true,drawing:{project:this.getProject,navigate:this.navigate,targets:id=>{const row=this.rows.find(r=>JSON.stringify(['wire',r.key])===id);return row?[...new Map([[row.fromPageId,row.fromComponentId],[row.toPageId,row.toComponentId]].flatMap(([p,c])=>visualDrawingTargets(this.getProject(),JSON.stringify(['terminal',JSON.stringify([p,c])]))).map(t=>[JSON.stringify([t.pageId,t.componentId]),t])).values()]:[];}}});focusArticleModal(this.el);
   }
   private renderRows(){const rows=this.filtered(),size=this.view==='graphic'?24:100;this.offset=Math.min(this.offset,Math.max(0,Math.floor((rows.length-1)/size)*size));
     this.el.querySelector('[data-count]')!.textContent=`${rows.length} von ${this.rows.length} Verbindungen · ${rows.length?this.offset+1:0}–${Math.min(this.offset+size,rows.length)}`;

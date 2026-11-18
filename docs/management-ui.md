@@ -34,3 +34,11 @@ Navigation über Miniübersicht, Auswahlliste oder „Nächster Hinweis“ öffn
 Die Hervorhebung verwendet konkrete Datensätze: CPU/Baugruppe/Kanal-Zuordnung, dokumentierte Busverbindungen und Schnittstellenzuordnungen, KNX-Objektzuordnung, eindeutig gespeicherte Gegenkontaktpaarungen, tatsächliche Netz-IDs, elektrische Klemmenbrücken, bestätigte gemeinsame Klemmenpositionen sowie Kabel-/Aderzuordnungen. Mechanische Paarungen, Baugruppenzugehörigkeit und Funkzuordnungen werden dadurch nicht zu elektrischen Verbindungen. Gleiche Namen oder Potenzialbeschriftungen erzeugen keine Beziehungen.
 
 Die Fokuslinse arbeitet ausschließlich mit der aktuellen grafischen Auswahl nach Suche, Filter und Seitennavigation. Bereits bestehende Darstellungsgrenzen bleiben bestehen; die vollständigen Daten sind weiterhin in den Listen und über die Suche erreichbar. Ein leerer sichtbarer Hinweisbestand ist keine Freigabe des gesamten Projekts. Die Navigation berechnet keine Schaltung neu und führt keine Layoutoptimierung aus.
+
+### Vom Objekt zur Zeichnung und zurück
+
+**‹ / ›** blättern zyklisch durch die aktuell dargestellten Objekte. **Eigenschaften öffnen** führt die vorhandene Bearbeitungsaktion des fokussierten Objekts aus; gesperrte Aktionen bleiben gesperrt. Suche, Filter und die bestehende Seitennavigation bestimmen weiterhin den angezeigten Ausschnitt.
+
+**Im Plan ansehen** erscheint bei einer eindeutigen gespeicherten Zeichnungszuordnung. Dazu gehören Anschlusszuordnungen von SPS-Kanälen und Steckerkontakten, gebundene Busteilnehmer, Klemmen, bestätigte Klemmenpositionen und die Endgeräte zugeordneter Kabeladern beziehungsweise Verbindungen. Bei mehreren Zielen wählt die Auswahlliste das gewünschte Gerät. Es werden bis zu 32 unterschiedliche Geräteziele angezeigt. Reserven, reine Zubehörpositionen oder Objekte ohne eindeutige Zuordnung erhalten kein erfundenes Ziel.
+
+Beim Aufruf werden die Werkzeugfenster vorübergehend ausgeblendet und die vorhandene Zeichnungsnavigation fokussiert das Gerät. **Zurück zum Werkzeug** stellt dieselben Fenster mit ihren Entwürfen, Filtern, Zoom und Fokus wieder her. Escape am Zurück-Knopf führt ebenfalls zurück. Die Vorschau übernimmt keine Eigenschaftenänderungen. Falls das Projekt währenddessen bearbeitet wurde, gelten beim späteren Übernehmen weiterhin die vorhandenen Prüfungen auf einen veralteten Projektstand.

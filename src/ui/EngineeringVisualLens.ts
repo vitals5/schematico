@@ -1,3 +1,8 @@
+import {
+  visualDrawingTargets,
+  type DrawingAccess,
+  type DrawingTarget,
+} from "./EngineeringDrawing";
 import { t } from "../i18n";
 import {
   clampVisualScale,
@@ -15,7 +20,10 @@ const surfaces: Record<string, string> = {
 const instances = new WeakMap<HTMLElement, VisualLens>(),
   live = new Set<VisualLens>();
 let cleanup: MutationObserver | undefined;
-export function mountEngineeringVisualLens(root: HTMLElement) {
+export function mountEngineeringVisualLens(
+  root: HTMLElement,
+  drawing?: DrawingAccess,
+) {
   if (!surfaces[root.id]) return;
   let lens = instances.get(root);
   if (!lens) {
@@ -37,9 +45,18 @@ export function mountEngineeringVisualLens(root: HTMLElement) {
       cleanup.observe(document.body, { childList: true });
     }
   }
+  lens.targetCacheReset();
+  lens.drawing = drawing;
   lens.mount();
 }
 class VisualLens {
+  drawing?: DrawingAccess;
+  private targetCache?: {
+    project: unknown;
+    id: string;
+    targets: DrawingTarget[];
+  };
+  private restoreDrawing?: () => void;
   private scale = 1;
   private trace = false;
   private problems = false;
@@ -119,13 +136,49 @@ class VisualLens {
       signal,
     });
   }
+  targetCacheReset() {
+    this.targetCache = undefined;
+  }
   mount() {
     const header = this.root.querySelector(".eng-header");
     if (!header) return;
     header.after(this.toolbar);
-    this.toolbar.innerHTML = `<strong>${t("visualLens")}</strong><button type="button" data-lens-out aria-label="${t("visualZoomOut")}">−</button><span data-lens-scale></span><button type="button" data-lens-in aria-label="${t("visualZoomIn")}">+</button><button type="button" data-lens-fit>${t("visualFit")}</button><button type="button" data-lens-reset>100%</button><button type="button" data-lens-trace aria-pressed="${this.trace}">${t("visualTrace")}</button><button type="button" data-lens-problems aria-pressed="${this.problems}">${t("visualFindings")}</button><button type="button" data-lens-next>${t("visualNextFinding")}</button><select data-lens-jump aria-label="${t("visualJump")}"></select><div class="eng-lens-map" data-lens-map aria-hidden="true"></div><span data-lens-context role="status"></span><button type="button" data-lens-clear aria-label="${t("visualClear")}">×</button>`;
+    this.toolbar.innerHTML = `<strong>${t("visualLens")}</strong><button type="button" data-lens-out aria-label="${t("visualZoomOut")}">−</button><span data-lens-scale></span><button type="button" data-lens-in aria-label="${t("visualZoomIn")}">+</button><button type="button" data-lens-fit>${t("visualFit")}</button><button type="button" data-lens-reset>100%</button><button type="button" data-lens-trace aria-pressed="${this.trace}">${t("visualTrace")}</button><button type="button" data-lens-problems aria-pressed="${this.problems}">${t("visualFindings")}</button><button type="button" data-lens-next>${t("visualNextFinding")}</button><button type="button" data-lens-previous aria-label="${t("visualPrevious")}">‹</button><button type="button" data-lens-following aria-label="${t("visualFollowing")}">›</button><button type="button" data-lens-properties>${t("visualProperties")}</button><select data-lens-target aria-label="${t("visualDrawingTarget")}" hidden></select><button type="button" data-lens-drawing hidden>${t("visualDrawing")}</button><select data-lens-jump aria-label="${t("visualJump")}"></select><div class="eng-lens-map" data-lens-map aria-hidden="true"></div><span data-lens-context role="status"></span><button type="button" data-lens-clear aria-label="${t("visualClear")}">×</button>`;
     const q = <T extends HTMLElement = HTMLElement>(s: string) =>
       this.toolbar.querySelector<T>(s)!;
+    const step = (offset: number) => {
+      const ids = [...new Set(this.entries.map((e) => e.record.id))];
+      if (!ids.length) return;
+      const at = ids.indexOf(this.pinned ?? "");
+      this.jump(
+        ids[
+          at < 0
+            ? offset > 0
+              ? 0
+              : ids.length - 1
+            : (at + offset + ids.length) % ids.length
+        ],
+      );
+    };
+    q("[data-lens-previous]").onclick = () => step(-1);
+    q("[data-lens-following]").onclick = () => step(1);
+    q("[data-lens-properties]").onclick = () => {
+      const item = this.entries.find((e) => e.record.id === this.pinned);
+      if (!item) return;
+      const el = item.element.matches("button,g[role=button]")
+        ? item.element
+        : item.element.querySelector("[data-articles]");
+      if (el && !el.matches(":disabled"))
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    };
+    q("[data-lens-drawing]").onclick = () => {
+      const target = this.targets().find(
+        (t) =>
+          JSON.stringify([t.pageId, t.componentId]) ===
+          q<HTMLSelectElement>("[data-lens-target]").value,
+      );
+      if (target) this.peekDrawing(target);
+    };
     q("[data-lens-in]").onclick = () => this.zoom(this.scale + 0.15);
     q("[data-lens-out]").onclick = () => this.zoom(this.scale - 0.15);
     q("[data-lens-reset]").onclick = () => this.zoom(1);
@@ -163,6 +216,74 @@ class VisualLens {
       if (id) this.jump(id);
     };
     this.schedule();
+  }
+  private targets() {
+    if (!this.drawing || !this.pinned) return [];
+    const project = this.drawing.project();
+    if (
+      this.targetCache?.project !== project ||
+      this.targetCache.id !== this.pinned
+    )
+      this.targetCache = {
+        project,
+        id: this.pinned,
+        targets:
+          this.drawing.targets?.(this.pinned) ??
+          visualDrawingTargets(project, this.pinned),
+      };
+    return this.targetCache.targets;
+  }
+  private peekDrawing(target: DrawingTarget) {
+    if (!this.drawing || this.restoreDrawing) return;
+    const live = visualDrawingTargets(
+      this.drawing.project(),
+      JSON.stringify([
+        "terminal",
+        JSON.stringify([target.pageId, target.componentId]),
+      ]),
+    );
+    if (!live.length) return;
+    const overlays = [
+        ...document.querySelectorAll<HTMLElement>(".modal-backdrop"),
+      ].filter((el) => !el.hidden),
+      hidden = overlays.map((el) => ({ el, hidden: el.hidden })),
+      focus = document.activeElement as HTMLElement | null,
+      bar = document.createElement("div");
+    bar.className = "eng-drawing-return";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", t("visualReturn"));
+    const text = document.createElement("span");
+    text.textContent = target.label;
+    const back = document.createElement("button");
+    back.type = "button";
+    back.textContent = t("visualReturn");
+    bar.append(text, back);
+    const restore = () => {
+      for (const { el, hidden: before } of hidden) el.hidden = before;
+      bar.remove();
+      this.restoreDrawing = undefined;
+      if (this.root.isConnected) {
+        focus?.focus({ preventScroll: true });
+        this.schedule();
+      }
+    };
+    this.restoreDrawing = restore;
+    back.onclick = restore;
+    bar.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        restore();
+      }
+    };
+    try {
+      this.drawing.navigate(target.pageId, target.componentId);
+      overlays.forEach((el) => (el.hidden = true));
+      document.body.append(bar);
+      back.focus();
+    } catch {
+      restore();
+    }
   }
   private zoom(value: number) {
     this.scale = clampVisualScale(value);
@@ -211,6 +332,7 @@ class VisualLens {
     });
   }
   private update() {
+    if (this.restoreDrawing) return;
     for (const el of this.root.querySelectorAll("[data-eng-surface]"))
       el.removeAttribute("data-eng-surface");
     const active = [
@@ -280,6 +402,41 @@ class VisualLens {
       issues = unique.filter((r) => r.issue);
     q<HTMLButtonElement>("[data-lens-next]").disabled = !issues.length;
     q<HTMLButtonElement>("[data-lens-fit]").disabled = !unique.length;
+    q<HTMLButtonElement>("[data-lens-previous]").disabled = !unique.length;
+    q<HTMLButtonElement>("[data-lens-following]").disabled = !unique.length;
+    const entry = this.entries.find(
+        (e) => e.record.id === this.pinned,
+      )?.element,
+      action = entry?.matches("button,g[role=button]")
+        ? entry
+        : entry?.querySelector("[data-articles]");
+    q<HTMLButtonElement>("[data-lens-properties]").disabled =
+      !action || action.matches(":disabled");
+    const targets = this.targets(),
+      picker = q<HTMLSelectElement>("[data-lens-target]"),
+      signatureTargets = JSON.stringify(targets),
+      oldTarget = picker.value;
+    if (picker.dataset.signature !== signatureTargets) {
+      picker.dataset.signature = signatureTargets;
+      picker.replaceChildren(
+        ...targets.map(
+          (target) =>
+            new Option(
+              target.label,
+              JSON.stringify([target.pageId, target.componentId]),
+            ),
+        ),
+      );
+      if (
+        targets.some(
+          (target) =>
+            JSON.stringify([target.pageId, target.componentId]) === oldTarget,
+        )
+      )
+        picker.value = oldTarget;
+    }
+    picker.hidden = targets.length < 2;
+    q("[data-lens-drawing]").hidden = !targets.length;
     const select = q<HTMLSelectElement>("[data-lens-jump]"),
       old = select.value;
     const signature = JSON.stringify(
@@ -377,6 +534,7 @@ class VisualLens {
     q("[data-lens-map]").replaceChildren(svg);
   }
   destroy() {
+    this.restoreDrawing?.();
     this.events.abort();
     this.observer.disconnect();
     this.resize.disconnect();
