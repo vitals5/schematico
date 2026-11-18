@@ -736,3 +736,13 @@ console.log('✓ Text elements: rendering, multiline tspans, formatting, selecti
   sources[0].crossRef='/3.2';assert(c.renderComponents().includes('/3.2'),'Rendering after an edit resolves current data');
 }
 console.log('✓ Rendering work stays bounded: shared reference index per pass; pan, zoom and hover preserve the drawing DOM');
+
+// Looking up an existing device must not generate another electrical edit.
+const {terminalCableWorkspaceFixture}=await import('../ui/testing/TerminalCableWorkspaceFixture');
+const navigationProject=terminalCableWorkspaceFixture(),navigationPage=navigationProject.pages[0],navigationBefore=structuredClone(navigationPage);
+const navigationCanvas=Object.assign(Object.create(CadCanvas.prototype),{project:navigationProject,activePage:navigationPage,autoconnectEnabled:true,mode:'select',cancelBoxInteraction:()=>{},render:()=>{},callbacks:{onSelectComponent:()=>{},onSelectWire:()=>{}}});
+CadCanvas.prototype.setPage.call(navigationCanvas,navigationPage.id,false);
+assert.deepEqual(navigationPage,navigationBefore,'Inspection navigation preserves all connections and placement data');
+CadCanvas.prototype.setPage.call(navigationCanvas,navigationPage.id);
+assert.notDeepEqual(navigationPage.wires,navigationBefore.wires,'The fixture exposes real autoconnect work retained for ordinary editing navigation');
+console.log('✓ Inspection navigation preserves stored topology while ordinary page changes retain autoconnect');

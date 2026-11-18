@@ -63,7 +63,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel'))+opt('menuToggleFloatingBar',t('menuToggleFloatingBar')),'menu-item')}
         ${menu('menuDataTrigger',t('menuData'),
           opt('menuPlausibility',t('menuPlausibility'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
-          opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
+          opt('menuManufacturingReports',t('reportDesigner'))+opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
         ${menu('menuAiTrigger','AI & MCP',
           opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+
           opt('menuAiSettings','KI-Anbieter & Modell (BYOK)...')+separator+

@@ -1,3 +1,4 @@
+import {ManufacturingReportDialog} from './ManufacturingReportDialog';
 import {AutomationDialog} from './AutomationDialog';
 import {MacroParametersDialog} from './MacroParametersDialog';
 import {macroParameters} from '../model/MacroParameters';
@@ -499,7 +500,7 @@ export class App {
         this.exportComponentsAsMacro(comps);
       },
       onNavigateToPage: (pageId) => {
-        this.canvas.setPage(pageId);
+        this.canvas.setPage(pageId, false);
         this.updateUI();
       },
       onUndo: () => this.undo(),
@@ -1364,6 +1365,7 @@ export class App {
     });
 
     // Projektdaten
+    bindMenuOpt('menuManufacturingReports',()=>{this.canvas.finishInteraction();new ManufacturingReportDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
         getProject:()=>this.project,

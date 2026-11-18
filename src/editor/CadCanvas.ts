@@ -186,7 +186,7 @@ export class CadCanvas {
     this.render();
   }
 
-  public setPage(pageId: string): void {
+  public setPage(pageId: string, recompute = true): void {
     const page = this.project.pages.find(p => p.id === pageId);
     if (page) {
       this.cancelBoxInteraction();
@@ -205,7 +205,7 @@ export class CadCanvas {
       this.callbacks.onSelectText?.(null);
       this.callbacks.onSelectComponent(null);
       this.callbacks.onSelectWire(null);
-      if (this.autoconnectEnabled) {
+      if (this.autoconnectEnabled && recompute) {
         AutoconnectEngine.updatePageAutoconnections(this.activePage);
       }
       this.render();
@@ -316,7 +316,7 @@ export class CadCanvas {
     this.setMode('select');
     this.isDraggingComponent = false; this.touchMode = 'none'; this.lastMousePress = null;
     this.callbacks.onNavigateToPage?.(target.pageId);
-    if (this.activePage.id !== target.pageId) this.setPage(target.pageId);
+    if (this.activePage.id !== target.pageId) this.setPage(target.pageId, false);
     const component = this.activePage.components.find(c => c.id === target.componentId) ?? null;
     this.selectedComponentId = component?.id ?? null;
     this.selectedWireId = null;

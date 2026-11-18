@@ -11,6 +11,7 @@ import {
   type VisualRecord,
 } from "./EngineeringVisualModel";
 const surfaces: Record<string, string> = {
+  manufacturingReportDialog:"[data-report-preview]",
   automationDialog: "[data-visual]",
   connectorNavigator: "[data-visual]",
   connectionNavigator: "[data-visual]",

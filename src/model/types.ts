@@ -450,6 +450,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  manufacturingReportTemplates?: import('../reports/ManufacturingReports').ReportTemplate[];
   terminalStrips?:import('./TerminalStripTypes').TerminalStripConfiguration[];
   automationMl?:import('./AutomationMl').AutomationMlSource;
   automation?:import('./Automation').AutomationData;

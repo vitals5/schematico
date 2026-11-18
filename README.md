@@ -87,6 +87,10 @@ Open **Project → Connection list / wiring navigator** for graphical source/tar
 
 A shared **Focus lens** in the PLC/bus, connector, connection, terminal/cable and terminal assembly workspaces adds graphic-only zoom, fit, a clickable overview map and keyboard-accessible object navigation. Highlight saved relationships or jump through displayed objects with findings while keeping property drafts intact. Previous/next navigation and a properties action support stepwise inspection. **View in drawing** focuses an explicitly assigned device and provides a return button that preserves open workspace drafts; multiple device targets can be selected. Focus is based on explicit memberships, mappings and real net identities; the current filters and graphic limits still apply. See [graphical workspace navigation](docs/management-ui.md#fokuslinse-für-grafische-arbeitsbereiche).
 
+## Manufacturing report designer
+
+**Reports → Manufacturing reports & designer** provides terminal, cable/core, connector and wiring tables with project-saved templates. Choose columns, headings, order, width weights, font size, A3/A4 and orientation; filter and sort the report, inspect paginated previews and export PDF/CSV. Preview and PDF share measured line wrapping and page breaks, including continued long rows. Templates support JSON exchange, copying, removal and undo. Report navigation can inspect assigned devices without rebuilding autoconnect. See [report designer](docs/report-designer.md).
+
 ## Plug and socket management
 
 **Project → Plug and socket navigator** shows clickable housing/contact cards and saved counterpart mappings alongside the full list. It manages housings, contact positions, explicit free/reserve states, library-pin assignments and one-to-one counterpart mappings. Changes use preview/apply and undo. Search, drawing navigation, shared inspection findings and CSV/PDF connector plans are included. Counterpart mappings document mechanical pairing without adding electrical connections or duplicate BOM articles. See [connector management](docs/connectors.md).

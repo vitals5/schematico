@@ -1,0 +1,107 @@
+.mr-note {
+  font-size: 12px;
+  color: #acc2d6;
+  line-height: 1.5;
+}
+.mr-workspace {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 20px;
+}
+.mr-settings {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mr-settings > label {
+  display: grid;
+  gap: 5px;
+}
+.mr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 7px 0;
+}
+.mr-actions > input,
+.mr-actions > select {
+  min-width: 100px;
+  flex: 1;
+  max-width: 100%;
+}
+.mr-actions label {
+  min-width: 70px;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+.mr-actions input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.mr-column {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 48px 28px 28px;
+  gap: 5px;
+  align-items: center;
+}
+.mr-column input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.mr-column .btn {
+  padding: 4px !important;
+}
+.mr-main {
+  min-width: 0;
+}
+.mr-paper-scroll {
+  max-height: 65vh;
+  overflow: auto;
+  padding: 14px;
+  background: #0b1521;
+  border: 1px solid #37506c;
+  border-radius: 6px;
+}
+.mr-sheet {
+  display: block;
+  max-width: none;
+  box-shadow: 0 5px 20px #0007;
+  color: #111;
+}
+.mr-sheet g[role="button"] {
+  cursor: pointer;
+}
+.mr-sheet g[role="button"]:focus {
+  outline: 1px solid #2181b9;
+}
+.mr-selected {
+  font-size: 12px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+  color: #c5dcef;
+}
+.mr-settings input[type="number"] {
+  max-width: 90px;
+}
+.mr-settings h3 {
+  margin: 8px 0 0;
+}
+@media (max-width: 950px) {
+  .mr-workspace {
+    grid-template-columns: 1fr;
+  }
+  .mr-settings {
+    max-width: 100%;
+  }
+  .mr-paper-scroll {
+    max-height: 60vh;
+  }
+}
+.engineering-overlay .mr-sheet g[data-eng-id].eng-lens-origin > rect,
+.engineering-overlay .mr-sheet g[data-eng-id].eng-lens-related > rect {
+  stroke-width: 0.5 !important;
+}
