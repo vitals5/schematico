@@ -7,6 +7,14 @@ const listeners = new Set<Listener>();
 
 export const translations = {
   de: {
+    projectRevisions: "Projektstände & Freigaben…",
+    electricalDimensioning: "Elektrische Dimensionierung…",
+    pdfDimensioning: "Elektrische Dimensionierung",
+    pdfRevisions: "Projektstände und Freigaben",
+    revisionInvalid: "Revisionsarchiv ungültig",
+    inspectionRule_dimensioning_input: "Dimensionierung: Angaben fehlen",
+    inspectionRule_dimensioning_limit: "Dimensionierung: Grenzwert verletzt",
+
     pdfPortrait: "Hochformat",
     pdfLandscape: "Querformat",
     pdfObjects: "Objekte",
@@ -1722,6 +1730,14 @@ export const translations = {
     ctxDoorFlipSwing: '🚪 Türanschlag spiegeln'
   },
   en: {
+    projectRevisions: "Project revisions & approvals…",
+    electricalDimensioning: "Electrical dimensioning…",
+    pdfDimensioning: "Electrical dimensioning",
+    pdfRevisions: "Project revisions and approvals",
+    revisionInvalid: "Invalid revision archive",
+    inspectionRule_dimensioning_input: "Dimensioning: missing inputs",
+    inspectionRule_dimensioning_limit: "Dimensioning: limit exceeded",
+
     pdfPortrait: "Portrait",
     pdfLandscape: "Landscape",
     pdfObjects: "objects",

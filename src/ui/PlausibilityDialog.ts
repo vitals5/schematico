@@ -41,6 +41,7 @@ const ruleLabel = (id: string) => {
   return key in translations.de ? t(key) : id;
 };
 export class PlausibilityDialog {
+  private onDimensioning?: (id: string) => void;
   private onPotential?: (id?: string) => void;
   private onWiring?: (
     location: import('../model/ElectricalInspection').InspectionLocation,
@@ -67,6 +68,7 @@ export class PlausibilityDialog {
           onApply?: (project: Project) => void;
           getProject?: () => Project;
           onManagePotential?: (id?: string) => void;
+          onManageDimensioning?: (id: string) => void;
           onManageWiring?: (
             location: import('../model/ElectricalInspection').InspectionLocation,
           ) => void;
@@ -86,6 +88,7 @@ export class PlausibilityDialog {
       this.onArticles = onNavigateOrOptions.onManageArticles;
       this.onWiring = onNavigateOrOptions.onManageWiring;
       this.onPotential = onNavigateOrOptions.onManagePotential;
+      this.onDimensioning = onNavigateOrOptions.onManageDimensioning;
     }
   }
 
@@ -274,7 +277,7 @@ export class PlausibilityDialog {
       <td style="padding:6px">${task.current ? `<input type="checkbox" data-task-check="${index}" ${this.selectedTasks.has(m.id) ? 'checked' : ''} ${this.onApply ? '' : 'disabled'}>` : ''}${escapeSvg(t(({ error: 'plausSeverityError', warning: 'plausSeverityWarning', info: 'plausSeverityInfo' } as const)[m.severity]))}</td><td>${escapeSvg(m.pageNumber)}</td><td>${escapeSvg(m.bmk || '-')}</td>
       <td style="padding:6px"><div>${escapeSvg(m.message)}</div>${compatibilityDetails ? `<ul>${compatibilityDetails}</ul>` : ''}<div style="color:#9ae6b4">${escapeSvg(t(('worklist_' + (task.current ? task.status : 'resolved')) as any))} · ${escapeSvg(t(('worklist_' + task.change) as any))}${task.reason ? ' · ' + escapeSvg(task.reason) : ''}${task.staleDecision ? ' · ' + t('worklistStale') : ''}</div><div style="font-size:10px;color:#90cdf4">${escapeSvg(m.ruleId)} · ${escapeSvg(m.location.pinId ?? m.location.wireId ?? '')}</div>
       <div style="font-size:10px">${escapeSvg(originLabel(m))} · ${escapeSvg(t(('articleRole_' + (m.articleData?.role ?? 'unknown')) as any))} · ${escapeSvg(m.articleData?.symbolId ?? '')}</div>
-      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${task.current && this.onArticles && articleRepairRules.has(m.ruleId) ? `<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>` : ''}${task.current && this.onWiring && (m.ruleId.startsWith('cable_') || m.ruleId === 'terminal_number_duplicate') ? `<button class="btn" data-edit-wiring>${t('wiringManage')}</button>` : ''}${task.current && this.onPotential && m.ruleId.startsWith('potential_') ? `<button class="btn" data-edit-potential>${t('potentialTitle')}</button>` : ''}</td></tr>`;
+      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${task.current && this.onArticles && articleRepairRules.has(m.ruleId) ? `<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>` : ''}${task.current && this.onWiring && (m.ruleId.startsWith('cable_') || m.ruleId === 'terminal_number_duplicate') ? `<button class="btn" data-edit-wiring>${t('wiringManage')}</button>` : ''}${task.current && this.onDimensioning && m.ruleId.startsWith('dimensioning_') ? `<button class="btn" data-edit-dimensioning>${t('electricalDimensioning')}</button>` : ''}${task.current && this.onPotential && m.ruleId.startsWith('potential_') ? `<button class="btn" data-edit-potential>${t('potentialTitle')}</button>` : ''}</td></tr>`;
     };
     const addressesFor = (findings: PlausibilityMessage[]) => [
       ...new Map(
@@ -467,6 +470,9 @@ export class PlausibilityDialog {
       const selected = el.closest<HTMLElement>('.plaus-row');
       if (!selected) return;
       const finding = messages[Number(selected.dataset.findingIndex)];
+      if (el.closest('[data-edit-dimensioning]')) {
+        closeModal();this.onDimensioning?.(String(finding.cause.details.circuitId ?? ''));return;
+      }
       if (el.closest('[data-edit-potential]')) {
         this.onPotential?.(
           typeof finding.cause.details.definitionId === 'string'

@@ -450,6 +450,9 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  revisions?: import('./ProjectRevisions').SavedProjectRevision[];
+  revisionOriginId?: string;
+  dimensioning?: import('./ElectricalDimensioning').CircuitDimensioning[];
   cabinetLayouts?: import('./CabinetLayout').CabinetLayout[];
   manufacturingReportTemplates?: import('../reports/ManufacturingReports').ReportTemplate[];
   terminalStrips?:import('./TerminalStripTypes').TerminalStripConfiguration[];

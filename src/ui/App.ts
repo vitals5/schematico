@@ -1,4 +1,5 @@
 import {CabinetLayoutDialog} from './CabinetLayoutDialog';
+import type {CircuitDimensioning} from '../model/ElectricalDimensioning';
 import {ManufacturingReportDialog} from './ManufacturingReportDialog';
 import {AutomationDialog} from './AutomationDialog';
 import {MacroParametersDialog} from './MacroParametersDialog';
@@ -564,6 +565,19 @@ export class App {
       const component=page.components.find(c=>c.id===(componentId??wire?.from.componentId));
       this.canvas.focusInspection({pageId,pageNumber:page.pageNumber,componentId,wireId,
         x:component?.x??page.plotFrame.width/2,y:component?.y??page.plotFrame.height/2});
+      this.updateUI();
+    }, row => {
+      void import('../model/ElectricalDimensioning').then(({connectionDimensioning}) => this.openElectricalDimensioning(connectionDimensioning(this.project,row)));
+    }).show();
+  }
+
+  private async openElectricalDimensioning(initial?:CircuitDimensioning) {
+    this.canvas.finishInteraction();
+    const {ElectricalDimensioningDialog} = await import('./ElectricalDimensioningDialog');
+    new ElectricalDimensioningDialog(()=>this.project,p=>this.applyProjectTransaction(p),initial,ref=>{
+      const page = this.project.pages.find(p=>p.id===ref.pageId) ?? this.project.pages.find(p=>p.components.some(c=>c.id===ref.from.componentId));
+      const c = page?.components.find(c=>c.id===ref.from.componentId);
+      if(page&&c)this.canvas.focusInspection({pageId:page.id,pageNumber:page.pageNumber,componentId:c.id,wireId:ref.wireId,x:c.x,y:c.y});
       this.updateUI();
     }).show();
   }
@@ -1367,6 +1381,8 @@ export class App {
 
     // Projektdaten
     bindMenuOpt('menuCabinetLayout',()=>{this.canvas.finishInteraction();new CabinetLayoutDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
+    bindMenuOpt('menuProjectRevisions',()=>{this.canvas.finishInteraction();void import('./ProjectRevisionsDialog').then(({ProjectRevisionsDialog})=>new ProjectRevisionsDialog(()=>this.project,p=>this.applyProjectTransaction(p)).show());});
+    bindMenuOpt('menuDimensioning',()=>{void this.openElectricalDimensioning();});
     bindMenuOpt('menuManufacturingReports',()=>{this.canvas.finishInteraction();new ManufacturingReportDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
     bindMenuOpt('menuPlausibility', () => {
       new PlausibilityDialog(this.project, {
@@ -1375,6 +1391,7 @@ export class App {
         onManageArticles:addresses=>this.openArticleWorkbench(addresses),
         onManageWiring:location=>this.openWiringWorkbench(location),
         onManagePotential:id=>this.openPotentialDefinitions(id),
+        onManageDimensioning:id=>{const r=this.project.dimensioning?.find(r=>r.id===id);if(r)void this.openElectricalDimensioning(r);},
         onNavigateToFinding:(finding)=>{this.canvas.focusInspection(finding.location);this.updateUI();},
         onNavigateToPage: (pageId) => {
           this.canvas.setPage(pageId);

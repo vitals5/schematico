@@ -12,8 +12,9 @@ import { isConnectionSymbol, isInterruptionSymbol } from './ConnectionSymbols';
 import { referenceTargets } from './CrossReferenceNavigation';
 import { componentInsertionPoint, rotatedLocalPoint } from './SymbolGeometry';
 import { t } from '../i18n';
+import {dimensioningResults} from './ElectricalDimensioning';
 import {articleDataContext,ARTICLE_DATA_STATES,type ArticleDataContext} from './ArticleDataAnalysis';
-export const ELECTRICAL_RULES = ['terminal_strip_configuration','plc_configuration','bus_configuration','connector_configuration','potential_anchor_invalid','potential_definition_collision','potential_policy_mismatch','terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
+export const ELECTRICAL_RULES = ['dimensioning_input','dimensioning_limit','terminal_strip_configuration','plc_configuration','bus_configuration','connector_configuration','potential_anchor_invalid','potential_definition_collision','potential_policy_mismatch','terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
 export type ElectricalRule = typeof ELECTRICAL_RULES[number];
 export interface InspectionLocation {
     pageId: string;
@@ -82,8 +83,18 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
     for(const context of articles.values())articleDataSummary[context.state]++;
     const add = (ruleId: ElectricalRule, key: unknown, severity: InspectionFinding['severity'], location: InspectionLocation, message: string, recommendation: string, details: Record<string, unknown> = {}, relatedLocations: InspectionLocation[] = []) => {
         const entry = location.componentId ? index.component(location.componentId, location.pageId) : undefined;
-        messages.push({ id: JSON.stringify([ruleId, key]), ruleId, domain: 'electrical', severity, category: ruleId.includes('article') ? 'Stammdaten' : ruleId.includes('reference') ? 'Verweise' : ruleId.includes('device') || ruleId.includes('duplicate') ? 'Identität' : 'Verdrahtung', pageId: location.pageId, pageNumber: location.pageNumber, componentId: location.componentId, bmk: entry?.tag, articleData:entry?articles.get(entry):undefined, message, recommendation, cause: { code: ruleId, details }, location, relatedLocations });
+        messages.push({ id: JSON.stringify([ruleId, key]), ruleId, domain: 'electrical', severity, category: ruleId.startsWith('dimensioning_') ? 'Dimensionierung' : ruleId.includes('article') ? 'Stammdaten' : ruleId.includes('reference') ? 'Verweise' : ruleId.includes('device') || ruleId.includes('duplicate') ? 'Identität' : 'Verdrahtung', pageId: location.pageId, pageNumber: location.pageNumber, componentId: location.componentId, bmk: entry?.tag, articleData:entry?articles.get(entry):undefined, message, recommendation, cause: { code: ruleId, details }, location, relatedLocations });
     };
+    for (const [i, calculation] of dimensioningResults(project).entries()) {
+      const reference = Array.isArray(project.dimensioning) ? project.dimensioning[i]?.reference : undefined;
+      const entry = reference?.pageId ? index.component(reference.from?.componentId, reference.pageId) : undefined;
+      const location = inspectionLocation(index, entry, reference?.from?.pinId, reference?.wireId);
+      for (const check of calculation.checks) if (check.status === 'missing' || check.status === 'fail')
+        add(check.status === 'fail' ? 'dimensioning_limit' : 'dimensioning_input', [calculation.circuitId,i,check.id],
+          check.status === 'fail' ? 'error' : 'warning', location, `${calculation.name}: ${check.label} – ${check.message}`,
+          'Auswerten → Elektrische Dimensionierung öffnen, Eingaben und Quellen prüfen.',
+          {circuitId:calculation.circuitId,checkId:check.id,status:check.status,formula:check.formula,values:calculation.values,method:calculation.method});
+    }
     for(const issue of new PotentialIndex(project,index,nets).findings){const entry=issue.componentId?index.component(issue.componentId,issue.pageId):undefined,wire=issue.wireId?index.connections.find(c=>c.wire.id===issue.wireId&&(c.page?.id??c.from?.owner.page.id)===issue.pageId):undefined;const location=inspectionLocation(index,entry??wire?.from?.owner,undefined,issue.wireId);add(issue.code,[issue.definitionId,issue.netId,issue.pageId,issue.wireId,issue.details],issue.code==='potential_definition_collision'?'error':'warning',location,t(issue.code),t('potentialFix'),{definitionId:issue.definitionId,details:issue.details});}
     if(project.automation)for(const issue of inspectAutomation(project,index)){
       const entry=issue.binding?index.component(issue.binding.componentId,issue.binding.pageId):undefined;

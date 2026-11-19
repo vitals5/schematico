@@ -43,7 +43,7 @@ export function renderAppHeader(projectName:string):string {
       <div class="main-menu-list" id="mainMenuList">
         ${menu('menuProjectTrigger',t('menuProject'),
           opt('menuNew',t('menuNew'))+opt('menuOpen',t('menuOpen'))+opt('menuRecentFiles',t('menuRecentFiles'))+opt('menuSave',t('menuSave'),t('keyCtrlS'))+opt('menuSaveAs',t('menuSaveAs'),t('keyCtrlShiftS'))+
-          separator+opt('menuProjectSettings',t('menuProjectSettings'))+opt('menuSyncArticles',t('menuSyncArticles'))+opt('menuArticles',t('articlesManage'))+opt('menuDeviceNavigator',t('deviceNavigator'))+opt('menuCabinetLayout',t('cabinetTitle'))+opt('menuWiringWorkbench',t('wiringManage'))+opt('menuConnectionNavigator',t('connectionNavigator'))+opt('menuConnectorNavigator',t('connectorNavigator'))+opt('menuAutomationNavigator',t('automationNavigator'))+opt('menuPotentialDefinitions',t('potentialTitle'))+
+          separator+opt('menuProjectSettings',t('menuProjectSettings'))+opt('menuProjectRevisions',t('projectRevisions'))+opt('menuSyncArticles',t('menuSyncArticles'))+opt('menuArticles',t('articlesManage'))+opt('menuDeviceNavigator',t('deviceNavigator'))+opt('menuCabinetLayout',t('cabinetTitle'))+opt('menuWiringWorkbench',t('wiringManage'))+opt('menuConnectionNavigator',t('connectionNavigator'))+opt('menuConnectorNavigator',t('connectorNavigator'))+opt('menuAutomationNavigator',t('automationNavigator'))+opt('menuPotentialDefinitions',t('potentialTitle'))+
           separator+opt('menuLoadDemo',t('menuLoadDemo'))+
           separator+heading(t('headingExport'))+opt('menuExportPdf',t('menuExportPdf'),t('keyCtrlP'))+opt('menuExportZw1',t('menuExportZw1'))+opt('menuExportXml',t('menuExportXml'))+opt('menuExportPageMacro',t('menuExportPageMacro'))+opt('menuExportFloorPlanPage',t('menuExportFloorPlanPage'))+
           separator+opt('menuSettings',t('menuSettings')),'menu-item')}
@@ -62,7 +62,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+separator+
           opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel'))+opt('menuToggleFloatingBar',t('menuToggleFloatingBar')),'menu-item')}
         ${menu('menuDataTrigger',t('menuData'),
-          opt('menuPlausibility',t('menuPlausibility'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
+          opt('menuPlausibility',t('menuPlausibility'))+opt('menuDimensioning',t('electricalDimensioning'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
           opt('menuManufacturingReports',t('reportDesigner'))+opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
         ${menu('menuAiTrigger','AI & MCP',
           opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+

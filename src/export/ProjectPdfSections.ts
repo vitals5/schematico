@@ -15,6 +15,8 @@ import {
 } from "../reports/ManufacturingReports";
 import { automationData } from "../model/Automation";
 import { automationPlan, automationColumns } from "../reports/AutomationPlan";
+import { dimensioningReportRows, dimensioningColumns, revisionReportRows, revisionColumns, engineeringPdfRows } from '../reports/EngineeringCalculations';
+import { savedRevisions } from '../model/ProjectRevisions';
 import {
   layoutManufacturingReport,
   layoutPdfTable,
@@ -22,7 +24,7 @@ import {
 } from "./ManufacturingReportPdf";
 export interface ProjectPdfChoice {
   id: string;
-  kind: "cabinet" | "report" | "automation" | "invalid";
+  kind: "cabinet" | "report" | "automation" | "dimensioning" | "revisions" | "invalid";
   title: string;
   detail: string;
   problem?: string;
@@ -71,6 +73,12 @@ export function projectPdfChoices(project: Project): ProjectPdfChoice[] {
       problem: "reportInvalid",
     });
   const d = automationData(project);
+  if (project.dimensioning !== undefined && (!Array.isArray(project.dimensioning) || project.dimensioning.length))
+    choices.push({id:key('dimensioning','all'),kind:'dimensioning',title:project.language==='en'?'Electrical dimensioning':'Elektrische Dimensionierung',detail:'Spannungsfall · Leiter- und Schutzgerätekoordination'});
+  try {
+    const revisions = savedRevisions(project);
+    if (revisions.length) choices.push({id:key('revisions','all'),kind:'revisions',title:project.language==='en'?'Project revisions and approvals':'Projektstände und Freigaben',detail:String(revisions.length)});
+  } catch { choices.push({id:key('invalid','revisions'),kind:'invalid',title:'revisionInvalid',detail:'',problem:'revisionInvalid'}); }
   if (Object.values(d).some((a) => Array.isArray(a) && a.length))
     choices.push({
       id: key("automation", "all"),
@@ -169,6 +177,13 @@ export function prepareProjectPdfSections(
         layout,
         rows,
       });
+    } else if (choice.kind === 'dimensioning' || choice.kind === 'revisions') {
+      const rows = engineeringPdfRows(choice.kind === 'dimensioning' ? dimensioningReportRows(project) : revisionReportRows(project));
+      const columns = choice.kind === 'dimensioning' ? dimensioningColumns : revisionColumns;
+      if (!rows.length) continue;
+      const layout = layoutPdfTable({title:choice.title,paper,orientation:'landscape',fontSize:7,
+        columns:columns.map((label,i)=>({id:'c'+i,label,weight:i===3?5:1}))},rows,project.name,framed?documentFrame(project):false);
+      result.push({kind:'report',id:choice.id,title:choice.title,pages:layout.pages.length,layout,rows});
     } else if (choice.kind === "automation") {
       const rows: ReportRow[] = automationPlan(project).map((r, i) => {
         const page = project.pages.filter((p) => p.id === r.pageId),

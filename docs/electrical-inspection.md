@@ -68,3 +68,7 @@ Das [Artikelwerkzeug](article-workbench.md) ergänzt die Bearbeitung gefilterter
 Zentrale Definitionen ergänzen die Regeln `potential_anchor_invalid`, `potential_definition_collision` und `potential_policy_mismatch`. Sie prüfen Anschlussanker, konkurrierende Vorgaben und Abweichungen der Leiterattribute. Die Aktion am Befund öffnet die betreffende Definition. Kabel- und Artikelbefunde lassen sich mit den [Assistenten zur Projektbereinigung](engineering-assistants.md) bearbeiten; jede bestätigte Übernahme bleibt rückgängig machbar.
 
 Die [gespeicherte Prüf-Arbeitsliste](engineering-assistants.md#gespeicherte-prüf-arbeitsliste) verwaltet Bearbeitungsstatus und begründete Ausnahmen im Projekt. Ein ausdrücklich gespeicherter Vergleichsstand erlaubt die Sicht auf neue und nicht mehr gemeldete Befunde. Bewertungen verändern weder die aktuellen elektrischen Ergebnisse noch deren Schweregrade.
+
+## Elektrische Dimensionierung
+
+Ausdrücklich gespeicherte Stromkreise werden über denselben Prüfdienst ausgewertet. `dimensioning_input` benennt fehlende bzw. widersprüchliche Eingaben oder veraltete Planbezüge; `dimensioning_limit` meldet verletzte beauftragte Rechengrenzen. Befunde enthalten Stromkreis- und Prüfkennung, Methode und numerische Ergebnisse. Die Aktion **Elektrische Dimensionierung…** öffnet den betroffenen Datensatz. Ohne gespeicherte Berechnungen entstehen keine angenommenen Dimensionierungsbefunde. Siehe [Methoden und Grenzen](electrical-dimensioning.md).
