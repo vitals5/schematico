@@ -115,7 +115,7 @@ export function circuitSchematicDraft(
   const check = circuitDesignCandidate(record, cable, protect, project);
   if (
     check.issues.length ||
-    check.result.status !== "checked" ||
+    record.verifyAmpacity !== true ||
     calculateDimensioning(record, project).status !== "checked"
   )
     throw Error(

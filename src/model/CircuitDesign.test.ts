@@ -11,6 +11,7 @@ import { validateCatalogArticle } from "./ArticleCatalog";
 import {
   catalogCircuitArticle,
   adoptCircuitArticle,
+  captureCircuitArticle,
 } from "./DimensioningArticles";
 import type { ArticleElectricalData } from "./ArticleElectrical";
 import type { AssignedArticle } from "./ArticleTypes";
@@ -142,6 +143,37 @@ const adopted = adoptCircuitArticle(
   "protection",
 );
 assert.equal(adopted.protectiveCurrentA, 16);
+assert.throws(() =>
+  circuitSchematicDraft(
+    p,
+    { ...result.record, verifyAmpacity: false },
+    "socket_schuko",
+  ),
+);
+let faultChecked = {
+  ...result.record,
+  verifyFault: true,
+  faultMinA: 100,
+  faultMaxA: 1000,
+  faultSource: "Network calculation",
+  tripThresholdA: 80,
+  thresholdTimeS: 0.1,
+  requiredDisconnectS: 0.4,
+};
+faultChecked = adoptCircuitArticle(
+  captureCircuitArticle(
+    faultChecked,
+    "protection",
+    "Manufacturer disconnection data",
+  ),
+  "protection",
+) as typeof faultChecked;
+assert.equal(calculateDimensioning(faultChecked, p).status, "checked");
+assert.equal(
+  circuitSchematicDraft(p, faultChecked, "socket_schuko").record.verifyFault,
+  true,
+  "Plan generation preserves independently documented additional checks for the selected part",
+);
 const planned = circuitSchematicDraft(p, result.record, "socket_schuko");
 assert.deepEqual(p, original);
 assert.equal(planned.draft.pages.length, p.pages.length + 1);
