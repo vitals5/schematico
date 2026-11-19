@@ -41,7 +41,7 @@ import { setComponentLabelText, revealImportedComponentLabels } from '../model/L
 import { selectionCount } from '../model/ElementSelection';
 import { createCoverPage, defaultCoverPageTemplate } from '../model/CoverPage';
 import { defaultPlotFrame } from '../model/PlotFrame';
-import { t, getUiLanguage, setUiLanguage, onLanguageChange, Language, getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from '../i18n';
+import { t, tr, getUiLanguage, setUiLanguage, onLanguageChange, Language, getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from '../i18n';
 import { CoverPageDialog } from './CoverPageDialog';
 import { neutralSourceLabel, prepareProjectPresentation } from '../model/PresentationNaming';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
@@ -325,7 +325,7 @@ export class App {
             <button class="btn" id="btnFloatingExportMacro" style="padding: 6px 10px; font-size: 12px; background: rgba(66, 153, 225, 0.2); border-color: #3182ce;" title="${t('btnFloatingSaveMacroTitle')}">${t('btnFloatingSaveMacro')}</button>
             <button class="btn" id="btnFloatingRotate" style="padding: 6px 10px; font-size: 12px;" title="${t('toolRotate')}">🔄</button>
             <button class="btn" id="btnFloatingDelete" style="padding: 6px 10px; font-size: 12px; color: #fc8181; border-color: #e53e3e;" title="${t('toolDelete')}">🗑️</button>
-            <button class="btn" id="btnFloatingContextMenu" style="padding: 6px 10px; font-size: 13px;" title="Kontextmenü">⋮</button>
+            <button class="btn" id="btnFloatingContextMenu" style="padding: 6px 10px; font-size: 13px;" title="${escapeSvg(tr('Kontextmenü', 'Context Menu'))}">⋮</button>
             <button class="btn" id="btnMinimizeFloatingBar" style="padding: 6px 9px; font-size: 11px; color: #a0aec0;" title="${t('btnMinimizeFloatingBar')}">▼</button>
           </div>
 
@@ -367,7 +367,7 @@ export class App {
                 <button type="button" class="dpad-btn dpad-down" id="btnNavDown" title="Nach unten scrollen" aria-label="Down">▼</button>
               </div>
               <div class="touch-hud-tools">
-                <button type="button" class="hud-btn" id="btnNavZoomIn" title="Vergrößern (Zoom In)" aria-label="Zoom In">➕</button>
+                <button type="button" class="hud-btn" id="btnNavZoomIn" title="${escapeSvg(tr('Vergrößern (Zoom In)', 'Zoom In'))}" aria-label="Zoom In">➕</button>
                 <button type="button" class="hud-btn" id="btnNavZoomOut" title="Verkleinern (Zoom Out)" aria-label="Zoom Out">➖</button>
                 <button type="button" class="hud-btn" id="btnNavPanMode" title="Hand-Werkzeug (Verschieben)" aria-label="Pan">✋</button>
                 <button type="button" class="hud-btn" id="btnNavMultiSelect" title="Mehrfachauswahl umschalten" aria-label="Multi-Select">☑️</button>
@@ -3065,12 +3065,12 @@ export class App {
     ].filter(Boolean).join('');
 
     const visFields = [
-      checkboxField('bmkVisible', 'BMK sichtbar'),
-      checkboxField('fnVisible', 'Funktionstext sichtbar'),
-      checkboxField('techVisible', 'Technische Daten sichtbar'),
-      checkboxField('additionalVisible', 'Zusatztext sichtbar'),
-      checkboxField('crossRefVisible', 'Querverweise sichtbar'),
-      checkboxField('pinVisible', 'Anschlüsse / Adern sichtbar'),
+      checkboxField('bmkVisible', tr('BMK sichtbar', 'DT visible')),
+      checkboxField('fnVisible', tr('Funktionstext sichtbar', 'Function text visible')),
+      checkboxField('techVisible', tr('Technische Daten sichtbar', 'Technical data visible')),
+      checkboxField('additionalVisible', tr('Zusatztext sichtbar', 'Additional text visible')),
+      checkboxField('crossRefVisible', tr('Querverweise sichtbar', 'Cross-references visible')),
+      checkboxField('pinVisible', tr('Anschlüsse / Adern sichtbar', 'Pins / cores visible')),
       selectField('bmkPreset', t('labelBmkPosition'), [
         ['auto', t('bmkPresetAuto')],
         ['top', t('bmkPresetTop')],
@@ -3939,14 +3939,14 @@ export class App {
       </button>
 
       <div style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
-        📦 Baugruppe (${group.members.length} Elemente)
+        📦 ${escapeSvg(tr('Baugruppe', 'Assembly'))} (${group.members.length} ${escapeSvg(tr('Elemente', 'Elements'))})
       </div>
       <div style="font-size: 13px; font-weight: bold; color: #63b3ed; margin-bottom: 12px;">
-        ${escapeSvg(group.bmk || 'Baugruppe')}${group.articleNumber ? ` · ${escapeSvg(group.articleNumber)}` : ''}
+        ${escapeSvg(group.bmk || tr('Baugruppe', 'Assembly'))}${group.articleNumber ? ` · ${escapeSvg(group.articleNumber)}` : ''}
       </div>
 
       <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
-        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Identifikation & Texte</legend>
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">${escapeSvg(tr('Identifikation & Texte', 'Identification & Texts'))}</legend>
         <div class="form-group" style="margin-bottom: 8px;">
           <label class="form-label">${escapeSvg(t('labelBmk'))}</label>
           <input class="form-input" id="propGroupBmk" value="${escapeSvg(group.bmk || '')}">
@@ -3970,19 +3970,19 @@ export class App {
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
-        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Struktur (IEC 81346)</legend>
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">${escapeSvg(tr('Struktur (IEC 81346)', 'Structure (IEC 81346)'))}</legend>
         <div class="form-group" style="margin-bottom: 8px;">
-          <label class="form-label">${escapeSvg(t('labelStructure'))} (=Anlage)</label>
+          <label class="form-label">${escapeSvg(t('labelStructure'))} (${escapeSvg(tr('=Anlage', '=Plant'))})</label>
           <input class="form-input" id="propGroupHigherLevel" value="${escapeSvg(group.higherLevelFunction || '')}" placeholder="=A1">
         </div>
         <div class="form-group" style="margin-bottom: 8px;">
-          <label class="form-label">${escapeSvg(t('labelStructure'))} (+Ort)</label>
+          <label class="form-label">${escapeSvg(t('labelStructure'))} (${escapeSvg(tr('+Ort', '+Location'))})</label>
           <input class="form-input" id="propGroupLocation" value="${escapeSvg(group.mountingLocation || '')}" placeholder="+S1">
         </div>
       </fieldset>
 
       <fieldset style="border: 1px solid var(--border-color); padding: 8px; margin: 0 0 12px; border-radius: 4px;">
-        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">Artikel & Stückliste (Baugruppe)</legend>
+        <legend style="font-size: 11px; color: var(--text-muted); padding: 0 4px;">${escapeSvg(tr('Artikel & Stückliste (Baugruppe)', 'Article & BOM (Assembly)'))}</legend>
         <div class="form-group" style="margin-bottom: 8px;">
           <label class="form-label">${escapeSvg(t('labelAssignPart'))}</label>
           <select class="form-input" id="propGroupAssignPartSelect" data-editor-article-select>
@@ -3991,21 +3991,21 @@ export class App {
         </div>
         <div class="form-group" style="margin-bottom: 8px;">
           <label class="form-label">${escapeSvg(t('labelArticleNumber'))}</label>
-          <input class="form-input" id="propGroupArticleNumber" value="${escapeSvg(group.articleNumber || '')}" placeholder="z.B. 3RM1001-1AA04">
+          <input class="form-input" id="propGroupArticleNumber" value="${escapeSvg(group.articleNumber || '')}" placeholder="${escapeSvg(tr('z.B. 3RM1001-1AA04', 'e.g. 3RM1001-1AA04'))}">
         </div>
         <div class="form-group" style="margin-bottom: 8px;">
           <label class="form-label">${escapeSvg(t('labelManufacturer'))}</label>
-          <input class="form-input" id="propGroupManufacturer" value="${escapeSvg(group.manufacturer || '')}" placeholder="z.B. Siemens">
+          <input class="form-input" id="propGroupManufacturer" value="${escapeSvg(group.manufacturer || '')}" placeholder="${escapeSvg(tr('z.B. Siemens', 'e.g. Siemens'))}">
         </div>
         <div class="form-group" style="margin-bottom: 8px;">
           <label class="form-label">${escapeSvg(t('articlesDescription'))}</label>
-          <input class="form-input" id="propGroupDescription" value="${escapeSvg(group.description || '')}" placeholder="z.B. Motorstarter 24V">
+          <input class="form-input" id="propGroupDescription" value="${escapeSvg(group.description || '')}" placeholder="${escapeSvg(tr('z.B. Motorstarter 24V', 'e.g. Motor Starter 24V'))}">
         </div>
       </fieldset>
 
       <button class="btn btn-primary" id="btnGroupApply" style="width: 100%; margin-top: 4px;">${escapeSvg(t('btnApply'))}</button>
       <button class="btn" id="btnGroupDissolve" style="width: 100%; margin-top: 6px;">${escapeSvg(t('menuUngroup'))}</button>
-      <button class="btn btn-danger" id="btnGroupDelete" style="width: 100%; margin-top: 6px; background: #742a2a; color: #fff; border: 1px solid #9b2c2c;">🗑️ Baugruppe löschen</button>
+      <button class="btn btn-danger" id="btnGroupDelete" style="width: 100%; margin-top: 6px; background: #742a2a; color: #fff; border: 1px solid #9b2c2c;">🗑️ ${escapeSvg(tr('Baugruppe löschen', 'Delete Assembly'))}</button>
     `;
 
     container.querySelector('#btnOpenGroupPropModal')?.addEventListener('click', () => {
@@ -4154,7 +4154,7 @@ export class App {
       const jumpRefHtml = refTargets.length > 0 ? `
         <div style="background:#232d3d;border:1px solid #3e4c63;border-radius:4px;padding:8px 10px;margin-bottom:12px;">
           <div style="font-size:11px;font-weight:600;color:#63b3ed;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            <span>🔗</span> <span>Verweis-Gegenstück (${refTargets.length}):</span>
+            <span>🔗</span> <span>${escapeSvg(tr('Verweis-Gegenstück', 'Cross-Reference Target'))} (${refTargets.length}):</span>
           </div>
           ${refTargets.map((target, idx) => {
             const tPage = this.project.pages.find(p => p.id === target.pageId);

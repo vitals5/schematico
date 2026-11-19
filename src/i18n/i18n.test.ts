@@ -1,11 +1,28 @@
 import assert from 'node:assert/strict';
-import { getUiLanguage, setUiLanguage, onLanguageChange, t } from './index';
+import { getUiLanguage, setUiLanguage, onLanguageChange, t, tr, getTranslationDictionaries } from './index';
 import { defaultCoverPageTemplate, createCoverPage } from '../model/CoverPage';
 import { defaultPlotFrame } from '../model/PlotFrame';
 import { getBomColumns } from '../export/PartsListPdf';
 import { Project } from '../model/types';
 import { getCategoryLabel, getConnectionCategoryLabel, getMacroCategoryLabel, getLocalizedSymbol } from './symbolTranslations';
 import { SYMBOL_DEFINITIONS } from '../model/symbols';
+
+// 0. Verify 100% DE <-> EN dictionary key parity
+const dicts = getTranslationDictionaries();
+const deKeys = Object.keys(dicts.de);
+const enKeys = Object.keys(dicts.en);
+const missingInEn = deKeys.filter(k => !(k in dicts.en));
+const missingInDe = enKeys.filter(k => !(k in dicts.de));
+assert.deepEqual(missingInEn, [], `Keys missing in EN: ${missingInEn.join(', ')}`);
+assert.deepEqual(missingInDe, [], `Keys missing in DE: ${missingInDe.join(', ')}`);
+assert.equal(deKeys.length, enKeys.length);
+
+// Verify all symbols in SYMBOL_DEFINITIONS have clean English translations without German umlauts
+for (const sym of SYMBOL_DEFINITIONS) {
+  const en = getLocalizedSymbol(sym, 'en');
+  assert(!/[äöüÄÖÜß]/.test(en.name), `Symbol ${sym.id} name still contains German umlauts in EN: ${en.name}`);
+  assert(!/[äöüÄÖÜß]/.test(en.description), `Symbol ${sym.id} description still contains German umlauts in EN: ${en.description}`);
+}
 
 // 1. Test UI Language Switching & Callbacks
 let callbackLang = '';
@@ -122,5 +139,10 @@ if (coilSym) {
   const coilEn = getLocalizedSymbol(coilSym, 'en');
   assert.equal(coilEn.name, 'Relay Coil / Contactor Coil');
 }
+
+setUiLanguage('de');
+assert.equal(tr('Baugruppe', 'Assembly'), 'Baugruppe');
+setUiLanguage('en');
+assert.equal(tr('Baugruppe', 'Assembly'), 'Assembly');
 
 console.log('✓ UI and Project language localization: switching, persistence, parameter interpolation, cover pages, plot frames, BOM columns, and symbol translations passed.');

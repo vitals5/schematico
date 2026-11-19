@@ -31,7 +31,7 @@ import { mergeNativeMacroData } from '../model/NativeMacroData';
 import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { floorPlanToSvg, floorPlanLegendToSvg, computeFloorPlanLegendLayout, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
-import { t, getUiLanguage } from '../i18n';
+import { t, tr, getUiLanguage } from '../i18n';
 export type { GridResolution } from '../model/DrawingGrid';
 
 export type EditorMode = 'select' | 'wire' | 'place_symbol' | 'place_macro' | 'pan' | 'cable' | 'place_image' | 'device_box' | 'draw_wall' | 'place_opening' | 'place_text';
@@ -1157,21 +1157,21 @@ export class CadCanvas {
     menu.style.zIndex = '3000';
 
     let items = '';
-    if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} Elemente ausgewählt</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Gemeinsame Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Auswahl löschen <span class="ctx-key">Entf</span></div>`;}
-    else if(this.selectedBoxId){items=`<div class="ctx-header">Gerätekasten</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Gerätekasten löschen <span class="ctx-key">Entf</span></div>`;}
-    else if(this.selectedImageId){items=`<div class="ctx-header">Bild</div><div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div><div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div><div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>${this.hasClipboard()?'<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>':''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">Eigenschaften… <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">Bild löschen <span class="ctx-key">Entf</span></div>`;}
+    if(this.multipleSelection){items=`<div class="ctx-header">${selectionCount(this.multipleSelection)} ${tr('Elemente ausgewählt','elements selected')}</div><div class="ctx-item" data-action="cut">✂️ ${tr('Ausschneiden','Cut')} <span class="ctx-key">${tr('Strg+X','Ctrl+X')}</span></div><div class="ctx-item" data-action="copy">📋 ${tr('Kopieren','Copy')} <span class="ctx-key">${tr('Strg+C','Ctrl+C')}</span></div><div class="ctx-item" data-action="duplicate">📑 ${tr('Duplizieren','Duplicate')} <span class="ctx-key">${tr('Strg+D','Ctrl+D')}</span></div>${this.hasClipboard()?`<div class="ctx-item" data-action="paste">📥 ${tr('Einfügen','Paste')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div>`:''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">${tr('Gemeinsame Eigenschaften…','Shared Properties…')} <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">${tr('Auswahl löschen','Delete Selection')} <span class="ctx-key">${tr('Entf','Del')}</span></div>`;}
+    else if(this.selectedBoxId){items=`<div class="ctx-header">${tr('Gerätekasten','Device Box')}</div><div class="ctx-item" data-action="cut">✂️ ${tr('Ausschneiden','Cut')} <span class="ctx-key">${tr('Strg+X','Ctrl+X')}</span></div><div class="ctx-item" data-action="copy">📋 ${tr('Kopieren','Copy')} <span class="ctx-key">${tr('Strg+C','Ctrl+C')}</span></div><div class="ctx-item" data-action="duplicate">📑 ${tr('Duplizieren','Duplicate')} <span class="ctx-key">${tr('Strg+D','Ctrl+D')}</span></div>${this.hasClipboard()?`<div class="ctx-item" data-action="paste">📥 ${tr('Einfügen','Paste')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div>`:''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">${tr('Eigenschaften…','Properties…')} <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">${tr('Gerätekasten löschen','Delete Device Box')} <span class="ctx-key">${tr('Entf','Del')}</span></div>`;}
+    else if(this.selectedImageId){items=`<div class="ctx-header">${tr('Bild','Image')}</div><div class="ctx-item" data-action="cut">✂️ ${tr('Ausschneiden','Cut')} <span class="ctx-key">${tr('Strg+X','Ctrl+X')}</span></div><div class="ctx-item" data-action="copy">📋 ${tr('Kopieren','Copy')} <span class="ctx-key">${tr('Strg+C','Ctrl+C')}</span></div><div class="ctx-item" data-action="duplicate">📑 ${tr('Duplizieren','Duplicate')} <span class="ctx-key">${tr('Strg+D','Ctrl+D')}</span></div>${this.hasClipboard()?`<div class="ctx-item" data-action="paste">📥 ${tr('Einfügen','Paste')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div>`:''}<div class="ctx-sep"></div><div class="ctx-item" data-action="properties">${tr('Eigenschaften…','Properties…')} <span class="ctx-key">F2</span></div><div class="ctx-item ctx-danger" data-action="delete">${tr('Bild löschen','Delete Image')} <span class="ctx-key">${tr('Entf','Del')}</span></div>`;}
     else if (this.selectedTextId) {
       const txt = this.activePage.texts?.find(t => t.id === this.selectedTextId);
       const preview = (txt?.text || 'Text').split(/\r?\n/)[0].slice(0, 18);
       items = `
         <div class="ctx-header">Text: <strong>${escapeSvg(preview)}</strong></div>
-        <div class="ctx-item" data-action="text-edit">✏️ Text bearbeiten… <span class="ctx-key">F2</span></div>
-        <div class="ctx-item" data-action="rotate">🔄 Um 90° drehen <span class="ctx-key">R</span></div>
-        <div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div>
-        <div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div>
-        <div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>
+        <div class="ctx-item" data-action="text-edit">✏️ ${tr('Text bearbeiten…','Edit Text…')} <span class="ctx-key">F2</span></div>
+        <div class="ctx-item" data-action="rotate">🔄 ${tr('Um 90° drehen','Rotate 90°')} <span class="ctx-key">R</span></div>
+        <div class="ctx-item" data-action="cut">✂️ ${tr('Ausschneiden','Cut')} <span class="ctx-key">${tr('Strg+X','Ctrl+X')}</span></div>
+        <div class="ctx-item" data-action="copy">📋 ${tr('Kopieren','Copy')} <span class="ctx-key">${tr('Strg+C','Ctrl+C')}</span></div>
+        <div class="ctx-item" data-action="duplicate">📑 ${tr('Duplizieren','Duplicate')} <span class="ctx-key">${tr('Strg+D','Ctrl+D')}</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Text löschen <span class="ctx-key">Entf</span></div>
+        <div class="ctx-item ctx-danger" data-action="delete">🗑️ ${tr('Text löschen','Delete Text')} <span class="ctx-key">${tr('Entf','Del')}</span></div>
       `;
     }
     else if (this.selectedWallId) {
@@ -1203,42 +1203,42 @@ export class CadCanvas {
       const sym = getSymbolForComponent(comp, this.project);
       const refTargets = this.getComponentReferenceTargets(comp);
       items += `
-        <div class="ctx-header"><strong>${escapeSvg(comp.bmk)}</strong> (${sym?.name || 'Bauteil'})</div>
-        <div class="ctx-item" data-action="properties">⚙️ Eigenschaften... <span class="ctx-key">DblClick</span></div>
-        <div class="ctx-item" data-action="rotate">🔄 Um 90° drehen <span class="ctx-key">R</span></div>
-        <div class="ctx-item" data-action="cut">✂️ Ausschneiden <span class="ctx-key">Strg+X</span></div>
-        <div class="ctx-item" data-action="copy">📋 Kopieren <span class="ctx-key">Strg+C</span></div>
-        <div class="ctx-item" data-action="duplicate">📑 Duplizieren <span class="ctx-key">Strg+D</span></div>
-        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div>' : ''}
-        <div class="ctx-item" data-action="export-macro">📦 Als .ema Fenstermakro speichern...</div>
-        ${refTargets.length > 0 ? `<div class="ctx-item" data-action="jump-ref-target">🔗 Zum Verweis-Gegenstück springen (${refTargets.length})</div>` : (comp.crossRef ? `<div class="ctx-item" data-action="jump-crossref">🔗 Querverweis folgen (${escapeSvg(comp.crossRef)})</div>` : '')}
+        <div class="ctx-header"><strong>${escapeSvg(comp.bmk)}</strong> (${sym?.name || tr('Bauteil','Component')})</div>
+        <div class="ctx-item" data-action="properties">⚙️ ${tr('Eigenschaften...','Properties...')} <span class="ctx-key">DblClick</span></div>
+        <div class="ctx-item" data-action="rotate">🔄 ${tr('Um 90° drehen','Rotate 90°')} <span class="ctx-key">R</span></div>
+        <div class="ctx-item" data-action="cut">✂️ ${tr('Ausschneiden','Cut')} <span class="ctx-key">${tr('Strg+X','Ctrl+X')}</span></div>
+        <div class="ctx-item" data-action="copy">📋 ${tr('Kopieren','Copy')} <span class="ctx-key">${tr('Strg+C','Ctrl+C')}</span></div>
+        <div class="ctx-item" data-action="duplicate">📑 ${tr('Duplizieren','Duplicate')} <span class="ctx-key">${tr('Strg+D','Ctrl+D')}</span></div>
+        ${this.hasClipboard() ? `<div class="ctx-item" data-action="paste">📥 ${tr('Einfügen','Paste')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div>` : ''}
+        <div class="ctx-item" data-action="export-macro">📦 ${tr('Als .ema Fenstermakro speichern...','Save as .ema Window Macro...')}</div>
+        ${refTargets.length > 0 ? `<div class="ctx-item" data-action="jump-ref-target">🔗 ${tr('Zum Verweis-Gegenstück springen','Jump to Cross-Reference Target')} (${refTargets.length})</div>` : (comp.crossRef ? `<div class="ctx-item" data-action="jump-crossref">🔗 ${tr('Querverweis folgen','Follow Cross-Reference')} (${escapeSvg(comp.crossRef)})</div>` : '')}
         <div class="ctx-sep"></div>
-        <div class="ctx-item ctx-danger" data-action="delete">🗑️ Löschen <span class="ctx-key">Entf</span></div>
+        <div class="ctx-item ctx-danger" data-action="delete">🗑️ ${tr('Löschen','Delete')} <span class="ctx-key">${tr('Entf','Del')}</span></div>
       `;
     } else if (wire) {
       items += `
-        <div class="ctx-header">Verbindung: <strong>${escapeSvg(wire.potential)}</strong></div>
-        ${!wire.isAutoconnect?'<div class="ctx-item" data-action="cleanup-wire">Verbindung aufräumen</div>':''}
-        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Einfügen <span class="ctx-key">Strg+V</span></div><div class="ctx-sep"></div>' : ''}
-        <div class="ctx-item" data-action="delete">🗑️ Verbindung löschen <span class="ctx-key">Entf</span></div>
+        <div class="ctx-header">${tr('Verbindung:','Connection:')} <strong>${escapeSvg(wire.potential)}</strong></div>
+        ${!wire.isAutoconnect?`<div class="ctx-item" data-action="cleanup-wire">${tr('Verbindung aufräumen','Clean Up Connection')}</div>`:''}
+        ${this.hasClipboard() ? `<div class="ctx-item" data-action="paste">📥 ${tr('Einfügen','Paste')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div><div class="ctx-sep"></div>` : ''}
+        <div class="ctx-item" data-action="delete">🗑️ ${tr('Verbindung löschen','Delete Connection')} <span class="ctx-key">${tr('Entf','Del')}</span></div>
       `;
     } else {
       items += `
-        ${this.hasClipboard() ? '<div class="ctx-item" data-action="paste">📥 Hier einfügen <span class="ctx-key">Strg+V</span></div><div class="ctx-sep"></div>' : ''}
-        <div class="ctx-item" data-action="insert-sym">⚡ Symbol einfügen... <span class="ctx-key">Einfg</span></div>
-        <div class="ctx-item" data-action="insert-macro">📦 Makro aus Bibliothek einfügen (.ema)...</div>
-        <div class="ctx-item" data-action="wire">🔌 Verbinden / Verdrahten <span class="ctx-key">D</span></div>
+        ${this.hasClipboard() ? `<div class="ctx-item" data-action="paste">📥 ${tr('Hier einfügen','Paste Here')} <span class="ctx-key">${tr('Strg+V','Ctrl+V')}</span></div><div class="ctx-sep"></div>` : ''}
+        <div class="ctx-item" data-action="insert-sym">⚡ ${tr('Symbol einfügen...','Insert Symbol...')} <span class="ctx-key">${tr('Einfg','Ins')}</span></div>
+        <div class="ctx-item" data-action="insert-macro">📦 ${tr('Makro aus Bibliothek einfügen (.ema)...','Insert Macro from Library (.ema)...')}</div>
+        <div class="ctx-item" data-action="wire">🔌 ${tr('Verbinden / Verdrahten','Connect / Wire')} <span class="ctx-key">D</span></div>
         <div class="ctx-sep"></div>
-        <div class="ctx-item" data-action="fit">🔍 Ansicht: Ganzes Blatt <span class="ctx-key">F</span></div>
+        <div class="ctx-item" data-action="fit">🔍 ${tr('Ansicht: Ganzes Blatt','View: Fit Sheet')} <span class="ctx-key">F</span></div>
         <div class="ctx-item" data-action="reset-zoom">📐 100% Zoom (1:1)</div>
-        <div class="ctx-item" data-action="toggle-grid">📐 Raster: ${this.getGridLabel()} <span class="ctx-key">H</span></div>
+        <div class="ctx-item" data-action="toggle-grid">📐 ${tr('Raster:','Grid:')} ${this.getGridLabel()} <span class="ctx-key">H</span></div>
       `;
     }
 
-    if(wire&&!wire.isAutoconnect&&!items.includes('data-action="cleanup-wire"'))items+='<div class="ctx-item" data-action="cleanup-wire">Diese Verbindung aufräumen</div>';
-    if(this.activePage.pageType==='schematic'&&!this.activePage.floorPlan)items+='<div class="ctx-sep"></div><div class="ctx-item" data-action="cleanup-page">Alle Verbindungen auf dieser Seite aufräumen</div>';
-    if(this.canGroupSelection())items+='<div class="ctx-item" data-action="group">Gruppieren <span class="ctx-key">Strg+G</span></div>';
-    if(this.canUngroupSelection())items+='<div class="ctx-item" data-action="ungroup">Gruppierung auflösen <span class="ctx-key">Strg+Umschalt+G</span></div>';
+    if(wire&&!wire.isAutoconnect&&!items.includes('data-action="cleanup-wire"'))items+=`<div class="ctx-item" data-action="cleanup-wire">${tr('Diese Verbindung aufräumen','Clean Up This Connection')}</div>`;
+    if(this.activePage.pageType==='schematic'&&!this.activePage.floorPlan)items+=`<div class="ctx-sep"></div><div class="ctx-item" data-action="cleanup-page">${tr('Alle Verbindungen auf dieser Seite aufräumen','Clean Up All Connections on This Sheet')}</div>`;
+    if(this.canGroupSelection())items+=`<div class="ctx-item" data-action="group">${tr('Gruppieren','Group')} <span class="ctx-key">${tr('Strg+G','Ctrl+G')}</span></div>`;
+    if(this.canUngroupSelection())items+=`<div class="ctx-item" data-action="ungroup">${tr('Gruppierung auflösen','Ungroup')} <span class="ctx-key">${tr('Strg+Umschalt+G','Ctrl+Shift+G')}</span></div>`;
     menu.innerHTML = items;
     document.body.appendChild(menu);
 

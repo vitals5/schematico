@@ -19,7 +19,7 @@ import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextP
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
 import { resizeDeviceBox } from '../model/DeviceBoxElement';
-import { t, getLocalizedSymbol } from '../i18n';
+import { t, tr, getLocalizedSymbol } from '../i18n';
 import { ElementSelection, selectionCount } from '../model/ElementSelection';
 import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProperties, propertyExistsOnAllSelected } from '../model/SelectionProperties';
 
@@ -183,7 +183,7 @@ export class PropertiesDialog {
     const sym = getSymbolForComponent(this.component, this.project);
     const symName = sym ? getLocalizedSymbol(sym).name : t('symbol');
     const titleText = this.isMulti
-      ? `Gemeinsame Eigenschaften (${this.components.length} Betriebsmittel ausgewählt)`
+      ? `${tr('Gemeinsame Eigenschaften','Shared Properties')} (${this.components.length} ${tr('Betriebsmittel ausgewählt','devices selected')})`
       : t('propDialogTitle', { bmk: this.component.bmk, name: symName });
 
     const modal = document.createElement('div');
@@ -438,7 +438,7 @@ export class PropertiesDialog {
                     <input type="text" class="prop-pin-label" data-pin-id="${p.id}" value="${escapeSvg(pinVal)}" placeholder="${escapeSvg(placeholder)}" style="width: ${placeholder ? '65px' : '45px'}; background: #2d3748; border: 1px solid #4a5568; color: white; padding: 2px 4px; border-radius: 2px; font-size: 11px; text-align: center;">
                   </div>
                 `;
-              }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? 'Keine gemeinsamen Anschlüsse auf allen Elementen' : escapeSvg(t('propPinsNone'))}</span>`}
+              }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? tr('Keine gemeinsamen Anschlüsse auf allen Elementen','No common pins across all elements') : escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
           ${renderInspectionFields(this.component,this.components,this.project,this.dirtyFields)}
@@ -658,7 +658,7 @@ export class PropertiesDialog {
 
     if (this.activeTab === 'crossref') {
       const crossRefText = this.isMulti
-        ? `Gemeinsame Querverweise für ${this.components.length} Betriebsmittel`
+        ? `${tr('Gemeinsame Querverweise für','Shared cross-references for')} ${this.components.length} ${tr('Betriebsmittel','devices')}`
         : (referenceMarkup(this.project, this.component) || t('propCrossRefNone'));
       return `
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -1358,29 +1358,29 @@ export class PropertiesDialog {
       { key: 'textContent', label: t('textContent'), group: 'text', type: 'text' },
       { key: 'textFontSize', label: t('textFontSize'), group: 'text', type: 'number' },
       { key: 'textAlign', label: t('textAlign'), group: 'text', type: 'select', options: [['start', t('textAlignLeft')], ['center', t('textAlignCenter')], ['end', t('textAlignRight')]] },
-      { key: 'textFontWeight', label: 'Schriftschnitt', group: 'text', type: 'select', options: [['normal', 'Normal'], ['bold', 'Fett']] },
-      { key: 'textFontStyle', label: 'Schriftstil', group: 'text', type: 'select', options: [['normal', 'Normal'], ['italic', 'Kursiv']] },
+      { key: 'textFontWeight', label: tr('Schriftschnitt','Font Weight'), group: 'text', type: 'select', options: [['normal', 'Normal'], ['bold', tr('Fett','Bold')]] },
+      { key: 'textFontStyle', label: tr('Schriftstil','Font Style'), group: 'text', type: 'select', options: [['normal', 'Normal'], ['italic', tr('Kursiv','Italic')]] },
 
       // Schriftgrößen & Anzeige
-      { key: 'bmkFontSize', label: 'BMK / Kabel-Schriftgröße (mm)', group: 'font', type: 'number' },
-      { key: 'functionFontSize', label: 'Funktionstext / Text-Größe (mm)', group: 'font', type: 'number' },
-      { key: 'additionalFontSize', label: 'Zusatztext-Größe (mm)', group: 'font', type: 'number' },
-      { key: 'technicalFontSize', label: 'Technische-Daten-Größe (mm)', group: 'font', type: 'number' },
-      { key: 'crossRefFontSize', label: 'Querverweis-Größe (mm)', group: 'font', type: 'number' },
-      { key: 'pinFontSize', label: 'Anschluss- / Ader-Größe (mm)', group: 'font', type: 'number' },
-      { key: 'boxFontSize', label: 'Kasten-Schriftgröße (mm)', group: 'font', type: 'number' },
-      { key: 'bmkVisible', label: 'BMK / Beschriftung sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'fnVisible', label: 'Funktionstext sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'techVisible', label: 'Technische Daten sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'additionalVisible', label: 'Zusatztext sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'crossRefVisible', label: 'Querverweise sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'pinVisible', label: 'Anschlüsse / Adern sichtbar', group: 'vis', type: 'checkbox' },
-      { key: 'bmkPreset', label: 'BMK Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
-      { key: 'fnPreset', label: 'Funktionstext Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
-      { key: 'techPreset', label: 'Technische Daten Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottomUnderFn')], ['top', t('propPresetTop')], ['right', t('propPresetRight')], ['left', t('propPresetLeft')], ['custom', t('propPresetCustom')]] },
-      { key: 'additionalPreset', label: 'Zusatztext Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
-      { key: 'crossRefPreset', label: 'Querverweis Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
-      { key: 'pinPreset', label: 'Anschluss-Positionspreset', group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
+      { key: 'bmkFontSize', label: tr('BMK / Kabel-Schriftgröße (mm)','DT / Cable Font Size (mm)'), group: 'font', type: 'number' },
+      { key: 'functionFontSize', label: tr('Funktionstext / Text-Größe (mm)','Function Text / Text Size (mm)'), group: 'font', type: 'number' },
+      { key: 'additionalFontSize', label: tr('Zusatztext-Größe (mm)','Additional Text Size (mm)'), group: 'font', type: 'number' },
+      { key: 'technicalFontSize', label: tr('Technische-Daten-Größe (mm)','Technical Data Size (mm)'), group: 'font', type: 'number' },
+      { key: 'crossRefFontSize', label: tr('Querverweis-Größe (mm)','Cross-Reference Size (mm)'), group: 'font', type: 'number' },
+      { key: 'pinFontSize', label: tr('Anschluss- / Ader-Größe (mm)','Pin / Core Size (mm)'), group: 'font', type: 'number' },
+      { key: 'boxFontSize', label: tr('Kasten-Schriftgröße (mm)','Box Font Size (mm)'), group: 'font', type: 'number' },
+      { key: 'bmkVisible', label: tr('BMK / Beschriftung sichtbar','DT / Label visible'), group: 'vis', type: 'checkbox' },
+      { key: 'fnVisible', label: tr('Funktionstext sichtbar','Function text visible'), group: 'vis', type: 'checkbox' },
+      { key: 'techVisible', label: tr('Technische Daten sichtbar','Technical data visible'), group: 'vis', type: 'checkbox' },
+      { key: 'additionalVisible', label: tr('Zusatztext sichtbar','Additional text visible'), group: 'vis', type: 'checkbox' },
+      { key: 'crossRefVisible', label: tr('Querverweise sichtbar','Cross-references visible'), group: 'vis', type: 'checkbox' },
+      { key: 'pinVisible', label: tr('Anschlüsse / Adern sichtbar','Pins / cores visible'), group: 'vis', type: 'checkbox' },
+      { key: 'bmkPreset', label: tr('BMK Positionspreset','DT Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'fnPreset', label: tr('Funktionstext Positionspreset','Function Text Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'techPreset', label: tr('Technische Daten Positionspreset','Technical Data Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottomUnderFn')], ['top', t('propPresetTop')], ['right', t('propPresetRight')], ['left', t('propPresetLeft')], ['custom', t('propPresetCustom')]] },
+      { key: 'additionalPreset', label: tr('Zusatztext Positionspreset','Additional Text Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAuto')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')], ['custom', t('propPresetCustom')]] },
+      { key: 'crossRefPreset', label: tr('Querverweis Positionspreset','Cross-Reference Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
+      { key: 'pinPreset', label: tr('Anschluss-Positionspreset','Pin Position Preset'), group: 'vis', type: 'select', options: [['auto', t('propPresetAutoStandard')], ['custom', t('propPresetCustomWithOffset')], ['top', t('propPresetTop')], ['top_left', t('propPresetTopLeft')], ['top_right', t('propPresetTopRight')], ['bottom', t('propPresetBottom')], ['bottom_left', t('propPresetBottomLeft')], ['bottom_right', t('propPresetBottomRight')], ['left', t('propPresetLeft')], ['right', t('propPresetRight')]] },
 
       // Kasten / Rahmen
       { key: 'boxLineWidth', label: t('boxLabelLineWidth') + ' (mm)', group: 'box', type: 'number' },
@@ -1449,8 +1449,8 @@ export class PropertiesDialog {
     if (selection.cableIds.length) countDetails.push(`${selection.cableIds.length} ${t('legendCableDefs')}`);
     if (selection.boxIds?.length) countDetails.push(`${selection.boxIds.length} ${t('legendDeviceBoxes')}`);
     if (selection.imageIds?.length) countDetails.push(`${selection.imageIds.length} ${t('imageHeading')}`);
-    if (selection.wireIds?.length) countDetails.push(`${selection.wireIds.length} Verbindungen`);
-    if (selection.textIds?.length) countDetails.push(`${selection.textIds.length} Texte`);
+    if (selection.wireIds?.length) countDetails.push(`${selection.wireIds.length} ${tr('Verbindungen', 'Connections')}`);
+    if (selection.textIds?.length) countDetails.push(`${selection.textIds.length} ${tr('Texte', 'Texts')}`);
 
     modal.innerHTML = `
       <div class="modal-card ecad-window" style="
@@ -1477,19 +1477,19 @@ export class PropertiesDialog {
         ">
           <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px;">
             <span style="color: #63b3ed; font-weight: bold;">⚙️</span>
-            <span>Gemeinsame Eigenschaften (${count} Elemente ausgewählt: ${countDetails.join(', ')})</span>
+            <span>${escapeSvg(tr('Gemeinsame Eigenschaften','Shared Properties'))} (${count} ${escapeSvg(tr('Elemente ausgewählt','elements selected'))}: ${countDetails.join(', ')})</span>
           </div>
           <button id="btnClosePropModal" style="background: none; border: none; color: #a0aec0; font-size: 20px; cursor: pointer; line-height: 1;">&times;</button>
         </div>
 
         <div style="padding: 16px; max-height: 70vh; overflow-y: auto;">
           <p style="font-size: 11px; color: var(--text-muted); margin-top: 0; margin-bottom: 14px;">
-            Hier werden alle Eigenschaften angezeigt, die bei <strong>allen</strong> markierten Elementen existieren. Nur geänderte Felder werden gemeinsam übertragen.
+            ${tr('Hier werden alle Eigenschaften angezeigt, die bei <strong>allen</strong> markierten Elementen existieren. Nur geänderte Felder werden gemeinsam übertragen.','Only properties shared by <strong>all</strong> selected elements are shown. Only changed fields are applied.')}
           </p>
 
           ${validProps.length === 0 ? `
             <div style="padding: 24px; text-align: center; color: #a0aec0; font-size: 13px;">
-              Die ausgewählten Elemente teilen keine gemeinsamen Eigenschaften.
+              ${escapeSvg(tr('Die ausgewählten Elemente teilen keine gemeinsamen Eigenschaften.','The selected elements share no common properties.'))}
             </div>
           ` : `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">

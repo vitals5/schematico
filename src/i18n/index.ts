@@ -3512,5 +3512,13 @@ export function t(key: TranslationKey, params?: Record<string, string | number>)
   return text;
 }
 
+export function tr(de: string, en: string, lang: Language = getUiLanguage()): string {
+  return lang === 'de' ? de : en;
+}
+
+export function getTranslationDictionaries(): { de: Record<string, string>; en: Record<string, string> } {
+  return { de: translations.de, en: translations.en };
+}
+
 export * from './symbolTranslations';
 
