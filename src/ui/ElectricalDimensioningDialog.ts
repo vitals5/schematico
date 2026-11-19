@@ -1,3 +1,14 @@
+import {
+  CircuitArticlePicker,
+  circuitRoleIcon,
+  circuitPartSummary,
+} from "./CircuitArticlePicker";
+import {
+  assessCircuitArticle,
+  circuitRoleLabel,
+  selectCircuitArticle,
+} from "../model/CircuitArticleSelection";
+import { ArticleCatalogDialog } from "./ArticleCatalogDialog";
 import { compareCircuitArticles } from "../model/CircuitDesign";
 import { circuitSchematicDraft } from "../model/CircuitSchematic";
 import { previewLayout, applyLayout } from "../layout/service";
@@ -8,9 +19,7 @@ import { editorArticles } from "../model/EditorArticles";
 import {
   dimensioningArticleCandidates,
   circuitArticleKey,
-  circuitArticleFields,
   captureCircuitArticle,
-  catalogCircuitArticle,
   adoptCircuitArticle,
   type CircuitArticleRole,
 } from "../model/DimensioningArticles";
@@ -52,7 +61,7 @@ export class ElectricalDimensioningDialog {
   private error = "";
   private query = "";
   private confirmDelete = false;
-  private articleSearch = "";
+  private selectedArticlesOnly = true;
   private wizardOpen = false;
   private designFilters: { cable?: string; protection?: string } = {};
   private comparisons?: ReturnType<typeof compareCircuitArticles>;
@@ -181,7 +190,7 @@ export class ElectricalDimensioningDialog {
         .join("") ||
       `<p>${esc(tr("Keine gespeicherten Stromkreise.", "No saved circuits."))}</p>`
     }</div><div class="pe-card"><h3>${esc(tr("Berechnungsumfang", "Calculation Scope"))}</h3><p>${esc(tr("Stromkreise werden ausdrücklich erfasst. Reale Leitungslängen werden nicht aus Zeichnungsabständen berechnet.", "Circuits are recorded explicitly. Real cable lengths are not derived from drawing distances."))}</p><p>${esc(tr("Schutzprüfungen verwenden dokumentierte Eingaben und die angezeigten Formeln. Nicht beauftragte Bereiche bleiben als solche ausgewiesen.", "Protection checks use documented inputs and the shown formulas. Unselected sections remain marked accordingly."))}</p></div></aside>
-      <main class="pe-main pe-dimensioning"><form data-dimensioning-form>${this.articlePanel()}<div class="pe-card"><label>${esc(tr("Stromkreisname", "Circuit Name"))}<input class="form-input" data-text="name" maxlength="160" required value="${esc(this.edit.name)}"></label><div class="pe-fields">${select(
+      <main class="pe-main pe-dimensioning"><form data-dimensioning-form>${this.wizardOpen ? "" : this.articlePanel()}<div class="pe-card"><label>${esc(tr("Stromkreisname", "Circuit Name"))}<input class="form-input" data-text="name" maxlength="160" required value="${esc(this.edit.name)}"></label><div class="pe-fields">${select(
         "system",
         tr("System", "System"),
         [
@@ -341,7 +350,7 @@ export class ElectricalDimensioningDialog {
     q<HTMLFormElement>("[data-dimensioning-form]").oninput = (event) => {
       if (
         (event.target as Element).matches(
-          "[data-article-search],[data-design-template],[data-design-filter]",
+          "[data-design-template],[data-design-filter],[data-design-selected]",
         )
       )
         return;
@@ -598,21 +607,6 @@ export class ElectricalDimensioningDialog {
     ]);
   }
   private articlePanel() {
-    const options = this.articleOptions(),
-      words = this.articleSearch
-        .toLocaleLowerCase()
-        .split(/\s+/)
-        .filter(Boolean);
-    const filtered = options
-      .filter((a) =>
-        words.every((w) =>
-          [a.manufacturer, a.articleNumber, a.variant, a.snapshot?.description]
-            .join(" ")
-            .toLocaleLowerCase()
-            .includes(w),
-        ),
-      )
-      .slice(0, 150);
     const devices = this.source.pages.flatMap((p) =>
       p.components
         .filter((c) => c.bmk?.trim())
@@ -623,107 +617,127 @@ export class ElectricalDimensioningDialog {
           component: c,
         })),
     );
-    const roles: Record<CircuitArticleRole, string> = {
-      cable: tr("Leitung / Kabel", "Conductor / cable"),
-      protection: tr(
-        "Schutzgerät des Stromkreises",
-        "Circuit protective device",
-      ),
-      load: tr("Verbraucher", "Load"),
-      upstream: tr("Vorgeschaltetes Schutzgerät", "Upstream protective device"),
+    const card = (role: CircuitArticleRole) => {
+      const selection = this.edit.articles?.[role],
+        article = selection?.article,
+        assessment = article && assessCircuitArticle(article, role, this.edit);
+      const roleDevices = devices.filter((d) => {
+        const main = effectiveArticles(d.component, this.source).find(
+          (a) => a.role === "main",
+        );
+        return (
+          selection?.device?.componentId === d.componentId ||
+          !main?.snapshot?.electrical ||
+          main.snapshot.electrical.kind ===
+            (role === "upstream" ? "protection" : role)
+        );
+      });
+      return `<article class="pe-part-card" data-part-card="${role}"><header><span class="pe-part-icon">${circuitRoleIcon(role)}</span><h4>${esc(circuitRoleLabel(role))}</h4>${role === "load" || role === "upstream" ? `<small>${esc(tr("optional", "optional"))}</small>` : ""}</header>${article ? `<div class="pe-part-identity"><small>${esc(article.manufacturer || tr("Ohne Hersteller", "No manufacturer"))}</small><strong>${esc(article.articleNumber)}</strong>${article.variant ? `<span>${esc(tr("Variante", "Variant"))}: ${esc(article.variant)}</span>` : ""}<p title="${esc(article.snapshot?.description ?? "")}">${esc(article.snapshot?.description ?? "")}</p></div><p class="pe-part-ratings">${esc(circuitPartSummary(article))}</p><span class="pe-status ${assessment?.status === "ready" ? "pass" : assessment?.status === "incompatible" ? "fail" : "missing"}">${esc(assessment?.status === "ready" ? tr("Grunddaten passen", "Basic data match") : assessment?.status === "incompatible" ? tr("Zuordnung prüfen", "Check assignment") : tr("Kennwerte ergänzen", "Add ratings"))}</span>${assessment && assessment.status !== "ready" ? `<p class="pe-part-hint">${esc([...assessment.conflicts, ...assessment.missing].slice(0, 2).join(" "))}</p>` : ""}` : `<p class="pe-part-empty">${esc(tr("Noch kein Artikel gewählt", "No part selected yet"))}</p>`}<div class="pe-actions"><button type="button" class="btn ${article ? "" : "btn-primary"}" data-article-choose="${role}">${esc(article ? tr("Artikel wechseln", "Change part") : tr("Artikel auswählen", "Choose part"))}</button>${article ? `<button type="button" class="btn" data-article-remove="${role}" aria-label="${esc(tr("Zuordnung entfernen", "Remove assignment"))}">✕</button>` : ""}</div>${selection ? `<details class="pe-part-advanced"><summary>${esc(tr("Zuordnung und Kennwerte bearbeiten", "Edit binding and ratings"))}</summary><label>${esc(tr("Projektgerät (optional)", "Project device (optional)"))}<select class="form-input" data-article-device="${role}"><option value="">${esc(tr("Nur Auslegungsartikel / kein Planbezug", "Design part only / no drawing reference"))}</option>${roleDevices.map((d) => `<option value="${esc(JSON.stringify([d.pageId, d.componentId]))}" ${selection.device?.pageId === d.pageId && selection.device?.componentId === d.componentId ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></label><label>${esc(tr("Datenblatt / Kennwertquelle", "Data sheet / rating source"))}<textarea class="form-input" data-article-source="${role}" maxlength="2000">${esc(selection.source ?? "")}</textarea></label><div class="pe-actions"><button type="button" class="btn" data-article-adopt="${role}" ${selection.parameters && selection.source ? "" : "disabled"}>${esc(tr("Gespeicherte Kennwerte übernehmen", "Adopt saved ratings"))}</button><button type="button" class="btn" data-article-capture="${role}">${esc(tr("Formularwerte an Artikel binden", "Attach form values to part"))}</button><button type="button" class="btn" data-article-edit="${role}">${esc(tr("Im Artikelkatalog bearbeiten", "Edit in parts catalogue"))}</button>${selection.device && this.manageArticle ? `<button type="button" class="btn" data-article-manage="${role}">${esc(tr("Artikel im Plan bearbeiten", "Edit part in drawing"))}</button>` : ""}</div><p class="pe-part-hint">${esc(tr("Katalogänderungen durch erneute Artikelauswahl übernehmen. Die Auswahl allein verändert keine Projektgeräte.", "Adopt catalogue changes by selecting the part again. Selecting a part alone does not change project devices."))}</p></details>` : `<details class="pe-part-advanced"><summary>${esc(tr("Vorhandenes Projektgerät zuordnen", "Link an existing project device"))}</summary><select class="form-input" aria-label="${esc(circuitRoleLabel(role))}" data-article-device="${role}"><option value="">—</option>${roleDevices.map((d) => `<option value="${esc(JSON.stringify([d.pageId, d.componentId]))}">${esc(d.label)}</option>`).join("")}</select></details>`}</article>`;
     };
-    const fields = (role: CircuitArticleRole) =>
-      circuitArticleFields[role]
-        .map((key) => dimensioningNumbers[key]?.label ?? key)
-        .join(", ");
-    return `<details open class="pe-card"><summary>${esc(tr("Stromkreis aufbauen · Geräte und Artikel", "Build circuit · devices and parts"))}</summary><details><summary>${esc(tr("Wann einsetzen?", "When to use?"))}</summary><p>${esc(tr("Optionale Auslegungshilfe für neue Stromkreise, längere Leitungen, geänderte Lasten oder Schutzgeräte. Für die reine Zeichnung eines bereits nachgewiesenen Stromkreises ist keine neue Berechnung erforderlich.", "Optional design aid for new circuits, long cable runs, changed loads or protective devices. Drawing an already verified circuit does not require a new calculation."))}</p><p>${esc(tr("Für neue oder geänderte Leitungen: Länge, Last und Spannungsfall prüfen. Bei Änderungen an Leitung oder Schutzgerät zusätzlich Strombelastbarkeit und Abschaltung prüfen. Selektivität nur für eine belegte Gerätepaarung aktivieren.", "For new or modified circuits, check length, load and voltage drop. When changing a cable or protective device, also check current capacity and disconnection. Enable selectivity only with documented evidence for the device pair."))}</p><p>${esc(tr("Die Auswahl dokumentiert die Auslegung. Projektartikel und Stückliste werden nur im Artikelwerkzeug geändert. Aus Artikelbeschreibungen werden keine elektrischen Kennwerte geraten.", "Selection documents the design. Project parts and the BOM are changed only in the parts workbench. Electrical ratings are not guessed from descriptions."))}</p></details><label>${esc(tr("Artikel suchen (Projekt und Katalog)", "Search parts (project and catalogue)"))}<input class="form-input" data-article-search value="${esc(this.articleSearch)}"></label><small>${options.length} ${esc(tr("Artikel verfügbar; bis zu 150 Treffer je Auswahl. Suche eingrenzen.", "parts available; up to 150 matches per list. Narrow the search."))}</small>${(
-      Object.keys(roles) as CircuitArticleRole[]
-    )
-      .map((role) => {
-        const s = this.edit.articles?.[role],
-          list =
-            s &&
-            !filtered.some(
-              (a) => circuitArticleKey(a) === circuitArticleKey(s.article),
-            )
-              ? [s.article, ...filtered]
-              : filtered;
-        return `<details class="pe-card" ${s ? "open" : ""}><summary>${roles[role]}${s ? " · " + esc(s.article.articleNumber) : ""}</summary><label>${esc(tr("Projektgerät (optional)", "Project device (optional)"))}<select class="form-input" data-article-device="${role}"><option value="">${esc(tr("Nur Auslegungsartikel / kein Planbezug", "Design part only / no drawing reference"))}</option>${devices.map((d) => `<option value="${esc(JSON.stringify([d.pageId, d.componentId]))}" ${s?.device?.pageId === d.pageId && s?.device?.componentId === d.componentId ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></label><label>${esc(tr("Artikel für diese Funktion", "Part for this function"))}<select class="form-input" data-article-select="${role}"><option value="">${esc(tr("Kein Artikel gewählt (manuelle Berechnung)", "No part selected (manual calculation)"))}</option>${list.map((a) => `<option value="${esc(circuitArticleKey(a))}" ${s && circuitArticleKey(s.article) === circuitArticleKey(a) ? "selected" : ""}>${esc([a.manufacturer, a.articleNumber, a.variant, a.snapshot?.description].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>${
-          s
-            ? `<p>${esc(tr("Vorhandene Artikelkennwerte ausdrücklich übernehmen oder Formularwerte mit Quelle diesem Artikel zuordnen.", "Explicitly adopt available part ratings, or attach sourced form values to this part."))}<small>${esc(fields(role))}</small><label>${esc(tr("Datenblatt / Kennwertquelle dieses Artikels", "Data sheet / ratings source for this part"))}<textarea class="form-input" data-article-source="${role}" maxlength="2000">${esc(s.source ?? "")}</textarea></label><div class="pe-actions"><button type="button" class="btn" data-article-capture="${role}">${esc(tr("Formularwerte an Artikel binden", "Attach form values to part"))}</button><button type="button" class="btn" data-article-adopt="${role}" ${s.parameters && s.source ? "" : "disabled"}>${esc(tr("Gespeicherte Kennwerte übernehmen", "Adopt saved ratings"))}</button>${s.device && this.manageArticle ? `<button type="button" class="btn" data-article-manage="${role}">${esc(tr("Artikel im Plan bearbeiten", "Edit part in drawing"))}</button>` : ""}</div><p>${esc(tr("Dokumentierte Artikelwerte", "Documented part ratings"))}: ${esc(
-                Object.entries(s.parameters ?? {})
-                  .map(
-                    ([key, v]) =>
-                      `${dimensioningNumbers[key as NumericDimensioningKey]?.label ?? key}: ${num(v)}`,
-                  )
-                  .join(" · "),
-              )}</p>`
-            : ""
-        }</details>`;
-      })
-      .join("")}</details>`;
+    return `<section class="pe-card pe-part-section"><div class="pe-card-heading"><div><h3>${esc(tr("Artikel für diesen Stromkreis", "Parts for this circuit"))}</h3><p>${esc(tr("Getrennt auswählen. Kennwerte können direkt mit übernommen werden.", "Select each role separately. Ratings can be adopted with the part."))}</p></div></div><div class="pe-part-grid">${(["cable", "protection", "load"] as const).map(card).join("")}</div><details class="pe-part-upstream"><summary>${esc(tr("Vorgeschaltetes Schutzgerät und Selektivität (optional)", "Upstream protective device and selectivity (optional)"))}</summary>${card("upstream")}</details></section>`;
+  }
+  private chooseArticle(
+    role: CircuitArticleRole,
+    article: AssignedArticle | undefined,
+    adopt = false,
+  ) {
+    this.stale();
+    this.collect();
+    let next = selectCircuitArticle(this.edit, role, article, false);
+    if (article && !next.articles?.[role]?.parameters) {
+      const known = this.records()
+        .map((r) => r.articles?.[role])
+        .find(
+          (a) =>
+            a &&
+            circuitArticleKey(a.article) === circuitArticleKey(article) &&
+            a.parameters &&
+            a.source,
+        );
+      if (known)
+        next.articles![role] = {
+          ...next.articles![role]!,
+          parameters: structuredClone(known.parameters),
+          source: known.source,
+        };
+    }
+    if (adopt) next = selectCircuitArticle(next, role, article, true);
+    this.edit = next;
+    this.dirty = true;
+    this.comparisons = undefined;
+    this.render();
+    this.el
+      .querySelector(`[data-part-card="${role}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+    this.el
+      .querySelector<HTMLButtonElement>(`[data-article-choose="${role}"]`)
+      ?.focus({ preventScroll: true });
   }
   private bindArticles(safe: (fn: () => void) => void) {
-    this.el.querySelector<HTMLInputElement>("[data-article-search]")!.onchange =
-      (e) => {
-        this.collect();
-        this.articleSearch = (e.target as HTMLInputElement).value;
-        this.render();
-      };
     this.el
-      .querySelectorAll<HTMLSelectElement>("[data-article-select]")
+      .querySelectorAll<HTMLButtonElement>("[data-article-choose]")
       .forEach(
-        (el) =>
-          (el.onchange = () =>
+        (button) =>
+          (button.onclick = () =>
             safe(() => {
               this.collect();
-              const role = el.dataset.articleSelect as CircuitArticleRole,
-                article = this.articleOptions().find(
-                  (a) => circuitArticleKey(a) === el.value,
+              this.stale();
+              const role = button.dataset.articleChoose as CircuitArticleRole;
+              const projectKeys = new Set(
+                dimensioningArticleCandidates(this.source).map(
+                  circuitArticleKey,
                 ),
-                device = this.edit.articles?.[role]?.device;
-              if (
-                (role === "protection" || role === "upstream") &&
-                circuitArticleKey(
-                  this.edit.articles?.[role]?.article ?? {
-                    manufacturer: "",
-                    articleNumber: "",
-                    variant: "",
-                  },
-                ) !== el.value
-              ) {
-                delete this.edit.selectivitySource;
-                delete this.edit.selectivityLimitA;
-              }
-              this.edit.articles = { ...this.edit.articles };
-              if (article) {
-                const known = this.source.dimensioning
-                  ?.map((r) => r.articles?.[role])
-                  .find(
-                    (s) =>
-                      s &&
-                      circuitArticleKey(s.article) ===
-                        circuitArticleKey(article) &&
-                      s.parameters &&
-                      s.source,
-                  );
-                this.edit.articles[role] = {
-                  device,
-                  ...(catalogCircuitArticle(article, role) ??
-                    (known
-                      ? {
-                          parameters: structuredClone(known.parameters),
-                          source: known.source,
-                        }
-                      : {})),
-                  article: structuredClone(article),
-                };
-              } else delete this.edit.articles[role];
-              this.dirty = true;
-              this.comparisons = undefined;
-              this.render();
+              );
+              new CircuitArticlePicker({
+                role,
+                record: structuredClone(this.edit),
+                getProject: () => this.source,
+                getItems: () => this.articleOptions(),
+                projectKeys,
+                selected: this.edit.articles?.[role]?.article,
+                onChoose: (article, adopt) =>
+                  this.chooseArticle(role, article, adopt),
+              }).show();
             })),
       );
+    this.el
+      .querySelectorAll<HTMLButtonElement>("[data-article-remove]")
+      .forEach(
+        (button) =>
+          (button.onclick = () =>
+            safe(() =>
+              this.chooseArticle(
+                button.dataset.articleRemove as CircuitArticleRole,
+                undefined,
+              ),
+            )),
+      );
+    this.el.querySelectorAll<HTMLButtonElement>("[data-article-edit]").forEach(
+      (button) =>
+        (button.onclick = () =>
+          safe(() => {
+            this.collect();
+            const a =
+              this.edit.articles?.[
+                button.dataset.articleEdit as CircuitArticleRole
+              ]?.article;
+            if (!a) return;
+            new ArticleCatalogDialog(
+              this.source,
+              undefined,
+              a.articleNumber,
+              a.snapshot ?? {
+                id: "",
+                manufacturer: a.manufacturer,
+                articleNumber: a.articleNumber,
+                variant: a.variant,
+                description: "",
+                origin: "user",
+                verification: "unverified",
+              },
+            ).show();
+          })),
+    );
     this.el
       .querySelectorAll<HTMLSelectElement>("[data-article-device]")
       .forEach(
@@ -752,14 +766,13 @@ export class ElectricalDimensioningDialog {
                       "This device has no main part. Assign it in the parts workbench first.",
                     ),
                   );
-                this.edit.articles = {
-                  ...this.edit.articles,
-                  [role]: {
-                    ...(catalogCircuitArticle(article, role) ?? {}),
-                    article,
-                    device: { pageId, componentId },
-                  },
-                };
+                this.edit = selectCircuitArticle(
+                  this.edit,
+                  role,
+                  article,
+                  false,
+                );
+                this.edit.articles![role]!.device = { pageId, componentId };
               }
               this.dirty = true;
               this.comparisons = undefined;
@@ -785,6 +798,7 @@ export class ElectricalDimensioningDialog {
                   );
                 this.edit = adoptCircuitArticle(this.edit, role);
                 this.dirty = true;
+                this.comparisons = undefined;
                 this.render();
               })),
         );
@@ -814,12 +828,21 @@ export class ElectricalDimensioningDialog {
   private wizardPanel() {
     if (!this.wizardOpen) return "";
     const comparison = this.comparisons;
-    return `<section class="pe-card" data-design-assistant><h3>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</h3><p>${esc(tr("1. Oben Spannung, Last, reale Leitungslänge, Temperatur und zulässigen Spannungsfall eingeben. Im Bereich Strombelastbarkeit die zutreffenden Korrekturfaktoren erfassen. 2. Artikel vergleichen. 3. Kennwerte und angezeigte Verlegebedingungen prüfen und übernehmen. 4. Berechnung speichern oder eine neue Planseite vorschlagen lassen.", "1. Enter voltage, load, real cable length, temperature and permitted voltage drop above. Enter applicable correction factors in the current capacity section. 2. Compare parts. 3. Check and adopt the ratings and displayed installation conditions. 4. Save the calculation or propose a new drawing page."))}</p><p>${esc(tr("Verglichen werden strukturierte Leitungs- und Schutzgeräteartikel aus Projekt und Katalog. Die beiden Suchfelder grenzen den Vergleich getrennt ein. Fehlende Kennwerte zuerst im Artikelkatalog ergänzen.", "Comparison uses structured cable and protective device parts from the project and catalogue. The two search fields narrow the comparison independently. Add missing ratings in the parts catalogue first."))}</p><div class="pe-fields">${(["cable", "protection"] as const).map((role) => `<label>${esc(role === "cable" ? tr("Leitung suchen", "Find cable") : tr("Schutzgerät suchen", "Find protective device"))}<input class="form-input" data-design-filter="${role}" value="${esc(this.designFilters[role] ?? "")}"></label>`).join("")}</div><button type="button" class="btn btn-primary" data-design-compare>${esc(tr("Leitung und Schutzgerät vergleichen", "Compare cable and protective device"))}</button><div data-design-comparisons>${
+    return `<section class="pe-card pe-design-assistant" data-design-assistant><h3>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</h3><ol class="pe-design-steps"><li>${esc(tr("Last erfassen", "Enter load"))}</li><li>${esc(tr("Artikel auswählen", "Choose parts"))}</li><li>${esc(tr("Auslegung vergleichen", "Compare design"))}</li><li>${esc(tr("Plan prüfen", "Review drawing"))}</li></ol><p>${esc(tr("Last, Länge und Verlegefaktoren bestimmen die Auslegung. Wähle konkrete Artikel oder lasse verfügbare Kombinationen vergleichen.", "Load, cable length and installation factors determine the design. Choose specific parts or compare available combinations."))}</p>${this.articlePanel()}<label class="pe-check"><input type="checkbox" data-design-selected ${this.selectedArticlesOnly ? "checked" : ""}>${esc(tr("Ausgewählte Leitung und Schutzgerät beim Vergleich festhalten", "Keep selected cable and protective device fixed during comparison"))}</label><details class="pe-design-alternatives"><summary>${esc(tr("Alternativen für den Vergleich eingrenzen", "Filter alternatives for comparison"))}</summary><div class="pe-fields">${(["cable", "protection"] as const).map((role) => `<label>${esc(role === "cable" ? tr("Leitung suchen", "Find cable") : tr("Schutzgerät suchen", "Find protective device"))}<input class="form-input" data-design-filter="${role}" ${this.selectedArticlesOnly && this.edit.articles?.[role] ? "disabled" : ""} value="${esc(this.designFilters[role] ?? "")}"></label>`).join("")}</div></details><button type="button" class="btn btn-primary" data-design-compare>${esc(tr("Auslegung prüfen und vergleichen", "Check and compare circuit design"))}</button><div data-design-comparisons>${
       comparison
         ? `<p>${comparison.total} ${esc(tr("Kombinationen berechnet; maximal 24 angezeigt, je höchstens 40 Leitungen / Schutzgeräte.", "combinations calculated; up to 24 shown, at most 40 cables / protective devices each."))} ${comparison.truncated ? esc(tr("Auswahl begrenzt – Suche eingrenzen.", "Selection limited – narrow the search.")) : ""}</p>${!comparison.total ? `<p>${esc(tr("Keine Kombination verfügbar. Benötigt werden mindestens ein Leitungsartikel und ein Schutzgeräteartikel mit strukturierten elektrischen Kennwerten.", "No combinations available. At least one cable and one protective device with structured electrical ratings are required."))}</p>` : ""}${comparison.candidates
             .map(
               (c, i) =>
-                `<article class="pe-card"><strong>${esc([c.record.articles!.cable!.article.articleNumber, c.record.articles!.protection!.article.articleNumber].join(" + "))}</strong><p>${esc(tr("Querschnitt", "Cross-section"))}: ${num(c.record.sectionMm2)} mm² · In: ${num(c.record.protectiveCurrentA)} A · ΔU: ${num(c.result.values.dropPercent)} %</p><span class="pe-status ${c.result.status === "failed" ? "fail" : c.result.status === "incomplete" || c.issues.length ? "missing" : "pass"}">${esc(c.result.status === "failed" ? tr("Grenzwert verletzt", "Limit exceeded") : c.result.status === "incomplete" || c.issues.length ? tr("Angaben fehlen / Kompatibilität prüfen", "Missing inputs / check compatibility") : tr("Beauftragte Rechenprüfungen erfüllt", "Requested calculation checks passed"))}</span><p>${esc(c.record.articles!.cable!.source ?? "")}</p><p>${esc(c.record.articles!.protection!.source ?? "")}</p>${[
+                `<article class="pe-card pe-design-result"><div class="pe-design-pair">${(
+                  ["cable", "protection"] as const
+                )
+                  .map((role) => {
+                    const a = c.record.articles![role]!.article;
+                    return `<div><small>${esc(circuitRoleLabel(role))}</small><strong>${esc(a.manufacturer + " · " + a.articleNumber)}</strong>${a.variant ? `<span>${esc(tr("Variante", "Variant"))}: ${esc(a.variant)}</span>` : ""}</div>`;
+                  })
+                  .join(
+                    "",
+                  )}</div><p>${esc(tr("Querschnitt", "Cross-section"))}: ${num(c.record.sectionMm2)} mm² · In: ${num(c.record.protectiveCurrentA)} A · ΔU: ${num(c.result.values.dropPercent)} %</p><span class="pe-status ${c.result.status === "failed" ? "fail" : c.result.status === "incomplete" || c.issues.length ? "missing" : "pass"}">${esc(c.result.status === "failed" ? tr("Grenzwert verletzt", "Limit exceeded") : c.result.status === "incomplete" || c.issues.length ? tr("Angaben fehlen / Kompatibilität prüfen", "Missing inputs / check compatibility") : tr("Beauftragte Rechenprüfungen erfüllt", "Requested calculation checks passed"))}</span><p>${esc(c.record.articles!.cable!.source ?? "")}</p><p>${esc(c.record.articles!.protection!.source ?? "")}</p>${[
                   ...c.issues,
                   ...c.result.checks
                     .filter(
@@ -874,6 +897,23 @@ export class ElectricalDimensioningDialog {
         }),
     );
     this.el
+      .querySelector<HTMLInputElement>("[data-design-selected]")
+      ?.addEventListener("change", (e) => {
+        this.selectedArticlesOnly = (e.target as HTMLInputElement).checked;
+        this.el
+          .querySelectorAll<HTMLInputElement>("[data-design-filter]")
+          .forEach(
+            (f) =>
+              (f.disabled =
+                this.selectedArticlesOnly &&
+                !!this.edit.articles?.[
+                  f.dataset.designFilter as "cable" | "protection"
+                ]),
+          );
+        this.comparisons = undefined;
+        this.el.querySelector("[data-design-comparisons]")?.replaceChildren();
+      });
+    this.el
       .querySelector("[data-design-compare]")
       ?.addEventListener("click", () =>
         safe(() => {
@@ -884,9 +924,32 @@ export class ElectricalDimensioningDialog {
             this.articleOptions(),
             24,
             this.source,
-            this.designFilters,
+            {
+              ...this.designFilters,
+              selected: this.selectedArticlesOnly
+                ? {
+                    ...(this.edit.articles?.cable
+                      ? {
+                          cable: circuitArticleKey(
+                            this.edit.articles.cable.article,
+                          ),
+                        }
+                      : {}),
+                    ...(this.edit.articles?.protection
+                      ? {
+                          protection: circuitArticleKey(
+                            this.edit.articles.protection.article,
+                          ),
+                        }
+                      : {}),
+                  }
+                : undefined,
+            },
           );
           this.render();
+          this.el
+            .querySelector("[data-design-comparisons]")
+            ?.scrollIntoView({ block: "start" });
         }),
       );
     this.el.querySelectorAll<HTMLElement>("[data-design-pick]").forEach(

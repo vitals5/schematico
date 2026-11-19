@@ -12,6 +12,7 @@ import {
 } from "./DimensioningArticles";
 import { validateElectricalData } from "./ArticleElectrical";
 import { tr } from "../i18n";
+import { circuitArticleKey } from "./DimensioningArticles";
 export interface CircuitDesignCandidate {
   record: CircuitDimensioning;
   result: DimensioningResult;
@@ -117,7 +118,11 @@ export function compareCircuitArticles(
   articles: AssignedArticle[],
   limit = 24,
   project?: Project,
-  filters: { cable?: string; protection?: string } = {},
+  filters: {
+    cable?: string;
+    protection?: string;
+    selected?: Partial<Record<"cable" | "protection", string>>;
+  } = {},
 ) {
   const matches = (a: AssignedArticle, query = "") =>
     query
@@ -130,15 +135,22 @@ export function compareCircuitArticles(
           .toLocaleLowerCase()
           .includes(w),
       );
-  const cables = articles.filter(
+  const roleArticles = (role: "cable" | "protection") => {
+    const key = filters.selected?.[role],
+      current = input.articles?.[role]?.article;
+    const pinned = key
+      ? current && circuitArticleKey(current) === key
+        ? current
+        : articles.find((a) => circuitArticleKey(a) === key)
+      : undefined;
+    return (key ? (pinned ? [pinned] : []) : articles).filter(
       (a) =>
-        a.snapshot?.electrical?.kind === "cable" && matches(a, filters.cable),
-    ),
-    protection = articles.filter(
-      (a) =>
-        a.snapshot?.electrical?.kind === "protection" &&
-        matches(a, filters.protection),
+        a.snapshot?.electrical?.kind === role &&
+        matches(a, key ? "" : filters[role]),
     );
+  };
+  const cables = roleArticles("cable"),
+    protection = roleArticles("protection");
   const candidates: CircuitDesignCandidate[] = [];
   // A bounded catalogue subset is explicit in the UI; never evaluate an unbounded cartesian product.
   for (const c of cables.slice(0, 40))
