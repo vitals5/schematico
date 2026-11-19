@@ -579,7 +579,7 @@ export class App {
       const c = page?.components.find(c=>c.id===ref.from.componentId);
       if(page&&c)this.canvas.focusInspection({pageId:page.id,pageNumber:page.pageNumber,componentId:c.id,wireId:ref.wireId,x:c.x,y:c.y});
       this.updateUI();
-    }).show();
+    },address=>this.openArticleWorkbench([address])).show();
   }
 
   private openWiringWorkbench(initial?:import('../model/ElectricalInspection').InspectionLocation){this.canvas.finishInteraction();this.history.record(this.project);new WiringDialog(()=>this.project,p=>this.applyProjectTransaction(p),initial,(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();}

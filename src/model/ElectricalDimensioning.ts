@@ -1,5 +1,6 @@
 import type { Project, Wire } from "./types";
 import type { ConnectionRow } from "../reports/ConnectionList";
+import {circuitArticleIssues} from './DimensioningArticles';
 
 export interface DimensioningReference {
   pageId?: string;
@@ -22,6 +23,7 @@ export const dimensioningReferenceKey = (r?: DimensioningReference) =>
         r.to?.pinId,
       ]);
 export interface CircuitDimensioning {
+  articles?: Partial<Record<import('./DimensioningArticles').CircuitArticleRole,import('./DimensioningArticles').CircuitArticle>>;
   schemaVersion: 1;
   id: string;
   name: string;
@@ -78,12 +80,12 @@ export interface CircuitDimensioning {
   selectivitySource?: string;
 }
 export type NumericDimensioningKey = {
-  [K in keyof CircuitDimensioning]-?: NonNullable<
+  [K in keyof Omit<CircuitDimensioning,"articles">]-?: NonNullable<
     CircuitDimensioning[K]
   > extends number
     ? K
     : never;
-}[keyof CircuitDimensioning];
+}[keyof Omit<CircuitDimensioning,"articles">];
 export const dimensioningNumbers: Partial<
   Record<
     NumericDimensioningKey,
@@ -517,6 +519,7 @@ export function calculateDimensioning(
     missing("input", "Eingaben", errors.join("; "));
     return result;
   }
+  circuitArticleIssues(project,record,(key,message)=>missing("article_selection:"+key,"Artikelzuordnung",message));
   if (record.reference) {
     const wire = project ? referenceWire(project, record.reference) : undefined;
     if (!wire)

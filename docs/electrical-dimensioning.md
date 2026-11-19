@@ -61,3 +61,16 @@ Der gemeinsame elektrische Prüflauf meldet `dimensioning_limit` bei verletzten 
 JSON enthält alle Eingaben, Ergebnisse, Methodenkennung und Annahmen. CSV und PDF enthalten Eingaben, Quellen, Ergebnisse, Formeln, Prüfstatus und nicht beauftragte Bereiche. Der gemeinsame PDF-Export bietet den Abschnitt **Elektrische Dimensionierung**. Alle PDF-Seiten verwenden Querformat und den Projektplankopf. Mathematische Zeichen werden vor der PDF-Tabellenmessung lesbar ausgeschrieben, beispielsweise `Ohm`, `phi`, `sqrt(3)`, `<=` und `>=`; JSON/CSV behalten die ursprünglichen Zeichen.
 
 Die Implementierung ist eine transparente parametergestützte Rechen- und Vergleichsfunktion. Die Auswahl anwendbarer Normen, Netzformen, Verlegebedingungen und Herstellerkennwerte wird nicht durch eine Zertifizierungsbehauptung ersetzt. Automatische Tabellen-/Kennlinienbeschaffung und eine allgemeine mehrpolige Netzkurzschlussrechnung sind nicht enthalten.
+
+
+## Wann verwenden und wie Artikel zuordnen?
+
+Die Funktion ist eine optionale Auslegungshilfe: für neue Abgänge, geänderte Verbraucher, längere Leitungswege oder einen Wechsel von Leitung/Schutzgerät. Für die reine Dokumentation eines bereits nachgewiesenen Stromkreises ist kein neuer Rechendatensatz nötig. Sie ersetzt keine allgemeine Anlagenabnahme.
+
+Der Bereich **Stromkreis aufbauen · Geräte und Artikel** ordnet Leitung, Schutzgerät, Verbraucher und vorgeschaltetes Schutzgerät getrennt zu. Ein vorhandenes Projektgerät übernimmt seinen tatsächlichen Hauptartikel. Alternativ stehen Projektartikel und der geladene gemeinsame/lokale Katalog zur Suche bereit; Artikelnummern und Varianten bleiben exakt erhalten. Ein Auslegungsartikel ohne Projektgerät ist eine dokumentierte Planung, kein zusätzlicher Stücklistenposten.
+
+Die Kataloge besitzen derzeit nicht für alle Artikel strukturierte elektrische Bemessungsdaten. Deshalb werden aus Beschreibungstexten keine Werte wie B16, Ausschaltvermögen oder Iz abgeleitet. Die Liste nennt die jeweils relevanten Kennwerte: im Berechnungsformular aus dem Datenblatt eintragen, Quelle erfassen und **Formularwerte an Artikel binden** wählen. Diese Werte bleiben mit dem genauen Artikel im Stromkreis gespeichert. **Gespeicherte Kennwerte übernehmen** kopiert sie gezielt in die Rechnung; bekannte Profile desselben Artikels und derselben Rolle aus gespeicherten Stromkreisen können wiederverwendet werden.
+
+Ändert sich ein gebundener Formularwert oder stimmt der Artikel nicht mehr mit dem Projektgerät überein, meldet die Prüfung Klärungsbedarf. **Artikel im Plan bearbeiten** öffnet nach Speicherung der Rechnung das vorhandene Artikelwerkzeug. Erst dort werden Projektartikel/BOM geändert; eine reine Auslegungszuordnung ändert keine Geräte oder Verbindungen. Artikelzuordnungen und Kennwertquellen stehen auch im Dimensionierungsbericht.
+
+Betriebstemperatur, Häufung, Verlegebedingungen und reale Leitungslänge sind weiterhin installationsabhängige Angaben. Eine Selektivitätsgrenze gehört zur konkreten Gerätepaarung; sie wird nicht aus den Einzelartikeln berechnet.
