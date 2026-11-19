@@ -93,26 +93,28 @@ export function projectArticles(p: Project): CatalogArticle[] {
   for (const a of rows) {
     const key = catalogKey(a),
       old = byKey.get(key);
-    if (!old) byKey.set(key, a);
+    if (!old) byKey.set(key,a);
     else if (
+      (old.electrical && a.electrical && JSON.stringify(old.electrical)!==JSON.stringify(a.electrical)) ||
       (old.functions && a.functions && JSON.stringify(old.functions) !== JSON.stringify(a.functions)) ||
       (old.dimensions && a.dimensions && (old.dimensions.widthMm!==a.dimensions.widthMm || old.dimensions.heightMm!==a.dimensions.heightMm || (old.dimensions.depthMm!==undefined && a.dimensions.depthMm!==undefined && old.dimensions.depthMm!==a.dimensions.depthMm)))
     )
       throw new Error('articlesCatalogDuplicate');
+    else if (!old.electrical && a.electrical) byKey.set(key,{...old,...a,functions:a.functions??old.functions,dimensions:a.dimensions??old.dimensions,description:a.description||old.description});
     else if ((old.dimensions || a.dimensions) && ((!old.dimensions && a.dimensions) || (old.dimensions?.depthMm===undefined&&a.dimensions?.depthMm!==undefined) || (!old.functions && a.functions) || (!old.description && a.description)))
-      byKey.set(key, {...old, ...a, dimensions:{...(a.dimensions??old.dimensions!),...(a.dimensions?.depthMm===undefined&&old.dimensions?.depthMm!==undefined?{depthMm:old.dimensions.depthMm}:{})}, functions:a.functions??old.functions, description:a.description||old.description, verification:old.verification==='user_checked'&&a.verification==='user_checked'?'user_checked':'unverified'});
+      byKey.set(key, {...old, ...a, dimensions:{...(a.dimensions??old.dimensions!),...(a.dimensions?.depthMm===undefined&&old.dimensions?.depthMm!==undefined?{depthMm:old.dimensions.depthMm}:{})}, functions:a.functions??old.functions, electrical:a.electrical??old.electrical, description:a.description||old.description, verification:old.verification==='user_checked'&&a.verification==='user_checked'?'user_checked':'unverified'});
     else if (
       (!old.functions && a.functions) ||
       (!old.description && a.description)
     )
-      byKey.set(key, a);
+      byKey.set(key, {...a,...(old.electrical&&!a.electrical?{electrical:old.electrical}:{})});
   }
   return [...byKey.values()];
 }
 export function catalogToCsv(articles: CatalogArticle[]): string {
   const cell = (s: string) => '"' + s.replace(/"/g, '""') + '"';
   return [
-    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions', 'symbolId', 'dimensions'],
+    ['articleNumber', 'manufacturer', 'variant', 'description', 'functions', 'symbolId', 'dimensions', 'electrical'],
     ...articles.map((a) => [
       a.articleNumber,
       a.manufacturer,
@@ -121,6 +123,7 @@ export function catalogToCsv(articles: CatalogArticle[]): string {
       a.functions ? JSON.stringify(a.functions) : '',
       a.symbolId ?? '',
       a.dimensions ? JSON.stringify(a.dimensions) : '',
+      a.electrical ? JSON.stringify(a.electrical) : '',
     ]),
   ]
     .map((row) => row.map(cell).join(';'))
@@ -208,6 +211,7 @@ export function parseCatalogFile(
         functions: fields.functions ? JSON.parse(fields.functions) : undefined,
         symbolId: fields.symbolId || undefined,
         dimensions: fields.dimensions ? JSON.parse(fields.dimensions) : undefined,
+        electrical: fields.electrical ? JSON.parse(fields.electrical) : undefined,
         origin: 'user',
         verification: 'unverified',
       };

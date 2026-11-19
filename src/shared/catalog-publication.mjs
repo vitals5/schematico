@@ -96,6 +96,7 @@ export function appendPublicArticle(current, raw, options = {}) {
         variant: a.variant,
         description: a.description,
         functions: a.functions ?? [],
+        electrical: a.electrical ?? null,
         symbolId: a.symbolId ?? '',
       });
     if (semantic(old) !== semantic(article))

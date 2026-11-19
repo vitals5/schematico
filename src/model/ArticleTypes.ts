@@ -1,5 +1,6 @@
 /** Portable local catalogue data. User checks are not manufacturer certification. */
 export interface CatalogArticle {
+  electrical?: import('./ArticleElectrical').ArticleElectricalData;
   id: string;
   articleNumber: string;
   manufacturer: string;

@@ -11,7 +11,7 @@ import {unverifiedAutoconnections} from './autoconnectPolicy';
  * becomes the immutable draft against which Apply is audited. Required mode
  * also covers existing pages and rejects partially compiled proposals. */
 export function preferDraftAutoconnect(project:Project,draft:Project,preview:LayoutPreview,required=false) {
-  const source=project.pages.find(p=>p.id===preview.pageId);
+  const source=project.pages.find(p=>p.id===preview.pageId) ?? draft.pages.find(p=>p.id===preview.pageId);
   if(!source||preview.status!=='preview_ready'||!required&&(source.components.length||source.wires.length||draft.pages.find(p=>p.id===preview.pageId)?.layoutConstraints?.draftPreparation?.status==='disabled'))return {draft,preview};
   const prepared:{draft:Project;candidate:LayoutCandidate;construction:ConnectionConstruction}[]=[];
   for(const candidate of preview.candidates){

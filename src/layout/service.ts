@@ -87,7 +87,7 @@ export async function previewLayout(
     before = validateLayout(
       draft
         ? snapshotPage(
-            project.pages.find((p) => p.id === pageId)!,
+            project.pages.find((p) => p.id === pageId) ?? {...page,components:[],wires:[],groups:[],boxes:[],texts:[],images:[],cables:[]},
             project,
             options,
           )

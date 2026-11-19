@@ -1,3 +1,8 @@
+import { compareCircuitArticles } from "../model/CircuitDesign";
+import { circuitSchematicDraft } from "../model/CircuitSchematic";
+import { previewLayout, applyLayout } from "../layout/service";
+import { preferDraftAutoconnect } from "../layout/autoconnectDraft";
+import { LayoutPreviewDialog } from "../layout/PreviewDialog";
 import { effectiveArticles } from "../model/ArticleAssignments";
 import { editorArticles } from "../model/EditorArticles";
 import {
@@ -5,6 +10,7 @@ import {
   circuitArticleKey,
   circuitArticleFields,
   captureCircuitArticle,
+  catalogCircuitArticle,
   adoptCircuitArticle,
   type CircuitArticleRole,
 } from "../model/DimensioningArticles";
@@ -47,6 +53,12 @@ export class ElectricalDimensioningDialog {
   private query = "";
   private confirmDelete = false;
   private articleSearch = "";
+  private wizardOpen = false;
+  private designFilters: { cable?: string; protection?: string } = {};
+  private comparisons?: ReturnType<typeof compareCircuitArticles>;
+  private wizardBusy = false;
+  private wizardAbort?: AbortController;
+  private loadSymbol = "socket_schuko";
   constructor(
     private getProject: () => Project,
     private onApply: (p: Project) => void,
@@ -77,6 +89,7 @@ export class ElectricalDimensioningDialog {
         "Multiple circuits share this drawing reference. Select the desired calculation on the left.",
       );
     this.dirty = !!initial && !records.some((r) => r.id === this.edit.id);
+    if (this.edit.system === "ac3") this.loadSymbol = "motor_3phase";
   }
   show() {
     if (document.getElementById("electricalDimensioningDialog")) return;
@@ -97,8 +110,10 @@ export class ElectricalDimensioningDialog {
           "Discard unsaved calculation inputs?",
         ),
       )
-    )
+    ) {
+      this.wizardAbort?.abort();
       this.el.remove();
+    }
   }
   private stale() {
     if (projectRevision(this.getProject()) !== this.baseline)
@@ -157,7 +172,7 @@ export class ElectricalDimensioningDialog {
       values: string[][],
     ) =>
       `<label>${esc(label)}<select class="form-input" data-select="${key}">${values.map(([v, l]) => `<option value="${v}" ${this.edit[key] === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>`;
-    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${esc(tr("Elektrische Dimensionierung", "Electrical Dimensioning"))}</h2><div class="pe-workspace"><aside class="pe-sidebar"><div class="pe-summary"><strong>${records.length}</strong> ${esc(tr("Stromkreise", "Circuits"))}<span>${esc(tr("Gespeicherte Eingaben · neu berechnete Ergebnisse", "Saved inputs · recalculated results"))}</span></div><div class="pe-actions"><button class="btn btn-primary" data-new>${esc(tr("+ Stromkreis", "+ Circuit"))}</button><button class="btn" data-reload>${esc(tr("Aktualisieren", "Refresh"))}</button></div><input class="form-input" data-search aria-label="${esc(tr("Stromkreise suchen", "Search circuits"))}" placeholder="${esc(tr("Stromkreis suchen", "Search circuit"))}" value="${esc(this.query)}"><div class="pe-circuit-list">${
+    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${esc(tr("Elektrische Dimensionierung", "Electrical Dimensioning"))}</h2><div class="pe-workspace"><aside class="pe-sidebar"><div class="pe-summary"><strong>${records.length}</strong> ${esc(tr("Stromkreise", "Circuits"))}<span>${esc(tr("Gespeicherte Eingaben · neu berechnete Ergebnisse", "Saved inputs · recalculated results"))}</span></div><div class="pe-actions"><button class="btn btn-primary" data-new>${esc(tr("+ Stromkreis", "+ Circuit"))}</button><button class="btn" data-wizard-open>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</button><button class="btn" data-reload>${esc(tr("Aktualisieren", "Refresh"))}</button></div><input class="form-input" data-search aria-label="${esc(tr("Stromkreise suchen", "Search circuits"))}" placeholder="${esc(tr("Stromkreis suchen", "Search circuit"))}" value="${esc(this.query)}"><div class="pe-circuit-list">${
       matching
         .map((r) => {
           const status = calculateDimensioning(r, this.source).status;
@@ -195,6 +210,7 @@ export class ElectricalDimensioningDialog {
             ])
           : ""
       }${this.textField("inputSource", tr("Quelle / Beschreibung der Leitungs- und Lastdaten", "Source / Description of Cable & Load Data"))}<p>${esc(tr("Ohne R20-Eingabe: Planungswert ρ20 Cu 0,0175 bzw. Al 0,0282 Ω·mm²/m. Für einen Datenblattnachweis R20 ausdrücklich erfassen.", "Without R20 input: planning value ρ20 Cu 0.0175 or Al 0.0282 Ω·mm²/m. Enter R20 explicitly for datasheet verification."))}</p></details>
+      ${this.wizardPanel()}
       ${this.optional("verifyAmpacity", tr("2 · Strombelastbarkeit und Überlastschutz", "2 · Current-Carrying Capacity & Overload Protection"), this.fields(["ampacityA", "temperatureFactor", "groupingFactor", "otherFactor", "protectiveCurrentA", "conventionalTripA"]) + this.textField("ampacitySource", tr("Quelle Iz0 / Verlegebedingungen", "Source Iz0 / Installation Conditions")) + this.textField("protectionSource", tr("Quelle der Schutzgerätekennwerte", "Source of Protective Device Ratings")))}
       ${this.optional(
         "verifyFault",
@@ -287,6 +303,7 @@ export class ElectricalDimensioningDialog {
         this.edit = newDimensioning();
         this.dirty = true;
         this.confirmDelete = false;
+        this.comparisons = undefined;
         this.render();
       }
     };
@@ -322,8 +339,15 @@ export class ElectricalDimensioningDialog {
         }),
     );
     q<HTMLFormElement>("[data-dimensioning-form]").oninput = (event) => {
-      if ((event.target as Element).matches("[data-article-search]")) return;
+      if (
+        (event.target as Element).matches(
+          "[data-article-search],[data-design-template],[data-design-filter]",
+        )
+      )
+        return;
       this.collect();
+      this.comparisons = undefined;
+      this.el.querySelector("[data-design-comparisons]")?.replaceChildren();
       this.dirty = true;
       this.confirmDelete = false;
       q("[data-dirty]").textContent = tr(
@@ -333,11 +357,16 @@ export class ElectricalDimensioningDialog {
       q("[data-results]").innerHTML = this.renderResults();
     };
     this.bindArticles(safe);
+    this.bindWizard(safe);
     this.el.querySelectorAll<HTMLSelectElement>("[data-select]").forEach(
       (s) =>
         (s.onchange = () => {
           this.collect();
+          if (s.dataset.select === "system")
+            this.loadSymbol =
+              this.edit.system === "ac3" ? "motor_3phase" : "socket_schuko";
           this.dirty = true;
+          this.comparisons = undefined;
           this.render();
         }),
     );
@@ -384,6 +413,7 @@ export class ElectricalDimensioningDialog {
         );
         this.dirty = false;
         this.confirmDelete = false;
+        this.comparisons = undefined;
         this.render();
       });
     q("[data-detach]")?.addEventListener("click", () => {
@@ -518,6 +548,12 @@ export class ElectricalDimensioningDialog {
       ),
       wide: true,
     });
+    if (this.wizardBusy)
+      this.el
+        .querySelectorAll<HTMLInputElement>(
+          "input,select,textarea,button:not([data-close])",
+        )
+        .forEach((e) => (e.disabled = true));
     focusArticleModal(this.el);
   }
   private collect() {
@@ -612,7 +648,18 @@ export class ElectricalDimensioningDialog {
             )
               ? [s.article, ...filtered]
               : filtered;
-        return `<details class="pe-card" ${s ? "open" : ""}><summary>${roles[role]}${s ? " · " + esc(s.article.articleNumber) : ""}</summary><label>${esc(tr("Projektgerät (optional)", "Project device (optional)"))}<select class="form-input" data-article-device="${role}"><option value="">${esc(tr("Nur Auslegungsartikel / kein Planbezug", "Design part only / no drawing reference"))}</option>${devices.map((d) => `<option value="${esc(JSON.stringify([d.pageId, d.componentId]))}" ${s?.device?.pageId === d.pageId && s?.device?.componentId === d.componentId ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></label><label>${esc(tr("Artikel für diese Funktion", "Part for this function"))}<select class="form-input" data-article-select="${role}"><option value="">${esc(tr("Kein Artikel gewählt (manuelle Berechnung)", "No part selected (manual calculation)"))}</option>${list.map((a) => `<option value="${esc(circuitArticleKey(a))}" ${s && circuitArticleKey(s.article) === circuitArticleKey(a) ? "selected" : ""}>${esc([a.manufacturer, a.articleNumber, a.variant, a.snapshot?.description].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>${s ? `<p>${esc(tr("Kennwerte im Berechnungsformular erfassen und dann diesem exakten Artikel zuordnen.", "Enter ratings in the calculation form, then attach them to this exact part."))}<small>${esc(fields(role))}</small><label>${esc(tr("Datenblatt / Kennwertquelle dieses Artikels", "Data sheet / ratings source for this part"))}<textarea class="form-input" data-article-source="${role}" maxlength="2000">${esc(s.source ?? "")}</textarea></label><div class="pe-actions"><button type="button" class="btn" data-article-capture="${role}">${esc(tr("Formularwerte an Artikel binden", "Attach form values to part"))}</button><button type="button" class="btn" data-article-adopt="${role}" ${s.parameters && s.source ? "" : "disabled"}>${esc(tr("Gespeicherte Kennwerte übernehmen", "Adopt saved ratings"))}</button>${s.device && this.manageArticle ? `<button type="button" class="btn" data-article-manage="${role}">${esc(tr("Artikel im Plan bearbeiten", "Edit part in drawing"))}</button>` : ""}</div><p>${esc(tr("Dokumentierte Artikelwerte", "Documented part ratings"))}: ${esc(JSON.stringify(s.parameters ?? {}))}</p>` : ""}</details>`;
+        return `<details class="pe-card" ${s ? "open" : ""}><summary>${roles[role]}${s ? " · " + esc(s.article.articleNumber) : ""}</summary><label>${esc(tr("Projektgerät (optional)", "Project device (optional)"))}<select class="form-input" data-article-device="${role}"><option value="">${esc(tr("Nur Auslegungsartikel / kein Planbezug", "Design part only / no drawing reference"))}</option>${devices.map((d) => `<option value="${esc(JSON.stringify([d.pageId, d.componentId]))}" ${s?.device?.pageId === d.pageId && s?.device?.componentId === d.componentId ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></label><label>${esc(tr("Artikel für diese Funktion", "Part for this function"))}<select class="form-input" data-article-select="${role}"><option value="">${esc(tr("Kein Artikel gewählt (manuelle Berechnung)", "No part selected (manual calculation)"))}</option>${list.map((a) => `<option value="${esc(circuitArticleKey(a))}" ${s && circuitArticleKey(s.article) === circuitArticleKey(a) ? "selected" : ""}>${esc([a.manufacturer, a.articleNumber, a.variant, a.snapshot?.description].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>${
+          s
+            ? `<p>${esc(tr("Vorhandene Artikelkennwerte ausdrücklich übernehmen oder Formularwerte mit Quelle diesem Artikel zuordnen.", "Explicitly adopt available part ratings, or attach sourced form values to this part."))}<small>${esc(fields(role))}</small><label>${esc(tr("Datenblatt / Kennwertquelle dieses Artikels", "Data sheet / ratings source for this part"))}<textarea class="form-input" data-article-source="${role}" maxlength="2000">${esc(s.source ?? "")}</textarea></label><div class="pe-actions"><button type="button" class="btn" data-article-capture="${role}">${esc(tr("Formularwerte an Artikel binden", "Attach form values to part"))}</button><button type="button" class="btn" data-article-adopt="${role}" ${s.parameters && s.source ? "" : "disabled"}>${esc(tr("Gespeicherte Kennwerte übernehmen", "Adopt saved ratings"))}</button>${s.device && this.manageArticle ? `<button type="button" class="btn" data-article-manage="${role}">${esc(tr("Artikel im Plan bearbeiten", "Edit part in drawing"))}</button>` : ""}</div><p>${esc(tr("Dokumentierte Artikelwerte", "Documented part ratings"))}: ${esc(
+                Object.entries(s.parameters ?? {})
+                  .map(
+                    ([key, v]) =>
+                      `${dimensioningNumbers[key as NumericDimensioningKey]?.label ?? key}: ${num(v)}`,
+                  )
+                  .join(" · "),
+              )}</p>`
+            : ""
+        }</details>`;
       })
       .join("")}</details>`;
   }
@@ -635,8 +682,20 @@ export class ElectricalDimensioningDialog {
                   (a) => circuitArticleKey(a) === el.value,
                 ),
                 device = this.edit.articles?.[role]?.device;
-              if((role==='protection'||role==='upstream')&&circuitArticleKey(this.edit.articles?.[role]?.article??{manufacturer:'',articleNumber:'',variant:''})!==el.value){delete this.edit.selectivitySource;delete this.edit.selectivityLimitA;}
-        this.edit.articles = { ...this.edit.articles };
+              if (
+                (role === "protection" || role === "upstream") &&
+                circuitArticleKey(
+                  this.edit.articles?.[role]?.article ?? {
+                    manufacturer: "",
+                    articleNumber: "",
+                    variant: "",
+                  },
+                ) !== el.value
+              ) {
+                delete this.edit.selectivitySource;
+                delete this.edit.selectivityLimitA;
+              }
+              this.edit.articles = { ...this.edit.articles };
               if (article) {
                 const known = this.source.dimensioning
                   ?.map((r) => r.articles?.[role])
@@ -649,17 +708,19 @@ export class ElectricalDimensioningDialog {
                       s.source,
                   );
                 this.edit.articles[role] = {
-                  article: structuredClone(article),
                   device,
-                  ...(known
-                    ? {
-                        parameters: structuredClone(known.parameters),
-                        source: known.source,
-                      }
-                    : {}),
+                  ...(catalogCircuitArticle(article, role) ??
+                    (known
+                      ? {
+                          parameters: structuredClone(known.parameters),
+                          source: known.source,
+                        }
+                      : {})),
+                  article: structuredClone(article),
                 };
               } else delete this.edit.articles[role];
               this.dirty = true;
+              this.comparisons = undefined;
               this.render();
             })),
       );
@@ -693,10 +754,15 @@ export class ElectricalDimensioningDialog {
                   );
                 this.edit.articles = {
                   ...this.edit.articles,
-                  [role]: { article, device: { pageId, componentId } },
+                  [role]: {
+                    ...(catalogCircuitArticle(article, role) ?? {}),
+                    article,
+                    device: { pageId, componentId },
+                  },
                 };
               }
               this.dirty = true;
+              this.comparisons = undefined;
               this.render();
             })),
       );
@@ -744,6 +810,195 @@ export class ElectricalDimensioningDialog {
               this.el.remove();
             })),
       );
+  }
+  private wizardPanel() {
+    if (!this.wizardOpen) return "";
+    const comparison = this.comparisons;
+    return `<section class="pe-card" data-design-assistant><h3>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</h3><p>${esc(tr("1. Oben Spannung, Last, reale Leitungslänge, Temperatur und zulässigen Spannungsfall eingeben. Im Bereich Strombelastbarkeit die zutreffenden Korrekturfaktoren erfassen. 2. Artikel vergleichen. 3. Kennwerte und angezeigte Verlegebedingungen prüfen und übernehmen. 4. Berechnung speichern oder eine neue Planseite vorschlagen lassen.", "1. Enter voltage, load, real cable length, temperature and permitted voltage drop above. Enter applicable correction factors in the current capacity section. 2. Compare parts. 3. Check and adopt the ratings and displayed installation conditions. 4. Save the calculation or propose a new drawing page."))}</p><p>${esc(tr("Verglichen werden strukturierte Leitungs- und Schutzgeräteartikel aus Projekt und Katalog. Die beiden Suchfelder grenzen den Vergleich getrennt ein. Fehlende Kennwerte zuerst im Artikelkatalog ergänzen.", "Comparison uses structured cable and protective device parts from the project and catalogue. The two search fields narrow the comparison independently. Add missing ratings in the parts catalogue first."))}</p><div class="pe-fields">${(["cable", "protection"] as const).map((role) => `<label>${esc(role === "cable" ? tr("Leitung suchen", "Find cable") : tr("Schutzgerät suchen", "Find protective device"))}<input class="form-input" data-design-filter="${role}" value="${esc(this.designFilters[role] ?? "")}"></label>`).join("")}</div><button type="button" class="btn btn-primary" data-design-compare>${esc(tr("Leitung und Schutzgerät vergleichen", "Compare cable and protective device"))}</button><div data-design-comparisons>${
+      comparison
+        ? `<p>${comparison.total} ${esc(tr("Kombinationen berechnet; maximal 24 angezeigt, je höchstens 40 Leitungen / Schutzgeräte.", "combinations calculated; up to 24 shown, at most 40 cables / protective devices each."))} ${comparison.truncated ? esc(tr("Auswahl begrenzt – Suche eingrenzen.", "Selection limited – narrow the search.")) : ""}</p>${!comparison.total ? `<p>${esc(tr("Keine Kombination verfügbar. Benötigt werden mindestens ein Leitungsartikel und ein Schutzgeräteartikel mit strukturierten elektrischen Kennwerten.", "No combinations available. At least one cable and one protective device with structured electrical ratings are required."))}</p>` : ""}${comparison.candidates
+            .map(
+              (c, i) =>
+                `<article class="pe-card"><strong>${esc([c.record.articles!.cable!.article.articleNumber, c.record.articles!.protection!.article.articleNumber].join(" + "))}</strong><p>${esc(tr("Querschnitt", "Cross-section"))}: ${num(c.record.sectionMm2)} mm² · In: ${num(c.record.protectiveCurrentA)} A · ΔU: ${num(c.result.values.dropPercent)} %</p><span class="pe-status ${c.result.status === "failed" ? "fail" : c.result.status === "incomplete" || c.issues.length ? "missing" : "pass"}">${esc(c.result.status === "failed" ? tr("Grenzwert verletzt", "Limit exceeded") : c.result.status === "incomplete" || c.issues.length ? tr("Angaben fehlen / Kompatibilität prüfen", "Missing inputs / check compatibility") : tr("Beauftragte Rechenprüfungen erfüllt", "Requested calculation checks passed"))}</span><p>${esc(c.record.articles!.cable!.source ?? "")}</p><p>${esc(c.record.articles!.protection!.source ?? "")}</p>${[
+                  ...c.issues,
+                  ...c.result.checks
+                    .filter(
+                      (v) => v.status === "missing" || v.status === "fail",
+                    )
+                    .map((v) => v.label + ": " + v.message),
+                ]
+                  .slice(0, 12)
+                  .map((m) => `<p>${esc(m)}</p>`)
+                  .join(
+                    "",
+                  )}<button type="button" class="btn" data-design-pick="${i}">${esc(tr("Kennwerte und Bedingungen übernehmen", "Adopt ratings and conditions"))}</button></article>`,
+            )
+            .join("")}`
+        : ""
+    }</div><hr><label>${esc(tr("Verbrauchervorlage (bei Artikel gilt dessen hinterlegtes Symbol)", "Load template (a selected part uses its own symbol)"))}<select class="form-input" data-design-template>${[
+      ["socket_schuko", tr("Steckdose, einphasig", "Socket, single-phase")],
+      ["motor_1phase", tr("Motor, einphasig", "Motor, single-phase")],
+      ["motor_3phase", tr("Motor, dreiphasig", "Motor, three-phase")],
+    ]
+      .map(
+        ([v, l]) =>
+          `<option value="${v}" ${this.loadSymbol === v ? "selected" : ""}>${l}</option>`,
+      )
+      .join(
+        "",
+      )}</select></label><p>${esc(tr("Neue Planseite mit Einspeise-Abbruchstellen, Schutzgerät und Verbraucher. L/N/PE bzw. L1/L2/L3/PE bleiben getrennt. Die ausgewählten Geräteartikel werden zugeordnet; der Kabelartikel bleibt im Auslegungsdatensatz. Eine vorhandene FI- oder vorgeschaltete Schutzeinrichtung wird nicht als geprüft vorausgesetzt.", "New drawing page with supply interruption points, protection and load. L/N/PE or L1/L2/L3/PE remain separate. Selected device parts are assigned; the cable part remains in the design record. An existing RCD or upstream protective device is not assumed to be verified."))}</p><button type="button" class="btn btn-primary" data-design-plan ${this.wizardBusy ? "disabled" : ""}>${esc(this.wizardBusy ? tr("Layout wird berechnet …", "Computing layout …") : tr("Neue Planseite als Autoconnect-Vorschau", "Preview new page with Autoconnect"))}</button></section>`;
+  }
+  private bindWizard(safe: (fn: () => void) => void) {
+    this.el.querySelector<HTMLButtonElement>("[data-wizard-open]")!.onclick =
+      () => {
+        this.collect();
+        this.wizardOpen = !this.wizardOpen;
+        this.render();
+        this.el
+          .querySelector("[data-design-assistant]")
+          ?.scrollIntoView({ block: "start" });
+      };
+    this.el
+      .querySelector<HTMLSelectElement>("[data-design-template]")
+      ?.addEventListener("change", (e) => {
+        this.loadSymbol = (e.target as HTMLSelectElement).value;
+      });
+    this.el.querySelectorAll<HTMLInputElement>("[data-design-filter]").forEach(
+      (el) =>
+        (el.oninput = () => {
+          this.designFilters[
+            el.dataset.designFilter as "cable" | "protection"
+          ] = el.value;
+          this.comparisons = undefined;
+          this.el.querySelector("[data-design-comparisons]")?.replaceChildren();
+        }),
+    );
+    this.el
+      .querySelector("[data-design-compare]")
+      ?.addEventListener("click", () =>
+        safe(() => {
+          this.collect();
+          this.stale();
+          this.comparisons = compareCircuitArticles(
+            this.edit,
+            this.articleOptions(),
+            24,
+            this.source,
+            this.designFilters,
+          );
+          this.render();
+        }),
+      );
+    this.el.querySelectorAll<HTMLElement>("[data-design-pick]").forEach(
+      (b) =>
+        (b.onclick = () =>
+          safe(() => {
+            this.stale();
+            const c =
+              this.comparisons?.candidates[Number(b.dataset.designPick)];
+            if (!c)
+              throw Error(
+                tr("Vergleich neu berechnen.", "Recalculate comparison."),
+              );
+            this.edit = structuredClone(c.record);
+            this.dirty = true;
+            this.comparisons = undefined;
+            this.render();
+          })),
+    );
+    this.el
+      .querySelector("[data-design-plan]")
+      ?.addEventListener("click", () => {
+        void this.proposeCircuit();
+      });
+  }
+  private async proposeCircuit() {
+    if (this.wizardBusy) return;
+
+    try {
+      this.collect();
+      this.stale();
+      if (document.getElementById("layoutPreviewModal"))
+        throw Error(
+          tr(
+            "Zuerst die offene Layoutvorschau schließen.",
+            "Close the existing layout preview first.",
+          ),
+        );
+      const { draft, pageId, record } = circuitSchematicDraft(
+        this.source,
+        this.edit,
+        this.loadSymbol,
+      );
+      this.wizardBusy = true;
+      this.render();
+      this.wizardAbort = new AbortController();
+      const raw = await previewLayout(
+        this.source,
+        pageId,
+        { constructionOnly: true, abortSignal: this.wizardAbort.signal },
+        draft,
+      );
+      if (!this.el.isConnected) return;
+      this.stale();
+      const checked = preferDraftAutoconnect(this.source, draft, raw, true);
+      new LayoutPreviewDialog({
+        getProject: this.getProject,
+        preview: checked.preview,
+        draft: checked.draft,
+        options: { constructionOnly: true },
+        onApply: (candidate, proposed) => {
+          const next = structuredClone(this.getProject());
+          applyLayout(next, candidate, proposed);
+          const saved = next.dimensioning?.find((r) => r.id === record.id);
+          if (!saved)
+            throw Error(
+              tr(
+                "Auslegungsdatensatz fehlt im Vorschlag.",
+                "Design record missing from proposal.",
+              ),
+            );
+          for (const selection of Object.values(saved.articles ?? {}))
+            if (selection?.device) {
+              const owners = next.pages.filter((p) =>
+                p.components.some(
+                  (c) => c.id === selection.device!.componentId,
+                ),
+              );
+              if (owners.length !== 1)
+                throw Error(
+                  tr(
+                    "Gerätezuordnung im Layout ist nicht eindeutig.",
+                    "Device binding in layout is not unique.",
+                  ),
+                );
+              selection.device.pageId = owners[0].id;
+            }
+          if (calculateDimensioning(saved, next).status !== "checked")
+            throw Error(
+              tr(
+                "Auslegung und Layout stimmen nicht mehr überein.",
+                "Design and layout no longer match.",
+              ),
+            );
+          this.onApply(next);
+          this.source = structuredClone(this.getProject());
+          this.baseline = projectRevision(this.source);
+          this.edit = structuredClone(
+            this.source.dimensioning?.find((r) => r.id === record.id) ?? record,
+          );
+          this.dirty = false;
+          this.comparisons = undefined;
+          this.render();
+        },
+      }).show();
+    } catch (e) {
+      this.error = e instanceof Error ? e.message : String(e);
+    } finally {
+      this.wizardAbort = undefined;
+      this.wizardBusy = false;
+      if (this.el.isConnected) this.render();
+    }
   }
   private renderResults() {
     const result = calculateDimensioning(this.edit, this.source),

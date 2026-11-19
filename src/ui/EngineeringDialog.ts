@@ -1,3 +1,5 @@
+import {electricalFields} from '../model/ArticleElectrical';
+import type {ElectricalRatingKey} from '../model/ArticleElectrical';
 import { t, getUiLanguage } from '../i18n';
 import type { CatalogArticle } from '../model/ArticleTypes';
 import type {DrawingAccess} from './EngineeringDrawing';
@@ -80,6 +82,7 @@ export function formatCatalogSummary(
     article.description +
     '\n\n' +
     formatArticleFunctions(article.functions) +
+    (article.electrical ? '\n\n' + [article.electrical.kind,...Object.entries(electricalFields).filter(([k])=>article.electrical![k as ElectricalRatingKey]!==undefined).map(([k,s])=>(getUiLanguage()==='de'?s.de:s.en)+': '+article.electrical![k as ElectricalRatingKey]),article.electrical.currentType,article.electrical.material,article.electrical.characteristic,article.electrical.source,article.electrical.conditions,article.electrical.curve?JSON.stringify(article.electrical.curve):''].filter(Boolean).join('\n') : '') +
     (article.symbolId ? '\n\n' + t('articleSymbolDefault') + ': ' + article.symbolId : '') +
     '\n\n' +
     t(

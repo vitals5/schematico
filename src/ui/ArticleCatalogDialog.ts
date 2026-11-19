@@ -1,3 +1,4 @@
+import {ArticleElectricalEditor} from './ArticleElectricalEditor';
 import {CadArticleSymbolDialog} from './CadArticleSymbolDialog';
 import type {ArticlePackageAssets} from '../model/ArticlePackageAssets';
 import { importArticlePackage } from '../model/ArticlePackageImport';
@@ -33,9 +34,10 @@ import {
   catalogToCsv,
 } from '../model/ArticleCatalog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
-import { t, translations, getUiLanguage, getLocalizedSymbol, type TranslationKey } from '../i18n';
+import { t, translations, getUiLanguage, getLocalizedSymbol, type TranslationKey, tr } from '../i18n';
 export const articleError = (e: unknown) => {
   const message = e instanceof Error ? e.message : (typeof e === 'object' && e !== null && 'message' in e) ? String((e as any).message) : String(e ?? '');
+  if(message==='articlesElectricalInvalid')return tr('Elektrische Kennwerte ungültig: Quelle, Wertebereiche sowie Verlege-/Kennlinienbedingungen prüfen.','Invalid electrical ratings: check source, value ranges and installation/curve conditions.');
   const name = (typeof e === 'object' && e !== null && 'name' in e) ? String((e as any).name) : '';
   if (message.toLowerCase().includes('event handler') || name === 'AbortError' || name === 'InvalidStateError') {
     return t('articlesStorageUnavailable');
@@ -73,6 +75,7 @@ export class ArticleCatalogDialog {
   private available = false;
   private editing?: CatalogArticle;
   private functionEditor?: FunctionEditor;
+  private electricalEditor?: ArticleElectricalEditor;
   private pending?: CatalogArticle[];
   private pendingAssets: ArticlePackageAssets[]=[];
   private deletion?: CatalogArticle;
@@ -228,7 +231,7 @@ export class ArticleCatalogDialog {
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : [...this.pendingAssets,...this.packageRows].flatMap(p=>p.macros).flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===this.editing!.symbolId)?.name??this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-cad-link>${t('cadTitle')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><fieldset><legend>${t('cabinetArticleSize')}</legend><p>${t('cabinetArticleSizeHint')}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${(['widthMm','heightMm','depthMm'] as const).map(key=>`<label>${t(({widthMm:'cabinetWidth',heightMm:'cabinetHeight',depthMm:'cabinetDepth'} as const)[key])}<input class="form-input" data-dimension="${key}" type="number" min=".1" max="10000" step=".1" value="${this.editing!.dimensions?.[key]??''}"></label>`).join('')}</div></fieldset><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p data-publish-hint>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : [...this.pendingAssets,...this.packageRows].flatMap(p=>p.macros).flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===this.editing!.symbolId)?.name??this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-cad-link>${t('cadTitle')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><fieldset><legend>${t('cabinetArticleSize')}</legend><p>${t('cabinetArticleSizeHint')}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${(['widthMm','heightMm','depthMm'] as const).map(key=>`<label>${t(({widthMm:'cabinetWidth',heightMm:'cabinetHeight',depthMm:'cabinetDepth'} as const)[key])}<input class="form-input" data-dimension="${key}" type="number" min=".1" max="10000" step=".1" value="${this.editing!.dimensions?.[key]??''}"></label>`).join('')}</div></fieldset><div data-electrical-editor></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p data-publish-hint>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
  ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend>${this.pending?.map((a,i)=>`<button class="btn" data-cad-pending="${i}">${esc(a.manufacturer+' '+a.articleNumber)} · ${t('cadTitle')}</button>`).join('')}<p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
@@ -364,6 +367,8 @@ export class ArticleCatalogDialog {
         functionsEl,
         this.editing?.functions,
       );
+    const electricalEl=this.el.querySelector<HTMLElement>('[data-electrical-editor]');
+    this.electricalEditor=electricalEl?new ArticleElectricalEditor(electricalEl,this.editing?.electrical):undefined;
     const dimensions=()=>{const fields=[...this.el.querySelectorAll<HTMLInputElement>('[data-dimension]')];if(!fields.some(i=>i.value!==''))return undefined;const values=Object.fromEntries(fields.map(i=>[i.dataset.dimension!,i.value===''?undefined:Number(i.value)]));return {widthMm:values.widthMm!,heightMm:values.heightMm!,...(values.depthMm!==undefined?{depthMm:values.depthMm}:{})};};
     const syncDraft = () => {
       const article = { ...this.editing! };
@@ -372,6 +377,7 @@ export class ArticleCatalogDialog {
       ))
         (article as any)[input.dataset.field!] = input.value;
       article.dimensions=dimensions();
+      article.electrical=this.electricalEditor?.value();
       article.functions = this.functionEditor?.value();
       article.origin = 'user';
       article.verification = this.el.querySelector<HTMLInputElement>(
@@ -460,6 +466,7 @@ export class ArticleCatalogDialog {
         ))
           (a as any)[input.dataset.field!] = input.value;
         a.dimensions=dimensions();
+        a.electrical=this.electricalEditor?.value();
         a.functions = this.functionEditor?.value();
         a.origin = 'user';
         a.verification = this.el.querySelector<HTMLInputElement>(
