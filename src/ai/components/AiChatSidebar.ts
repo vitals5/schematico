@@ -773,6 +773,30 @@ export class AiChatSidebar {
         return tr('PDF-Export generiert', 'PDF export generated');
       case 'zoom_canvas':
         return `${tr('Zoom angepasst:', 'Zoom adjusted:')} ${args?.action}`;
+      case 'get_electrical_dimensioning':
+        return `${tr('Elektrische Dimensionierung abgefragt', 'Queried electrical dimensioning')} (${result?.matchingCases ?? 0} ${tr('Stromkreise', 'circuits')})`;
+      case 'calculate_circuit_dimensioning':
+        return `${tr('Stromkreis berechnet:', 'Calculated circuit:')} <strong>${args?.name || result?.record?.name || ''}</strong> (${result?.calculation?.status ?? ''})`;
+      case 'draft_circuit_schematic':
+        return `${tr('Stromkreis-Schaltplan entworfen:', 'Drafted circuit schematic:')} <strong>${result?.circuitName || args?.circuitId}</strong>`;
+      case 'get_protection_coordination':
+        return `${tr('Schutzkoordination analysiert:', 'Analyzed protection coordination:')} <strong>${result?.name || args?.circuitId}</strong>`;
+      case 'get_cable_articles':
+        return `${tr('Kabelartikel & Meterware abgefragt', 'Queried cable parts & meterware')} (${result?.totalCables ?? 0} ${tr('Kabel', 'cables')})`;
+      case 'assign_cable_article':
+        return `${tr('Kabelartikel zugeordnet:', 'Assigned cable part:')} <strong>${args?.cableId}</strong> (${args?.lengthM ? args.lengthM + ' m' : ''})`;
+      case 'analyze_change_impact':
+        return `${tr('Änderungsfolgen analysiert', 'Analyzed change impacts')} (${result?.totalRows ?? 0} ${tr('Aufgaben', 'tasks')})`;
+      case 'review_change_impact':
+        return `${tr('Änderungsfolge bewertet:', 'Reviewed change impact:')} ${args?.status} (${args?.rowKeys?.length ?? 0} ${tr('Aufgaben', 'tasks')})`;
+      case 'apply_change_impact_proposals':
+        return `${tr('Änderungsvorschläge übernommen', 'Applied change proposals')} (${result?.appliedProposalsCount ?? 0} ${tr('Positionen', 'items')})`;
+      case 'list_project_revisions':
+        return `${tr('Projektstände aufgelistet', 'Listed project revisions')} (${result?.count ?? 0} ${tr('Revisionen', 'revisions')})`;
+      case 'create_project_revision':
+        return `${tr('Projektstand gespeichert:', 'Saved project revision:')} <strong>${result?.revision?.name || args?.name || ''}</strong>`;
+      case 'complete_article_data':
+        return `${tr('Artikeldaten mit KI vervollständigt:', 'Completed article data with AI:')} <strong>${args?.article?.manufacturer || ''} ${args?.article?.articleNumber || ''}</strong> (${result?.enrichedFields?.join(', ') || tr('keine fehlenden Felder', 'no missing fields')})`;
       default:
         return `Aktion: ${this.escapeHtml(name)}`;
     }

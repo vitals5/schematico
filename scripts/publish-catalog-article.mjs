@@ -103,6 +103,33 @@ export function publishCatalogArticle(raw, options) {
   );
 }
 
+export function publishCatalogArticles(rawArticles, options) {
+  const articles = rawArticles.map((a) => validatePublicArticle(a));
+  return updateCatalogFile(
+    (current) => {
+      let changed = false;
+      let catalog = current;
+      let lastArticle = undefined;
+      for (const a of articles) {
+        const step = appendPublicArticle(catalog, a, { allowSymbolUpdate: true });
+        if (step.changed) {
+          changed = true;
+          catalog = step.catalog;
+          lastArticle = step.article;
+        }
+      }
+      return { changed, catalog, article: lastArticle };
+    },
+    {
+      ...options,
+      message:
+        articles.length > 1
+          ? `catalog: batch add/update ${articles.length} community articles`
+          : undefined,
+    },
+  );
+}
+
 export function publishCatalogSymbol(raw, options) {
   const symbol = validatePublicSymbol(raw);
   return updateCatalogFile(
@@ -115,6 +142,36 @@ export function publishCatalogSymbol(raw, options) {
     },
   );
 }
+
+export function publishCatalogSymbols(rawSymbols, options) {
+  const symbols = rawSymbols.map((s) => validatePublicSymbol(s));
+  return updateCatalogFile(
+    (current) => {
+      let changed = false;
+      let symbolsData = current;
+      let lastSymbol = undefined;
+      for (const s of symbols) {
+        const step = appendPublicSymbol(symbolsData, s);
+        if (step.changed) {
+          changed = true;
+          symbolsData = step.symbolsData;
+          lastSymbol = step.symbol;
+        }
+      }
+      return { changed, symbolsData, symbol: lastSymbol };
+    },
+    {
+      ...options,
+      targetFile: SYMBOLS_FILE,
+      maxBytes: MAX_SYMBOLS_BYTES,
+      message:
+        symbols.length > 1
+          ? `catalog: batch add/update ${symbols.length} vector symbols`
+          : undefined,
+    },
+  );
+}
+
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
@@ -129,37 +186,50 @@ if (
     )
   )
     throw Error('Unsupported catalogue event');
-  const raw =
+  const rawArticles =
     process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
     event.action === 'schematico.article.submitted'
-      ? event.client_payload?.article
+      ? (event.client_payload?.articles ??
+        (event.client_payload?.article ? [event.client_payload.article] : []))
       : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
-        ? JSON.parse(event.inputs?.article ?? 'null')
-        : undefined;
-  const rawSymbol =
-    process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
-    event.action === 'schematico.article.submitted'
-      ? event.client_payload?.symbol
-      : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
-        ? JSON.parse(event.inputs?.symbol ?? 'null')
-        : undefined;
+        ? event.inputs?.articles
+          ? JSON.parse(event.inputs.articles)
+          : event.inputs?.article
+            ? [JSON.parse(event.inputs.article)]
+            : []
+        : [];
 
-  const result = await publishCatalogArticle(raw, {
-    token: process.env.GH_TOKEN,
-  });
-  console.log(
-    result.changed
-      ? 'Shared article added/updated.'
-      : 'Identical shared article already exists.',
-  );
-  if (rawSymbol) {
-    const symResult = await publishCatalogSymbol(rawSymbol, {
+  const rawSymbols =
+    process.env.GITHUB_EVENT_NAME === 'repository_dispatch' &&
+    event.action === 'schematico.article.submitted'
+      ? (event.client_payload?.symbols ??
+        (event.client_payload?.symbol ? [event.client_payload.symbol] : []))
+      : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
+        ? event.inputs?.symbols
+          ? JSON.parse(event.inputs.symbols)
+          : event.inputs?.symbol
+            ? [JSON.parse(event.inputs.symbol)]
+            : []
+        : [];
+
+  if (rawArticles.length > 0) {
+    const result = await publishCatalogArticles(rawArticles, {
+      token: process.env.GH_TOKEN,
+    });
+    console.log(
+      result.changed
+        ? `Shared articles (${rawArticles.length}) added/updated.`
+        : 'Identical shared articles already exist.',
+    );
+  }
+  if (rawSymbols.length > 0) {
+    const symResult = await publishCatalogSymbols(rawSymbols, {
       token: process.env.GH_TOKEN,
     });
     console.log(
       symResult.changed
-        ? 'Shared vector symbol added/updated.'
-        : 'Identical shared vector symbol already exists.',
+        ? `Shared vector symbols (${rawSymbols.length}) added/updated.`
+        : 'Identical shared vector symbols already exist.',
     );
   }
 }

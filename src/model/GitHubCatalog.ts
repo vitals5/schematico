@@ -232,26 +232,32 @@ async function boundedText(response: Response, limit: number) {
   }
   return new TextDecoder().decode(bytes);
 }
-export async function submitSharedArticle(
-  raw: CatalogArticle,
+export async function submitSharedArticles(
+  rawArticles: CatalogArticle[],
   challengeToken: string,
   fetcher: typeof fetch = fetch,
-  rawSymbol?: unknown,
+  rawSymbols?: unknown[],
 ) {
-  const article = validatePublicArticle(raw),
-    symbol = rawSymbol ? validatePublicSymbol(rawSymbol) : undefined,
-    endpoint = state.submission;
+  if (!Array.isArray(rawArticles) || rawArticles.length === 0) {
+    throw new Error('githubCatalogInvalid');
+  }
+  const articles = rawArticles.map((a) => validatePublicArticle(a));
+  const symbols = Array.isArray(rawSymbols)
+    ? rawSymbols.map((s) => validatePublicSymbol(s))
+    : [];
+  const endpoint = state.submission;
   if (!endpoint) throw new Error('githubCatalogNotConfigured');
   if (!challengeToken) throw new Error('githubCatalogChallenge');
   const controller = new AbortController(),
-    timeout = setTimeout(() => controller.abort(), 20000);
+    timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const response = await fetcher(endpoint.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        article,
-        ...(symbol ? { symbol } : {}),
+        articles,
+        article: articles[0],
+        ...(symbols.length > 0 ? { symbols, symbol: symbols[0] } : {}),
         challengeToken,
       }),
       credentials: 'omit',
@@ -284,7 +290,7 @@ export async function submitSharedArticle(
       !/^[a-f0-9]{64}$/.test(result.submissionId)
     )
       throw new Error('githubCatalogSubmitFailed');
-    return { submissionId: result.submissionId };
+    return { submissionId: result.submissionId, count: articles.length };
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('githubCatalog'))
       throw error;
@@ -292,4 +298,19 @@ export async function submitSharedArticle(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function submitSharedArticle(
+  raw: CatalogArticle,
+  challengeToken: string,
+  fetcher: typeof fetch = fetch,
+  rawSymbol?: unknown,
+) {
+  const res = await submitSharedArticles(
+    [raw],
+    challengeToken,
+    fetcher,
+    rawSymbol ? [rawSymbol] : undefined,
+  );
+  return { submissionId: res.submissionId };
 }

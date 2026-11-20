@@ -28,7 +28,7 @@ async function readRequest(request) {
   const reader = request.body.getReader(),
     parts = [];
   let size = 0;
-  const maxAllowed = MAX_SUBMISSION_BYTES + MAX_SYMBOL_SUBMISSION_BYTES + 8192;
+  const maxAllowed = (MAX_SUBMISSION_BYTES + MAX_SYMBOL_SUBMISSION_BYTES) * 50 + 65536;
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -114,9 +114,23 @@ export default {
           ...headers,
           'Retry-After': '60',
         });
-      const input = await readRequest(request),
-        article = validatePublicArticle(input.article),
-        symbol = input.symbol ? validatePublicSymbol(input.symbol) : undefined;
+      const input = await readRequest(request);
+      const rawArticles = Array.isArray(input.articles)
+        ? input.articles
+        : input.article
+          ? [input.article]
+          : [];
+      if (rawArticles.length === 0 || rawArticles.length > 100)
+        return json({ error: 'invalid_article' }, 400, headers);
+
+      const articles = rawArticles.map((a) => validatePublicArticle(a));
+      const rawSymbols = Array.isArray(input.symbols)
+        ? input.symbols
+        : input.symbol
+          ? [input.symbol]
+          : [];
+      const symbols = rawSymbols.map((s) => validatePublicSymbol(s));
+
       if (
         typeof input.challengeToken !== 'string' ||
         !input.challengeToken ||
@@ -145,7 +159,7 @@ export default {
       const expectedHost = origin === 'null' ? null : new URL(origin).hostname;
       if (expectedHost && challenge.hostname !== expectedHost)
         return json({ error: 'challenge_failed' }, 403, headers);
-      const submissionId = await digest(JSON.stringify(article));
+      const submissionId = await digest(JSON.stringify(articles));
       const dispatched = await fetch(
         `https://api.github.com/repos/${REPOSITORY}/dispatches`,
         {
@@ -160,8 +174,9 @@ export default {
           body: JSON.stringify({
             event_type: EVENT,
             client_payload: {
-              article,
-              ...(symbol ? { symbol } : {}),
+              articles,
+              article: articles[0],
+              ...(symbols.length > 0 ? { symbols, symbol: symbols[0] } : {}),
               submissionId,
             },
           }),
@@ -170,7 +185,7 @@ export default {
       );
       if (dispatched.status !== 204)
         return json({ error: 'dispatch_unavailable' }, 502, headers);
-      return json({ status: 'submitted', submissionId }, 202, headers);
+      return json({ status: 'submitted', submissionId, count: articles.length }, 202, headers);
     } catch (error) {
       const invalid =
         error instanceof SyntaxError ||

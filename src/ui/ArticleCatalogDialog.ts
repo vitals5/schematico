@@ -19,7 +19,13 @@ import { TeamCatalogDialog } from './TeamCatalogDialog';
 import { FunctionEditor } from './FunctionEditor';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import type { CatalogArticle } from '../model/ArticleTypes';
-import type { Project } from '../model/types';
+import type { Project, SymbolDefinition } from '../model/types';
+import {
+  completeArticleWithAi,
+  completeArticlesBatchWithAi,
+  detectMissingArticleFields,
+  missingFieldNames,
+} from '../model/ArticleCompletion';
 import {
   ArticleCatalog,
   catalogKey,
@@ -73,6 +79,7 @@ export class ArticleCatalogDialog {
   private busy = false;
   private closed = false;
   private available = false;
+  private selectedKeys = new Set<string>();
   private editing?: CatalogArticle;
   private functionEditor?: FunctionEditor;
   private electricalEditor?: ArticleElectricalEditor;
@@ -222,20 +229,175 @@ export class ArticleCatalogDialog {
  <div class="eng-shared-catalog"><div><strong>${t('githubCatalogTitle')} · ${this.shared.articles.length} ${t('githubCatalogArticles')}</strong><span>${t(('githubCatalogState_' + this.shared.status) as any)}${!this.shared.submission ? ' · ' + t('githubCatalogNotConfigured') : ''}</span></div><button class="btn" data-shared-refresh>${t('articlesRefresh')}</button></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><button class="btn" data-portal>${t('articlePortalOpen')}</button><input type="file" data-file accept=".csv,.json,.xml,.wspak,.edz" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button>${this.deletedList.length ? `<button class="btn" data-reset-defaults>${t('articlesResetDefaults')}</button>` : ''}</div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
- <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th>${t('articlesManufacturer')}</th><th>${t('articlesNumber')}</th><th>${t('articlesDescription')}</th><th>${t('engineeringStatus')}</th><th>${t('plausColAction')}</th></tr></thead><tbody>${candidates
+ ${this.selectedKeys.size > 0 ? `
+ <div class="eng-batch-bar" style="display:flex;gap:8px;align-items:center;background:#1e293b;padding:8px 12px;border-radius:6px;margin:8px 0;flex-wrap:wrap">
+   <span><strong>${t('articlesSelected', { count: this.selectedKeys.size })}</strong></span>
+   <button class="btn" data-batch-ai-complete>✨ ${t('articlesBatchAiComplete')}</button>
+   <button class="btn eng-primary" data-batch-publish ${this.shared.submission ? '' : 'disabled'}>📤 ${t('articlesBatchPublish')}</button>
+   <button class="btn eng-primary" data-batch-ai-and-publish ${this.shared.submission ? '' : 'disabled'}>🚀 ${t('articlesBatchAiAndPublish')}</button>
+   <button class="btn" data-batch-clear>${t('articlesBatchClear')}</button>
+ </div>` : ''}
+ <div style="max-height:27vh;overflow:auto"><table style="width:100%;text-align:left;font-size:12px"><thead><tr><th style="width:28px"><input type="checkbox" data-select-all ${candidates.length > 0 && candidates.every((c) => this.selectedKeys.has(catalogKey(c))) ? 'checked' : ''} title="${t('articlesSelectAll')}"></th><th>${t('articlesManufacturer')}</th><th>${t('articlesNumber')}</th><th>${t('articlesDescription')}</th><th>${t('engineeringStatus')}</th><th>${t('plausColAction')}</th></tr></thead><tbody>${candidates
    .slice(this.page * 50, this.page * 50 + 50)
    .map(
-     (a, i) =>
-       `<tr><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.packageRows.some(p=>p.id===a.id)?`<button class="btn" data-package-download="${i}">${t('articlePackageSources')}</button>`:''}<button class="btn" data-delete="${i}">${t('articlesDelete')}</button></td></tr>`,
+     (a, i) => {
+       const key = catalogKey(a);
+       const checked = this.selectedKeys.has(key);
+       return `<tr><td><input type="checkbox" data-select-row="${esc(key)}" ${checked ? 'checked' : ''}></td><td>${esc(a.manufacturer)}</td><td>${esc(a.articleNumber)}${a.variant ? ' [' + esc(a.variant) + ']' : ''}<br><span class="eng-catalog-origin">${this.originLabel(a)}</span></td><td><span class="eng-ellipsis" title="${esc(a.description)}">${esc(a.description)}</span></td><td><span class="eng-catalog-origin" title="${t(a.verification === 'user_checked' ? 'articlesChecked' : 'articlesUnverified')}">${a.verification === 'user_checked' ? t('engineeringChecked') : t('articlesUnverified')}</span></td><td>${this.onChoose ? `<button class="btn" data-choose="${i}">${t('articlesChoose')}</button>` : ''}<button class="btn" data-edit="${i}">${t('articlesEdit')}</button>${this.packageRows.some(p=>p.id===a.id)?`<button class="btn" data-package-download="${i}">${t('articlePackageSources')}</button>`:''}<button class="btn" data-delete="${i}">${t('articlesDelete')}</button></td></tr>`;
+     },
    )
    .join(
      '',
    )}</tbody></table></div><div style="display:flex;gap:10px;align-items:center"><button class="btn" data-prev ${this.page ? '' : 'disabled'}>←</button> ${this.page + 1} / ${pages} <button class="btn" data-next ${this.page < pages - 1 ? '' : 'disabled'}>→</button></div>
- ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : [...this.pendingAssets,...this.packageRows].flatMap(p=>p.macros).flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===this.editing!.symbolId)?.name??this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-cad-link>${t('cadTitle')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><fieldset><legend>${t('cabinetArticleSize')}</legend><p>${t('cabinetArticleSizeHint')}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${(['widthMm','heightMm','depthMm'] as const).map(key=>`<label>${t(({widthMm:'cabinetWidth',heightMm:'cabinetHeight',depthMm:'cabinetDepth'} as const)[key])}<input class="form-input" data-dimension="${key}" type="number" min=".1" max="10000" step=".1" value="${this.editing!.dimensions?.[key]??''}"></label>`).join('')}</div></fieldset><div data-electrical-editor></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row"><button class="btn" data-save>${t('articlesSave')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p data-publish-hint>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
+ ${this.editing ? `<fieldset style="margin-top:12px"><legend>${t('articlesEdit')}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${(['articleNumber', 'manufacturer', 'variant', 'description'] as const).map((key, i) => `<label>${t((['articlesNumber', 'articlesManufacturer', 'articlesVariant', 'articlesDescription'] as const)[i])}<input class="form-input" data-field="${key}" value="${esc(this.editing![key])}"></label>`).join('')}</div><div class="article-symbol-field"><label>${t('articleSymbolDefault')}</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span data-article-symbol>${esc(this.editing.symbolId ? (getSymbolById(this.editing.symbolId,this.project) ? getLocalizedSymbol(getSymbolById(this.editing.symbolId,this.project)!).name : [...this.pendingAssets,...this.packageRows].flatMap(p=>p.macros).flatMap(m=>m.symbolLibrary??[]).find(s=>s.id===this.editing!.symbolId)?.name??this.editing.symbolId) : t('articleSymbolMissing'))}</span><button class="btn" data-link-symbol>${t('articleSymbolLink')}</button><button class="btn" data-cad-link>${t('cadTitle')}</button><button class="btn" data-clear-symbol ${this.editing.symbolId ? '' : 'disabled'}>${t('articleSymbolClear')}</button></div><p>${t('articleSymbolHint')}</p></div><fieldset><legend>${t('cabinetArticleSize')}</legend><p>${t('cabinetArticleSizeHint')}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${(['widthMm','heightMm','depthMm'] as const).map(key=>`<label>${t(({widthMm:'cabinetWidth',heightMm:'cabinetHeight',depthMm:'cabinetDepth'} as const)[key])}<input class="form-input" data-dimension="${key}" type="number" min=".1" max="10000" step=".1" value="${this.editing!.dimensions?.[key]??''}"></label>`).join('')}</div></fieldset><div data-electrical-editor></div><div data-functions-editor></div><label><input type="checkbox" data-verified ${this.editing.verification === 'user_checked' ? 'checked' : ''}> ${t('articlesChecked')}</label><div class="nav-button-row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-ai-complete>✨ ${t('articleAiComplete')}</button><button class="btn" data-save>${t('articlesSave')}</button><button class="btn" data-save-and-publish ${this.shared.submission ? '' : 'disabled'}>💾 & 📤 ${t('articleSaveAndPublish')}</button><button class="btn eng-primary" data-publish ${this.shared.submission ? '' : 'disabled'}>${t('githubCatalogPublish')}</button></div><p data-publish-hint>${t('githubCatalogNewOnly')}</p></fieldset>` : ''}
  ${merge ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend>${this.pending?.map((a,i)=>`<button class="btn" data-cad-pending="${i}">${esc(a.manufacturer+' '+a.articleNumber)} · ${t('cadTitle')}</button>`).join('')}<p>${t('articlesMergeCounts', { added: merge.added.length, conflicts: merge.conflicts.length, unchanged: merge.unchanged.length })}</p><div style="max-height:20vh;overflow:auto"><table style="width:100%"><tr><th>${t('articlesBefore')}</th><th>${t('articlesAfter')}</th></tr>${[...merge.added, ...merge.conflicts].map((a) => `<tr><td style="white-space:pre-wrap">${esc(formatCatalogSummary(this.rows.find((r) => catalogKey(r) === catalogKey(a))))}</td><td style="white-space:pre-wrap">${esc(formatCatalogSummary(a))}</td></tr>`).join('')}</table></div>${merge.conflicts.length ? `<label><input type="checkbox" data-replace ${this.replace ? 'checked' : ''}> ${t('articlesReplace')}</label>` : ''}<button class="btn" data-commit ${!this.available || (merge.conflicts.length && !this.replace) ? 'disabled' : ''}>${t('articlesApply')}</button></fieldset>` : ''}
  ${this.deletion ? `<fieldset><legend>${t('articlesDelete')}</legend><p>${esc(this.deletion.manufacturer + ' ' + this.deletion.articleNumber + ' ' + this.deletion.variant)}</p><button class="btn" data-remove>${t('articlesApply')}</button></fieldset>` : ''}
  <footer style="text-align:right;margin-top:16px"><button class="btn" data-close>${t('close')}</button></footer></section>`;
     const slice = candidates.slice(this.page * 50, this.page * 50 + 50);
+
+    this.el
+      .querySelector<HTMLInputElement>('[data-select-all]')
+      ?.addEventListener('change', (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        if (checked) {
+          for (const c of candidates) this.selectedKeys.add(catalogKey(c));
+        } else {
+          for (const c of candidates) this.selectedKeys.delete(catalogKey(c));
+        }
+        this.render();
+      });
+
+    for (const chk of this.el.querySelectorAll<HTMLInputElement>(
+      '[data-select-row]',
+    )) {
+      chk.addEventListener('change', () => {
+        const key = chk.dataset.selectRow!;
+        if (chk.checked) this.selectedKeys.add(key);
+        else this.selectedKeys.delete(key);
+        this.render();
+      });
+    }
+
+    this.el
+      .querySelector('[data-batch-clear]')
+      ?.addEventListener('click', () => {
+        this.selectedKeys.clear();
+        this.render();
+      });
+
+    this.el
+      .querySelector('[data-batch-ai-complete]')
+      ?.addEventListener('click', () => {
+        const selected = this.candidates().filter((a) =>
+          this.selectedKeys.has(catalogKey(a)),
+        );
+        if (!selected.length) return;
+        void this.work(async () => {
+          this.message = t('articleAiCompleting');
+          const completed = await completeArticlesBatchWithAi(
+            selected,
+            (done, total) => {
+              this.message = `${t('articleAiCompleting')} (${done}/${total})`;
+            },
+            { project: this.project },
+          );
+          this.prepare(
+            completed,
+            `${completed.length} Artikel mit KI vervollständigt`,
+          );
+        });
+      });
+
+    this.el
+      .querySelector('[data-batch-publish]')
+      ?.addEventListener('click', () => {
+        const selected = this.candidates().filter((a) =>
+          this.selectedKeys.has(catalogKey(a)),
+        );
+        if (!selected.length) return;
+        try {
+          const symbols = selected
+            .map(
+              (a) =>
+                a.symbol ??
+                (a.symbolId
+                  ? getSymbolById(a.symbolId, this.project)
+                  : undefined) ??
+                [...this.pendingAssets, ...this.packageRows]
+                  .flatMap((p) => p.macros)
+                  .flatMap((m) => m.symbolLibrary ?? [])
+                  .find((s) => s.id === a.symbolId),
+            )
+            .filter((s): s is SymbolDefinition => Boolean(s));
+          void openCatalogPublication(
+            selected,
+            () => {
+              this.message = t('githubCatalogSubmitted');
+              this.selectedKeys.clear();
+              this.shared = sharedCatalogState();
+              this.render();
+              void refreshSharedCatalog();
+            },
+            symbols,
+          ).catch((error) => {
+            this.error = articleError(error);
+            this.render();
+          });
+        } catch (error) {
+          this.error = articleError(error);
+          this.render();
+        }
+      });
+
+    this.el
+      .querySelector('[data-batch-ai-and-publish]')
+      ?.addEventListener('click', () => {
+        const selected = this.candidates().filter((a) =>
+          this.selectedKeys.has(catalogKey(a)),
+        );
+        if (!selected.length) return;
+        void this.work(async () => {
+          this.message = t('articleAiCompleting');
+          const completed = await completeArticlesBatchWithAi(
+            selected,
+            (done, total) => {
+              this.message = `${t('articleAiCompleting')} (${done}/${total})`;
+            },
+            { project: this.project },
+          );
+          await this.store.merge(completed, true, this.expected);
+          await this.reload();
+          this.message = t('articlesStored');
+          const symbols = completed
+            .map(
+              (a) =>
+                a.symbol ??
+                (a.symbolId
+                  ? getSymbolById(a.symbolId, this.project)
+                  : undefined) ??
+                [...this.pendingAssets, ...this.packageRows]
+                  .flatMap((p) => p.macros)
+                  .flatMap((m) => m.symbolLibrary ?? [])
+                  .find((s) => s.id === a.symbolId),
+            )
+            .filter((s): s is SymbolDefinition => Boolean(s));
+          void openCatalogPublication(
+            completed,
+            () => {
+              this.message = t('githubCatalogSubmitted');
+              this.selectedKeys.clear();
+              this.shared = sharedCatalogState();
+              this.render();
+              void refreshSharedCatalog();
+            },
+            symbols,
+          ).catch((error) => {
+            this.error = articleError(error);
+            this.render();
+          });
+        });
+      });
+
     this.el
       .querySelector('[data-close]')
       ?.addEventListener('click', () => this.close());
@@ -458,6 +620,22 @@ export class ArticleCatalogDialog {
       updatePublishButtonState(this.editing);
     }
 
+    this.el
+      .querySelector('[data-ai-complete]')
+      ?.addEventListener('click', () => {
+        const draft = syncDraft();
+        void this.work(async () => {
+          this.message = t('articleAiCompleting');
+          const { article: completed, enrichedFields } =
+            await completeArticleWithAi(draft, { project: this.project });
+          this.editing = completed;
+          this.message = t('articleAiCompleted', {
+            fields: enrichedFields.join(', ') || 'OK',
+          });
+          this.render();
+        });
+      });
+
     this.el.querySelector('[data-save]')?.addEventListener('click', () => {
       try {
         const a = { ...this.editing! };
@@ -481,6 +659,43 @@ export class ArticleCatalogDialog {
         this.render();
       }
     });
+
+    this.el
+      .querySelector('[data-save-and-publish]')
+      ?.addEventListener('click', () => {
+        try {
+          const a = validateCatalogArticle(syncDraft());
+          void this.work(async () => {
+            await this.store.merge([a], true, this.expected);
+            await this.reload();
+            const symbol =
+              a.symbol ??
+              (a.symbolId
+                ? getSymbolById(a.symbolId, this.project)
+                : undefined) ??
+              [...this.pendingAssets, ...this.packageRows]
+                .flatMap((p) => p.macros)
+                .flatMap((m) => m.symbolLibrary ?? [])
+                .find((s) => s.id === a.symbolId);
+            void openCatalogPublication(
+              a,
+              () => {
+                this.message = t('githubCatalogSubmitted');
+                this.shared = sharedCatalogState();
+                this.render();
+                void refreshSharedCatalog();
+              },
+              symbol,
+            ).catch((error) => {
+              this.error = articleError(error);
+              this.render();
+            });
+          });
+        } catch (e) {
+          this.error = articleError(e);
+          this.render();
+        }
+      });
     this.el.querySelector('[data-project]')?.addEventListener('click', () => {
       try {
         this.prepare(projectArticles(this.project));

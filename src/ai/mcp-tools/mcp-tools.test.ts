@@ -530,6 +530,190 @@ async function runTests() {
   delete (manager as any).getPendingPreview;
   console.log('✓ Test 24: Single draft per turn protection and same-page refinement verified');
 
+  // Test 25: Electrical Dimensioning tools
+  const dimRes = await registry.executeTool(
+    'calculate_circuit_dimensioning',
+    {
+      id: 'circ_test_1',
+      name: 'Steckdosenstromkreis B16',
+      system: 'ac1',
+      voltageV: 230,
+      currentA: 16,
+      lengthM: 20,
+      sectionMm2: 2.5,
+      material: 'copper',
+      maxDropPercent: 3,
+      saveToProject: true,
+    },
+    manager,
+  );
+  if (!dimRes.success || !dimRes.record || dimRes.calculation.status !== 'checked') {
+    throw new Error('Test 25 failed: calculate_circuit_dimensioning error: ' + JSON.stringify(dimRes));
+  }
+
+  const getDimRes = await registry.executeTool(
+    'get_electrical_dimensioning',
+    { circuitId: 'circ_test_1' },
+    manager,
+  );
+  if (!getDimRes.success || getDimRes.matchingCases !== 1) {
+    throw new Error('Test 25 failed: get_electrical_dimensioning error: ' + JSON.stringify(getDimRes));
+  }
+  console.log('✓ Test 25: Electrical dimensioning calculation and retrieval verified');
+
+  // Test 26: Cable articles, real physical lengths and BOM meterware
+  const cableRes = await registry.executeTool(
+    'add_cable',
+    {
+      x1: 50,
+      y1: 50,
+      x2: 150,
+      y2: 50,
+      bmk: '-W1',
+      cableType: 'NYM-J',
+      crossSection: '3G2.5',
+    },
+    manager,
+  );
+  const cableId = cableRes.cable.id;
+
+  const assignRes = await registry.executeTool(
+    'assign_cable_article',
+    {
+      cableId,
+      lengthM: 25,
+      article: {
+        manufacturer: 'Lapp',
+        articleNumber: 'ÖLFLEX CLASSIC 110',
+        variant: '3G2.5',
+        description: 'Steuerleitung 3G2.5mm²',
+      },
+      linkCircuitIds: ['circ_test_1'],
+    },
+    manager,
+  );
+  if (!assignRes.success || assignRes.lengthM !== 25) {
+    throw new Error('Test 26 failed: assign_cable_article error: ' + JSON.stringify(assignRes));
+  }
+
+  const getCablesRes = await registry.executeTool(
+    'get_cable_articles',
+    { cableId },
+    manager,
+  );
+  if (!getCablesRes.success || getCablesRes.totalCables !== 1 || getCablesRes.cables[0].cable.lengthM !== 25) {
+    throw new Error('Test 26 failed: get_cable_articles error: ' + JSON.stringify(getCablesRes));
+  }
+  console.log('✓ Test 26: Cable articles, real physical lengths, and BOM meterware verified');
+
+  // Test 27: Protection coordination
+  const coordRes = await registry.executeTool(
+    'get_protection_coordination',
+    { circuitId: 'circ_test_1' },
+    manager,
+  );
+  if (!coordRes.success || coordRes.circuitId !== 'circ_test_1') {
+    throw new Error('Test 27 failed: get_protection_coordination error: ' + JSON.stringify(coordRes));
+  }
+  console.log('✓ Test 27: Protection coordination and selectivity inspection verified');
+
+  // Test 28: Project Revisions
+  const revRes = await registry.executeTool(
+    'create_project_revision',
+    {
+      name: 'Baseline V1.0',
+      description: 'Initial project planning',
+      author: 'Tester',
+      release: true,
+      approver: 'Approver Lead',
+    },
+    manager,
+  );
+  if (!revRes.success || !revRes.revision || revRes.revision.name !== 'Baseline V1.0') {
+    throw new Error('Test 28 failed: create_project_revision error: ' + JSON.stringify(revRes));
+  }
+
+  const listRevRes = await registry.executeTool('list_project_revisions', {}, manager);
+  if (!listRevRes.success || listRevRes.count < 1) {
+    throw new Error('Test 28 failed: list_project_revisions error: ' + JSON.stringify(listRevRes));
+  }
+  console.log('✓ Test 28: Project revisions creation and listing verified');
+
+  // Test 29: Change Impact Analysis
+  await registry.executeTool(
+    'update_component',
+    {
+      id: compB.component.id,
+      functionText: 'Lüftungssteuerung geänderter Abgang',
+    },
+    manager,
+  );
+
+  const impactRes = await registry.executeTool(
+    'analyze_change_impact',
+    { baselineRevisionId: revRes.revision.id },
+    manager,
+  );
+  if (!impactRes.success || !impactRes.baseline) {
+    throw new Error('Test 29 failed: analyze_change_impact error: ' + JSON.stringify(impactRes));
+  }
+
+  if (impactRes.rows.length > 0) {
+    const rowKey = impactRes.rows[0].key;
+    const reviewRes = await registry.executeTool(
+      'review_change_impact',
+      {
+        baselineRevisionId: revRes.revision.id,
+        rowKeys: [rowKey],
+        status: 'reviewed',
+        author: 'Tester',
+        reason: 'Verifiziert im Prüflauf',
+      },
+      manager,
+    );
+    if (!reviewRes.success || reviewRes.status !== 'reviewed') {
+      throw new Error('Test 29 failed: review_change_impact error: ' + JSON.stringify(reviewRes));
+    }
+  }
+  console.log('✓ Test 29: Change impact analysis and review decisions verified');
+
+  // Test 30: draft_circuit_schematic validation
+  const draftCircuitRes = await registry.executeTool(
+    'draft_circuit_schematic',
+    { circuitId: 'circ_test_1', loadSymbolId: 'socket_schuko' },
+    manager,
+  );
+  if (
+    draftCircuitRes.success !== false ||
+    (!draftCircuitRes.error?.includes('Leitung und Schutzgerät') &&
+     !draftCircuitRes.error?.includes('Select cable'))
+  ) {
+    throw new Error('Test 30 failed: draft_circuit_schematic should require assigned cable and protection: ' + JSON.stringify(draftCircuitRes));
+  }
+  console.log('✓ Test 30: draft_circuit_schematic validation verified');
+
+  // Test 31: complete_article_data tool
+  const articleCompleteRes = await registry.executeTool(
+    'complete_article_data',
+    {
+      article: {
+        articleNumber: '5SL6316-7',
+        manufacturer: 'Siemens',
+      },
+      useAi: false,
+    },
+    manager,
+  );
+  if (
+    !articleCompleteRes.success ||
+    articleCompleteRes.article?.symbolId !== 'circuit_breaker_3p' ||
+    articleCompleteRes.article?.electrical?.currentA !== 16 ||
+    articleCompleteRes.article?.dimensions?.widthMm !== 54
+  ) {
+    throw new Error('Test 31 failed: complete_article_data error: ' + JSON.stringify(articleCompleteRes));
+  }
+  console.log('✓ Test 31: complete_article_data verified:', articleCompleteRes.article.description);
+
   console.log('All MCP Tool Registry tests passed successfully! 🎉');
 }
 

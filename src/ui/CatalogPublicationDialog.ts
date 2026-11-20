@@ -3,6 +3,7 @@ import type { SymbolDefinition } from '../model/types';
 import {
   sharedCatalogState,
   submitSharedArticle,
+  submitSharedArticles,
 } from '../model/GitHubCatalog';
 import { validatePublicArticle } from '../shared/catalog-publication.mjs';
 import {
@@ -47,21 +48,27 @@ export class CatalogPublicationDialog {
     document.activeElement instanceof HTMLElement
       ? document.activeElement
       : undefined;
-  private article: CatalogArticle;
-  private symbol?: SymbolDefinition;
+  private articles: CatalogArticle[];
+  private symbols: SymbolDefinition[];
   private busy = false;
   private sent = false;
   private token = '';
   private widget?: string;
   private api?: ChallengeApi;
   constructor(
-    article: CatalogArticle,
+    articleOrList: CatalogArticle | CatalogArticle[],
     private onDone: () => void = () => {},
     private onClose?: () => void,
-    symbol?: SymbolDefinition,
+    symbolOrList?: SymbolDefinition | SymbolDefinition[],
   ) {
-    this.article = validatePublicArticle(article);
-    this.symbol = symbol;
+    const list = Array.isArray(articleOrList) ? articleOrList : [articleOrList];
+    this.articles = list.map((a) => validatePublicArticle(a));
+    const symList = symbolOrList
+      ? Array.isArray(symbolOrList)
+        ? symbolOrList
+        : [symbolOrList]
+      : [];
+    this.symbols = symList;
   }
   show() {
     if (document.getElementById('catalogPublicationDialog')) return;
@@ -71,7 +78,23 @@ export class CatalogPublicationDialog {
     this.el.className = 'modal-backdrop';
     this.el.style.cssText =
       'position:fixed;inset:0;z-index:4700;display:flex;align-items:center;justify-content:center';
-    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t('githubCatalogPublish')}</h2><p>${t('githubCatalogPublicHint')}</p><fieldset><legend>${t('articlesPreview')}</legend><pre style="white-space:pre-wrap">${esc(formatCatalogSummary(this.article))}</pre></fieldset><div data-challenge></div><p data-status role="status">${t('githubCatalogChallengeLoading')}</p><div role="alert" data-error></div><footer><button class="btn" data-close>${t('close')}</button><button class="btn eng-primary" data-submit disabled>${t('githubCatalogSubmit')}</button></footer></section>`;
+
+    const previewContent =
+      this.articles.length === 1
+        ? `<pre style="white-space:pre-wrap">${esc(formatCatalogSummary(this.articles[0]))}</pre>`
+        : `<div><p><strong>${t('githubCatalogBatchCount', { count: this.articles.length })}</strong></p><div style="max-height:220px;overflow-y:auto;border:1px solid var(--border-color, #333);border-radius:4px;padding:8px">${this.articles
+            .map(
+              (art, idx) => `
+        <div style="padding:4px 0;border-bottom:1px solid var(--border-subtle, #222);font-size:0.9em">
+          <strong>${idx + 1}. ${esc(art.manufacturer)} ${esc(art.articleNumber)}</strong>
+          ${art.variant ? `<span> (${esc(art.variant)})</span>` : ''} — 
+          <span>${esc(art.description || 'Ohne Beschreibung')}</span>
+          ${art.symbolId ? `<span class="badge" style="margin-left:6px;font-size:0.75rem">${esc(art.symbolId)}</span>` : ''}
+        </div>`,
+            )
+            .join('')}</div></div>`;
+
+    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t('githubCatalogPublish')}</h2><p>${t('githubCatalogPublicHint')}</p><fieldset><legend>${t('articlesPreview')}</legend>${previewContent}</fieldset><div data-challenge></div><p data-status role="status">${t('githubCatalogChallengeLoading')}</p><div role="alert" data-error></div><footer><button class="btn" data-close>${t('close')}</button><button class="btn eng-primary" data-submit disabled>${t('githubCatalogSubmit')}</button></footer></section>`;
     document.body.append(this.el);
     bindArticleModalKeys(this.el, () => {
       if (!this.busy) this.close();
@@ -136,7 +159,21 @@ export class CatalogPublicationDialog {
     this.error('');
     this.status(t('githubCatalogSubmitting'));
     try {
-      await submitSharedArticle(this.article, this.token, undefined, this.symbol);
+      if (this.articles.length === 1) {
+        await submitSharedArticle(
+          this.articles[0],
+          this.token,
+          undefined,
+          this.symbols[0],
+        );
+      } else {
+        await submitSharedArticles(
+          this.articles,
+          this.token,
+          undefined,
+          this.symbols,
+        );
+      }
       this.sent = true;
       this.status(t('githubCatalogSubmitted'));
       this.onDone();
@@ -158,11 +195,17 @@ export class CatalogPublicationDialog {
   }
 }
 export async function openCatalogPublication(
-  article: CatalogArticle,
+  articleOrList: CatalogArticle | CatalogArticle[],
   onDone: () => void,
-  symbol?: SymbolDefinition,
+  symbolOrList?: SymbolDefinition | SymbolDefinition[],
 ) {
-  const normalized = validatePublicArticle(article);
+  const list = Array.isArray(articleOrList) ? articleOrList : [articleOrList];
+  const normalizedArticles = list.map((a) => validatePublicArticle(a));
+  const symbols = symbolOrList
+    ? Array.isArray(symbolOrList)
+      ? symbolOrList
+      : [symbolOrList]
+    : [];
   if (!sharedCatalogState().submission)
     throw new Error('githubCatalogNotConfigured');
   const desktop = (
@@ -177,8 +220,9 @@ export async function openCatalogPublication(
   ).electronAPI?.catalog;
   if (desktop) {
     const serialized = JSON.stringify({
-      article: normalized,
-      ...(symbol ? { symbol } : {}),
+      articles: normalizedArticles,
+      article: normalizedArticles[0],
+      ...(symbols.length > 0 ? { symbols, symbol: symbols[0] } : {}),
     });
     if (new TextEncoder().encode(serialized).length > 1350) {
       if (document.getElementById('catalogDesktopTransfer')) return;
@@ -191,7 +235,13 @@ export async function openCatalogPublication(
       root.className = 'modal-backdrop';
       root.style.cssText =
         'position:fixed;inset:0;z-index:4700;display:flex;align-items:center;justify-content:center';
-      root.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t('githubCatalogPublish')}</h2><p>${t('githubCatalogTransferHint')}</p><fieldset><legend>${t('articlesPreview')}</legend><pre style="white-space:pre-wrap">${esc(formatCatalogSummary(normalized))}</pre></fieldset><div role="alert"></div><footer><button class="btn" data-close>${t('close')}</button><button class="btn eng-primary" data-copy>${t('githubCatalogCopyAndOpen')}</button></footer></section>`;
+
+      const previewHtml =
+        normalizedArticles.length === 1
+          ? `<pre style="white-space:pre-wrap">${esc(formatCatalogSummary(normalizedArticles[0]))}</pre>`
+          : `<p><strong>${t('githubCatalogBatchCount', { count: normalizedArticles.length })}</strong></p><ul style="max-height:180px;overflow-y:auto;padding-left:20px;font-size:0.9em">${normalizedArticles.map((a) => `<li><strong>${esc(a.manufacturer)} ${esc(a.articleNumber)}</strong>: ${esc(a.description || 'Ohne Beschreibung')}</li>`).join('')}</ul>`;
+
+      root.innerHTML = `<section role="dialog" aria-modal="true"><h2>${t('githubCatalogPublish')}</h2><p>${t('githubCatalogTransferHint')}</p><fieldset><legend>${t('articlesPreview')}</legend>${previewHtml}</fieldset><div role="alert"></div><footer><button class="btn" data-close>${t('close')}</button><button class="btn eng-primary" data-copy>${t('githubCatalogCopyAndOpen')}</button></footer></section>`;
       let busy = false;
       const close = () => {
         if (!busy) {
@@ -231,29 +281,43 @@ export async function openCatalogPublication(
     return;
   }
   if (!import.meta.env.DEV && location.origin !== 'https://vitals5.github.io') {
-    const payloadObject = symbol ? { article: normalized, symbol } : normalized;
-    const bytes = new TextEncoder().encode(JSON.stringify(payloadObject));
-    const payload = btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    window.open(
-      'https://vitals5.github.io/schematico/catalog-submit.html#article=' +
-        payload,
-      '_blank',
-      'noopener,noreferrer',
-    );
+    const payloadObject = {
+      articles: normalizedArticles,
+      article: normalizedArticles[0],
+      ...(symbols.length > 0 ? { symbols, symbol: symbols[0] } : {}),
+    };
+    const jsonStr = JSON.stringify(payloadObject);
+    const bytes = new TextEncoder().encode(jsonStr);
+    if (bytes.length <= 1350) {
+      const payload = btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      window.open(
+        'https://vitals5.github.io/schematico/catalog-submit.html#article=' +
+          payload,
+        '_blank',
+        'noopener,noreferrer',
+      );
+    } else {
+      void navigator.clipboard.writeText(jsonStr).catch(() => {});
+      window.open(
+        'https://vitals5.github.io/schematico/catalog-submit.html#paste=1',
+        '_blank',
+        'noopener,noreferrer',
+      );
+    }
     return;
   }
   let submitted = false;
   new CatalogPublicationDialog(
-    normalized,
+    normalizedArticles,
     () => {
       submitted = true;
     },
     () => {
       if (submitted) onDone();
     },
-    symbol,
+    symbols,
   ).show();
 }

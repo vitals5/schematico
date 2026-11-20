@@ -7,6 +7,42 @@ import {sessionDiagnostics} from '../SessionDiagnostics';
 import { rememberDiagnostic, sanitizeDiagnostic } from '../Diagnostics';
 import {DUPLICATE_SCHEMATIC_TOOL,handleDuplicateSchematic} from '../../layout/tools';
 import { VALIDATE_LAYOUT_TOOL, OPTIMIZE_LAYOUT_TOOL, CREATE_DRAFT_TOOL, handleValidateLayout, handleOptimizeLayout, handleCreateDraft } from '../../layout/tools';
+import {
+  GET_ELECTRICAL_DIMENSIONING_TOOL,
+  CALCULATE_CIRCUIT_DIMENSIONING_TOOL,
+  DRAFT_CIRCUIT_SCHEMATIC_TOOL,
+  handleGetElectricalDimensioning,
+  handleCalculateCircuitDimensioning,
+  handleDraftCircuitSchematic,
+} from './electricalDimensioning';
+import {
+  GET_PROTECTION_COORDINATION_TOOL,
+  handleGetProtectionCoordination,
+} from './protectionCoordination';
+import {
+  GET_CABLE_ARTICLES_TOOL,
+  ASSIGN_CABLE_ARTICLE_TOOL,
+  handleGetCableArticles,
+  handleAssignCableArticle,
+} from './cableArticles';
+import {
+  ANALYZE_CHANGE_IMPACT_TOOL,
+  REVIEW_CHANGE_IMPACT_TOOL,
+  APPLY_CHANGE_IMPACT_PROPOSALS_TOOL,
+  handleAnalyzeChangeImpact,
+  handleReviewChangeImpact,
+  handleApplyChangeImpactProposals,
+} from './changeImpact';
+import {
+  LIST_PROJECT_REVISIONS_TOOL,
+  CREATE_PROJECT_REVISION_TOOL,
+  handleListProjectRevisions,
+  handleCreateProjectRevision,
+} from './projectRevisions';
+import {
+  COMPLETE_ARTICLE_DATA_TOOL,
+  handleCompleteArticleDataTool,
+} from './articleCompletion';
 // src/ai/mcp-tools/index.ts
 // Universal MCP Tool Registry and Execution Engine for Schematico
 
@@ -160,6 +196,28 @@ export class McpToolRegistry {
     this.register(RECALCULATE_CROSS_REFERENCES_TOOL, handleRecalculateCrossReferences);
     this.register(EXPORT_PDF_TOOL, handleExportPdf);
     this.register(ZOOM_CANVAS_TOOL, handleZoomCanvas);
+
+    // 7. Electrical Dimensioning & Protection Coordination
+    this.register(GET_ELECTRICAL_DIMENSIONING_TOOL, handleGetElectricalDimensioning);
+    this.register(CALCULATE_CIRCUIT_DIMENSIONING_TOOL, handleCalculateCircuitDimensioning);
+    this.register(DRAFT_CIRCUIT_SCHEMATIC_TOOL, handleDraftCircuitSchematic);
+    this.register(GET_PROTECTION_COORDINATION_TOOL, handleGetProtectionCoordination);
+
+    // 8. Cable Articles & Purchasing Meterware
+    this.register(GET_CABLE_ARTICLES_TOOL, handleGetCableArticles);
+    this.register(ASSIGN_CABLE_ARTICLE_TOOL, handleAssignCableArticle);
+
+    // 9. Change Impact Tracking & Proposals
+    this.register(ANALYZE_CHANGE_IMPACT_TOOL, handleAnalyzeChangeImpact);
+    this.register(REVIEW_CHANGE_IMPACT_TOOL, handleReviewChangeImpact);
+    this.register(APPLY_CHANGE_IMPACT_PROPOSALS_TOOL, handleApplyChangeImpactProposals);
+
+    // 10. Project Revisions & Approvals
+    this.register(LIST_PROJECT_REVISIONS_TOOL, handleListProjectRevisions);
+    this.register(CREATE_PROJECT_REVISION_TOOL, handleCreateProjectRevision);
+
+    // 11. Article Completion & AI Enrichment
+    this.register(COMPLETE_ARTICLE_DATA_TOOL, handleCompleteArticleDataTool);
   }
 
   public register(definition: McpToolDefinition, handler: ToolHandler): void {
