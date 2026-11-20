@@ -7,6 +7,7 @@ import {
 } from './ArticleCompletion';
 import type { CatalogArticle } from './ArticleTypes';
 import { validateCatalogArticle } from './CatalogRecord';
+import { validateCablePart, assessCablePart } from './CableArticles';
 
 console.log('--- Testing Article Completion Service ---');
 
@@ -114,6 +115,88 @@ async function testFallback() {
   assert.doesNotThrow(() => validateCatalogArticle(res.article), 'Valid catalog article schema');
   console.log('✓ Test 6: Offline completion fallback verified');
 }
+
+// Test 7: Lapp 16000513 (NYM-J 5X4 NCC)
+const lappNYM5x4: CatalogArticle = {
+  id: '["Lapp","16000513",""]',
+  articleNumber: '16000513',
+  manufacturer: 'Lapp',
+  variant: '',
+  description:
+    'Type: 16000513NYM-J 5X4 NCCKabel und Leitungen für feste Verlegung NYM-JorderNumber: 16000513voltage: 300/500VexternalDocuments: https://www.lappkabel.de/produktfinder.html?q=16000513',
+  origin: 'user',
+  verification: 'unverified',
+};
+const completedNYM5x4 = completeArticleHeuristics(lappNYM5x4);
+assert.equal(completedNYM5x4.symbolId, undefined, 'Cables should not have a placement symbolId');
+assert.equal(completedNYM5x4.dimensions, undefined, 'Cables should not have DIN-rail dimensions');
+assert.equal(completedNYM5x4.electrical?.kind, 'cable', 'Kind should be cable');
+assert.equal(completedNYM5x4.electrical?.cores, 5, 'Cores should be 5');
+assert.equal(completedNYM5x4.electrical?.sectionMm2, 4, 'Cross section should be 4 mm²');
+assert.equal(completedNYM5x4.electrical?.ratedVoltageV, 500, 'Rated voltage should be 500V');
+assert.equal(completedNYM5x4.electrical?.ampacityA, 32, 'Ampacity for 4mm² should be 32A');
+assert.equal(completedNYM5x4.electrical?.resistance20OhmKm, 4.61, 'Resistance 20°C for 4mm² copper should be 4.61 Ohm/km');
+assert.equal(completedNYM5x4.electrical?.material, 'copper', 'Material should be copper');
+assert(completedNYM5x4.functions && completedNYM5x4.functions.length > 0, 'Functions should be populated');
+assert.deepEqual(completedNYM5x4.functions[0].pins, ['L1', 'L2', 'L3', 'N', 'PE'], '5G cable pins should be L1, L2, L3, N, PE');
+assert.doesNotThrow(() => validateCatalogArticle(completedNYM5x4), 'Valid catalog article schema');
+const missingNYM5x4 = detectMissingArticleFields(completedNYM5x4);
+assert.equal(missingNYM5x4.symbolId, false, 'symbolId should not be flagged missing on cable');
+assert.equal(missingNYM5x4.dimensions, false, 'dimensions should not be flagged missing on cable');
+assert.equal(missingNYM5x4.electrical, false, 'electrical should be complete');
+assert.equal(missingNYM5x4.functions, false, 'functions should be complete');
+const assessedNYM5x4 = assessCablePart({
+  articleNumber: completedNYM5x4.articleNumber,
+  manufacturer: completedNYM5x4.manufacturer,
+  variant: completedNYM5x4.variant,
+  role: 'main',
+  snapshot: completedNYM5x4,
+});
+assert.equal(assessedNYM5x4.status, 'ready', 'Cable assessment should be ready');
+console.log('✓ Test 7: Lapp 16000513 (NYM-J 5X4) cable completion verified:', completedNYM5x4.description);
+
+// Test 8: Lapp 0014164 (ÖLFLEX CLASSIC 100 H 5G4)
+const lappOelflex: CatalogArticle = {
+  id: '["Lapp","0014164",""]',
+  articleNumber: '0014164',
+  manufacturer: 'Lapp',
+  variant: '',
+  description:
+    'Type: 0014164ÖLFLEX CLASSIC 100 H 5G4ÖLFLEX® CLASSIC 100 HexternalDocuments: https://www.lappkabel.de/webcode=1494596696width: 0 mmheight: 0 mmlength: 0 mm',
+  origin: 'user',
+  verification: 'unverified',
+};
+const completedOelflex = completeArticleHeuristics(lappOelflex);
+assert.equal(completedOelflex.symbolId, undefined, 'Cables should not have symbolId');
+assert.equal(completedOelflex.electrical?.kind, 'cable', 'Kind should be cable');
+assert.equal(completedOelflex.electrical?.cores, 5, 'Cores should be 5');
+assert.equal(completedOelflex.electrical?.sectionMm2, 4, 'Section should be 4 mm²');
+assert.equal(completedOelflex.electrical?.material, 'copper', 'Material should be copper');
+assert(completedOelflex.description.includes('ÖLFLEX'), 'Description should be clean and mention ÖLFLEX');
+assert(!completedOelflex.description.includes('width: 0 mm'), 'Description should not contain noisy importer text');
+assert.doesNotThrow(() => validateCatalogArticle(completedOelflex), 'Valid catalog article schema');
+console.log('✓ Test 8: Lapp 0014164 (ÖLFLEX 5G4) cable completion verified:', completedOelflex.description);
+
+// Test 9: Lapp 16000003 (NYM-J 3X1,5 NCC)
+const lappNYM3x15: CatalogArticle = {
+  id: '["Lapp","16000003",""]',
+  articleNumber: '16000003',
+  manufacturer: 'Lapp',
+  variant: '',
+  description:
+    'Type: 16000003NYM-J 3X1,5   NCCKabel und Leitungen für feste Verlegung NYM-JorderNumber: 16000003voltage: 300/500VexternalDocuments: https://www.lappkabel.de/produktfinder.html?q=16000003',
+  origin: 'user',
+  verification: 'unverified',
+};
+const completedNYM3x15 = completeArticleHeuristics(lappNYM3x15);
+assert.equal(completedNYM3x15.electrical?.kind, 'cable', 'Kind should be cable');
+assert.equal(completedNYM3x15.electrical?.cores, 3, 'Cores should be 3');
+assert.equal(completedNYM3x15.electrical?.sectionMm2, 1.5, 'Section should be 1.5 mm²');
+assert.equal(completedNYM3x15.electrical?.ampacityA, 18, 'Ampacity for 1.5mm² should be 18A');
+assert.equal(completedNYM3x15.electrical?.resistance20OhmKm, 12.1, 'Resistance 20°C for 1.5mm² copper should be 12.1 Ohm/km');
+assert.deepEqual(completedNYM3x15.functions?.[0]?.pins, ['L', 'N', 'PE'], '3G cable pins should be L, N, PE');
+assert.doesNotThrow(() => validateCatalogArticle(completedNYM3x15), 'Valid catalog article schema');
+console.log('✓ Test 9: Lapp 16000003 (NYM-J 3x1.5) cable completion verified:', completedNYM3x15.description);
 
 testFallback().then(() => {
   console.log('All Article Completion tests passed successfully! 🎉');

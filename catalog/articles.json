@@ -134,30 +134,115 @@
     },
     {
       "id": "[\"Lapp\",\"0014164\",\"\"]",
+      "electrical": {
+        "version": 1,
+        "kind": "cable",
+        "source": "Herstellerkatalog / Datenblatt",
+        "conditions": "DIN VDE 0298-4, Verlegeart C bei 30 °C",
+        "currentType": "ac",
+        "material": "copper",
+        "ratedVoltageV": 500,
+        "sectionMm2": 4,
+        "cores": 5,
+        "resistance20OhmKm": 4.61,
+        "reactanceOhmKm": 0.08,
+        "ampacityA": 32,
+        "adiabaticK": 115
+      },
       "articleNumber": "0014164",
       "manufacturer": "Lapp",
       "variant": "",
-      "description": "Type: 0014164ÖLFLEX CLASSIC 100 H 5G4ÖLFLEX® CLASSIC 100 HexternalDocuments: https://www.lappkabel.de/webcode=1494596696width: 0 mmheight: 0 mmlength: 0 mm",
+      "description": "Steuerleitung ÖLFLEX CLASSIC 100 H 5G4 mm²",
       "origin": "user",
-      "verification": "unverified"
+      "verification": "unverified",
+      "functions": [
+        {
+          "id": "cores",
+          "type": "cable",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "N",
+            "PE"
+          ],
+          "required": true
+        }
+      ]
     },
     {
       "id": "[\"Lapp\",\"16000003\",\"\"]",
+      "electrical": {
+        "version": 1,
+        "kind": "cable",
+        "source": "Herstellerkatalog / Datenblatt",
+        "conditions": "DIN VDE 0298-4, Verlegeart C bei 30 °C",
+        "currentType": "ac",
+        "material": "copper",
+        "ratedVoltageV": 500,
+        "sectionMm2": 1.5,
+        "cores": 3,
+        "resistance20OhmKm": 12.1,
+        "reactanceOhmKm": 0.08,
+        "ampacityA": 18,
+        "adiabaticK": 115
+      },
       "articleNumber": "16000003",
       "manufacturer": "Lapp",
       "variant": "",
-      "description": "Type: 16000003NYM-J 3X1,5   NCCKabel und Leitungen für feste Verlegung NYM-JorderNumber: 16000003voltage: 300/500VexternalDocuments: https://www.lappkabel.de/produktfinder.html?q=16000003",
+      "description": "Mantelleitung NYM-J 3x1,5 mm² 300/500V",
       "origin": "user",
-      "verification": "unverified"
+      "verification": "unverified",
+      "functions": [
+        {
+          "id": "cores",
+          "type": "cable",
+          "pins": [
+            "L",
+            "N",
+            "PE"
+          ],
+          "required": true
+        }
+      ]
     },
     {
       "id": "[\"Lapp\",\"16000513\",\"\"]",
+      "electrical": {
+        "version": 1,
+        "kind": "cable",
+        "source": "Herstellerkatalog / Datenblatt",
+        "conditions": "DIN VDE 0298-4, Verlegeart C bei 30 °C",
+        "currentType": "ac",
+        "material": "copper",
+        "ratedVoltageV": 500,
+        "sectionMm2": 4,
+        "cores": 5,
+        "resistance20OhmKm": 4.61,
+        "reactanceOhmKm": 0.08,
+        "ampacityA": 32,
+        "adiabaticK": 115
+      },
       "articleNumber": "16000513",
       "manufacturer": "Lapp",
       "variant": "",
-      "description": "Type: 16000513NYM-J 5X4 NCCKabel und Leitungen für feste Verlegung NYM-JorderNumber: 16000513voltage: 300/500VexternalDocuments: https://www.lappkabel.de/produktfinder.html?q=16000513",
+      "description": "Mantelleitung NYM-J 5x4 mm² 300/500V",
       "origin": "user",
-      "verification": "unverified"
+      "verification": "unverified",
+      "functions": [
+        {
+          "id": "cores",
+          "type": "cable",
+          "pins": [
+            "L1",
+            "L2",
+            "L3",
+            "N",
+            "PE"
+          ],
+          "required": true
+        }
+      ]
     },
     {
       "id": "[\"MEAN WELL\",\"HDR-30-12\",\"\"]",

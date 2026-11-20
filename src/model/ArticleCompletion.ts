@@ -18,16 +18,54 @@ export interface MissingArticleFields {
 
 /** Analyzes which core engineering attributes are missing on a catalogue article. */
 export function detectMissingArticleFields(article: Partial<CatalogArticle>): MissingArticleFields {
+  const isProtectionOrLoad =
+    /leitungsschutz|schalter|relais|schütz|sicherung|steckdose|klemme|netzteil/i.test(
+      (article.articleNumber || '') + ' ' + (article.description || ''),
+    );
+
+  const isCable =
+    article.electrical?.kind === 'cable' ||
+    (!isProtectionOrLoad &&
+      article.electrical?.kind !== 'protection' &&
+      article.electrical?.kind !== 'load' &&
+      (/kabel|cable|cord|nym|ölflex|olflex|unitronic|etherline|hitronic|h07rn|h07v|h05vv|nhxh|je-h|\bleitung\b/i.test(
+        (article.articleNumber || '') +
+          ' ' +
+          (article.description || '') +
+          ' ' +
+          (article.manufacturer || ''),
+      ) ||
+        Boolean(
+          (article.articleNumber || '').match(
+            /\b\d{1,2}\s*[xXgG]\s*\d+(?:[.,]\d+)?\b/,
+          ) ||
+            (article.description || '').match(
+              /\b\d{1,2}\s*[xXgG]\s*\d+(?:[.,]\d+)?\b/,
+            ),
+        )));
+
   const missingDescription =
     !article.description ||
     article.description.trim().length < 5 ||
     article.description === article.articleNumber;
-  const missingSymbol = !article.symbolId && !article.symbol;
-  const missingDimensions =
-    !article.dimensions ||
-    !article.dimensions.widthMm ||
-    !article.dimensions.heightMm;
-  const missingElectrical = !article.electrical || !article.electrical.kind;
+
+  // Cables are drawn as connection lines / annotations, NOT placed symbols, so symbolId is NOT missing on cables
+  const missingSymbol = isCable ? false : (!article.symbolId && !article.symbol);
+
+  // Cables do not have DIN-rail width/height/depth dimensions
+  const missingDimensions = isCable
+    ? false
+    : (!article.dimensions || !article.dimensions.widthMm || !article.dimensions.heightMm);
+
+  // For cables, electrical requires kind === 'cable', cores and sectionMm2
+  const missingElectrical =
+    !article.electrical ||
+    !article.electrical.kind ||
+    (isCable &&
+      (article.electrical.kind !== 'cable' ||
+        article.electrical.cores === undefined ||
+        article.electrical.sectionMm2 === undefined));
+
   const missingFunctions = !article.functions || article.functions.length === 0;
 
   return {
@@ -244,7 +282,58 @@ export function deriveArticleFunctions(
 
   let rawList: NonNullable<CatalogArticle['functions']>;
 
-  if (symId && symId.includes('contactor')) {
+  const isProtectionOrLoad =
+    article.electrical?.kind === 'protection' ||
+    article.electrical?.kind === 'load' ||
+    /leitungsschutz|schalter|relais|schütz|sicherung|steckdose|klemme|netzteil/i.test(
+      (article.articleNumber || '') + ' ' + (article.description || ''),
+    );
+
+  const isCable =
+    article.electrical?.kind === 'cable' ||
+    (!isProtectionOrLoad &&
+      (/kabel|cable|cord|nym|ölflex|olflex|unitronic|etherline|hitronic|h07rn|h07v|h05vv|nhxh|je-h|\bleitung\b/i.test(
+        (article.articleNumber || '') +
+          ' ' +
+          (article.description || '') +
+          ' ' +
+          (article.manufacturer || ''),
+      ) ||
+        Boolean(
+          (article.articleNumber || '').match(
+            /\b\d{1,2}\s*[xXgG]\s*\d+(?:[.,]\d+)?\b/,
+          ) ||
+            (article.description || '').match(
+              /\b\d{1,2}\s*[xXgG]\s*\d+(?:[.,]\d+)?\b/,
+            ),
+        )));
+
+  if (isCable) {
+    const cores = article.electrical?.cores || 3;
+    const hasPe =
+      /[-_]J\b|\b[gG]\b|mit schutzleiter/i.test(
+        (article.articleNumber || '') + ' ' + (article.description || ''),
+      ) || (!/[-_]O\b|ohne schutzleiter/i.test((article.articleNumber || '') + ' ' + (article.description || '')));
+    let cablePins: string[];
+    if (cores === 3 && hasPe) {
+      cablePins = ['L', 'N', 'PE'];
+    } else if (cores === 4 && hasPe) {
+      cablePins = ['L1', 'L2', 'L3', 'PE'];
+    } else if (cores === 5 && hasPe) {
+      cablePins = ['L1', 'L2', 'L3', 'N', 'PE'];
+    } else if (cores === 2) {
+      cablePins = ['L', 'N'];
+    } else if (cores === 1) {
+      cablePins = hasPe ? ['PE'] : ['1'];
+    } else {
+      cablePins = Array.from({ length: cores }, (_, i) =>
+        hasPe && i === cores - 1 ? 'PE' : String(i + 1),
+      );
+    }
+    rawList = [
+      { id: 'cores', type: 'cable', pins: cablePins, required: true },
+    ];
+  } else if (symId && symId.includes('contactor')) {
     rawList = [
       { id: 'coil', type: 'relay_coil', pins: ['A1', 'A2'], required: true },
       { id: 'power', type: 'power_contact_3p', pins: ['1', '2', '3', '4', '5', '6'], required: true },
@@ -329,9 +418,45 @@ export function deriveArticleFunctions(
   });
 }
 
+const COPPER_RESISTANCE_20C: Record<number, number> = {
+  0.5: 36.0,
+  0.75: 24.5,
+  1: 18.1,
+  1.5: 12.1,
+  2.5: 7.41,
+  4: 4.61,
+  6: 3.08,
+  10: 1.83,
+  16: 1.15,
+  25: 0.727,
+  35: 0.524,
+  50: 0.387,
+  70: 0.268,
+  95: 0.193,
+  120: 0.153,
+};
+
+const STANDARD_AMPACITY_C_30C: Record<number, number> = {
+  0.5: 6,
+  0.75: 12,
+  1: 15,
+  1.5: 18,
+  2.5: 24,
+  4: 32,
+  6: 41,
+  10: 57,
+  16: 76,
+  25: 101,
+  35: 126,
+  50: 153,
+  70: 196,
+  95: 238,
+  120: 276,
+};
+
 /**
  * Intelligent domain heuristics for standard electrical devices across all major
- * manufacturers (Siemens, ABB, Eaton, Hager, Schneider, Wago, Phoenix Contact, Mean Well, etc.).
+ * manufacturers (Siemens, ABB, Eaton, Hager, Schneider, Wago, Phoenix Contact, Mean Well, Lapp, etc.).
  */
 export function completeArticleHeuristics(
   article: CatalogArticle,
@@ -366,7 +491,123 @@ export function completeArticleHeuristics(
       : undefined;
   let detectedPoles: number | undefined =
     next.electrical?.kind === 'protection' ? next.electrical.poles : undefined;
+  let detectedCores: number | undefined = next.electrical?.cores;
+  let detectedSectionMm2: number | undefined = next.electrical?.sectionMm2;
+  let detectedMaterial: 'copper' | 'aluminium' =
+    next.electrical?.material || 'copper';
+  let detectedAmpacityA: number | undefined = next.electrical?.ampacityA;
+  let detectedResistance20: number | undefined =
+    next.electrical?.resistance20OhmKm;
+  let detectedReactance: number | undefined = next.electrical?.reactanceOhmKm;
+  let detectedAdiabaticK: number | undefined = next.electrical?.adiabaticK;
+  let detectedConditions: string | undefined = next.electrical?.conditions;
   let cleanDesc: string | undefined = next.description;
+
+  // 0. Cable / Line Recognition
+  const cableCrossMatch = (artNo + ' ' + rawDesc).match(
+    /\b(\d{1,2})\s*([xXgG])\s*(\d+(?:[.,]\d+)?)\s*(?:mm[²2])?\b/,
+  );
+  const isProtectionOrLoad =
+    detectedKind === 'protection' ||
+    detectedKind === 'load' ||
+    /5SL[63]|5SY[46]|S20[1234]|MBN|MCN|FAZ|A9F|5SV[134]|FH20[24]|F20[24]|CDA|CFR|3RT|AF09|AF16|DILM|LC1D|3RV|MS116|HDR|NDR|EDR|QUINT/i.test(
+      artNo,
+    ) ||
+    /leitungsschutz|ls-schalter|fi-schutz|rcd|rcbo|schütz|contactor|motorschutz|netzteil|steckdose|klemme/i.test(
+      rawDesc,
+    );
+
+  const isCableCandidate =
+    !isProtectionOrLoad &&
+    (detectedKind === 'cable' ||
+      /lapp|helukabel|prysmian|nexans|dätwyler|draka|leoni|faber/i.test(mfr) ||
+      /kabel|cable|cord|nym|ölflex|olflex|unitronic|etherline|hitronic|h07rn|h07v|h05vv|nhxh|je-h|\bleitung\b/i.test(
+        artNo + ' ' + rawDesc,
+      ) ||
+      Boolean(cableCrossMatch));
+
+  if (isCableCandidate) {
+    detectedKind = 'cable';
+    detectedSymbolId = undefined;
+    detectedWidthMm = undefined;
+    detectedHeightMm = undefined;
+    detectedDepthMm = undefined;
+
+    if (cableCrossMatch) {
+      if (!detectedCores) detectedCores = parseInt(cableCrossMatch[1], 10);
+      if (!detectedSectionMm2) {
+        detectedSectionMm2 = parseFloat(cableCrossMatch[3].replace(',', '.'));
+      }
+    }
+
+    const voltMatch = (artNo + ' ' + rawDesc).match(
+      /(?:voltage:\s*)?(\d+)\/(\d+)\s*V/i,
+    );
+    if (voltMatch) {
+      detectedVoltageV = parseInt(voltMatch[2], 10);
+    } else if (!detectedVoltageV) {
+      detectedVoltageV = 500;
+    }
+
+    if (detectedSectionMm2 && detectedSectionMm2 > 0) {
+      if (!detectedResistance20) {
+        detectedResistance20 =
+          COPPER_RESISTANCE_20C[detectedSectionMm2] ??
+          Number((18.1 / detectedSectionMm2).toFixed(3));
+      }
+      if (!detectedAmpacityA) {
+        detectedAmpacityA = STANDARD_AMPACITY_C_30C[detectedSectionMm2];
+      }
+      if (!detectedReactance) {
+        detectedReactance = 0.08;
+      }
+      if (!detectedAdiabaticK) {
+        detectedAdiabaticK = 115;
+      }
+      if (!detectedConditions) {
+        detectedConditions = 'DIN VDE 0298-4, Verlegeart C bei 30 °C';
+      }
+    }
+
+    // Clean noisy descriptions from importer packages
+    if (
+      !cleanDesc ||
+      cleanDesc === artNo ||
+      cleanDesc.includes('orderNumber:') ||
+      cleanDesc.includes('externalDocuments:') ||
+      cleanDesc.includes('width: 0 mm') ||
+      /^Type:\s*\d+/i.test(cleanDesc)
+    ) {
+      if (/ölflex|olflex/i.test(artNo + rawDesc)) {
+        const m =
+          rawDesc.match(/ÖLFLEX[^\s]*\s+CLASSIC\s+\d+\s*[A-Z]*/i) ||
+          rawDesc.match(/ÖLFLEX[^\s]*/i);
+        const name = m ? m[0].trim() : 'ÖLFLEX';
+        const cross = cableCrossMatch
+          ? `${cableCrossMatch[1]}${cableCrossMatch[2].toUpperCase()}${cableCrossMatch[3]}`
+          : '';
+        cleanDesc = `Steuerleitung ${name} ${cross} mm²`.trim();
+      } else if (/nym/i.test(artNo + rawDesc)) {
+        const jOrO = /NYM-O/i.test(artNo + rawDesc) ? 'NYM-O' : 'NYM-J';
+        const cross = cableCrossMatch
+          ? `${cableCrossMatch[1]}x${cableCrossMatch[3]}`
+          : '';
+        const v = voltMatch
+          ? ` ${voltMatch[1]}/${voltMatch[2]}V`
+          : detectedVoltageV
+            ? ` ${detectedVoltageV}V`
+            : '';
+        cleanDesc = `Mantelleitung ${jOrO} ${cross} mm²${v}`.trim();
+      } else if (/h07rn/i.test(artNo + rawDesc)) {
+        const cross = cableCrossMatch
+          ? `${cableCrossMatch[1]}G${cableCrossMatch[3]}`
+          : '';
+        cleanDesc = `Gummischlauchleitung H07RN-F ${cross} mm²`.trim();
+      } else if (cableCrossMatch) {
+        cleanDesc = `Kabel / Leitung ${cableCrossMatch[1]}${cableCrossMatch[2].toUpperCase()}${cableCrossMatch[3]} mm²`.trim();
+      }
+    }
+  }
 
   // 1. Regex extractions from part number or description
   // Siemens MCB: 5SL6316-7 -> 3-pole, 16A, C char
@@ -693,7 +934,11 @@ export function completeArticleHeuristics(
 
   // 4. Update the article object
   if (cleanDesc) next.description = cleanDesc;
-  if (detectedSymbolId) next.symbolId = detectedSymbolId;
+  if (detectedSymbolId) {
+    next.symbolId = detectedSymbolId;
+  } else if (detectedKind === 'cable' || isCableCandidate) {
+    delete next.symbolId;
+  }
 
   if (detectedWidthMm && detectedHeightMm) {
     next.dimensions = {
@@ -701,11 +946,17 @@ export function completeArticleHeuristics(
       heightMm: detectedHeightMm,
       depthMm: detectedDepthMm ?? 70,
     };
+  } else if (detectedKind === 'cable' || isCableCandidate) {
+    delete next.dimensions;
   }
 
   // 5. Determine and assign electrical ratings with strict schema validation
   let electricalKind: 'protection' | 'cable' | 'load' = 'protection';
-  if (detectedKind === 'cable' || /kabel|leitung|nym/i.test(artNo + rawDesc)) {
+  if (
+    detectedKind === 'cable' ||
+    isCableCandidate ||
+    /kabel|leitung|nym/i.test(artNo + rawDesc)
+  ) {
     electricalKind = 'cable';
   } else if (
     detectedKind === 'power_supply' ||
@@ -721,17 +972,31 @@ export function completeArticleHeuristics(
 
   try {
     next.electrical = buildValidElectricalData(electricalKind, {
-      ratedVoltageV: detectedVoltageV ?? next.electrical?.ratedVoltageV ?? 230,
+      ratedVoltageV:
+        detectedVoltageV ??
+        next.electrical?.ratedVoltageV ??
+        (electricalKind === 'cable' ? 500 : 230),
       currentA: detectedCurrentA,
       protectiveCurrentA: detectedCurrentA,
       breakingCapacityA: detectedBreakingCapacityA,
       characteristic: detectedCharacteristic,
       residualCurrentA: detectedResidualCurrentA,
       poles: detectedPoles,
+      sectionMm2: detectedSectionMm2,
+      cores: detectedCores,
+      ampacityA: detectedAmpacityA,
+      resistance20OhmKm: detectedResistance20,
+      reactanceOhmKm: detectedReactance,
+      adiabaticK: detectedAdiabaticK,
+      material: detectedMaterial,
+      conditions: detectedConditions,
       source: next.electrical?.source || 'Herstellerkatalog / Datenblatt',
-      conditions: next.electrical?.conditions,
       currentType: next.electrical?.currentType || 'ac',
     });
+    if (electricalKind === 'cable') {
+      delete next.symbolId;
+      delete next.dimensions;
+    }
   } catch {
     // If validation fails for any reason, safely ignore to avoid corrupting existing data
   }
@@ -782,21 +1047,23 @@ WICHTIGE ANWEISUNGEN:
    - "protection": für Schutzgeräte (Leitungsschutzschalter MCB, FI-Schutzschalter RCD, FI/LS-Kombischalter RCBO, Motorschutzschalter, Schmelzsicherungen, Überspannungsableiter SPD, Schütze)
    - "cable": für Kabel und Leitungen
    - "load": für Verbraucher (Netzteile, Schaltnetzteile, Motoren, Steckdosen, Leuchten)
-3. Wähle das exakt passende "symbolId" aus Schematico (z. B. circuit_breaker_1p, circuit_breaker_3p, rcd_2p, rcd_4p, rcbo_1p_n, contactor_power_3p, contactor_coil, motor_protective_switch, power_supply_dc, surge_arrester_spd, impulse_relay_1no, socket_schuko, terminal_single, motor_3phase, switch_emergency_stop, pilot_lamp).
-4. Bestimme die realen Einbaumaße (dimensions): Bei Reiheneinbaugeräten (REG) immer Breite = Polzahl * 18 mm (1 TE = 18 mm, 2 TE = 36 mm, 3 TE = 54 mm, 4 TE = 72 mm), Höhe ca. 85-90 mm, Tiefe ca. 70-76 mm.
+3. Wähle das exakt passende "symbolId" aus Schematico (z. B. circuit_breaker_1p, circuit_breaker_3p, rcd_2p, rcd_4p, rcbo_1p_n, contactor_power_3p, contactor_coil, motor_protective_switch, power_supply_dc, surge_arrester_spd, impulse_relay_1no, socket_schuko, terminal_single, motor_3phase, switch_emergency_stop, pilot_lamp). Bei Kabeln/Leitungen bleibt symbolId null bzw. weggelassen (Kabel haben kein Einbausymbol).
+4. Bestimme die realen Einbaumaße (dimensions): Bei Reiheneinbaugeräten (REG) immer Breite = Polzahl * 18 mm (1 TE = 18 mm, 2 TE = 36 mm, 3 TE = 54 mm, 4 TE = 72 mm), Höhe ca. 85-90 mm, Tiefe ca. 70-76 mm. Bei Kabeln/Leitungen bleibt dimensions null bzw. weggelassen (Kabel haben keine REG-Maße).
 5. Bestimme alle elektrischen Kennwerte (electrical) passend zum Typ:
    - Bei protection: ratedVoltageV (z. B. 230 oder 400), protectiveCurrentA (Nennstrom in A), breakingCapacityA (Kurzschlussausschaltvermögen in A, z. B. 6000 für 6kA, 10000 für 10kA), characteristic ("B", "C", "D"), residualCurrentA (bei RCD/RCBO z. B. 0.03 für 30mA), poles (1..8).
    - Bei load: ratedVoltageV, currentA (Nennstrom), outputPowerW (Leistung in W), currentType ("ac" oder "dc").
-   - Bei cable: ratedVoltageV, sectionMm2 (Querschnitt), cores (Aderzahl), material ("copper").
+   - Bei cable: ratedVoltageV (z. B. 500 bei 300/500V, 750 bei 450/750V, 1000 bei 0.6/1kV), sectionMm2 (Querschnitt in mm², z. B. 1.5, 2.5, 4, 6), cores (Aderzahl, z. B. 3, 5), ampacityA (Strombelastbarkeit Iz0 nach DIN VDE 0298-4), resistance20OhmKm (Leiterwiderstand bei 20°C in Ohm/km, ca. 18.1 / sectionMm2), reactanceOhmKm (0.08), adiabaticK (115), material ("copper"), conditions ("DIN VDE 0298-4, Verlegeart C bei 30 °C").
 6. Bestimme die Funktionsschablonen (functions):
    - Jede Funktion hat { "id": string, "type": string, "pins": string[], "required": boolean }.
    - Z. B. für Schütz: Coil A1/A2, Power 1/2/3/4/5/6, Aux 13/14.
    - Z. B. für MCB 3P: Main 1/2/3/4/5/6.
+   - Z. B. für Kabel 5G: id "cores", type "cable", pins ["L1", "L2", "L3", "N", "PE"].
+   - Z. B. für Kabel 3G: id "cores", type "cable", pins ["L", "N", "PE"].
 
 Antworte ausschließlich mit reinem JSON im folgenden Format:
 {
   "description": "Ausführliche deutsche Artikelbezeichnung inklusive aller Nenngrößen",
-  "symbolId": "symbolId aus der obigen Liste",
+  "symbolId": "symbolId aus der obigen Liste (bei Kabeln weglassen)",
   "dimensions": {
     "widthMm": number,
     "heightMm": number,
@@ -812,6 +1079,14 @@ Antworte ausschließlich mit reinem JSON im folgenden Format:
     "characteristic": string,
     "poles": number,
     "currentType": "ac" | "dc" | "ac_dc",
+    "sectionMm2": number,
+    "cores": number,
+    "ampacityA": number,
+    "resistance20OhmKm": number,
+    "reactanceOhmKm": number,
+    "adiabaticK": number,
+    "material": "copper" | "aluminium",
+    "conditions": string,
     "source": "Hersteller-Datenblatt"
   },
   "functions": [
@@ -893,7 +1168,7 @@ Antworte ausschließlich mit reinem JSON im folgenden Format:
           ratedVoltageV:
             Number(data.electrical.ratedVoltageV) ||
             base.electrical?.ratedVoltageV ||
-            230,
+            (elecKind === 'cable' ? 500 : 230),
           protectiveCurrentA:
             Number(data.electrical.protectiveCurrentA ?? data.electrical.ratedCurrentA) ||
             (base.electrical?.kind === 'protection'
@@ -927,12 +1202,53 @@ Antworte ausschließlich mit reinem JSON im folgenden Format:
                 : undefined,
           currentType:
             data.electrical.currentType || base.electrical?.currentType || 'ac',
+          sectionMm2:
+            Number(data.electrical.sectionMm2) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.sectionMm2
+              : undefined),
+          cores:
+            Number(data.electrical.cores) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.cores
+              : undefined),
+          ampacityA:
+            Number(data.electrical.ampacityA) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.ampacityA
+              : undefined),
+          resistance20OhmKm:
+            Number(data.electrical.resistance20OhmKm) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.resistance20OhmKm
+              : undefined),
+          reactanceOhmKm:
+            Number(data.electrical.reactanceOhmKm) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.reactanceOhmKm
+              : undefined),
+          adiabaticK:
+            Number(data.electrical.adiabaticK) ||
+            (base.electrical?.kind === 'cable'
+              ? base.electrical?.adiabaticK
+              : undefined),
+          material:
+            data.electrical.material === 'aluminium' ? 'aluminium' : 'copper',
+          conditions:
+            typeof data.electrical.conditions === 'string' &&
+            data.electrical.conditions.trim()
+              ? data.electrical.conditions.trim()
+              : base.electrical?.conditions,
           source:
             data.electrical.source ||
             base.electrical?.source ||
             'Hersteller-Datenblatt',
           outputPowerW: Number(data.electrical.outputPowerW) || undefined,
         });
+        if (elecKind === 'cable') {
+          delete result.symbolId;
+          delete result.dimensions;
+        }
       } catch {
         // Fallback to base.electrical
       }
