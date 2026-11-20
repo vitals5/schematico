@@ -571,6 +571,20 @@ export class App {
     }).show();
   }
 
+  private async openChangeImpact(baselineId?:string) {
+    this.canvas.finishInteraction();
+    const {ChangeImpactDialog}=await import('./ChangeImpactDialog');
+    new ChangeImpactDialog(()=>this.project,p=>this.applyProjectTransaction(p),{
+      circuit:id=>{const r=this.project.dimensioning?.find(r=>r.id===id);if(r)void this.openElectricalDimensioning(r);},
+      articles:addresses=>this.openArticleWorkbench(addresses),
+      wiring:()=>this.openWiringWorkbench(),
+      revisions:()=>this.openProjectRevisions(),
+    },baselineId).show();
+  }
+  private openProjectRevisions() {
+    this.canvas.finishInteraction();
+    void import('./ProjectRevisionsDialog').then(({ProjectRevisionsDialog})=>new ProjectRevisionsDialog(()=>this.project,p=>this.applyProjectTransaction(p),id=>{void this.openChangeImpact(id);}).show());
+  }
   private async openElectricalDimensioning(initial?:CircuitDimensioning) {
     this.canvas.finishInteraction();
     const {ElectricalDimensioningDialog} = await import('./ElectricalDimensioningDialog');
@@ -1381,7 +1395,8 @@ export class App {
 
     // Projektdaten
     bindMenuOpt('menuCabinetLayout',()=>{this.canvas.finishInteraction();new CabinetLayoutDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
-    bindMenuOpt('menuProjectRevisions',()=>{this.canvas.finishInteraction();void import('./ProjectRevisionsDialog').then(({ProjectRevisionsDialog})=>new ProjectRevisionsDialog(()=>this.project,p=>this.applyProjectTransaction(p)).show());});
+    bindMenuOpt('menuProjectRevisions',()=>this.openProjectRevisions());
+    bindMenuOpt('menuChangeImpact',()=>{void this.openChangeImpact();});
     bindMenuOpt('menuDimensioning',()=>{void this.openElectricalDimensioning();});
     bindMenuOpt('menuManufacturingReports',()=>{this.canvas.finishInteraction();new ManufacturingReportDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
     bindMenuOpt('menuPlausibility', () => {

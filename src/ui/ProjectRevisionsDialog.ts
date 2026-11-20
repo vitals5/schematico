@@ -49,6 +49,7 @@ export class ProjectRevisionsDialog {
   constructor(
     private getProject: () => Project,
     private onApply: (p: Project) => void,
+    private onImpact?: (revisionId: string) => void,
   ) {
     this.source = structuredClone(getProject());
     this.baseline = projectRevision(this.source);
@@ -227,6 +228,13 @@ export class ProjectRevisionsDialog {
             b.pages[0].id;
           this.offset = 0;
         });
+      if(this.onImpact && !this.compareTo) {
+        const button=document.createElement('button');button.className='btn';button.disabled=this.busy;
+        button.textContent=tr('Änderungsfolgen bearbeiten','Review change impact');
+        button.dataset.impact='';
+        button.onclick=()=>void this.run(()=>{this.close();this.onImpact?.(selected.id);});
+        q('[data-compare]').parentElement!.append(button);
+      }
       q<HTMLFormElement>("[data-confirm-form]")?.addEventListener(
         "submit",
         (e) => {

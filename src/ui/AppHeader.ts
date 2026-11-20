@@ -1,5 +1,5 @@
 import { escapeSvg } from '../model/ImportedDrawing';
-import { t } from '../i18n';
+import { t, tr } from '../i18n';
 
 const paths:Record<string,string>={
   bolt:'m13 2-9 12h7l-1 8 10-12h-7z',
@@ -62,7 +62,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+separator+
           opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel'))+opt('menuToggleFloatingBar',t('menuToggleFloatingBar')),'menu-item')}
         ${menu('menuDataTrigger',t('menuData'),
-          opt('menuPlausibility',t('menuPlausibility'))+opt('menuDimensioning',t('electricalDimensioning'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
+          opt('menuPlausibility',t('menuPlausibility'))+opt('menuDimensioning',t('electricalDimensioning'))+opt('menuChangeImpact',tr('Änderungsfolgen','Change impact'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
           opt('menuManufacturingReports',t('reportDesigner'))+opt('menuShowTerminals',t('menuShowTerminals'))+opt('menuShowBom',t('menuShowBom')),'menu-item')}
         ${menu('menuAiTrigger','AI & MCP',
           opt('menuToggleAiChat','AI Chat & MCP Konsole','Alt+A')+

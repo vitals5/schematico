@@ -20,6 +20,8 @@ Die seitlichen Blattansichten zeigen die gespeicherte Geometrie: **grün hinzuge
 
 ## Freigabe
 
+Für Änderungen gegenüber einem gespeicherten Stand öffnet **Änderungsfolgen bearbeiten** eine separate Arbeitsliste mit betroffenen Stromkreisen, Artikel-/Leitungsübernahmen nach Vorschau und nachzuführenden Unterlagen. Siehe [Änderungsfolgen](change-impact.md).
+
 **Freigeben** verlangt einen Bearbeiter und einen Freigabegrund und prüft vorher die SHA-256-Prüfsumme der Nutzdaten. Ein freigegebener Archivstand kann weder erneut freigegeben noch gelöscht werden. Seine Momentaufnahme bleibt unverändert. Auch Rückgängig/Wiederholen von Zeichnungsänderungen entfernt oder entsperrt bereits freigegebene Stände nicht. Ein anderes Projekt oder eine andere Projektdatei zu öffnen beginnt einen eigenen Verlauf.
 
 Die Freigabe dokumentiert eine ausdrücklich eingetragene Benutzerentscheidung. Sie ist keine kryptografische Signatur und keine serverseitige Benutzerprüfung. Die Prüfsumme erkennt beschädigte oder nachträglich veränderte Nutzdaten; sie beweist nicht die Identität eines Unterzeichners. Extern bearbeitete Projektdateien sind kein manipulationssicheres Archiv.

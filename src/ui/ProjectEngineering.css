@@ -1,4 +1,5 @@
 #projectRevisionsDialog .eng-body,
+#changeImpactDialog .eng-body,
 #electricalDimensioningDialog .eng-body {
   display: flex;
   flex-direction: column;
