@@ -82,6 +82,8 @@ export class App {
   private openCabinetWorkspace(){
     if(this.cabinetEditor)return;
     this.canvas.finishInteraction();
+    const disabledDrawingCommands=new Map<HTMLButtonElement,boolean>();
+    for(const id of ['menuCut','menuCopy','menuPaste','menuDuplicate','menuDelete','menuRotate','menuGroup','menuUngroup']){const button=document.getElementById(id) as HTMLButtonElement|null;if(button){disabledDrawingCommands.set(button,button.disabled);button.disabled=true;}}
     const host=document.createElement('main');host.id='cabinetWorkspaceHost';host.className='cabinet-workspace-host';
     document.getElementById('canvasContainer')!.after(host);this.cabinetHost=host;
     document.getElementById('mainContainer')!.classList.add('cabinet-mode');document.body.classList.add('cabinet-editor-active');
@@ -91,7 +93,7 @@ export class App {
       const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);
       if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();
     },this.lastCabinet?.projectId===this.project.id?this.lastCabinet.id:undefined);
-    this.cabinetEditor.mount(host,()=>{if(this.cabinetEditor)this.lastCabinet={projectId:this.project.id,id:this.cabinetEditor.selectedLayoutId};this.cabinetEditor=undefined;host.remove();this.cabinetHost=undefined;document.getElementById('mainContainer')?.classList.remove('cabinet-mode');document.body.classList.remove('cabinet-editor-active');button?.setAttribute('aria-pressed','false');this.canvas.fitToScreen();this.updateHistoryButtons();this.updateStatusBar();},saveAs=>void this.saveProjectJson(saveAs),()=>{this.updateHistoryButtons();this.updateStatusBar();});
+    this.cabinetEditor.mount(host,()=>{if(this.cabinetEditor)this.lastCabinet={projectId:this.project.id,id:this.cabinetEditor.selectedLayoutId};this.cabinetEditor=undefined;host.remove();this.cabinetHost=undefined;document.getElementById('mainContainer')?.classList.remove('cabinet-mode');document.body.classList.remove('cabinet-editor-active');for(const [command,disabled] of disabledDrawingCommands)command.disabled=disabled;button?.setAttribute('aria-pressed','false');this.canvas.fitToScreen();this.updateHistoryButtons();this.updateStatusBar();},saveAs=>void this.saveProjectJson(saveAs),()=>{this.updateHistoryButtons();this.updateStatusBar();});
   }
 
   private history = new ProjectHistory();
@@ -1278,6 +1280,7 @@ export class App {
       document.getElementById(id)?.addEventListener('click', (e) => {
         e.stopPropagation();
         closeAllMenus();
+        if(this.cabinetEditor&&/^menu(Cut|Copy|Paste|Duplicate|Delete|Rotate|Group|Ungroup)$/.test(id))return;
         if(this.cabinetEditor && /^(menuInsert|menuWire$|menuCut$|menuCopy$|menuPaste$|menuDuplicate$|menuDelete$|menuRotate$|menuGroup$|menuUngroup$|menuNewPage$|menuDeletePage$|menuNewCoverPage$)/.test(id)){if(!this.cabinetEditor.closeWorkspace())return;}
         if(this.cabinetEditor && (id==='menuExportPdf')&&!this.cabinetEditor.commitPending())return;
         action();

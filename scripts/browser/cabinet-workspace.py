@@ -19,6 +19,8 @@ async def main():
   await expect(editor.locator('[role=region]')).to_be_visible()
   await expect(page.locator('#canvasContainer')).to_be_hidden()
   await expect(page.locator('.modal-backdrop')).to_have_count(0)
+  await expect(page.locator('#menuDelete')).to_be_disabled()
+  await expect(page.locator('#menuPaste')).to_be_disabled()
   await editor.locator('[data-add-rail]').click()
   await expect(page.locator('#btnUndo')).to_be_enabled()
   await page.locator('#btnUndo').click();await expect(editor.locator('[data-cabinet-item]')).to_have_count(0)
