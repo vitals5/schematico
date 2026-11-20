@@ -1,3 +1,4 @@
+import {isTerminalComponent} from './ComponentSemantics';
 import type {AssignedArticle,ComponentAddress,PhysicalDevice} from './ArticleTypes';
 import type {Page,PlacedComponent,Project} from './types';
 import {getSymbolForComponent} from './symbols';
@@ -30,7 +31,7 @@ export function terminalStripBindings(project:Project){
   for(const position of strip.positions){const members=position.kind==='terminal'?position.members:[],reasons=new Set<string>();if(!scopeOK||!position.id||positionIds.get(position.id)!==1)reasons.add('terminalStripPositionInvalid');
    if(position.kind==='terminal'){
     if(!members.length||new Set(members.map(terminalAddressKey)).size!==members.length)reasons.add('terminalStripPositionInvalid');
-    for(const a of members){const found=placements.get(terminalAddressKey(a));if(pages.get(a.pageId)!==1||componentIds.get(a.componentId)!==1||found?.length!==1){reasons.add('terminalStripMemberMissing');continue;}const {page,component}=found[0];if(getSymbolForComponent(component,project)?.category!=='terminals'||terminalStripKey(terminalIdentity(page,component))!==terminalStripKey(strip))reasons.add('terminalStripMemberScope');if(membership.get(terminalAddressKey(a))!==1)reasons.add('terminalStripMemberOverlap');}
+    for(const a of members){const found=placements.get(terminalAddressKey(a));if(pages.get(a.pageId)!==1||componentIds.get(a.componentId)!==1||found?.length!==1){reasons.add('terminalStripMemberMissing');continue;}const {page,component}=found[0];if(!isTerminalComponent(project,component,getSymbolForComponent(component,project))||terminalStripKey(terminalIdentity(page,component))!==terminalStripKey(strip))reasons.add('terminalStripMemberScope');if(membership.get(terminalAddressKey(a))!==1)reasons.add('terminalStripMemberOverlap');}
     const owners=[...new Set(members.flatMap(a=>ownersByMember.get(terminalAddressKey(a))??[]))];
     if(position.deviceId){const own=owners.filter(d=>d.id===position.deviceId);if(owners.length!==1||own.length!==1||own[0].terminalPositionId!==position.id||own[0].verification!=='user_confirmed'||own[0].members.length!==members.length||!own[0].members.every(a=>members.some(m=>terminalAddressKey(a)===terminalAddressKey(m)))||!members.some(a=>terminalAddressKey(a)===terminalAddressKey(own[0].main)))reasons.add('terminalStripOwnership');}
     else if(members.length!==1||owners.length)reasons.add('terminalStripOwnership');

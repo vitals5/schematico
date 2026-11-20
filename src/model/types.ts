@@ -454,6 +454,7 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  dataInterpretation?: import('./ComponentSemantics').DataInterpretation;
   changeImpactReview?: import('./ChangeImpact').ChangeImpactReview;
   revisions?: import('./ProjectRevisions').SavedProjectRevision[];
   revisionOriginId?: string;

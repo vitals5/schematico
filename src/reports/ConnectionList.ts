@@ -2,11 +2,14 @@ import type {Project,Wire} from '../model/types';
 import {ProjectIndex,displayDesignation,type IndexedPin} from '../model/ProjectIndex';
 import {ElectricalNetService} from '../model/ElectricalNetService';
 import {isConnectionSymbol} from '../model/ConnectionSymbols';
+import {interpretationEnabled} from '../model/ComponentSemantics';
+import {connectionRepresentationPairs} from '../model/ConnectionRepresentations';
 export interface ConnectionRow {
   key:string; wireId:string; pageId?:string; pageNumber:string; fromPageId?:string; toPageId?:string;
   fromComponentId:string; toComponentId:string; from:string; to:string; number:string;
   potential:string; color:string; crossSection:string; cable:string; core:string;
   lengthMm?:number; kind:'manual'|'autoconnect'|'logical'|'bridge'; netId?:string; targets:string[]; issues:string[];
+  representations?: {wireId:string;pageId?:string;kind:ConnectionRow['kind']}[];
 }
 export const connectionPinLabel=(pin:IndexedPin)=>`${displayDesignation(pin.owner.structure,pin.owner.tag)||pin.owner.component.id}:${pin.label}`;
 /** One row per explicit connection, not invented pairwise wires in a branched net. */
@@ -23,7 +26,7 @@ export function connectionList(project:Project):ConnectionRow[]{
     items.push({cable:cable.bmk,core:core.designation??'',color:core.color,crossSection:core.crossSection??cable.crossSection,reserve:core.reserve});assignments.set(wire,items);
   }
   const netTargets=new Map(nets.nets.map(n=>[n,n.ports.filter(p=>!p.owner.symbol||!isConnectionSymbol(p.owner.symbol)).map(connectionPinLabel).sort()]));
-  return index.connections.map((c,i):ConnectionRow=>{
+  const rows = index.connections.map((c,i):ConnectionRow=>{
     const w=c.wire,net=netByWire.get(c),items=assignments.get(w)??[],issues:string[]=[];
     if(!c.from||!c.to)issues.push('Anschluss fehlt oder ist mehrdeutig');
     if(!net)issues.push('Elektrisches Netz nicht auflösbar');
@@ -40,8 +43,31 @@ export function connectionList(project:Project):ConnectionRow[]{
       number:w.wireNumber??'',potential:w.potential??'',color:w.color??item?.color??'',crossSection:w.crossSection??item?.crossSection??'',
       cable:items.map(a=>a.cable).join(' | '),core:items.map(a=>a.core).join(' | '),lengthMm:w.lengthMm,
       kind:c.logical?'logical':w.terminalBridge?'bridge':w.isAutoconnect?'autoconnect':'manual',netId:net?.id,targets:net?netTargets.get(net)??[]:[],issues};
-  }).sort((a,b)=>a.pageNumber.localeCompare(b.pageNumber,undefined,{numeric:true})||a.from.localeCompare(b.from)||a.key.localeCompare(b.key));
+  });
+  if(interpretationEnabled(project,'consolidateConnections')) {
+    const byConnection = new Map(index.connections.map((c,i)=>[c,rows[i]]));
+    const removed = new Set<ConnectionRow>();
+    for(const pair of connectionRepresentationPairs(index.connections)) {
+      const drawing=byConnection.get(pair.drawing)!,logical=byConnection.get(pair.logical)!;
+      const conflicts=[...pair.conflicts,...(['cable','core'] as const).filter(k=>drawing[k]&&logical[k]&&drawing[k]!==logical[k])];
+      if(conflicts.length) {
+        const message=(project.language==='en'?'Conflicting drawing/logical data: ':'Widerspruch zwischen Zeichnung und logischer Verbindung: ')+conflicts.join(', ');
+        drawing.issues.push(message); logical.issues.push(message);
+        continue;
+      }
+      // Keep both source identities for inspection and subsequent explicit edits.
+      drawing.representations=[drawing,logical].map(r=>({wireId:r.wireId,pageId:r.pageId,kind:r.kind}));
+      drawing.issues=[...new Set([...drawing.issues,...logical.issues])];
+      for(const k of ['potential','color','crossSection','number','cable','core'] as const)
+        if(!drawing[k])drawing[k]=logical[k];
+      drawing.lengthMm ??= logical.lengthMm;
+      removed.add(logical);
+    }
+    return rows.filter(r=>!removed.has(r)).sort(sortRows);
+  }
+  return rows.sort(sortRows);
 }
+const sortRows=(a:ConnectionRow,b:ConnectionRow)=>a.pageNumber.localeCompare(b.pageNumber,undefined,{numeric:true})||a.from.localeCompare(b.from)||a.key.localeCompare(b.key);
 export function filterConnections(rows:ConnectionRow[],search='',pageId='',issuesOnly=false):ConnectionRow[]{
   const words=search.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   return rows.filter(r=>(!pageId||[r.pageId,r.fromPageId,r.toPageId].includes(pageId))&&(!issuesOnly||r.issues.length>0)&&words.every(w=>[r.from,r.to,r.number,r.wireId,r.pageNumber,r.potential,r.color,r.crossSection,r.cable,r.core,r.kind,...r.issues].join(' ').toLocaleLowerCase().includes(w)));
@@ -55,11 +81,14 @@ export function connectionCsv(rows:ConnectionRow[]):string{
 
 export function withConnectionLength(project:Project,row:ConnectionRow,lengthMm:number|undefined):Project{
   if(lengthMm!==undefined&&(!Number.isFinite(lengthMm)||lengthMm<0))throw new Error('Die Länge muss eine endliche, nicht negative Zahl sein.');
-  const next=structuredClone(project),pages=next.pages.filter(p=>p.id===row.pageId);
-  if(row.pageId&&pages.length!==1)throw new Error('Blatt ist nicht eindeutig.');
-  const wires=row.kind==='logical'?next.logicalConnections??[]:pages[0]?.wires??[];
-  const matches=wires.filter(w=>w.id===row.wireId);
+  const next=structuredClone(project);
+  for(const ref of row.representations??[{wireId:row.wireId,pageId:row.pageId,kind:row.kind}]) {
+  const pages=next.pages.filter(p=>p.id===ref.pageId);
+  if(ref.pageId&&pages.length!==1)throw new Error('Blatt ist nicht eindeutig.');
+  const wires=ref.kind==='logical'?next.logicalConnections??[]:pages[0]?.wires??[];
+  const matches=wires.filter(w=>w.id===ref.wireId);
   if(matches.length!==1)throw new Error('Verbindung ist nicht eindeutig.');
   if(lengthMm===undefined)delete matches[0].lengthMm;else matches[0].lengthMm=lengthMm;
+  }
   return next;
 }

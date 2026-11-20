@@ -1,3 +1,4 @@
+import {isTerminalComponent} from '../model/ComponentSemantics';
 import {TerminalStripDialog} from './TerminalStripDialog';
 import './WiringWorkspace.css';
 import './TerminalCableWorkspace.css';
@@ -119,7 +120,7 @@ export class WiringDialog {
   }
   private render() {
     const terminals = this.index.components.filter(
-        (e) => e.symbol?.category === 'terminals',
+        (e) => isTerminalComponent(this.source,e.component,e.symbol),
       ),
       terminalOptions = terminals.map((e) => ({
         value: JSON.stringify([e.page.id, e.component.id]),

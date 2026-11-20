@@ -7,6 +7,7 @@ import { getSymbolForComponent } from '../model/symbols';
 import { isConnectionSymbol } from '../model/ConnectionSymbols';
 import {terminalStripBindings} from '../model/TerminalStripTypes';
 import { validateCablePart, validCableLength } from '../model/CableArticles';
+import {interpretationEnabled, isInventoryComponent} from '../model/ComponentSemantics';
 
 export interface PartEntry {
   articleNumber: string;
@@ -44,6 +45,7 @@ export class PartsListGenerator {
     const partsMap = new Map<string, PartEntry>();
     const assemblyCables = new Set<string>();
     const devices=new DeviceRegistry(project);
+    const assignedOnly=interpretationEnabled(project,'assignedArticlesOnly');
     const invalidMembers=new Set(devices.issues.flatMap(i=>i.members.map(addressKey)));
 
     for (const page of project.pages) {
@@ -54,6 +56,9 @@ export class PartsListGenerator {
       const groupedCompIds = new Set<string>();
 
       for (const group of rootGroups) {
+        // An unassigned graphical group is not a purchased assembly. Do not
+        // suppress real article assignments on its members either.
+        if(assignedOnly && !(group.articleAssignment?.items?.length || !group.articleAssignment && group.articleNumber?.trim()))continue;
         const groupSel = groupSelection(page, group.id);
         for (const compId of groupSel.componentIds ?? []) {
           groupedCompIds.add(compId);
@@ -122,6 +127,8 @@ export class PartsListGenerator {
         const address=componentAddress(page,comp),device=devices.forComponent(address);
         if(device&&addressKey(device.main)!==addressKey(address))continue;
         const assigned=effectiveArticles(comp,project);
+        if(assignedOnly&&!assigned.length)continue;
+        if(!assigned.length&&!isInventoryComponent(project,comp,sym))continue;
         if(comp.articleAssignment&&!assigned.length)continue;
 
         // Skip connection elements (T-pieces, corners, potential arrows, crossings, etc.)

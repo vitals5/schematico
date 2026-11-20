@@ -8,6 +8,7 @@ import {
 import { ElectricalNetService } from './ElectricalNetService';
 import { projectRevision } from '../layout/types';
 import {terminalStripBindings,terminalIdentity,terminalStripKey} from './TerminalStripTypes';
+import {isTerminalComponent} from './ComponentSemantics';
 import { cablePartFindings, cablePartLabel } from './CableArticles';
 export interface TerminalSettings {
   strip: string;
@@ -58,7 +59,7 @@ export function inspectWiring(
   const messages: WiringFinding[] = [],
     terminals = new Map<string, typeof index.components>();
   for (const e of index.components) {
-    if (e.symbol?.category !== 'terminals') continue;
+    if (!isTerminalComponent(project,e.component,e.symbol)) continue;
     const settings = terminalSettings(e.component);
     if (!settings.number) continue;
     const key = JSON.stringify([
@@ -205,7 +206,7 @@ export class WiringEditPlan {
       const e = index.component(edit.target.componentId, edit.target.pageId);
       if (
         index.pagesById.get(edit.target.pageId)?.length !== 1 ||
-        e?.symbol?.category !== 'terminals' ||
+        !e || !isTerminalComponent(p,e.component,e.symbol) ||
         !edit.settings.strip.trim() ||
         !edit.settings.number.trim() ||
         Object.entries(edit.settings.pinSides).some(
@@ -228,8 +229,8 @@ export class WiringEditPlan {
         pa = a && index.pin(a, edit.from.pinId),
         pb = b && index.pin(b, edit.to.pinId);
       if (
-        a?.symbol?.category !== 'terminals' ||
-        b?.symbol?.category !== 'terminals' ||
+        !a || !isTerminalComponent(p,a.component,a.symbol) ||
+        !b || !isTerminalComponent(p,b.component,b.symbol) ||
         !pa ||
         !pb ||
         JSON.stringify(edit.from) === JSON.stringify(edit.to) ||

@@ -12,6 +12,8 @@ import {
   validateAssignments,
 } from './ArticleAssignments';
 import { projectRevision } from '../layout/types';
+import { isInventoryComponent } from './ComponentSemantics';
+import { getSymbolForComponent } from './symbols';
 export interface PlannedDevice {
   id: string;
   plant: string;
@@ -44,7 +46,7 @@ export function deviceNavigator(
   for (const page of project.pages)
     for (const c of page.components) {
       const a = componentAddress(page, c);
-      if (!linked.has(addressKey(a)))
+      if (!linked.has(addressKey(a)) && isInventoryComponent(project, c, getSymbolForComponent(c, project)))
         entries.push({
           id: addressKey(a),
           state: 'placement',

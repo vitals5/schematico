@@ -3,12 +3,13 @@ import {componentAddress} from './DeviceRegistry';
 import type { IndexedComponent, ProjectIndex } from './ProjectIndex';
 import { isConnectionSymbol } from './ConnectionSymbols';
 import {activeImportedArticles} from './ImportedArticles';
+import {componentRole, interpretationEnabled, isTerminalComponent} from './ComponentSemantics';
 export const ARTICLE_DATA_STATES = ['assigned', 'inherited', 'not_applicable', 'import_not_read', 'source_record_empty', 'imported_unassigned', 'import_unknown', 'unassigned'] as const;
 export type ArticleDataState = typeof ARTICLE_DATA_STATES[number];
 export interface ArticleDataContext {
     state: ArticleDataState;
     articleNumbers?: string[];
-    role: 'auxiliary' | 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown';
+    role: 'auxiliary' | 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown' | 'graphic' | 'device_connection' | 'connector';
     symbolId: string;
     plant: string;
     location: string;
@@ -25,7 +26,8 @@ export interface ArticleDataContext {
 export function articleDataContext(entry: IndexedComponent, index: ProjectIndex): ArticleDataContext {
     const { component: c, symbol: s } = entry, policy = c.articleRequirement ?? s?.articleRequirement;
     const device=index.confirmedDeviceFor(c);
-    const role: ArticleDataContext['role'] = device?(device.main.componentId===c.id?'main':'auxiliary'): !s ? 'unknown' : s.annotationKind ? 'annotation' : isConnectionSymbol(s) ? 'connection' : s.category === 'structure' ? 'structure' : s.isMaster ? 'main' : s.isContact ? 'contact' : s.category === 'terminals' ? 'terminal' : entry.nativeRepresentation ? 'native_part' : 'component';
+    const semantic = interpretationEnabled(index.project, 'nativeRoles') ? (isTerminalComponent(index.project,c,s)?'terminal':componentRole(c, s)) : undefined;
+    const role: ArticleDataContext['role'] = device?(device.main.componentId===c.id?'main':'auxiliary'): semantic && ['graphic', 'device_connection', 'connector', 'terminal'].includes(semantic) ? semantic as 'graphic' | 'device_connection' | 'connector' | 'terminal' : !s ? 'unknown' : s.annotationKind ? 'annotation' : isConnectionSymbol(s) ? 'connection' : s.category === 'structure' ? 'structure' : s.isMaster ? 'main' : s.isContact ? 'contact' : s.category === 'terminals' ? 'terminal' : entry.nativeRepresentation ? 'native_part' : 'component';
     const base = { role, symbolId: c.symbolId, plant: entry.structure.plant, location: entry.structure.location, designationKey: entry.deviceKey,
         source: c.articleImport?.source, readStatus: c.articleImport?.status, observedArticleNumber: c.articleImport?.observedArticleNumber,
         sourceObjectType: c.source?.objectType };
@@ -39,7 +41,7 @@ export function articleDataContext(entry: IndexedComponent, index: ProjectIndex)
     const masters = s?.isContact ? index.mainReferencesFor(c) : [];
     if (masters.length === 1 && masters[0].component.articleNumber?.trim())
         return { ...base, state: 'inherited', articleNumber: masters[0].component.articleNumber!.trim(), manufacturer: masters[0].component.manufacturer, inheritedFromComponentId: masters[0].component.id };
-    if (policy === 'none' || policy === 'optional' || policy !== 'required' && ['connection', 'structure', 'annotation'].includes(role))
+    if (policy === 'none' || policy === 'optional' || policy !== 'required' && ['connection', 'structure', 'annotation', 'graphic', 'device_connection'].includes(role))
         return { ...base, state: 'not_applicable' };
     if (c.articleImport?.status === 'not_read')
         return { ...base, state: 'import_not_read' };

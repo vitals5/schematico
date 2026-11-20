@@ -111,7 +111,7 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
         const requirement = comp.articleRequirement ?? symbol?.articleRequirement;
         const masters = index.mainReferencesFor(comp);
         const inheritedArticle = articles.get(entry)?.state==='inherited'||!!symbol?.isContact && masters.length === 1 && !!masters[0].component.articleNumber?.trim();
-        if ((!exempt || requirement === 'required') && articles.get(entry)?.state!=='assigned' && !comp.articleNumber?.trim() && !inheritedArticle && requirement !== 'optional' && requirement !== 'none')
+        if ((!exempt || requirement === 'required') && !['assigned','not_applicable'].includes(articles.get(entry)?.state??'') && !comp.articleNumber?.trim() && !inheritedArticle && requirement !== 'optional' && requirement !== 'none')
             add('missing_article', comp.id, requirement === 'required' ? 'warning' : 'info', inspectionLocation(index, entry), t(articles.get(entry)?.state==='import_not_read'?'plausMsgArticleNotRead':'plausMsgMissingArticle'), t(['import_not_read','import_unknown','imported_unassigned'].includes(articles.get(entry)!.state)?'plausRecArticleImport':'plausRecMissingArticle'), { requirement: requirement ?? 'legacy',articleState:articles.get(entry)!.state });
         if(invalidArticleAssignment(comp))add('invalid_article_assignment',comp.id,'warning',inspectionLocation(index,entry),t('articlesInvalid'),t('articlesCompatibilityFix'));
         const address=componentAddress(entry.page,comp),device=index.devices.forComponent(address);

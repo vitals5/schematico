@@ -1,3 +1,4 @@
+import {isTerminalComponent} from './ComponentSemantics';
 import type {Project} from './types';
 import type {AssignedArticle,ComponentAddress} from './ArticleTypes';
 import {ProjectIndex} from './ProjectIndex';
@@ -24,7 +25,7 @@ export class TerminalStripEditPlan {
   let changed:TerminalStripConfiguration;
   if(edit.kind==='initialize'){
    const identity={plant:edit.identity.plant.trim().replace(/^=+/,''),location:edit.identity.location.trim().replace(/^\++/,''),strip:edit.identity.strip.trim()};if(!identity.strip||strips.some(s=>terminalStripKey(s)===terminalStripKey(identity)))throw new Error('terminalStripScopeInvalid');
-   const entries=index.components.filter(e=>e.symbol?.category==='terminals'&&terminalStripKey(terminalIdentity(e.page,e.component))===terminalStripKey(identity));if(!entries.length)throw new Error('terminalStripMemberMissing');
+   const entries=index.components.filter(e=>isTerminalComponent(p,e.component,e.symbol)&&terminalStripKey(terminalIdentity(e.page,e.component))===terminalStripKey(identity));if(!entries.length)throw new Error('terminalStripMemberMissing');
    changed={...identity,id:crypto.randomUUID(),positions:[]};const seen=new Set<string>();
    for(const e of entries){const a={pageId:e.page.id,componentId:e.component.id};if(seen.has(addressKey(a)))continue;if(index.componentsById.get(e.component.id)?.length!==1)throw new Error('terminalStripMemberMissing');
     const owner=registry.forComponent(a),members=owner?owner.members:[a];if((p.physicalDevices??[]).some(d=>!registry.valid.has(d.id)&&d.members.some(m=>addressKey(m)===addressKey(a))))throw new Error('terminalStripOwnership');

@@ -6,6 +6,7 @@ import {orderedTerminalEntries,terminalStripBindings,terminalStripKey,type Termi
 import { Project } from '../model/types';
 import {ProjectIndex,scopedDesignation,displayDesignation,type ProjectStructure} from '../model/ProjectIndex';
 import {ElectricalNetService} from '../model/ElectricalNetService';
+import {isTerminalComponent,interpretationEnabled} from '../model/ComponentSemantics';
 
 export interface TerminalEntry {
   stripIdentity?:TerminalStripIdentity;
@@ -15,7 +16,7 @@ export interface TerminalEntry {
   internalTarget: string;     // e.g. "-K1:2"
   externalTarget: string;     // e.g. "-M1:U1"
   functionText: string;
-  pageId?:string; componentId?:string; numberSource?:'designation'|'legacy_text'|'sequence';
+  pageId?:string; componentId?:string; numberSource?:'designation'|'legacy_text'|'sequence'|'unresolved';
   wireColor?: string;
   crossSection?: string;
 }
@@ -89,7 +90,7 @@ export class TerminalDiagramGenerator {
     const nets=new ElectricalNetService(index);
     const records=new Map<string,{tag:string;structure:ProjectStructure;entries:TerminalEntry[]}>(),lastStrip=new Map<string,string>();
     for(const entry of index.components){
-      if(entry.symbol?.category!=='terminals')continue;
+      if(!isTerminalComponent(project,entry.component,entry.symbol))continue;
       const {component:comp,page,structure}=entry,scope=JSON.stringify([page.id,structure]);
       const configured=comp.terminal,colon=entry.tag.indexOf(':'),tag=configured?.strip|| (entry.tag?(colon>0?entry.tag.slice(0,colon):entry.tag):lastStrip.get(scope)??'-X1');
       if(entry.tag)lastStrip.set(scope,tag);
@@ -110,7 +111,9 @@ export class TerminalDiagramGenerator {
         }
       }
       const designation=colon>0?entry.tag.slice(colon+1).trim():'',legacy=comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0];
-      record.entries.push({terminalStrip:tag,terminalNumber:configured?(configured.number+(configured.level?'/'+configured.level:'')):designation||legacy||String(record.entries.length+1),numberSource:designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:(comp.functionText||'Durchgangsklemme')+((project.logicalConnections??[]).some(w=>w.terminalBridge&&(w.from.componentId===comp.id||w.to.componentId===comp.id))?' · Brücke':''),wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
+      const clean=interpretationEnabled(project,'nativeRoles');
+      const number=clean?(configured?.number||designation||'?'):configured?(configured.number+(configured.level?'/'+configured.level:'')):designation||legacy||String(record.entries.length+1);
+      record.entries.push({terminalStrip:tag,terminalNumber:clean&&configured?.level?number+'/'+configured.level:number,numberSource:clean?(configured?.number||designation?'designation':'unresolved'):designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:(comp.functionText||'Durchgangsklemme')+((project.logicalConnections??[]).some(w=>w.terminalBridge&&(w.from.componentId===comp.id||w.to.componentId===comp.id))?' · Brücke':''),wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
     }
     const strips=new Map<string,TerminalEntry[]>(),configuration=terminalStripBindings(project);
     for(const record of records.values()){
