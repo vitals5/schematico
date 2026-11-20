@@ -169,6 +169,12 @@ async def exercise(browser, url, mobile):
     await root.locator('[data-lens-in]').click()
     await root.locator('[data-lens-in]').click()
     await expect(root.locator('[data-lens-scale]')).to_have_text('200%')
+    # The main workspace is wider than the former dialog. Ensure there is actual
+    # overflow in both axes before testing scroll retention and background panning.
+    for _ in range(12):
+        if await root.locator('.cb-canvas').evaluate('(e)=>e.scrollWidth-e.clientWidth>=120&&e.scrollHeight-e.clientHeight>=120'):
+            break
+        await root.locator('[data-lens-in]').click()
     await root.locator('.cb-canvas').evaluate('(e)=>{e.scrollLeft=100;e.scrollTop=100}')
     await page.wait_for_timeout(250)
     assert await view()=={'x':100,'y':100}, await view()
@@ -185,19 +191,26 @@ async def exercise(browser, url, mobile):
     # Blank-sheet touch panning stays available without changing objects/history.
     await root.locator('.cb-canvas').scroll_into_view_if_needed()
     await root.locator('.cb-canvas').evaluate('(e)=>{e.scrollLeft=100;e.scrollTop=100}')
+    # Let Chromium update its hit-test tree after scrolling before choosing a
+    # blank pixel for the native CDP gesture (otherwise it may hit a device).
+    await page.wait_for_timeout(100)
     blank=await root.locator('.cb-canvas').evaluate("""el=>{
       const b=el.getBoundingClientRect();
+      const bodies=[...el.querySelectorAll('[data-cabinet-item]')].map(n=>n.getBoundingClientRect());
       for(let y=Math.max(0,b.top)+25;y<Math.min(innerHeight,b.bottom)-25;y+=20)
         for(let x=Math.max(0,b.left)+25;x<Math.min(innerWidth,b.right)-25;x+=20) {
           const n=document.elementFromPoint(x,y);
-          if(n?.closest('.cb-svg')&&!n.closest('[data-cabinet-item]'))return {x,y};
+          // Chromium touch hit testing includes the contact radius, not just
+          // this point. Keep the whole contact clear of nearby devices.
+          if(n?.closest('.cb-svg')&&!n.closest('[data-cabinet-item]')&&
+            !bodies.some(r=>x>r.left-24&&x<r.right+24&&y>r.top-24&&y<r.bottom+24))return {x,y};
         }
       throw Error('No visible blank sheet position');
     }""")
     await cdp.send('Input.dispatchTouchEvent',dict(type='touchStart',touchPoints=[blank]))
     await move(blank,25,25,'touch')
     await end('touch')
-    assert (await view())['x']<100 and (await view())['y']<100, await view()
+    assert (await view())['x']<100 and (await view())['y']<100, (await view(),blank,await page.evaluate('window.__cabinetPointers'))
     await expect(root.locator('[data-undo]')).to_be_disabled()
 
     point=await start('free','middle')
@@ -213,11 +226,11 @@ async def exercise(browser, url, mobile):
     await end('touch')
     await position(320,270)
     await root.locator('[data-apply]').click()
-    await root.locator('[data-close]').click()
+    await root.locator('[data-workspace-drawing]').click()
     root=await open_board()
     await root.locator('[data-cabinet-item="free"]').click()
     await position(320,270)
-    await root.locator('[data-close]').click()
+    await root.locator('[data-workspace-drawing]').click()
     await page.keyboard.press('Control+z')
     root=await open_board()
     await root.locator('[data-cabinet-item="free"]').click()

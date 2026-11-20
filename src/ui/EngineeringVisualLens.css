@@ -99,41 +99,41 @@
   stroke-width: 0.8;
   pointer-events: none;
 }
-.engineering-overlay [data-eng-surface] {
+:is(.engineering-overlay, .cabinet-workspace) [data-eng-surface] {
   zoom: var(--eng-visual-scale, 1);
 }
-.engineering-overlay [data-eng-id].eng-lens-origin {
+:is(.engineering-overlay, .cabinet-workspace) [data-eng-id].eng-lens-origin {
   outline: 2px solid #b4e2ff !important;
   outline-offset: 3px;
 }
-.engineering-overlay [data-eng-id].eng-lens-related {
+:is(.engineering-overlay, .cabinet-workspace) [data-eng-id].eng-lens-related {
   box-shadow:
     0 0 0 1px #79cebc99,
     0 0 14px #53a9a226;
 }
-.engineering-overlay [data-eng-id].eng-lens-dim {
+:is(.engineering-overlay, .cabinet-workspace) [data-eng-id].eng-lens-dim {
   opacity: 0.28 !important;
 }
-.engineering-overlay [data-eng-id].eng-lens-problem {
+:is(.engineering-overlay, .cabinet-workspace) [data-eng-id].eng-lens-problem {
   outline: 2px solid #efba78;
   outline-offset: 2px;
 }
-.engineering-overlay g[data-eng-id].eng-lens-origin {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-origin {
   outline: none !important;
 }
-.engineering-overlay g[data-eng-id].eng-lens-origin > rect {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-origin > rect {
   stroke: #d1ecff !important;
   stroke-width: 3 !important;
 }
-.engineering-overlay g[data-eng-id].eng-lens-related > rect {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-related > rect {
   stroke: #79cebc !important;
   stroke-width: 2 !important;
 }
-.engineering-overlay g[data-eng-id].eng-lens-related path:not(.auto-edge-hit) {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-related path:not(.auto-edge-hit) {
   stroke: #79cebc !important;
   stroke-width: 3 !important;
 }
-.engineering-overlay g[data-eng-id].eng-lens-problem > rect {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-problem > rect {
   stroke: #efba78 !important;
   stroke-width: 3 !important;
 }
@@ -162,17 +162,17 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .engineering-overlay [data-eng-id] {
+  :is(.engineering-overlay, .cabinet-workspace) [data-eng-id] {
     transition:
       opacity 0.12s ease,
       outline-color 0.12s ease;
   }
 }
-.engineering-overlay g[data-eng-id].eng-lens-origin path:not(.auto-edge-hit) {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-origin path:not(.auto-edge-hit) {
   stroke: #d1ecff !important;
   stroke-width: 3 !important;
 }
-.engineering-overlay g[data-eng-id].eng-lens-problem path:not(.auto-edge-hit) {
+:is(.engineering-overlay, .cabinet-workspace) g[data-eng-id].eng-lens-problem path:not(.auto-edge-hit) {
   stroke: #efba78 !important;
   stroke-width: 3 !important;
 }

@@ -139,11 +139,11 @@
   display: block;
   overflow-wrap: anywhere;
 }
-.engineering-overlay .cb-svg g[data-eng-id].eng-lens-origin > rect,
-.engineering-overlay .cb-svg g[data-eng-id].eng-lens-related > rect {
+:is(.engineering-overlay, .cabinet-workspace) .cb-svg g[data-eng-id].eng-lens-origin > rect,
+:is(.engineering-overlay, .cabinet-workspace) .cb-svg g[data-eng-id].eng-lens-related > rect {
   stroke-width: 0.8 !important;
 }
-.engineering-overlay .cb-svg g[data-eng-id].eng-lens-problem > rect {
+:is(.engineering-overlay, .cabinet-workspace) .cb-svg g[data-eng-id].eng-lens-problem > rect {
   stroke: #c35635 !important;
   stroke-width: 1 !important;
 }

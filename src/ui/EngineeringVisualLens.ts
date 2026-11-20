@@ -140,12 +140,14 @@ class VisualLens {
       root.addEventListener(
         "wheel",
         (e) => {
-          if (
-            e.ctrlKey &&
-            (e.target as Element).closest("[data-cabinet-surface]")
-          ) {
+          if ((e.target as Element).closest(".cb-canvas")) {
             e.preventDefault();
-            this.zoom(this.scale * Math.exp(-e.deltaY * 0.002));
+            const delta =
+              e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 600 : 1);
+            this.zoom(this.scale * Math.exp(-delta * 0.002), {
+              x: e.clientX,
+              y: e.clientY,
+            });
           }
         },
         { passive: false, signal },
@@ -310,15 +312,55 @@ class VisualLens {
       restore();
     }
   }
-  private zoom(value: number) {
+  private zoom(value: number, anchor?: { x: number; y: number }) {
+    const canvas =
+      this.root.id === "cabinetLayoutDialog"
+        ? this.root.querySelector<HTMLElement>(".cb-canvas")
+        : null;
+    const svg = canvas?.querySelector<SVGSVGElement>(".cb-svg");
+    const before = svg?.getBoundingClientRect();
+    const viewport = canvas?.getBoundingClientRect();
+    const pivot =
+      anchor ??
+      (viewport && canvas
+        ? {
+            x: viewport.left + canvas.clientLeft + canvas.clientWidth / 2,
+            y: viewport.top + canvas.clientTop + canvas.clientHeight / 2,
+          }
+        : undefined);
     this.scale =
       this.root.id === "cabinetLayoutDialog"
         ? clampVisualScale(value, 0.25, 8)
         : clampVisualScale(value);
     this.root.style.setProperty("--eng-visual-scale", String(this.scale));
+    if (canvas && svg && before?.width && before.height && pivot) {
+      const after = svg.getBoundingClientRect();
+      canvas.scrollLeft +=
+        after.left + ((pivot.x - before.left) * after.width) / before.width - pivot.x;
+      canvas.scrollTop +=
+        after.top + ((pivot.y - before.top) * after.height) / before.height - pivot.y;
+    }
     this.schedule();
   }
   private fit() {
+    if (this.root.id === "cabinetLayoutDialog") {
+      const canvas = this.root.querySelector<HTMLElement>(".cb-canvas");
+      const svg = canvas?.querySelector<SVGSVGElement>(".cb-svg");
+      if (!canvas || !svg) return;
+      const box = svg.getBoundingClientRect();
+      const style = getComputedStyle(canvas);
+      const width =
+        canvas.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const height =
+        canvas.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      // Round down so quantizing the scale cannot push a sheet beyond its viewport.
+      this.zoom(
+        Math.floor(this.scale * Math.min(width / box.width, height / box.height) * 100) / 100,
+      );
+      canvas.scrollLeft = 0;
+      canvas.scrollTop = 0;
+      return;
+    }
     const all = this.entries.map((e) => e.element.getBoundingClientRect());
     if (!all.length) return;
     const surface = this.root.querySelector<HTMLElement>(
@@ -432,7 +474,8 @@ class VisualLens {
     const unique = [...new Map(records.map((r) => [r.id, r])).values()],
       issues = unique.filter((r) => r.issue);
     q<HTMLButtonElement>("[data-lens-next]").disabled = !issues.length;
-    q<HTMLButtonElement>("[data-lens-fit]").disabled = !unique.length;
+    q<HTMLButtonElement>("[data-lens-fit]").disabled =
+      this.root.id === "cabinetLayoutDialog" ? !active.length : !unique.length;
     q<HTMLButtonElement>("[data-lens-previous]").disabled = !unique.length;
     q<HTMLButtonElement>("[data-lens-following]").disabled = !unique.length;
     const entry = this.entries.find(
