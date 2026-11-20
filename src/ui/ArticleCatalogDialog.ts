@@ -213,6 +213,44 @@ export class ArticleCatalogDialog {
     this.message = '';
     this.render();
   }
+  private syncDraft(): CatalogArticle | undefined {
+    if (!this.editing) return undefined;
+    const article = { ...this.editing };
+    for (const input of this.el.querySelectorAll<HTMLInputElement>(
+      '[data-field]',
+    )) {
+      (article as any)[input.dataset.field!] = input.value;
+    }
+    const fields = [
+      ...this.el.querySelectorAll<HTMLInputElement>('[data-dimension]'),
+    ];
+    if (fields.some((i) => i.value !== '')) {
+      const values = Object.fromEntries(
+        fields.map((i) => [
+          i.dataset.dimension!,
+          i.value === '' ? undefined : Number(i.value),
+        ]),
+      );
+      article.dimensions = {
+        widthMm: values.widthMm!,
+        heightMm: values.heightMm!,
+        ...(values.depthMm !== undefined ? { depthMm: values.depthMm } : {}),
+      };
+    } else {
+      article.dimensions = undefined;
+    }
+    article.electrical = this.electricalEditor?.value();
+    article.functions = this.functionEditor?.value();
+    article.origin = 'user';
+    article.verification = this.el.querySelector<HTMLInputElement>(
+      '[data-verified]',
+    )?.checked
+      ? 'user_checked'
+      : 'unverified';
+    this.editing = article;
+    return article;
+  }
+
   private renderBatchBarHtml(): string {
     if (this.selectedKeys.size === 0) return '';
     return `
@@ -255,9 +293,10 @@ export class ArticleCatalogDialog {
     this.el
       .querySelector('[data-batch-ai-complete]')
       ?.addEventListener('click', () => {
-        const selected = this.candidates().filter((a) =>
-          this.selectedKeys.has(catalogKey(a)),
-        );
+        const draft = this.syncDraft();
+        const selected = this.candidates()
+          .map((a) => (draft && catalogKey(a) === catalogKey(draft) ? draft : a))
+          .filter((a) => this.selectedKeys.has(catalogKey(a)));
         if (!selected.length) return;
         void this.work(async () => {
           this.message = t('articleAiCompleting');
@@ -265,13 +304,30 @@ export class ArticleCatalogDialog {
             selected,
             (done, total) => {
               this.message = `${t('articleAiCompleting')} (${done}/${total})`;
+              const statusEl = this.el.querySelector('[role="status"]');
+              if (statusEl) statusEl.textContent = this.message;
             },
             { project: this.project },
           );
-          this.prepare(
-            completed,
-            `${completed.length} Artikel mit KI vervollständigt`,
-          );
+          try {
+            await this.store.merge(completed, true, this.expected);
+          } catch (e) {
+            if (e instanceof Error && e.message === 'articlesCatalogStale') {
+              const fresh = await this.store.list();
+              await this.store.merge(completed, true, catalogRevision(fresh));
+            } else {
+              throw e;
+            }
+          }
+          await this.reload();
+          if (this.editing) {
+            const updated = completed.find(
+              (c) => catalogKey(c) === catalogKey(this.editing!),
+            );
+            if (updated) this.editing = structuredClone(updated);
+          }
+          this.pending = undefined;
+          this.message = `${completed.length} ${t('articlesStored')}`;
         });
       });
 
@@ -319,9 +375,10 @@ export class ArticleCatalogDialog {
     this.el
       .querySelector('[data-batch-ai-and-publish]')
       ?.addEventListener('click', () => {
-        const selected = this.candidates().filter((a) =>
-          this.selectedKeys.has(catalogKey(a)),
-        );
+        const draft = this.syncDraft();
+        const selected = this.candidates()
+          .map((a) => (draft && catalogKey(a) === catalogKey(draft) ? draft : a))
+          .filter((a) => this.selectedKeys.has(catalogKey(a)));
         if (!selected.length) return;
         void this.work(async () => {
           this.message = t('articleAiCompleting');
@@ -329,11 +386,28 @@ export class ArticleCatalogDialog {
             selected,
             (done, total) => {
               this.message = `${t('articleAiCompleting')} (${done}/${total})`;
+              const statusEl = this.el.querySelector('[role="status"]');
+              if (statusEl) statusEl.textContent = this.message;
             },
             { project: this.project },
           );
-          await this.store.merge(completed, true, this.expected);
+          try {
+            await this.store.merge(completed, true, this.expected);
+          } catch (e) {
+            if (e instanceof Error && e.message === 'articlesCatalogStale') {
+              const fresh = await this.store.list();
+              await this.store.merge(completed, true, catalogRevision(fresh));
+            } else {
+              throw e;
+            }
+          }
           await this.reload();
+          if (this.editing) {
+            const updated = completed.find(
+              (c) => catalogKey(c) === catalogKey(this.editing!),
+            );
+            if (updated) this.editing = structuredClone(updated);
+          }
           this.message = t('articlesStored');
           const symbols = completed
             .map(
@@ -383,7 +457,7 @@ export class ArticleCatalogDialog {
     const merge = this.pending
       ? planCatalogMerge(this.rows, this.pending)
       : undefined;
-    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${this.busy ? t('articlesLoading') : esc(this.message)}</p>
+    this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="catalogTitle" style="width:min(1050px,100%);max-height:92vh;overflow:auto;padding:20px;background:#17202d;color:#eee;border:1px solid #526170;border-radius:8px"><h2 id="catalogTitle">${t('articlesCatalog')}</h2><p>${t('articlesCatalogHint')}</p><div role="alert" data-error style="color:#fca5a5">${esc(this.error)}</div><p>${esc(this.importHint)}</p><p role="status">${esc(this.message || (this.busy ? t('articlesLoading') : ''))}</p>
  <div class="eng-shared-catalog"><div><strong>${t('githubCatalogTitle')} · ${this.shared.articles.length} ${t('githubCatalogArticles')}</strong><span>${t(('githubCatalogState_' + this.shared.status) as any)}${!this.shared.submission ? ' · ' + t('githubCatalogNotConfigured') : ''}</span></div><button class="btn" data-shared-refresh>${t('articlesRefresh')}</button></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-team>${t('teamCatalog')}</button><button class="btn" data-new>${t('articlesNew')}</button><button class="btn" data-import>${t('manufacturerImport')}</button><button class="btn" data-portal>${t('articlePortalOpen')}</button><input type="file" data-file accept=".csv,.json,.xml,.wspak,.edz" hidden><button class="btn" data-project>${t('articlesFromProject')}</button><button class="btn" data-json ${this.available ? '' : 'disabled'}>${t('articlesExportJson')}</button><button class="btn" data-csv ${this.available ? '' : 'disabled'}>${t('articlesExportCsv')}</button><button class="btn" data-refresh>${t('articlesRefresh')}</button>${this.deletedList.length ? `<button class="btn" data-reset-defaults>${t('articlesResetDefaults')}</button>` : ''}</div>
  <input data-search class="form-input" placeholder="${t('articlesSearch')}" value="${esc(this.search)}" style="margin:10px 0">
@@ -580,25 +654,7 @@ export class ArticleCatalogDialog {
       );
     const electricalEl=this.el.querySelector<HTMLElement>('[data-electrical-editor]');
     this.electricalEditor=electricalEl?new ArticleElectricalEditor(electricalEl,this.editing?.electrical):undefined;
-    const dimensions=()=>{const fields=[...this.el.querySelectorAll<HTMLInputElement>('[data-dimension]')];if(!fields.some(i=>i.value!==''))return undefined;const values=Object.fromEntries(fields.map(i=>[i.dataset.dimension!,i.value===''?undefined:Number(i.value)]));return {widthMm:values.widthMm!,heightMm:values.heightMm!,...(values.depthMm!==undefined?{depthMm:values.depthMm}:{})};};
-    const syncDraft = () => {
-      const article = { ...this.editing! };
-      for (const input of this.el.querySelectorAll<HTMLInputElement>(
-        '[data-field]',
-      ))
-        (article as any)[input.dataset.field!] = input.value;
-      article.dimensions=dimensions();
-      article.electrical=this.electricalEditor?.value();
-      article.functions = this.functionEditor?.value();
-      article.origin = 'user';
-      article.verification = this.el.querySelector<HTMLInputElement>(
-        '[data-verified]',
-      )?.checked
-        ? 'user_checked'
-        : 'unverified';
-      this.editing = article;
-      return article;
-    };
+    const syncDraft = () => this.syncDraft()!;
     this.el.querySelector('[data-link-symbol]')?.addEventListener('click', () => {
       syncDraft();
       new SymbolSelectionDialog({onSelect: symbol => {
@@ -687,22 +743,24 @@ export class ArticleCatalogDialog {
 
     this.el.querySelector('[data-save]')?.addEventListener('click', () => {
       try {
-        const a = { ...this.editing! };
-        for (const input of this.el.querySelectorAll<HTMLInputElement>(
-          '[data-field]',
-        ))
-          (a as any)[input.dataset.field!] = input.value;
-        a.dimensions=dimensions();
-        a.electrical=this.electricalEditor?.value();
-        a.functions = this.functionEditor?.value();
-        a.origin = 'user';
-        a.verification = this.el.querySelector<HTMLInputElement>(
-          '[data-verified]',
-        )!.checked
-          ? 'user_checked'
-          : 'unverified';
-        this.editing = a;
-        this.prepare([validateCatalogArticle(a)]);
+        const draft = this.syncDraft();
+        if (!draft) return;
+        const validated = validateCatalogArticle(draft);
+        void this.work(async () => {
+          try {
+            await this.store.merge([validated], true, this.expected);
+          } catch (e) {
+            if (e instanceof Error && e.message === 'articlesCatalogStale') {
+              const fresh = await this.store.list();
+              await this.store.merge([validated], true, catalogRevision(fresh));
+            } else {
+              throw e;
+            }
+          }
+          await this.reload();
+          this.editing = undefined;
+          this.message = t('articlesStored');
+        });
       } catch (e) {
         this.error = articleError(e);
         this.render();
