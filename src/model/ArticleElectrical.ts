@@ -26,6 +26,8 @@ export interface ArticleElectricalData extends Partial<
   currentType?: "ac" | "dc" | "ac_dc";
   material?: "copper" | "aluminium";
   characteristic?: string;
+  /** Explicit current quantity; unknown legacy points are never assumed to be overcurrent curves. */
+  curveKind?: "overcurrent" | "residual";
   /** Manufacturer points only; no interpolation or inferred disconnection proof. */
   curve?: { currentA: number; timeMinS: number; timeMaxS: number }[];
 }

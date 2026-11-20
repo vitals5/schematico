@@ -1,6 +1,6 @@
+import { ProtectionCurveEditor } from "./ProtectionCurveEditor";
 import {
   electricalFields,
-  validateElectricalData,
   type ArticleElectricalData,
   type ElectricalRatingKey,
 } from "../model/ArticleElectrical";
@@ -9,6 +9,7 @@ import { tr } from "../i18n";
 /** Optional sourced ratings editor, shared by local and public article workflows. */
 export class ArticleElectricalEditor {
   private draft: Partial<ArticleElectricalData>;
+  private curveEditor?: ProtectionCurveEditor;
   constructor(
     private el: HTMLElement,
     initial?: ArticleElectricalData,
@@ -31,20 +32,11 @@ export class ArticleElectricalEditor {
       const key = input.dataset.electrical!;
       if (input.value.trim())
         (next as any)[key] =
-          key in electricalFields
-            ? Number(input.value)
-            : key === "curve"
-              ? this.parseCurve(input.value)
-              : input.value;
+          key in electricalFields ? Number(input.value) : input.value;
     }
+    const curve = this.curveEditor?.value();
+    if (curve !== undefined) (next as any).curve = curve;
     this.draft = next;
-  }
-  private parseCurve(value: string) {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return value;
-    }
   }
   value() {
     this.collect();
@@ -97,9 +89,37 @@ export class ArticleElectricalEditor {
                   )
                   .join("")}</select></label>`
               : ""
-          }${kind === "protection" ? `<label>${esc(tr("Kennlinienbezeichnung", "Characteristic designation"))}<input class="form-input" data-electrical="characteristic" maxlength="80" value="${esc(this.draft.characteristic ?? "")}"></label>` : ""}</div><label>${esc(tr("Datenblatt / Quelle (erforderlich)", "Data sheet / source (required)"))}<textarea class="form-input" data-electrical="source" maxlength="2000">${esc(this.draft.source ?? "")}</textarea></label><label>${esc(tr("Geltungs- und Verlegebedingungen (bei Iz0 oder Kennlinienpunkten erforderlich)", "Application / installation conditions (required for Iz0 or curve points)"))}<textarea class="form-input" data-electrical="conditions" maxlength="2000">${esc(this.draft.conditions ?? "")}</textarea></label>${kind === "protection" ? `<details><summary>${esc(tr("Hersteller-Kennlinienpunkte", "Manufacturer curve points"))}</summary><p>${esc(tr("Optional: JSON-Liste mit currentA, timeMinS, timeMaxS, nach Strom aufsteigend. Die Punkte werden dokumentiert; daraus wird kein automatischer Abschalt- oder Selektivitätsnachweis abgeleitet.", "Optional: JSON list with currentA, timeMinS, timeMaxS, sorted by increasing current. Points are recorded; they do not imply automatic disconnection or selectivity verification."))}</p><textarea class="form-input" data-electrical="curve" rows="5">${esc(this.draft.curve ? JSON.stringify(this.draft.curve, null, 2) : "")}</textarea></details>` : ""}`
+          }${kind === "protection" ? `<label>${esc(tr("Kennlinienbezeichnung", "Characteristic designation"))}<input class="form-input" data-electrical="characteristic" maxlength="80" value="${esc(this.draft.characteristic ?? "")}"></label>` : ""}</div><label>${esc(tr("Datenblatt / Quelle (erforderlich)", "Data sheet / source (required)"))}<textarea class="form-input" data-electrical="source" maxlength="2000">${esc(this.draft.source ?? "")}</textarea></label><label>${esc(tr("Geltungs- und Verlegebedingungen (bei Iz0 oder Kennlinienpunkten erforderlich)", "Application / installation conditions (required for Iz0 or curve points)"))}<textarea class="form-input" data-electrical="conditions" maxlength="2000">${esc(this.draft.conditions ?? "")}</textarea></label>${
+            kind === "protection"
+              ? `<label>${esc(tr("Kennlinienart", "Curve type"))}<select class="form-input" data-electrical="curveKind">${[
+                  ["", tr("Nicht festgelegt", "Not specified")],
+                  [
+                    "overcurrent",
+                    tr(
+                      "Überstrom · Leiterstrom [A]",
+                      "Overcurrent · line current [A]",
+                    ),
+                  ],
+                  [
+                    "residual",
+                    tr("Differenzstrom [A]", "Residual current [A]"),
+                  ],
+                ]
+                  .map(
+                    ([v, l]) =>
+                      `<option value="${v}" ${this.draft.curveKind === v ? "selected" : ""}>${esc(l)}</option>`,
+                  )
+                  .join(
+                    "",
+                  )}</select></label><details><summary>${esc(tr("Hersteller-Kennlinienpunkte", "Manufacturer curve points"))}</summary><div data-curve-editor></div></details>`
+              : ""
+          }`
         : ""
     }</fieldset>`;
+    const curveEl = this.el.querySelector<HTMLElement>("[data-curve-editor]");
+    this.curveEditor = curveEl
+      ? new ProtectionCurveEditor(curveEl, this.draft.curve)
+      : undefined;
     this.el.querySelector<HTMLSelectElement>(
       "[data-electrical-kind]",
     )!.onchange = (e) => {

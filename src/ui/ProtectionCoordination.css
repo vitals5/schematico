@@ -1,0 +1,236 @@
+.protection-coordination {
+  position: fixed;
+  inset: 0;
+  z-index: 4325;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: #060d17c9;
+  backdrop-filter: blur(4px);
+}
+.protection-coordination > section {
+  width: min(1320px, 100%);
+  height: min(920px, 95vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #415772;
+  border-radius: 12px;
+  background: #172434;
+  color: #dfebf8;
+  box-shadow: 0 24px 70px #0008;
+}
+.protection-coordination header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #34495f;
+}
+.protection-coordination h2 {
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+.protection-coordination small {
+  color: #a8bdd5;
+}
+.pc-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+.pc-body main,
+.pc-body aside {
+  overflow: auto;
+  min-width: 0;
+  padding: 18px;
+  scrollbar-width: thin;
+}
+.pc-body aside {
+  background: #101d2b;
+  border-left: 1px solid #34495f;
+}
+.pc-body h3 {
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+.pc-body p {
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: #b4c8df;
+}
+.pc-body aside article {
+  padding: 12px;
+  border: 1px solid #33495f;
+  border-radius: 7px;
+  margin-bottom: 12px;
+  background: #192a3d;
+}
+.pc-body aside article strong {
+  background: #f5f8fc;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.pc-body aside small {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.pc-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pc-legend > div {
+  border: 1px solid #3d556e;
+  border-left: 4px solid var(--curve-color);
+  padding: 12px;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.pc-legend strong {
+  font-size: 12px;
+}
+.pc-legend span {
+  font-size: 12px;
+  color: #bfcee1;
+  overflow-wrap: anywhere;
+}
+.pc-legend .btn {
+  align-self: flex-start;
+}
+.pc-chart {
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #7289a0;
+  overflow: hidden;
+}
+.pc-chart svg {
+  width: 100%;
+  display: block;
+}
+.pc-chart [data-protection-point] {
+  cursor: crosshair;
+}
+.pc-chart [data-protection-point]:focus {
+  outline: none;
+  stroke: #334b6b;
+  stroke-width: 2;
+}
+.pc-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+.pc-current select {
+  max-width: 220px;
+}
+.pc-readout {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pc-readout article {
+  border: 1px solid #3c536c;
+  padding: 10px;
+  border-radius: 6px;
+  flex: 1;
+  min-width: 150px;
+  font-size: 12px;
+}
+.pc-readout p {
+  margin: 6px 0;
+}
+.pc-readout > p {
+  margin: 0;
+}
+.pc-scope,
+.pc-issue {
+  padding: 10px;
+  border-left: 2px solid #c9a66e;
+  background: #293442;
+  border-radius: 3px;
+}
+.pc-empty {
+  padding: 50px 20px;
+  color: #334c65;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.protection-coordination footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid #34495f;
+  flex-wrap: wrap;
+}
+.protection-coordination footer > span {
+  flex: 1;
+  font-size: 11px;
+  color: #a6bdd6;
+  min-width: 180px;
+}
+.pc-error {
+  color: #ffb5c5;
+  padding: 0 20px;
+  margin: 0;
+  font-size: 12px;
+}
+.pc-error:not(:empty) {
+  padding: 8px 20px;
+}
+@media (max-width: 800px) {
+  .pc-body {
+    display: block;
+    overflow: auto;
+  }
+  .pc-body main,
+  .pc-body aside {
+    overflow: visible;
+  }
+  .pc-body aside {
+    border-left: 0;
+    border-top: 1px solid #34495f;
+  }
+  .pc-legend {
+    grid-template-columns: 1fr;
+  }
+  .protection-coordination {
+    padding: 6px;
+  }
+  .protection-coordination > section {
+    height: 98vh;
+  }
+  .pc-current {
+    flex-wrap: wrap;
+  }
+}
+
+.pc-body aside article strong {
+  color: #253b54;
+}
+.pc-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+.pc-chart.is-zoomed {
+  overflow: auto;
+  max-height: 60vh;
+}

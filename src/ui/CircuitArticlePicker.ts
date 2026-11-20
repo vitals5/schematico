@@ -308,7 +308,7 @@ export class CircuitArticlePicker {
                 )
                 .join("")
             : ""
-        }</dl>${d ? `<h4>${esc(tr("Quelle und Geltungsbedingungen", "Source and conditions"))}</h4><p>${esc(d.source)}</p><p>${esc(d.conditions ?? "")}</p>` : ""}<p>${esc(tr("Plansymbol", "Drawing symbol"))}: ${esc(a.snapshot?.symbolId ? (getSymbolById(a.snapshot.symbolId, this.config.getProject()) ? getLocalizedSymbol(getSymbolById(a.snapshot.symbolId, this.config.getProject())!).name : a.snapshot.symbolId) : tr("Nicht zugeordnet", "Not assigned"))}</p><button type="button" class="btn" data-cpp-edit>${esc(tr("Artikel / Kennwerte bearbeiten", "Edit part / ratings"))}</button>`;
+        }</dl>${d ? `<h4>${esc(tr("Quelle und Geltungsbedingungen", "Source and conditions"))}</h4><p>${esc(d.source)}</p><p>${esc(d.conditions ?? "")}</p>` : ""}${d?.curve?.length ? `<p>${esc(tr("Kennlinie", "Curve"))}: ${esc(d.curveKind === "overcurrent" ? tr("Überstrom", "Overcurrent") : d.curveKind === "residual" ? tr("Differenzstrom", "Residual current") : tr("Art nicht festgelegt", "Type not specified"))} · ${d.curve.length} ${esc(tr("Stützpunkte", "points"))}</p>` : ""}<p>${esc(tr("Plansymbol", "Drawing symbol"))}: ${esc(a.snapshot?.symbolId ? (getSymbolById(a.snapshot.symbolId, this.config.getProject()) ? getLocalizedSymbol(getSymbolById(a.snapshot.symbolId, this.config.getProject())!).name : a.snapshot.symbolId) : tr("Nicht zugeordnet", "Not assigned"))}</p><button type="button" class="btn" data-cpp-edit>${esc(tr("Artikel / Kennwerte bearbeiten", "Edit part / ratings"))}</button>`;
     this.el.querySelector("[data-cpp-edit]")?.addEventListener("click", () => {
       if (!a) return;
       const snapshot = a.snapshot ?? {

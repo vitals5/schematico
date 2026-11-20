@@ -122,6 +122,7 @@ export function validateElectricalData(raw) {
     "currentType",
     "material",
     "characteristic",
+    "curveKind",
     "curve",
     ...Object.keys(electricalFields),
   ]);
@@ -143,6 +144,14 @@ export function validateElectricalData(raw) {
         invalid();
       if (raw[key].trim()) result[key] = raw[key].trim();
     }
+  if (raw.curveKind !== undefined) {
+    if (
+      raw.kind !== "protection" ||
+      !["overcurrent", "residual"].includes(raw.curveKind)
+    )
+      invalid();
+    result.curveKind = raw.curveKind;
+  }
   if (raw.currentType !== undefined) {
     if (!["ac", "dc", "ac_dc"].includes(raw.currentType)) invalid();
     result.currentType = raw.currentType;

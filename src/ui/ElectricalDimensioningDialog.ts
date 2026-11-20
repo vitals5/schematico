@@ -1,3 +1,4 @@
+import { protectionCoordination } from "../model/ProtectionCoordination";
 import {
   CircuitArticlePicker,
   circuitRoleIcon,
@@ -181,7 +182,7 @@ export class ElectricalDimensioningDialog {
       values: string[][],
     ) =>
       `<label>${esc(label)}<select class="form-input" data-select="${key}">${values.map(([v, l]) => `<option value="${v}" ${this.edit[key] === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>`;
-    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${esc(tr("Elektrische Dimensionierung", "Electrical Dimensioning"))}</h2><div class="pe-workspace"><aside class="pe-sidebar"><div class="pe-summary"><strong>${records.length}</strong> ${esc(tr("Stromkreise", "Circuits"))}<span>${esc(tr("Gespeicherte Eingaben · neu berechnete Ergebnisse", "Saved inputs · recalculated results"))}</span></div><div class="pe-actions"><button class="btn btn-primary" data-new>${esc(tr("+ Stromkreis", "+ Circuit"))}</button><button class="btn" data-wizard-open>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</button><button class="btn" data-reload>${esc(tr("Aktualisieren", "Refresh"))}</button></div><input class="form-input" data-search aria-label="${esc(tr("Stromkreise suchen", "Search circuits"))}" placeholder="${esc(tr("Stromkreis suchen", "Search circuit"))}" value="${esc(this.query)}"><div class="pe-circuit-list">${
+    this.el.innerHTML = `<section role="dialog" aria-modal="true"><h2>${esc(tr("Elektrische Dimensionierung", "Electrical Dimensioning"))}</h2><div class="pe-workspace"><aside class="pe-sidebar"><div class="pe-summary"><strong>${records.length}</strong> ${esc(tr("Stromkreise", "Circuits"))}<span>${esc(tr("Gespeicherte Eingaben · neu berechnete Ergebnisse", "Saved inputs · recalculated results"))}</span></div><div class="pe-actions"><button class="btn btn-primary" data-new>${esc(tr("+ Stromkreis", "+ Circuit"))}</button><button class="btn" data-wizard-open>${esc(tr("Stromkreis-Assistent", "Circuit assistant"))}</button><button type="button" class="btn" data-protection-open>${esc(tr("Schutzkoordination", "Protection coordination"))}</button><button class="btn" data-reload>${esc(tr("Aktualisieren", "Refresh"))}</button></div><input class="form-input" data-search aria-label="${esc(tr("Stromkreise suchen", "Search circuits"))}" placeholder="${esc(tr("Stromkreis suchen", "Search circuit"))}" value="${esc(this.query)}"><div class="pe-circuit-list">${
       matching
         .map((r) => {
           const status = calculateDimensioning(r, this.source).status;
@@ -366,6 +367,11 @@ export class ElectricalDimensioningDialog {
       q("[data-results]").innerHTML = this.renderResults();
     };
     this.bindArticles(safe);
+    this.el.querySelectorAll("[data-protection-open]").forEach((b) =>
+      b.addEventListener("click", () => {
+        void this.openProtectionCoordination();
+      }),
+    );
     this.bindWizard(safe);
     this.el.querySelectorAll<HTMLSelectElement>("[data-select]").forEach(
       (s) =>
@@ -517,6 +523,9 @@ export class ElectricalDimensioningDialog {
               projectId: p.id,
               projectName: p.name,
               inputs: p.dimensioning ?? [],
+              protectionCoordination: (p.dimensioning ?? []).map((r) =>
+                protectionCoordination(r, p),
+              ),
               results: (p.dimensioning ?? []).map((r) =>
                 calculateDimensioning(r, p),
               ),
@@ -673,6 +682,45 @@ export class ElectricalDimensioningDialog {
       .querySelector<HTMLButtonElement>(`[data-article-choose="${role}"]`)
       ?.focus({ preventScroll: true });
   }
+  private openArticlePicker(role: CircuitArticleRole, after?: () => void) {
+    this.collect();
+    this.stale();
+    const projectKeys = new Set(
+      dimensioningArticleCandidates(this.source).map(circuitArticleKey),
+    );
+    new CircuitArticlePicker({
+      role,
+      record: structuredClone(this.edit),
+      getProject: () => this.source,
+      getItems: () => this.articleOptions(),
+      projectKeys,
+      selected: this.edit.articles?.[role]?.article,
+      onChoose: (article, adopt) => {
+        this.chooseArticle(role, article, adopt);
+        after?.();
+      },
+    }).show();
+  }
+  private async openProtectionCoordination() {
+    try {
+      this.collect();
+      this.stale();
+      const { ProtectionCoordinationDialog } =
+        await import("./ProtectionCoordinationDialog");
+      new ProtectionCoordinationDialog(
+        this.source,
+        structuredClone(this.edit),
+        (role) =>
+          this.openArticlePicker(role, () => {
+            void this.openProtectionCoordination();
+          }),
+        this.dirty || !this.records().some((r) => r.id === this.edit.id),
+      ).show();
+    } catch (e) {
+      this.error = e instanceof Error ? e.message : String(e);
+      this.el.querySelector("[role=alert]")!.textContent = this.error;
+    }
+  }
   private bindArticles(safe: (fn: () => void) => void) {
     this.el
       .querySelectorAll<HTMLButtonElement>("[data-article-choose]")
@@ -680,24 +728,9 @@ export class ElectricalDimensioningDialog {
         (button) =>
           (button.onclick = () =>
             safe(() => {
-              this.collect();
-              this.stale();
-              const role = button.dataset.articleChoose as CircuitArticleRole;
-              const projectKeys = new Set(
-                dimensioningArticleCandidates(this.source).map(
-                  circuitArticleKey,
-                ),
+              this.openArticlePicker(
+                button.dataset.articleChoose as CircuitArticleRole,
               );
-              new CircuitArticlePicker({
-                role,
-                record: structuredClone(this.edit),
-                getProject: () => this.source,
-                getItems: () => this.articleOptions(),
-                projectKeys,
-                selected: this.edit.articles?.[role]?.article,
-                onChoose: (article, adopt) =>
-                  this.chooseArticle(role, article, adopt),
-              }).show();
             })),
       );
     this.el

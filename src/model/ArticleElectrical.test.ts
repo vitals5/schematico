@@ -28,6 +28,7 @@ export const electrical = {
   conventionalTripA: 23.2,
   breakingCapacityA: 6000,
   characteristic: "B",
+  curveKind: "overcurrent" as const,
   curve: [
     { currentA: 32, timeMinS: 1, timeMaxS: 10 },
     { currentA: 80, timeMinS: 0.01, timeMaxS: 0.1 },

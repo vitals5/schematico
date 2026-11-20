@@ -1,3 +1,4 @@
+import {renderProtectionCoordinationPdfPage} from './ProtectionCoordinationPdf';
 import { documentFrame, sheetArea } from '../model/DocumentSheet';
 import { renderPdfSheetFrame, fitLegacyPdfContent } from './PdfSheetFrame';
 import { renderPdfGraphics } from "./PdfGraphics";
@@ -188,6 +189,9 @@ export class PdfExporter {
       if(section.kind==='cabinet') {
         doc.addPage(options.paperFormat, 'landscape');
         renderCabinetPdfPage(doc,section.board,section.labels,project.name,{monochrome:options.colorMode==='monochrome',pageTargets:options.interactiveCrossReferences?pageIdToPdfPageIndex:undefined,frame:options.plotFrame?documentFrame(project):false,ordinal:start,total:totalSheetsCount});
+      } else if(section.kind==='protection'){
+        doc.addPage(options.paperFormat,'landscape');
+        renderProtectionCoordinationPdfPage(doc,section.data,options.plotFrame?documentFrame(project):false,{ordinal:start,total:totalSheetsCount},options.colorMode==='monochrome');
       } else {
         appendManufacturingReportPdf(doc,section.layout,true,options.colorMode==='monochrome',{ordinal:start,total:totalSheetsCount});
         if(options.interactiveCrossReferences) {

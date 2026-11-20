@@ -1,3 +1,5 @@
+import {protectionCoordination,type ProtectionCoordination} from '../model/ProtectionCoordination';
+import {protectionReportRows,protectionReportColumns} from '../reports/ProtectionCoordinationReport';
 import { documentFrame } from "../model/DocumentSheet";
 import type { Project } from "../model/types";
 import {
@@ -24,7 +26,7 @@ import {
 } from "./ManufacturingReportPdf";
 export interface ProjectPdfChoice {
   id: string;
-  kind: "cabinet" | "report" | "automation" | "dimensioning" | "revisions" | "invalid";
+  kind: "cabinet" | "report" | "automation" | "dimensioning" | "protection" | "revisions" | "invalid";
   title: string;
   detail: string;
   problem?: string;
@@ -75,6 +77,9 @@ export function projectPdfChoices(project: Project): ProjectPdfChoice[] {
   const d = automationData(project);
   if (project.dimensioning !== undefined && (!Array.isArray(project.dimensioning) || project.dimensioning.length))
     choices.push({id:key('dimensioning','all'),kind:'dimensioning',title:project.language==='en'?'Electrical dimensioning':'Elektrische Dimensionierung',detail:'Spannungsfall · Leiter- und Schutzgerätekoordination'});
+  if(Array.isArray(project.dimensioning))for(const r of project.dimensioning){
+    if(r&&typeof r.id==='string'&&typeof r.name==='string'&&(['protection','upstream'] as const).some(role=>r.articles?.[role]?.article?.snapshot?.electrical?.curve?.length))choices.push({id:key('protection',r.id),kind:'protection',title:(project.language==='en'?'Protection coordination · ':'Schutzkoordination · ')+r.name,detail:project.language==='en'?'Overcurrent chart, sources and manufacturer points':'Überstromdiagramm, Quellen und Herstellerstützpunkte'});
+  }
   try {
     const revisions = savedRevisions(project);
     if (revisions.length) choices.push({id:key('revisions','all'),kind:'revisions',title:project.language==='en'?'Project revisions and approvals':'Projektstände und Freigaben',detail:String(revisions.length)});
@@ -92,6 +97,7 @@ export function projectPdfChoices(project: Project): ProjectPdfChoice[] {
   return choices;
 }
 export type ProjectPdfSection =
+  | {kind:"protection";id:string;title:string;pages:number;data:ProtectionCoordination;}
   | {
       kind: "cabinet";
       id: string;
@@ -177,6 +183,12 @@ export function prepareProjectPdfSections(
         layout,
         rows,
       });
+    } else if(choice.kind==='protection'){
+      const record=project.dimensioning!.find(r=>key('protection',r.id)===choice.id)!;
+      const data=protectionCoordination(record,project,project.language);data.inputState="saved";const rows=engineeringPdfRows(protectionReportRows(data)),columns=protectionReportColumns(data.language);
+      result.push({kind:'protection',id:choice.id,title:choice.title,pages:1,data});
+      const layout=layoutPdfTable({title:choice.title+' · '+(project.language==='en'?'Curve report':'Kennlinienbericht'),paper,orientation:'landscape',fontSize:7,columns:columns.map((label,i)=>({id:'c'+i,label,weight:i===3?4:2}))},rows,project.name,framed?documentFrame(project):false);
+      result.push({kind:'report',id:choice.id+'-data',title:layout.title.join(' '),pages:layout.pages.length,layout,rows});
     } else if (choice.kind === 'dimensioning' || choice.kind === 'revisions') {
       const rows = engineeringPdfRows(choice.kind === 'dimensioning' ? dimensioningReportRows(project) : revisionReportRows(project));
       const columns = choice.kind === 'dimensioning' ? dimensioningColumns : revisionColumns;
