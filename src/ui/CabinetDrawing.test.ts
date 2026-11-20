@@ -34,6 +34,17 @@ assert(!svg.includes("<img"));
 assert(svg.includes("&lt;img"));
 assert(!svg.includes("data-eng-id"));
 assert(cabinetSvg(l, new Map()).includes("data-eng-id"));
+const dark = cabinetSvg(l, new Map());
+assert(dark.includes('data-cabinet-theme="dark"'));
+assert(dark.includes('fill="#12161f"'));
+assert(!dark.includes('fill="#fcfdff"'));
+assert(svg.includes('data-cabinet-theme="light"'));
+assert(svg.includes('fill="#fcfdff"'));
+assert(!svg.includes('fill="#12161f"'));
+assert(
+  dark.includes('viewBox="0 0 600 800"') &&
+    svg.includes('viewBox="0 0 600 800"'),
+);
 assert.equal(cabinetPdf(l, new Map(), "Test").getNumberOfPages(), 1);
 assert(cabinetPdf(l, new Map(), "Test").output().startsWith("%PDF"));
 for (const format of ["a3", "a4"] as const) {
@@ -56,14 +67,17 @@ for (const format of ["a3", "a4"] as const) {
     "Tall plates keep their physical proportions",
   );
   assert(
-    x >= area.left && y >= area.top &&
-      x + width <= area.right + 0.001 && y + height <= area.bottom + 0.001,
+    x >= area.left &&
+      y >= area.top &&
+      x + width <= area.right + 0.001 &&
+      y + height <= area.bottom + 0.001,
     "The plate fits above the footer on A3 and A4 landscape",
   );
 }
 const standalone = cabinetPdf(l, new Map(), "Test");
 assert(
-  standalone.internal.pageSize.getWidth() > standalone.internal.pageSize.getHeight(),
+  standalone.internal.pageSize.getWidth() >
+    standalone.internal.pageSize.getHeight(),
 );
 assert.deepEqual(l, before);
 const invalid = {

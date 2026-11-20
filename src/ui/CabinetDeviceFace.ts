@@ -193,21 +193,37 @@ export function cabinetDeviceFace(
   }
   return shapes;
 }
-export function cabinetFaceSvg(primitives: CabinetFacePrimitive[]) {
+/** Screen-only palette: keep semantic hues while darkening pale housings. Geometry stays shared. */
+function darkCabinetFill(color: string) {
+  const n = parseInt(color.slice(1), 16),
+    rgb = [n >> 16, (n >> 8) & 255, n & 255];
+  const luminance = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
+  const result =
+    luminance < 85
+      ? rgb.map((v) => Math.min(255, v + 100))
+      : rgb.map((v) => Math.round(v * (luminance > 145 ? 0.27 : 0.45)));
+  return "#" + result.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+export function cabinetFaceSvg(
+  primitives: CabinetFacePrimitive[],
+  dark = false,
+) {
+  const fill = (color: string) => (dark ? darkCabinetFill(color) : color);
+  const stroke = (color: string) => (dark ? "#91a2b8" : color);
   return primitives
     .map((p) =>
       p.kind === "rect"
-        ? `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${p.fill}" stroke="${p.stroke}" stroke-width=".3"/>`
+        ? `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${fill(p.fill)}" stroke="${stroke(p.stroke)}" stroke-width=".3"/>`
         : p.kind === "circle"
-          ? `<circle cx="${p.x}" cy="${p.y}" r="${p.r}" fill="${p.fill}" stroke="${p.stroke}" stroke-width=".3"/>`
+          ? `<circle cx="${p.x}" cy="${p.y}" r="${p.r}" fill="${fill(p.fill)}" stroke="${stroke(p.stroke)}" stroke-width=".3"/>`
           : p.kind === "line"
-            ? `<line x1="${p.x}" y1="${p.y}" x2="${p.x2}" y2="${p.y2}" stroke="${p.stroke}" stroke-width=".5"/>`
-            : `<text x="${p.x}" y="${p.y}" font-size="${p.size}" text-anchor="middle" fill="#24394b">${esc(p.text)}</text>`,
+            ? `<line x1="${p.x}" y1="${p.y}" x2="${p.x2}" y2="${p.y2}" stroke="${stroke(p.stroke)}" stroke-width=".5"/>`
+            : `<text x="${p.x}" y="${p.y}" font-size="${p.size}" text-anchor="middle" fill="${dark ? "#e2e8f0" : "#24394b"}">${esc(p.text)}</text>`,
     )
     .join("");
 }
 export function cabinetLibraryPreview(d: CabinetStandard) {
   const w = d.widthMm,
     h = d.heightMm;
-  return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" viewBox="-3 -3 ${w + 6} ${h + 6}" style="font-family:Arial,Helvetica,sans-serif"><rect width="${w}" height="${h}" rx="1" fill="#f4f6f7" stroke="#71879b" stroke-width=".5"/>${cabinetFaceSvg(cabinetDeviceFace(d, w, h))}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" viewBox="-3 -3 ${w + 6} ${h + 6}" style="font-family:Arial,Helvetica,sans-serif"><rect width="${w}" height="${h}" rx="1" fill="#202b3a" stroke="#91a2b8" stroke-width=".5"/>${cabinetFaceSvg(cabinetDeviceFace(d, w, h), true)}</svg>`;
 }

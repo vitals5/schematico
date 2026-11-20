@@ -26,6 +26,15 @@ export interface CabinetItem {
   standardId?: string;
 }
 export interface CabinetLayout {
+  /** Visual planning zones, not physical devices or collision obstacles. */
+  sections?: {
+    id: string;
+    label: string;
+    x: number;
+    y: number;
+    widthMm: number;
+    heightMm: number;
+  }[];
   schemaVersion: 1;
   id: string;
   name: string;
@@ -106,6 +115,20 @@ export function cabinetSchemaValid(l: CabinetLayout) {
     l.marginMm * 2 < Math.min(l.widthMm, l.heightMm) &&
     finite(l.gridMm, 1, 50) &&
     Array.isArray(l.items) &&
+    (l.sections === undefined ||
+      (Array.isArray(l.sections) &&
+        l.sections.length <= 100 &&
+        l.sections.every(
+          (s) =>
+            s &&
+            typeof s.id === "string" &&
+            typeof s.label === "string" &&
+            s.label.length <= 120 &&
+            finite(s.x, 0, l.widthMm) &&
+            finite(s.y, 0, l.heightMm) &&
+            finite(s.widthMm, 0.1, l.widthMm - s.x) &&
+            finite(s.heightMm, 0.1, l.heightMm - s.y),
+        ))) &&
     l.items.length <= 1000
   );
 }

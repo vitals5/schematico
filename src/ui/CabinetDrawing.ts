@@ -23,6 +23,35 @@ export function cabinetSvg(
   issues: CabinetIssue[] = [],
   interactive = true,
 ) {
+  const palette = interactive
+    ? {
+        paper: "#12161f",
+        grid: "#2d3748",
+        border: "#61758e",
+        text: "#cbd5e1",
+        standard: "#253244",
+        device: "#243b52",
+        rail: "#3b4b5e",
+        duct: "#303b49",
+        edge: "#8295ad",
+        selected: "#63b3ed",
+        error: "#fc8181",
+        railEdge: "#94a3b8",
+      }
+    : {
+        paper: "#fcfdff",
+        grid: "#b9c8d8",
+        border: "#8d9dad",
+        text: "#52687a",
+        standard: "#f4f6f7",
+        device: "#dceafa",
+        rail: "#c3cbd2",
+        duct: "#e6e0d3",
+        edge: "#546676",
+        selected: "#226aa4",
+        error: "#c35635",
+        railEdge: "#8895a0",
+      };
   const width =
       Number.isFinite(layout.widthMm) &&
       layout.widthMm >= 50 &&
@@ -43,6 +72,22 @@ export function cabinetSvg(
         : 10,
     grid =
       Number.isFinite(layout.gridMm) && layout.gridMm >= 1 ? layout.gridMm : 5;
+  const zones = (layout.sections ?? []).filter(
+    (z) =>
+      [z.x, z.y, z.widthMm, z.heightMm].every(Number.isFinite) &&
+      z.widthMm > 0 &&
+      z.heightMm > 0 &&
+      z.x >= 0 &&
+      z.y >= 0 &&
+      z.x + z.widthMm <= width &&
+      z.y + z.heightMm <= height,
+  );
+  const guides = zones
+    .map(
+      (z) =>
+        `<g class="cb-section" pointer-events="none"><rect x="${z.x}" y="${z.y}" width="${z.widthMm}" height="${z.heightMm}" fill="none" stroke="${palette.border}" stroke-width=".6" stroke-dasharray="3 2"/><text x="${z.x + 5}" y="${z.y + 16}" font-size="12" fill="${palette.text}">${esc(z.label)}</text></g>`,
+    )
+    .join("");
   const nodes = layout.items
     .flatMap((item, index) => {
       const b = cabinetBounds(item);
@@ -57,14 +102,14 @@ export function cabinetSvg(
         id = visualKey("cabinet", layout.id, item.id),
         standard = cabinetStandard(item.standardId),
         face = standard
-          ? `<g transform="translate(${item.x + (item.rotation === 90 ? item.heightMm : 0)} ${item.y})${item.rotation === 90 ? " rotate(90)" : ""}" pointer-events="none">${cabinetFaceSvg(cabinetDeviceFace(standard, item.widthMm, item.heightMm))}</g>`
+          ? `<g transform="translate(${item.x + (item.rotation === 90 ? item.heightMm : 0)} ${item.y})${item.rotation === 90 ? " rotate(90)" : ""}" pointer-events="none">${cabinetFaceSvg(cabinetDeviceFace(standard, item.widthMm, item.heightMm), interactive)}</g>`
           : "";
       return [
-        `<g ${interactive ? `data-cabinet-item="${esc(item.id)}" tabindex="0" role="button" aria-label="${esc(label)}" ${visualMeta(id, label, { issue: problem, neighbors: item.railId ? [visualKey("cabinet", layout.id, item.railId)] : [] })}` : ""} class="cb-item ${item.id === selected ? "is-selected" : ""}"><title>${esc(label + " · " + b.width + " × " + b.height + " mm")}</title><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${item.kind === "device" || item.kind === "standard" ? 1 : 0}" fill="${item.kind === "standard" ? "#f4f6f7" : item.kind === "device" ? "#dceafa" : item.kind === "rail" ? "#c3cbd2" : "#e6e0d3"}" stroke="${problem ? "#c35635" : item.id === selected ? "#226aa4" : "#546676"}" stroke-width="${item.id === selected ? 0.8 : 0.4}"/>${item.kind === "rail" ? `<path d="M${b.x} ${b.y + 3}h${b.width} M${b.x} ${b.y + b.height - 3}h${b.width} M${b.x} ${b.y + b.height / 2}h${b.width}" stroke="#8895a0" stroke-width=".5"/>` : ""}${face}<clipPath id="cb-label-${index}"><rect x="${b.x + 1}" y="${b.y + 1}" width="${Math.max(0.1, b.width - 2)}" height="${Math.max(0.1, b.height - 2)}"/></clipPath><text clip-path="url(#cb-label-${index})" x="${b.x + 2}" y="${b.y + Math.min(b.height / 2 + 1, 7)}" font-size="3" fill="#24394b">${esc(label)}</text></g>`,
+        `<g ${interactive ? `data-cabinet-item="${esc(item.id)}" tabindex="0" role="button" aria-label="${esc(label)}" ${visualMeta(id, label, { issue: problem, neighbors: item.railId ? [visualKey("cabinet", layout.id, item.railId)] : [] })}` : ""} class="cb-item ${item.id === selected ? "is-selected" : ""}"><title>${esc(label + " · " + b.width + " × " + b.height + " mm")}</title><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${item.kind === "device" || item.kind === "standard" ? 1 : 0}" fill="${item.kind === "standard" ? palette.standard : item.kind === "device" ? palette.device : item.kind === "rail" ? palette.rail : palette.duct}" stroke="${problem ? palette.error : item.id === selected ? palette.selected : palette.edge}" stroke-width="${item.id === selected ? 0.8 : 0.4}"/>${item.kind === "rail" ? `<path d="M${b.x} ${b.y + 3}h${b.width} M${b.x} ${b.y + b.height - 3}h${b.width} M${b.x} ${b.y + b.height / 2}h${b.width}" stroke="${palette.railEdge}" stroke-width=".5"/>` : ""}${face}<clipPath id="cb-label-${index}"><rect x="${b.x + 1}" y="${b.y + 1}" width="${Math.max(0.1, b.width - 2)}" height="${Math.max(0.1, b.height - 2)}"/></clipPath><text clip-path="url(#cb-label-${index})" x="${b.x + 2}" y="${b.y + Math.min(b.height / 2 + 1, 7)}" font-size="3" fill="${interactive ? "#e2e8f0" : "#24394b"}">${esc(label)}</text></g>`,
       ];
     })
     .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="cb-svg" viewBox="0 0 ${width} ${height}" width="${interactive ? (width * 600) / Math.max(width, height) : width + "mm"}" height="${interactive ? (height * 600) / Math.max(width, height) : height + "mm"}" style="font-family:Arial,Helvetica,sans-serif" ${interactive ? 'role="group" aria-label="' + esc(layout.name) + '"' : ""}><defs><pattern id="cb-grid" width="${grid}" height="${grid}" patternUnits="userSpaceOnUse"><path d="M${grid} 0H0V${grid}" fill="none" stroke="#b9c8d8" stroke-width=".12"/></pattern></defs><rect width="${width}" height="${height}" fill="#fcfdff"/><rect width="${width}" height="${height}" fill="url(#cb-grid)"/><rect x="${margin}" y="${margin}" width="${Math.max(0, width - 2 * margin)}" height="${Math.max(0, height - 2 * margin)}" fill="none" stroke="#8d9dad" stroke-width=".35" stroke-dasharray="2 2"/>${nodes}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="cb-svg" data-cabinet-theme="${interactive ? "dark" : "light"}" viewBox="0 0 ${width} ${height}" width="${interactive ? (width * 600) / Math.max(width, height) : width + "mm"}" height="${interactive ? (height * 600) / Math.max(width, height) : height + "mm"}" style="font-family:Arial,Helvetica,sans-serif" ${interactive ? 'role="group" aria-label="' + esc(layout.name) + '"' : ""}><defs><pattern id="cb-grid" width="${grid}" height="${grid}" patternUnits="userSpaceOnUse"><path d="M${grid} 0H0V${grid}" fill="none" stroke="${palette.grid}" stroke-width=".12"/></pattern></defs><rect width="${width}" height="${height}" fill="${palette.paper}"/><rect width="${width}" height="${height}" fill="url(#cb-grid)"/><rect x="${margin}" y="${margin}" width="${Math.max(0, width - 2 * margin)}" height="${Math.max(0, height - 2 * margin)}" fill="none" stroke="${palette.border}" stroke-width=".35" stroke-dasharray="2 2"/>${guides}${nodes}</svg>`;
 }
 export function cabinetPdf(
   layout: CabinetLayout,
@@ -139,6 +184,35 @@ export function renderCabinetPdfPage(
   );
   doc.setDrawColor(options.monochrome ? "#000000" : "#465564");
   doc.rect(area.left, top, layout.widthMm * s, layout.heightMm * s);
+  for (const zone of layout.sections ?? []) {
+    if (
+      ![zone.x, zone.y, zone.widthMm, zone.heightMm].every(Number.isFinite) ||
+      zone.widthMm <= 0 ||
+      zone.heightMm <= 0 ||
+      zone.x < 0 ||
+      zone.y < 0 ||
+      zone.x + zone.widthMm > layout.widthMm ||
+      zone.y + zone.heightMm > layout.heightMm
+    )
+      continue;
+    doc.setDrawColor(options.monochrome ? "#555555" : "#8d9dad");
+    doc.setLineWidth(0.15);
+    doc.setLineDashPattern([1, 1], 0);
+    doc.rect(
+      area.left + zone.x * s,
+      top + zone.y * s,
+      zone.widthMm * s,
+      zone.heightMm * s,
+    );
+    doc.setLineDashPattern([], 0);
+    doc.setFontSize((12 * s) / 0.352778);
+    doc.setTextColor(options.monochrome ? "#333333" : "#52687a");
+    doc.text(
+      doc.splitTextToSize(zone.label, Math.max(1, (zone.widthMm - 10) * s)),
+      area.left + (zone.x + 5) * s,
+      top + (zone.y + 16) * s,
+    );
+  }
   for (const i of layout.items) {
     const b = cabinetBounds(i),
       x = area.left + b.x * s,

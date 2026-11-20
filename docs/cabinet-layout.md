@@ -12,6 +12,18 @@ Der Gerätebestand verwendet bestätigte physische Geräte beziehungsweise einze
 
 ## Platte und Platzierung
 
+### Zählerschrankvorlagen
+
+**Zählerschrankvorlagen** in der oberen Aufbauleiste öffnet den Vorlagenbereich links. Angeboten werden 1 bis 5 Felder und die Höhen **950, 1100, 1250 und 1400 mm**. Pro Feld sind **Zählerfeld**, **Verteilerfeld** und **Reservefeld** wählbar. Die Vorlagen verwenden herstellerunabhängige Planungsmaße: 250 mm Feldraster und je 25 mm seitlichen Rand. Daraus ergeben sich Gesamtbreiten von 300, 550, 800, 1050 und 1300 mm.
+
+Zählerfelder besitzen einen freien 450-mm-Zählerbereich, einen 300-mm-Unterbereich und einen höhenabhängigen oberen Anschlussraum. Oben und unten liegen vorkonfigurierte TH35-Schienen. Verteilerfelder erhalten Schienenreihen im Abstand von 150 mm; Reservefelder bleiben frei. Jede Schiene ist 216 mm breit und bietet geometrisch Platz für zwölf 18-mm-Module. Ein 1-mm-Platzierungsraster verhindert künstliche Lücken zwischen diesen Modulen. Gerätespezifische Abstände müssen weiterhin in den Geräteeigenschaften berücksichtigt werden.
+
+**Als neuen Aufbau einfügen** erstellt einen eigenen, zunächst nicht übernommenen Aufbau. Vorhandene gespeicherte Montageplatten werden nicht ersetzt. Die Einfügung lässt sich rückgängig machen. Hutschienen und darauf platzierte Geräte bleiben normale bearbeitbare Aufbauobjekte. Feld- und Bereichsgrenzen sind visuelle Planungshilfen, keine Geräte, Kollisionshindernisse oder automatisch angelegten Artikel. **Feldeinteilung entfernen** entfernt diese Hilfen, ohne Schienen oder Geräte zu löschen. Danach lassen sich auch die Plattenmaße frei weiterbearbeiten.
+
+Feldeinteilung, Beschriftungen und Schienen bleiben in der Projektdatei erhalten und erscheinen in SVG sowie in eigenständigen und gemeinsamen PDF-Ausgaben. Die Vorlagen stellen keine bestimmte Herstellerkonstruktion oder bestätigte Anschlussausführung dar.
+
+### Freie Montageplatte
+
 Eine neue Platte beginnt mit 600 × 800 mm, 10 mm Rand und 5 mm Raster. Dies sind veränderbare Entwurfswerte, keine Herstellerangaben. Unterstützt werden Plattenmaße von 50 bis 10.000 mm, ein Raster von 1 bis 50 mm, Randabstände bis 100 mm und bis zu 1.000 Objekte je Platte. Die aktuelle Darstellung auf dem Bildschirm ist eine Ansicht, kein physischer 1:1-Maßstab.
 
 - **Tragschiene hinzufügen** und **Kanal hinzufügen** erzeugen bearbeitbare Rechteckgeometrie. Maße und Lage werden im Eigenschaftenbereich angepasst. Der Startwert der Schienenhöhe ist 35 mm.
@@ -63,6 +75,8 @@ Objekte lassen sich mit Maus, Stift oder einem Finger ziehen. Das SVG übernimmt
 Der optionale Browser-Regressionslauf verwendet echte Chromium-Touch-Gesten, einschließlich der nativen Gestenerkennung: `python -m pip install playwright`, `python -m playwright install chromium`, anschließend bei laufendem Entwicklungsserver `python scripts/test-cabinet-pointer.py --url http://127.0.0.1:5173`. Er prüft Maus und Touch auf Desktop- und Mobilgröße, alle Aufbauobjektarten, Schienenbindung, Abbruch, Capture-Verlust, Zoom/Scrollposition, Hintergrundverschiebung sowie Speichern und Rückgängig.
 
 ## Haupteditor und Speichern
+
+Die Aufbauzeichnung und die Bibliotheksvorschau verwenden wie der normale Editor eine dunkle Darstellung. Hintergrund, Raster, Feldgrenzen, Geräteflächen, Beschriftungen, Auswahl und Fehlerfarben sind dafür abgestimmt. Die Farbgebung verändert keine gespeicherten Maße oder Objekte. PDF und exportiertes SVG behalten ihre helle Druckdarstellung.
 
 Der Aufbau nutzt die vollständige Hauptarbeitsfläche. Die Werkzeuge des ausgeblendeten Schaltplans sind in diesem Modus ausgeblendet; Tastenkürzel verändern keine unsichtbaren Schaltzeichen. Die Statuszeile zeigt die aktuelle Montageplatte, Millimetermaße, Objektzahl und das Aufbauraster.
 

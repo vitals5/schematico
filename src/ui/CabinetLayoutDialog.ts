@@ -1,4 +1,10 @@
 import { mountEngineeringVisualLens } from "./EngineeringVisualLens";
+import {
+  createMeterCabinet,
+  meterCabinetHeights,
+  meterFieldLabel,
+  type MeterFieldKind,
+} from "../model/MeterCabinetTemplates";
 import { visualDrawingTargets } from "./EngineeringDrawing";
 import type { Project } from "../model/types";
 import {
@@ -134,6 +140,9 @@ export class CabinetLayoutDialog {
     issues: ReturnType<typeof inspectCabinet>;
   };
   private plateExpanded = false;
+  private templateExpanded = false;
+  private templateHeight = 1100;
+  private templateFields: MeterFieldKind[] = ["meter", "distribution"];
   private panel: "project" | "standard" = "project";
   private librarySearch = "";
   private libraryCategory: CabinetLibraryCategory | "" = "";
@@ -386,7 +395,7 @@ export class CabinetLayoutDialog {
       )
       .join(
         "",
-      )}${!cabinetLayouts(this.source).some((b) => b.id === l.id) ? `<option selected value="${esc(l.id)}">${esc(l.name)} *</option>` : ""}</select></label><button class="btn" data-new>${t("cabinetNew")}</button><button class="btn" data-reload>${t("cabinetReload")}</button><button class="btn" data-undo ${this.past.length ? "" : "disabled"}>${t("cabinetUndo")}</button><button class="btn" data-redo ${this.future.length ? "" : "disabled"}>${t("cabinetRedo")}</button><button class="btn" data-pdf ${errors.length ? "disabled" : ""}>PDF</button><button class="btn" data-svg ${errors.length ? "disabled" : ""}>SVG</button></div><div class="cb-layout"><aside class="cb-tools"><details class="cb-board-settings" data-board-settings ${this.plateExpanded ? "open" : ""}><summary>${t("cabinetBoard")} · ${l.widthMm} × ${l.heightMm} mm</summary><label>${t("cabinetName")}<input class="form-input" data-board="name" value="${esc(l.name)}" maxlength="120"></label><div class="cb-fields">${[
+      )}${!cabinetLayouts(this.source).some((b) => b.id === l.id) ? `<option selected value="${esc(l.id)}">${esc(l.name)} *</option>` : ""}</select></label><button class="btn" data-new>${t("cabinetNew")}</button><button class="btn" data-meter-open>${tr("Zählerschrankvorlagen", "Meter cabinet templates")}</button><button class="btn" data-reload>${t("cabinetReload")}</button><button class="btn" data-undo ${this.past.length ? "" : "disabled"}>${t("cabinetUndo")}</button><button class="btn" data-redo ${this.future.length ? "" : "disabled"}>${t("cabinetRedo")}</button><button class="btn" data-pdf ${errors.length ? "disabled" : ""}>PDF</button><button class="btn" data-svg ${errors.length ? "disabled" : ""}>SVG</button></div><div class="cb-layout"><aside class="cb-tools">${this.meterTemplatePanel()}<details class="cb-board-settings" data-board-settings ${this.plateExpanded ? "open" : ""}><summary>${t("cabinetBoard")} · ${l.widthMm} × ${l.heightMm} mm</summary><label>${t("cabinetName")}<input class="form-input" data-board="name" value="${esc(l.name)}" maxlength="120"></label><div class="cb-fields">${[
       ["widthMm", t("cabinetWidth")],
       ["heightMm", t("cabinetHeight")],
       ["marginMm", t("cabinetMargin")],
@@ -453,6 +462,65 @@ export class CabinetLayoutDialog {
       this.plateExpanded = (e.target as HTMLDetailsElement).open;
     };
     this.bindLibrary();
+    this.el
+      .querySelector("[data-meter-open]")!
+      .addEventListener("click", () => {
+        this.templateExpanded = true;
+        this.render();
+        this.el
+          .querySelector("[data-meter-template]")
+          ?.scrollIntoView({ block: "nearest" });
+      });
+    const template = this.el.querySelector<HTMLDetailsElement>(
+      "[data-meter-template]",
+    );
+    if (template)
+      template.ontoggle = () => {
+        this.templateExpanded = template.open;
+      };
+    this.el.querySelector<HTMLSelectElement>("[data-meter-height]")!.onchange =
+      (e) => {
+        this.templateHeight = Number((e.target as HTMLSelectElement).value);
+        this.render();
+      };
+    this.el.querySelector<HTMLSelectElement>("[data-meter-fields]")!.onchange =
+      (e) => {
+        const count = Number((e.target as HTMLSelectElement).value);
+        this.templateFields = Array.from(
+          { length: count },
+          (_, i) => this.templateFields[i] ?? "distribution",
+        );
+        this.render();
+      };
+    this.el.querySelectorAll<HTMLSelectElement>("[data-meter-kind]").forEach(
+      (select) =>
+        (select.onchange = () => {
+          this.templateFields[Number(select.dataset.meterKind)] =
+            select.value as MeterFieldKind;
+          this.render();
+        }),
+    );
+    this.el
+      .querySelector("[data-meter-create]")!
+      .addEventListener("click", () =>
+        safe(() => {
+          this.selected = "";
+          this.change(
+            createMeterCabinet({
+              heightMm: this.templateHeight,
+              fields: this.templateFields,
+            }),
+          );
+        }),
+      );
+    this.el
+      .querySelector("[data-meter-remove-guides]")
+      ?.addEventListener("click", () => {
+        const next = structuredClone(l);
+        delete next.sections;
+        this.change(next);
+      });
+
     q("[data-close]").onclick = () =>
       this.embedded ? this.closeWorkspace() : this.el.remove();
     if (this.embedded)
@@ -809,6 +877,10 @@ export class CabinetLayoutDialog {
       });
       this.workspaceChanged?.();
     }
+  }
+  private meterTemplatePanel() {
+    const width = this.templateFields.length * 250 + 50;
+    return `<details class="cb-board-settings cb-meter-template" data-meter-template ${this.templateExpanded ? "open" : ""}><summary>${tr("Zählerschrankvorlagen", "Meter cabinet templates")}</summary><p class="cb-note">${tr("Herstellerunabhängige Planungsmaße · 250-mm-Felder · TH35-Schienen mit 12 TE", "Generic planning dimensions · 250-mm fields · TH35 rails with 12 modules")}</p><div class="cb-fields"><label>${tr("Felder", "Fields")}<select class="form-input" data-meter-fields>${[1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${n === this.templateFields.length ? "selected" : ""}>${n}</option>`).join("")}</select></label><label>${tr("Höhe", "Height")}<select class="form-input" data-meter-height>${meterCabinetHeights.map((h) => `<option value="${h}" ${h === this.templateHeight ? "selected" : ""}>${h} mm</option>`).join("")}</select></label></div>${this.templateFields.map((kind, i) => `<label>${tr("Feld", "Field")} ${i + 1}<select class="form-input" data-meter-kind="${i}">${(["meter", "distribution", "reserve"] as const).map((value) => `<option value="${value}" ${kind === value ? "selected" : ""}>${meterFieldLabel(value)}</option>`).join("")}</select></label>`).join("")}<p class="cb-note">${width} × ${this.templateHeight} mm</p><button class="btn btn-primary" data-meter-create>${tr("Als neuen Aufbau einfügen", "Insert as new cabinet layout")}</button><p class="cb-note">${tr("Zählerbereiche bleiben für Zähler frei. Bestehende Aufbauten bleiben erhalten.", "Meter spaces remain free for meters. Existing layouts are preserved.")}</p></details>${this.layout.sections?.length ? `<button class="btn" data-meter-remove-guides>${tr("Feldeinteilung entfernen", "Remove field guides")}</button>` : ""}`;
   }
   private libraryPanel(rails: CabinetItem[]) {
     const list = findCabinetStandards(this.librarySearch, this.libraryCategory),
