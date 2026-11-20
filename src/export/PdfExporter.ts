@@ -64,10 +64,20 @@ export function projectPdfPages(project: Project, options: Pick<PdfExportOptions
     if (!page) throw Error('pdfPageMissing');
     pages = [page];
   }
-  return pages.filter(page =>
-    (page.pageType !== 'parts_list' || options.includePartsList) &&
-    (page.pageType !== 'terminal_diagram' || options.includeTerminalDiagram)
-  );
+  return pages.filter(page => {
+    let kind = page.pageType;
+    // Earlier imports did not classify BOM pages. Limit this compatibility
+    // fallback to native drawings with an unambiguous, complete report heading.
+    if (kind === 'schematic' && page.importedDrawing?.source === 'NATIVE_CAD') {
+      const title = page.title.trim();
+      if (/^(?:artikel(?:summen)?stückliste|summenstückliste|stückliste|bill of materials|parts list|bom)(?:\s*[:(–—-].*)?$/i.test(title))
+        kind = 'parts_list';
+      else if (/^(?:klemmen(?:anschluss)?plan|klemmenliste|terminal (?:diagram|plan|list))(?:\s*[:(–—-].*)?$/i.test(title))
+        kind = 'terminal_diagram';
+    }
+    return (kind !== 'parts_list' || options.includePartsList) &&
+      (kind !== 'terminal_diagram' || options.includeTerminalDiagram);
+  });
 }
 
 export class PdfExporter {

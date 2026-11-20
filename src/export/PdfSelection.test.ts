@@ -26,6 +26,20 @@ const options: PdfExportOptions = {
   includeTerminalDiagram: false, includePartsList: false,
   plotFrame: true, additionalSections: [],
 };
+const older = structuredClone(project);
+older.pages[3].pageType = 'schematic';
+older.pages[3].title = 'Artikelstückliste';
+older.pages[3].importedDrawing = { source: 'NATIVE_CAD', graphics: [], diagnostics: [] };
+older.pages[4].pageType = 'schematic';
+older.pages[4].title = 'Klemmenanschlussplan - Hauptverteilung';
+older.pages[4].importedDrawing = { source: 'NATIVE_CAD', graphics: [], diagnostics: [] };
+assert.equal(projectPdfPages(older, options).length, 3, 'Older native report pages obey deselection');
+assert.equal(projectPdfPages(older, { ...options, includePartsList: true }).length, 4);
+assert.equal(projectPdfPages(older, { ...options, includeTerminalDiagram: true }).length, 4);
+older.pages[3].importedDrawing = undefined;
+assert.equal(projectPdfPages(older, options).length, 4, 'A manually named drawing is not reclassified');
+older.pages[4].title = 'Klemmenplan erstellen und Verdrahtung prüfen';
+assert.equal(projectPdfPages(older, options).length, 5, 'A title merely mentioning a report is not a report heading');
 const bom = mock.method(PartsListGenerator, "generatePartsList");
 const terminal = mock.method(TerminalDiagramGenerator, "generateTerminalReport");
 const renderBom = mock.method(PdfExporter as any, "renderPartsListPage");

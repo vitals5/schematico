@@ -19,6 +19,10 @@ def fixture():
         page = copy.deepcopy(original)
         page.update(id=kind, pageNumber=str(len(project['pages']) + 1),
                     title=kind, pageType=kind)
+        if kind == 'parts_list':
+            # Legacy imports stored BOM graphics as an ordinary schematic page.
+            page.update(pageType='schematic', title='Artikelstückliste',
+                        importedDrawing=dict(source='NATIVE_CAD', graphics=[], diagnostics=[]))
         page['texts'] = [dict(id=kind, text='SOURCE_' + kind, x=100, y=100,
                               fontSize=10, fontColor='#000000', fontWeight='normal',
                               fontStyle='normal', align='start', rotation=0)]
