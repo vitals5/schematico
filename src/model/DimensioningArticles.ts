@@ -7,6 +7,7 @@ import type {
 } from "./ElectricalDimensioning";
 import { effectiveArticles } from "./ArticleAssignments";
 import { tr } from "../i18n";
+import { uniqueCable, cablePartFindings, sameCablePartData, validateCablePart } from './CableArticles';
 
 export const circuitArticleFields = {
   cable: [
@@ -30,6 +31,7 @@ export const circuitArticleFields = {
 } as const satisfies Record<string, readonly NumericDimensioningKey[]>;
 export type CircuitArticleRole = "cable" | "protection" | "load" | "upstream";
 export interface CircuitArticle {
+  cable?: import('./CableArticles').CableArticleBinding;
   article: AssignedArticle;
   device?: ComponentAddress;
   parameters?: Partial<Record<NumericDimensioningKey, number>>;
@@ -43,6 +45,7 @@ export function dimensioningArticleCandidates(
   catalogue: AssignedArticle[] = [],
 ): AssignedArticle[] {
   const all = [
+    ...project.pages.flatMap(p=>(p.cables??[]).flatMap(c=>{try{return c.article?[validateCablePart(c.article)]:[];}catch{return [];}})),
     ...project.pages.flatMap((p) =>
       p.components.flatMap((c) => effectiveArticles(c, project)),
     ),
@@ -246,6 +249,16 @@ export function circuitArticleIssues(
             "Invalid electrical part data.",
           ),
         );
+      }
+    }
+    if(s.cable){
+      const cable=project&&uniqueCable(project,s.cable);
+      if(role!=='cable'||s.device||!cable?.article||circuitArticleKey(cable.article)!==circuitArticleKey(s.article))
+        add(role+':cable',tr('Kabelartikel stimmt nicht mit der verknüpften Kabeldefinition überein.','Cable part does not match the linked cable definition.'));
+      else{
+        for(const issue of cablePartFindings(cable).filter(i=>i.code!=='cable_length_missing'))add(role+':cable',issue.details);
+        if(!sameCablePartData(cable.article,s.article))add(role+':cable_ratings',tr('Kabelkennwerte oder Quelle wurden geändert. Erneut ausdrücklich übernehmen.','Cable ratings or source have changed. Explicitly adopt them again.'));
+        if(s.cable.adoptedLengthM!==undefined&&(s.cable.adoptedLengthM!==cable.lengthM||record.lengthM!==s.cable.adoptedLengthM))add(role+':cable_length',tr('Übernommene Kabellänge wurde geändert. Erneut übernehmen oder Kabelbezug lösen.','Adopted cable length has changed. Adopt again or detach the cable binding.'));
       }
     }
     if (s.device) {

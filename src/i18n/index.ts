@@ -7,6 +7,13 @@ const listeners = new Set<Listener>();
 
 export const translations = {
   de: {
+    inspectionRule_cable_article_assignment: "Kabelartikel und Nennangaben",
+    inspectionRule_cable_length_missing: "Unbekannte reale Kabellängen",
+    inspectionRule_cable_length_invalid: "Ungültige reale Kabellängen",
+    cable_article_assignment: "Kabelartikel oder Nennangaben sind widersprüchlich.",
+    cable_length_missing: "Reale Kabellänge fehlt; die Stücklistenmenge bleibt unbekannt.",
+    cable_length_invalid: "Reale Kabellänge ist ungültig.",
+
     projectRevisions: "Projektstände & Freigaben…",
     electricalDimensioning: "Elektrische Dimensionierung…",
     pdfDimensioning: "Elektrische Dimensionierung",
@@ -1730,6 +1737,13 @@ export const translations = {
     ctxDoorFlipSwing: '🚪 Türanschlag spiegeln'
   },
   en: {
+    inspectionRule_cable_article_assignment: "Cable part and nominal data",
+    inspectionRule_cable_length_missing: "Unknown real cable lengths",
+    inspectionRule_cable_length_invalid: "Invalid real cable lengths",
+    cable_article_assignment: "Cable part or nominal data is inconsistent.",
+    cable_length_missing: "Real cable length is missing; purchasing quantity remains unknown.",
+    cable_length_invalid: "Real cable length is invalid.",
+
     projectRevisions: "Project revisions & approvals…",
     electricalDimensioning: "Electrical dimensioning…",
     pdfDimensioning: "Electrical dimensioning",

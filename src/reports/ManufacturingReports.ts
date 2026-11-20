@@ -1,3 +1,4 @@
+import {cablePartLabel} from "../model/CableArticles";
 import type { Project } from "../model/types";
 import { projectRevision } from "../layout/types";
 import { TerminalDiagramGenerator } from "./TerminalDiagram";
@@ -59,6 +60,8 @@ const schemas: Record<ReportKind, { title: string; columns: string[] }> = {
       "Querschnitt",
       "Reserve",
       "Ziele",
+      "Kabelartikel",
+      "Reale Kabellänge [m]",
     ],
   },
   connectors: { title: "Steckerplan", columns: connectorColumns },
@@ -362,6 +365,8 @@ export function manufacturingRows(
         r.crossSection,
         r.reserve ? "Ja" : "",
         r.targets.join(" | "),
+        r.article,
+        r.lengthM,
       ],
       addresses,
       [r.pageId],
@@ -384,6 +389,8 @@ export function manufacturingRows(
               c.crossSection,
               "",
               "",
+              cablePartLabel(c.article),
+              c.lengthM,
             ],
             [],
             [page.id],

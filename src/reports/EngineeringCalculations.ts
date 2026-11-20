@@ -80,7 +80,7 @@ export function dimensioningReportRows(project: Project): ReportRow[] {
       cells: { c0: r.name, c1: label, c2: status, c3: detail },
     });
     return [
-      ...Object.entries(input?.articles??{}).map(([role,selection])=>row('article-'+role,'Artikel / '+role,'Auslegungszuordnung',JSON.stringify({manufacturer:selection.article.manufacturer,articleNumber:selection.article.articleNumber,variant:selection.article.variant,device:selection.device,parameters:selection.parameters,source:selection.source}))),
+      ...Object.entries(input?.articles??{}).map(([role,selection])=>row('article-'+role,'Artikel / '+role,'Auslegungszuordnung',JSON.stringify({manufacturer:selection.article.manufacturer,articleNumber:selection.article.articleNumber,variant:selection.article.variant,device:selection.device,cable:selection.cable,parameters:selection.parameters,source:selection.source}))),
       row(
         "system",
         "Berechnungsmodell",

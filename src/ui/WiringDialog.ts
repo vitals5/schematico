@@ -4,6 +4,7 @@ import './TerminalCableWorkspace.css';
 import {terminalCableSnapshot,type TerminalCableSnapshot} from './TerminalCableVisuals';
 import {mountTerminalCableWorkspace,type TerminalCableViewState} from './TerminalCableWorkspace';
 import { finishEngineeringDialog } from './EngineeringDialog';
+import {CableArticleDialog} from './CableArticleDialog';
 import {CableRepairDialog} from './CableRepairDialog';
 import type { Project } from '../model/types';
 import { ProjectIndex } from '../model/ProjectIndex';
@@ -15,7 +16,7 @@ import {
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
 import { articleError, downloadArticleFile } from './ArticleCatalogDialog';
 import { escapeSvg as esc } from '../model/ImportedDrawing';
-import { t } from '../i18n';
+import { t, tr } from '../i18n';
 const csv = (rows: unknown[][]) =>
   rows
     .map((row) =>
@@ -181,7 +182,7 @@ export class WiringDialog {
        `<div>${esc(w.from.componentId + ':' + w.from.pinId + ' → ' + w.to.componentId + ':' + w.to.pinId)} <button class="btn" data-remove-bridge="${esc(w.id)}">${t('wiringBridgeRemove')}</button></div>`,
    )
    .join('')}</details></fieldset>
- <fieldset style="margin-top:12px"><legend>${t('wiringCables')}</legend><select class="form-input" data-cable><option value="">—</option>${cables.map((o) => `<option value="${esc(o.value)}" ${o.value === this.cable ? 'selected' : ''}>${esc(o.page.pageNumber + ' · ' + o.c.bmk + ' · ' + o.c.cableType)}</option>`).join('')}</select>${selectedCable ? `${field('cable-bmk', 'BMK', selectedCable.c.bmk)}${field('cable-type', t('engineeringCableType'), selectedCable.c.cableType)}${field('cable-section', t('wiringCrossSection'), selectedCable.c.crossSection)}${field('count', t('wiringCoreCount'), selectedCable.c.coreCount === undefined ? '' : String(selectedCable.c.coreCount))}<button class="btn" data-save-cable>${t('articlesPreview')}</button><button class="btn" data-reserves>${t('wiringReserves')}</button><div class="eng-core-picker"><label>${t('engineeringCableCore')}<select class="form-input" data-core><option value="">—</option>${selectedCable.c.cores.map((c) => `<option value="${esc(c.id)}" ${this.core === c.id ? 'selected' : ''}>${esc((c.designation ?? '?') + ' · ' + (c.color ?? '') + (c.reserve ? ' · ' + t('wiringReserve') : ''))}</option>`).join('')}</select></label></div>` : ''}
+ <fieldset style="margin-top:12px"><legend>${t('wiringCables')}</legend><select class="form-input" data-cable><option value="">—</option>${cables.map((o) => `<option value="${esc(o.value)}" ${o.value === this.cable ? 'selected' : ''}>${esc(o.page.pageNumber + ' · ' + o.c.bmk + ' · ' + o.c.cableType)}</option>`).join('')}</select>${selectedCable ? `<button class="btn" data-cable-article>${esc(tr('Artikel, Länge & Stromkreis','Part, length & circuit'))}</button>${field('cable-bmk', 'BMK', selectedCable.c.bmk)}${field('cable-type', t('engineeringCableType'), selectedCable.c.cableType)}${field('cable-section', t('wiringCrossSection'), selectedCable.c.crossSection)}${field('count', t('wiringCoreCount'), selectedCable.c.coreCount === undefined ? '' : String(selectedCable.c.coreCount))}<button class="btn" data-save-cable>${t('articlesPreview')}</button><button class="btn" data-reserves>${t('wiringReserves')}</button><div class="eng-core-picker"><label>${t('engineeringCableCore')}<select class="form-input" data-core><option value="">—</option>${selectedCable.c.cores.map((c) => `<option value="${esc(c.id)}" ${this.core === c.id ? 'selected' : ''}>${esc((c.designation ?? '?') + ' · ' + (c.color ?? '') + (c.reserve ? ' · ' + t('wiringReserve') : ''))}</option>`).join('')}</select></label></div>` : ''}
  ${selectedCore ? `${field('designation', t('engineeringCoreDesignation'), selectedCore.designation ?? '')}${field('color', t('wiringColor'), selectedCore.color ?? '')}${field('section', t('wiringCrossSection'), selectedCore.crossSection ?? selectedCable!.c.crossSection)}<label><input type="checkbox" data-reserve ${selectedCore.reserve ? 'checked' : ''}> ${t('wiringReserve')}</label><label>${t('wiringWireIds')}<select class="form-input" multiple size="5" data-wires>${selectedCable!.page.wires.map((w) => `<option value="${esc(w.id)}" ${selectedCore.wireIds?.includes(w.id) ? 'selected' : ''}>${esc(w.id + ' · ' + w.from.componentId + ':' + w.from.pinId + ' → ' + w.to.componentId + ':' + w.to.pinId)}</option>`).join('')}</select></label><button class="btn" data-save-core>${t('articlesPreview')}</button>` : ''}</fieldset>
  <p>${t('wiringExportHint')}</p><button class="btn" data-export>${t('wiringExport')}</button>${this.preview ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><pre style="white-space:pre-wrap">${esc(this.summary)}</pre><ul>${this.preview.findings.map((i) => `<li>${esc(t(i.code as any))} · ${esc(i.componentId ?? i.cableId ?? '')} · ${esc(i.coreId ?? '')} · ${esc(i.details)}</li>`).join('')}</ul></fieldset>` : ''}<footer style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" data-close>${t('close')}</button><button class="btn" data-apply ${this.preview ? '' : 'disabled'}>${t('articlesApply')}</button></footer></section>`;
     if (
@@ -368,6 +369,8 @@ export class WiringDialog {
             'crossSection',
             'reserve',
             'targets',
+            'article',
+            'lengthM',
           ],
           ...this.snapshot.schedule.map((r) => [
             r.pageNumber,
@@ -378,6 +381,8 @@ export class WiringDialog {
             r.crossSection,
             r.reserve,
             r.targets.join(', '),
+            r.article,
+            r.lengthM,
           ]),
         ]),
         'schematico-cables.csv',
@@ -422,6 +427,7 @@ export class WiringDialog {
             true;
           this.el.querySelector('[data-preview]')?.remove();
         });
+    this.el.querySelector('[data-cable-article]')?.addEventListener('click',()=>{if(!selectedCable)return;new CableArticleDialog(this.getProject,p=>{this.onApply(p);this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},{pageId:selectedCable.page.id,cableId:selectedCable.c.id}).show();});
     this.el.querySelector('[data-repairs]')?.addEventListener('click',()=>new CableRepairDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
     mountTerminalCableWorkspace(this.el,this.snapshot,this.workspace,{
       openConfigurator:()=>{const identity=this.snapshot.terminals[0]?.entry.stripIdentity??this.source.terminalStrips?.[0]??{plant:'',location:'',strip:''};new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show();},

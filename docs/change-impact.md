@@ -12,6 +12,8 @@ Die vorgeschlagenen Prüffamilien betreffen unter anderem Spannungsfall, Strombe
 
 ## Konkrete Korrekturvorschläge
 
+Explizite Bezüge von Stromkreisen auf Kabeldefinitionen werden ebenfalls verfolgt. Artikel-, Kennwert- und Längenänderungen einer solchen Kabeldefinition erreichen die betroffene Berechnung auch ohne zugeordnetes Projektgerät. **Verbindungen prüfen** öffnet in diesem Fall direkt das passende Kabel. Siehe [Kabelartikel](cable-articles.md).
+
 Die Oberfläche kann ausdrücklich gebundene, inzwischen geänderte Hauptartikel in die zugehörige Berechnung übernehmen. Dokumentierte Kennwerte werden angeboten; Werte werden nicht aus Artikelbeschreibungen geschätzt. Bekannte inkompatible Artikel werden nicht automatisch übernommen. Ein Artikelwechsel verwirft überholte gerätepaarbezogene Selektivitätsbelege. Fehlende Daten bleiben unvollständig.
 
 Eine bereits mit Quelldaten verknüpfte Bezugslinie kann ihre gespeicherte reale Länge und ihren Querschnitt erneut an die Berechnung übergeben. Dafür müssen Objekt und Anschlüsse weiterhin eindeutig und unverändert zugeordnet sein. Der Nutzer bestätigt zusätzlich, dass die Bezugslinie die vollständige Stromkreisleitung repräsentiert. Aus Zeichnungsabständen wird keine Leitungslänge abgeleitet. Ein neuer Querschnitt ersetzt nicht automatisch den ausgewählten Kabelartikel; Widersprüche erscheinen weiterhin in der Berechnung.

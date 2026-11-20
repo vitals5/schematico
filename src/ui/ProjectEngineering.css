@@ -1,5 +1,6 @@
 #projectRevisionsDialog .eng-body,
 #changeImpactDialog .eng-body,
+#cableArticleDialog .eng-body,
 #electricalDimensioningDialog .eng-body {
   display: flex;
   flex-direction: column;
@@ -46,6 +47,15 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+#cableArticleDialog .pe-sidebar label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+#cableArticleDialog input[type="checkbox"] {
+  flex: none;
+  margin-top: 3px;
 }
 .pe-workspace textarea {
   min-height: 62px;

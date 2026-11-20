@@ -6,6 +6,8 @@ Die Daten liegen unter `Project.dimensioning` und bleiben in den eigenen Projekt
 
 ## Last und Spannungsfall
 
+Ein Leitungsartikel kann zusätzlich über eine konkrete Kabeldefinition mit Kabelverwaltung und Meterware in der Stückliste verbunden werden. Reale Länge und Kennwerte werden nach Vorschau ausdrücklich übernommen; spätere Quellenänderungen werden erkannt. Siehe [Kabelartikel und Stromkreisbezug](cable-articles.md).
+
 Unterstützt werden Gleichstrom mit zwei Leitern, einphasiger Wechselstrom und ein symmetrischer Drehstromkreis. Zu erfassen sind Spannung, einfache reale Leitungslänge, Querschnitt, Cu/Al und Leiterbetriebstemperatur. Bei Drehstrom ist die Spannung zwischen Außenleitern gemeint. Als Lastangabe dienen entweder der Betriebsstrom oder die abgegebene Wirkleistung mit Wirkungsgrad; bei AC kommt der Leistungsfaktor hinzu. Für eine rein elektrische Last wird der Wirkungsgrad ausdrücklich mit 1 angesetzt.
 
 Eine AC-Reaktanz ist ausdrücklich anzugeben. `0` bedeutet bewusst vernachlässigt; ein leeres Feld wird nicht als Null interpretiert. Der zulässige Spannungsfall wird ebenfalls ausdrücklich eingegeben. Es gibt keinen erfundenen pauschalen Normgrenzwert.

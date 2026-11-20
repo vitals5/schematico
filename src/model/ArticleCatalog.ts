@@ -2,6 +2,7 @@ import type {ArticlePackageAssets} from './ArticlePackageAssets';
 import type { CatalogArticle } from './ArticleTypes';
 import type { Project } from './types';
 import { effectiveArticles } from './ArticleAssignments';
+import {validateCablePart} from './CableArticles';
 import defaultCatalog from '../../catalog/articles.json';
 export { catalogKey, validateCatalogArticle } from './CatalogRecord';
 import { catalogKey, validateCatalogArticle } from './CatalogRecord';
@@ -87,6 +88,10 @@ export function projectArticles(p: Project): CatalogArticle[] {
             },
           ),
         );
+  for(const page of p.pages)for(const cable of page.cables??[])if(cable.article){
+    let a;try{a=validateCablePart(cable.article);}catch{continue;}
+    rows.push(validateCatalogArticle(a.snapshot??{articleNumber:a.articleNumber,manufacturer:a.manufacturer,variant:a.variant,description:cable.description||cable.cableType,origin:'project_import',verification:'unverified'}));
+  }
   // Preserve distinct variants and prefer the most complete record for an exact
   // key only if no specification conflicts. Never invent manufacturer functions.
   const byKey = new Map<string, CatalogArticle>();

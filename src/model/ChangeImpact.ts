@@ -41,6 +41,7 @@ import {
   reportKinds,
 } from "../reports/ManufacturingReports";
 import { tr } from "../i18n";
+import {uniqueCable,type CableAddress} from "./CableArticles";
 
 export type ImpactStatus = "open" | "in_progress" | "reviewed";
 export interface ImpactDecision {
@@ -73,6 +74,7 @@ export interface ImpactRow {
   kind: "circuit" | "unassigned" | "documents";
   label: string;
   circuitId?: string;
+  cable?: CableAddress;
   addresses: ComponentAddress[];
   causes: ImpactCause[];
   checks: ImpactCheck[];
@@ -231,6 +233,7 @@ function recordSignature(r?: CircuitDimensioning) {
           articles[role] && {
             part: partSignature(articles[role]!.article),
             device: articles[role]!.device,
+            cable: articles[role]!.cable,
             source: articles[role]!.source,
             parameters: articles[role]!.parameters,
           },
@@ -255,6 +258,8 @@ function cableSignature(c?: CableDefinition) {
   return (
     c && {
       type: c.cableType,
+      part: partSignature(c.article),
+      lengthM: c.lengthM,
       crossSection: c.crossSection,
       coreCount: c.coreCount,
       cores: c.cores.map((core) => ({
@@ -709,7 +714,7 @@ export async function analyzeChangeImpact(
         );
       }
       if (d.kind === "cable")
-        return [before, after].some((p, i) => {
+        return [a,b].some(r=>r?.articles?.cable?.cable?.pageId===d.pageId&&r?.articles?.cable?.cable?.cableId===d.id)||[before, after].some((p, i) => {
           const cable = p.pages
             .find((page) => page.id === d.pageId)
             ?.cables?.find((c) => c.id === d.id);
@@ -755,6 +760,7 @@ export async function analyzeChangeImpact(
       key: "circuit:" + id,
       kind: "circuit",
       circuitId: id,
+      cable: b?.articles?.cable?.cable??a?.articles?.cable?.cable,
       label: b?.name ?? a?.name ?? id,
       addresses,
       causes,
@@ -772,6 +778,7 @@ export async function analyzeChangeImpact(
     report.rows.push({
       key: "unassigned:" + cause.change.key,
       kind: "unassigned",
+      cable: cause.change.kind==="cable"&&cause.change.pageId?{pageId:cause.change.pageId,cableId:cause.change.id}:undefined,
       label: cause.change.label,
       addresses:
         cause.change.kind === "component" && cause.change.pageId
@@ -849,6 +856,7 @@ export async function analyzeChangeImpact(
         dependencies:
           row.kind === "circuit"
             ? [before, after].map((p) => ({
+                sourceCable: row.cable?cableSignature(uniqueCable(p,row.cable)):undefined,
                 record: recordSignature(
                   p.dimensioning?.find((r) => r.id === row.circuitId),
                 ),

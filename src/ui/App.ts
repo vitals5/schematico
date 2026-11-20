@@ -577,7 +577,7 @@ export class App {
     new ChangeImpactDialog(()=>this.project,p=>this.applyProjectTransaction(p),{
       circuit:id=>{const r=this.project.dimensioning?.find(r=>r.id===id);if(r)void this.openElectricalDimensioning(r);},
       articles:addresses=>this.openArticleWorkbench(addresses),
-      wiring:()=>this.openWiringWorkbench(),
+      wiring:address=>this.openWiringWorkbench(address?{...address,x:0,y:0,pageNumber:this.project.pages.find(p=>p.id===address.pageId)?.pageNumber??''}:undefined),
       revisions:()=>this.openProjectRevisions(),
     },baselineId).show();
   }

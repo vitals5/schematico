@@ -11,6 +11,7 @@ import {
   filterCircuitArticleRows,
   circuitRoleLabel,
   type CircuitArticleFilters,
+  type CircuitArticleAssessment,
 } from "../model/CircuitArticleSelection";
 import {
   electricalFields,
@@ -80,6 +81,8 @@ export class CircuitArticlePicker {
       projectKeys: ReadonlySet<string>;
       onChoose: (article: AssignedArticle, adopt: boolean) => void;
       selected?: AssignedArticle;
+      assess?: (article:AssignedArticle)=>CircuitArticleAssessment;
+      contextLabel?: string;
     },
   ) {
     this.key = config.selected ? circuitArticleKey(config.selected) : "";
@@ -90,6 +93,7 @@ export class CircuitArticlePicker {
     this.el.className = "modal-backdrop circuit-part-picker";
     this.el.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="circuitPartPickerTitle"><header><div class="cpp-title-icon">${circuitRoleIcon(this.config.role)}</div><div><small>${esc(tr("Stromkreis-Assistent · Artikelauswahl", "Circuit assistant · part selection"))}</small><h2 id="circuitPartPickerTitle">${esc(circuitRoleLabel(this.config.role))}</h2></div><button type="button" class="btn" data-cpp-close aria-label="${esc(tr("Schließen", "Close"))}">✕</button></header><div class="cpp-filters"><label class="cpp-search">${esc(tr("Suchen", "Search"))}<input class="form-input" data-cpp-search placeholder="${esc(tr("Hersteller, Artikelnummer, Variante, Beschreibung …", "Manufacturer, part number, variant, description …"))}"></label><label>${esc(tr("Hersteller", "Manufacturer"))}<select class="form-input" data-cpp-manufacturer></select></label><div class="cpp-checks"><label><input type="checkbox" data-cpp-filter="projectOnly">${esc(tr("Im Projekt verwendet", "Used in project"))}</label><label><input type="checkbox" data-cpp-filter="withRatingsOnly">${esc(tr("Mit Kennwerten", "With ratings"))}</label><label><input type="checkbox" data-cpp-filter="includeIncompatible">${esc(tr("Auch abweichende Artikel zeigen", "Include incompatible parts"))}</label></div></div><div class="cpp-content"><div class="cpp-results"><p data-cpp-count role="status" aria-live="polite"></p><div class="cpp-list" data-cpp-list></div><nav aria-label="${esc(tr("Ergebnisseiten", "Result pages"))}"><button type="button" class="btn" data-cpp-prev>←</button><span data-cpp-page></span><button type="button" class="btn" data-cpp-next>→</button></nav></div><aside class="cpp-detail" data-cpp-detail></aside></div><p class="cpp-error" role="alert" data-cpp-error></p><footer><span>${esc(tr("Grunddatenvergleich; Verlegebedingungen und Stromkreisberechnung bleiben zu prüfen.", "Basic data comparison; installation conditions and circuit calculation still require checking."))}</span><button type="button" class="btn" data-cpp-close>${esc(tr("Abbrechen", "Cancel"))}</button><button type="button" class="btn" data-cpp-choose>${esc(tr("Nur Artikel auswählen", "Select part only"))}</button><button type="button" class="btn btn-primary" data-cpp-adopt>${esc(tr("Artikel und Kennwerte übernehmen", "Adopt part and ratings"))}</button></footer></section>`;
     document.body.append(this.el);
+    if(this.config.contextLabel)this.el.querySelector('header small')!.textContent=this.config.contextLabel;
     bindArticleModalKeys(this.el, () => this.close());
     this.el
       .querySelectorAll("[data-cpp-close]")
@@ -196,6 +200,7 @@ export class CircuitArticlePicker {
       this.config.record,
       this.config.projectKeys,
     );
+    if(this.config.assess)this.assessed=this.assessed.map(row=>({...row,assessment:this.config.assess!(row.article)})).sort((a,b)=>({ready:0,missing:1,incompatible:2})[a.assessment.status]-({ready:0,missing:1,incompatible:2})[b.assessment.status]||a.article.articleNumber.localeCompare(b.article.articleNumber));
     this.update();
   }
   private update() {

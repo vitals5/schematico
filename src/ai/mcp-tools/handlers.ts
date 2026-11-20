@@ -1851,12 +1851,17 @@ export async function handleGetPartsList(
 ): Promise<any> {
   const project = manager.getProject();
   const parts = PartsListGenerator.generatePartsList(project);
-  const totalQuantity = parts.reduce((sum, p) => sum + p.quantity, 0);
+  const totalQuantity = parts.filter(p=>p.unit!=="m").reduce((sum, p) => sum + p.quantity, 0);
+  const cableLengthM=parts.filter(p=>p.unit==="m").reduce((sum,p)=>sum+p.quantity,0);
+  const cableLengthUncertain=parts.some(p=>p.unit==="m"&&p.quantityUncertain);
 
   return {
     success: true,
     totalEntries: parts.length,
     totalQuantity,
+    quantityUnit: "piece",
+    cableLengthM,
+    cableLengthUncertain,
     parts,
     items: parts
   };

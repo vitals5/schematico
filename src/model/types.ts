@@ -300,6 +300,10 @@ export interface CableConnectionHint {
 }
 export interface CableRepairRecord {kind:string;confirmed:true;evidence:unknown;at:string}
 export interface CableDefinition {
+  /** Selected physical cable article; purchasing quantity is lengthM, never conductor count. */
+  article?: AssignedArticle;
+  /** Explicit real cable length in metres; independent of drawn geometry and wire lengths. */
+  lengthM?: number;
   repairHistory?:CableRepairRecord[];
   id: string;
   symbolId?: string;

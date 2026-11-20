@@ -8,6 +8,7 @@ import {
 import { ElectricalNetService } from './ElectricalNetService';
 import { projectRevision } from '../layout/types';
 import {terminalStripBindings,terminalIdentity,terminalStripKey} from './TerminalStripTypes';
+import { cablePartFindings, cablePartLabel } from './CableArticles';
 export interface TerminalSettings {
   strip: string;
   number: string;
@@ -23,7 +24,10 @@ export interface WiringFinding {
     | 'cable_wire_reused'
     | 'cable_reserve_connected'
     | 'cable_core_unassigned'
-    | 'cable_count_mismatch';
+    | 'cable_count_mismatch'
+    | 'cable_article_assignment'
+    | 'cable_length_missing'
+    | 'cable_length_invalid';
   pageId: string;
   componentId?: string;
   cableId?: string;
@@ -99,6 +103,7 @@ export function inspectWiring(
           coreId,
           details,
         });
+      for(const issue of cablePartFindings(cable))add(issue.code,undefined,issue.details);
       if (
         cable.coreCount !== undefined &&
         cable.coreCount !== cable.cores.length
@@ -134,6 +139,8 @@ export function cableSchedule(project: Project) {
         cableId: cable.id,
         bmk: cable.bmk,
         type: cable.cableType,
+        article: cablePartLabel(cable.article),
+        lengthM: cable.lengthM,
         coreId: core.id,
         designation: core.designation ?? '',
         color: core.color ?? '',

@@ -6,6 +6,7 @@ import { Project, PlacedComponent, SymbolDefinition } from '../model/types';
 import { getSymbolForComponent } from '../model/symbols';
 import { isConnectionSymbol } from '../model/ConnectionSymbols';
 import {terminalStripBindings} from '../model/TerminalStripTypes';
+import { validateCablePart, validCableLength } from '../model/CableArticles';
 
 export interface PartEntry {
   articleNumber: string;
@@ -13,10 +14,11 @@ export interface PartEntry {
   description: string;
   technicalCharacteristics: string;
   quantity: number;
+  unit?: 'm';
   quantityUncertain?: boolean;
   deviceCountUncertain?: boolean;
   variant?: string;
-  quantityBasis?: 'placement'|'source_function'|'manual_assignment'|'verified_device'|'mixed';
+  quantityBasis?: 'placement'|'source_function'|'manual_assignment'|'verified_device'|'cable_length'|'mixed';
   bmkList: string[];
 }
 
@@ -40,6 +42,7 @@ export function isConnectionComponent(comp: PlacedComponent, sym?: SymbolDefinit
 export class PartsListGenerator {
   public static generatePartsList(project: Project): PartEntry[] {
     const partsMap = new Map<string, PartEntry>();
+    const assemblyCables = new Set<string>();
     const devices=new DeviceRegistry(project);
     const invalidMembers=new Set(devices.issues.flatMap(i=>i.members.map(addressKey)));
 
@@ -84,6 +87,7 @@ export class PartsListGenerator {
               basis: 'placement' as PartEntry['quantityBasis'],
             }];
 
+        for(const id of groupSel.cableIds??[])assemblyCables.add(JSON.stringify([page.id,id]));
         for (const item of items) {
           const key = JSON.stringify([item.article, item.manufacturer, item.variant ?? '']);
           if (!partsMap.has(key)) {
@@ -153,8 +157,20 @@ export class PartsListGenerator {
       if(!partsMap.has(key))partsMap.set(key,{articleNumber:a.articleNumber,manufacturer:a.manufacturer,variant:a.variant||undefined,description:a.snapshot?.description||position.description||'Zubehör',technicalCharacteristics:'-',quantity:0,bmkList:[],quantityBasis:'manual_assignment'});
       const row=partsMap.get(key)!;row.quantity+=a.quantity!;if(row.quantityBasis!=='manual_assignment')row.quantityBasis='mixed';if(!row.bmkList.includes(tag))row.bmkList.push(tag);
     }
+    for(const page of project.pages)for(const cable of page.cables??[]){
+      if(assemblyCables.has(JSON.stringify([page.id,cable.id])))continue;
+      if(!cable.article)continue;
+      let article;try{article=validateCablePart(cable.article);}catch{continue;}
+      const key=JSON.stringify([article.articleNumber,article.manufacturer,article.variant,'m']);
+      if(!partsMap.has(key))partsMap.set(key,{articleNumber:article.articleNumber,manufacturer:article.manufacturer,variant:article.variant||undefined,description:article.snapshot?.description||cable.description||cable.cableType||'Kabel',technicalCharacteristics:[cable.coreCount,cable.crossSection].filter(v=>v!==undefined&&v!=='').join(' × '),quantity:0,unit:'m',quantityBasis:'cable_length',bmkList:[]});
+      const row=partsMap.get(key)!;
+      if(validCableLength(cable.lengthM))row.quantity=Number((row.quantity+cable.lengthM).toPrecision(12));else row.quantityUncertain=true;
+      const plant=(page.higherLevel??'').replace(/^=+/,''),location=(page.location??'').replace(/^\++/,'');
+      const tag=`${plant?'='+plant:''}${location?'+'+location:''}${cable.bmk||cable.id}`;
+      if(!row.bmkList.includes(tag))row.bmkList.push(tag);
+    }
     return Array.from(partsMap.values()).sort((a, b) => a.articleNumber.localeCompare(b.articleNumber));
   }
 }
 
-export function partQuantityLabel(part:PartEntry):string {const quantity=part.quantityUncertain?(part.quantity?`${part.quantity} + ?`:'?')+'x':`${part.quantity}x`;return (part.deviceCountUncertain?'~':'')+quantity;}
+export function partQuantityLabel(part:PartEntry):string {const unit=part.unit==='m'?' m':'x',quantity=part.quantityUncertain?(part.quantity?`${part.quantity} + ?`:'?')+unit:`${part.quantity}${unit}`;return (part.deviceCountUncertain?'~':'')+quantity;}

@@ -38,7 +38,7 @@ import "./ChangeImpactDialog.css";
 export interface ImpactNavigation {
   circuit: (id: string) => void;
   articles: (addresses: ComponentAddress[]) => void;
-  wiring: () => void;
+  wiring: (cable?:import("../model/CableArticles").CableAddress) => void;
   revisions: () => void;
 }
 export class ChangeImpactDialog {
@@ -234,7 +234,7 @@ export class ChangeImpactDialog {
         "",
       )}${row.causes.length > 40 ? `<p>${esc(tr("Vollständige Ursachen im JSON-Export.", "Full causes in the JSON export."))}</p>` : ""}</details>
     ${row.decision ? `<p class="ci-decision">${esc(row.decision.author)} · ${formatEngineeringDate(row.decision.at)}<br>${esc(row.decision.reason)}</p>` : ""}
-    <div class="pe-actions">${row.circuitId && this.source.dimensioning?.some((r) => r.id === row.circuitId) ? `<button class="btn" data-circuit="${index}">${esc(tr("Dimensionierung öffnen", "Open dimensioning"))}</button>` : ""}${row.addresses.length ? `<button class="btn" data-articles="${index}">${esc(tr("Artikel bearbeiten", "Edit parts"))}</button>` : ""}${row.checks.includes("connections") ? `<button class="btn" data-wiring>${esc(tr("Verbindungen prüfen", "Review connections"))}</button>` : ""}</div></article>`;
+    <div class="pe-actions">${row.circuitId && this.source.dimensioning?.some((r) => r.id === row.circuitId) ? `<button class="btn" data-circuit="${index}">${esc(tr("Dimensionierung öffnen", "Open dimensioning"))}</button>` : ""}${row.addresses.length ? `<button class="btn" data-articles="${index}">${esc(tr("Artikel bearbeiten", "Edit parts"))}</button>` : ""}${row.checks.includes("connections") ? `<button class="btn" data-wiring="${index}">${esc(tr("Verbindungen prüfen", "Review connections"))}</button>` : ""}</div></article>`;
   }
   private render() {
     const scrollMain = this.el.querySelector(".pe-main")?.scrollTop ?? 0;
@@ -372,7 +372,7 @@ export class ChangeImpactDialog {
         );
       this.el
         .querySelectorAll<HTMLElement>("[data-wiring]")
-        .forEach((b) => (b.onclick = () => this.jump(this.navigation.wiring)));
+        .forEach((b) => (b.onclick = () => this.jump(()=>this.navigation.wiring(r.rows[Number(b.dataset.wiring)].cable))));
       this.el.querySelectorAll<HTMLInputElement>("[data-proposal]").forEach(
         (b) =>
           (b.onchange = () => {
