@@ -38,6 +38,8 @@ export function focusArticleModal(el: HTMLElement) {
   const section = el.querySelector<HTMLElement>('section');
   if (section) {
     section.tabIndex = -1;
-    if (!el.contains(document.activeElement)) section.focus();
+    if (!el.contains(document.activeElement)) {
+      section.focus({ preventScroll: true });
+    }
   }
 }

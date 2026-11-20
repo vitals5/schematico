@@ -704,10 +704,13 @@ async function runTests() {
     },
     manager,
   );
+  const ratedAmps =
+    articleCompleteRes.article?.electrical?.protectiveCurrentA ??
+    articleCompleteRes.article?.electrical?.currentA;
   if (
     !articleCompleteRes.success ||
     articleCompleteRes.article?.symbolId !== 'circuit_breaker_3p' ||
-    articleCompleteRes.article?.electrical?.currentA !== 16 ||
+    ratedAmps !== 16 ||
     articleCompleteRes.article?.dimensions?.widthMm !== 54
   ) {
     throw new Error('Test 31 failed: complete_article_data error: ' + JSON.stringify(articleCompleteRes));
