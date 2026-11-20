@@ -151,6 +151,15 @@
       "verification": "unverified"
     },
     {
+      "id": "[\"Lapp\",\"16000513\",\"\"]",
+      "articleNumber": "16000513",
+      "manufacturer": "Lapp",
+      "variant": "",
+      "description": "Type: 16000513NYM-J 5X4 NCCKabel und Leitungen für feste Verlegung NYM-JorderNumber: 16000513voltage: 300/500VexternalDocuments: https://www.lappkabel.de/produktfinder.html?q=16000513",
+      "origin": "user",
+      "verification": "unverified"
+    },
+    {
       "id": "[\"MEAN WELL\",\"HDR-30-12\",\"\"]",
       "articleNumber": "HDR-30-12",
       "manufacturer": "MEAN WELL",
