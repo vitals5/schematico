@@ -1,5 +1,5 @@
 import type { Project } from "../model/types";
-import { PdfExporter, type PdfExportOptions } from "../export/PdfExporter";
+import { PdfExporter, projectPdfPages, type PdfExportOptions } from "../export/PdfExporter";
 import {
   projectPdfChoices,
   type ProjectPdfChoice,
@@ -40,29 +40,47 @@ export class PdfExportDialog {
       )
       .join(
         "",
-      )}</div></div><p id="pdfExportStatus" role="status"></p><p data-pdf-error role="alert"></p><footer><button class="btn" id="btnPdfCancel">${t("pdfCancel")}</button><button class="btn btn-primary eng-primary" id="btnPdfDoExport">${t("pdfDoExport")}</button></footer></section>`;
+      )}</div></div><p class="pdf-hint">${t("pdfImportedReportsHint")}</p><p id="pdfExportSelection" role="status"></p><p id="pdfExportStatus" role="status"></p><p data-pdf-error role="alert"></p><footer><button class="btn" id="btnPdfCancel">${t("pdfCancel")}</button><button class="btn btn-primary eng-primary" id="btnPdfDoExport">${t("pdfDoExport")}</button></footer></section>`;
     document.body.append(root);
     bindArticleModalKeys(root, () => this.close());
     root.querySelector<HTMLButtonElement>("#btnPdfCancel")!.onclick = () =>
       this.close();
     root.querySelector<HTMLButtonElement>("#btnPdfDoExport")!.onclick = () =>
       void this.executeExport();
+    const updateSelection = () => {
+      const options = this.readOptions();
+      let pages: number;
+      try {
+        pages = projectPdfPages(this.project, options).length;
+      } catch {
+        root.querySelector<HTMLElement>("#pdfExportSelection")!.textContent = t("pdfPageMissing");
+        return;
+      }
+      root.querySelector<HTMLElement>("#pdfExportSelection")!.textContent = t("pdfSelectionSummary", {
+        pages,
+        sections: options.additionalSections!.length + Number(options.includePartsList) + Number(options.includeTerminalDiagram),
+      });
+    };
     for (const [selector, checked] of [
       ["[data-pdf-all]", true],
       ["[data-pdf-none]", false],
     ] as const)
-      root.querySelector<HTMLButtonElement>(selector)!.onclick = () =>
+      root.querySelector<HTMLButtonElement>(selector)!.onclick = () => {
         root
           .querySelectorAll<HTMLInputElement>(
             "[data-pdf-section]:not(:disabled)",
           )
           .forEach((c) => (c.checked = checked));
+        updateSelection();
+      };
     root.querySelector<HTMLInputElement>("#chkPdfDrawings")!.onchange = (e) => {
       const checked = (e.target as HTMLInputElement).checked;
       root
         .querySelectorAll<HTMLInputElement>('[name="pdfPageRange"]')
         .forEach((c) => (c.disabled = !checked));
     };
+    root.addEventListener("change", updateSelection);
+    updateSelection();
     finishEngineeringDialog(root, {
       kind: "wiring",
       description: t("pdfProjectSubtitle"),
@@ -71,12 +89,11 @@ export class PdfExportDialog {
     });
     focusArticleModal(root);
   }
-  private async executeExport() {
-    const root = this.modalOverlay;
-    if (!root?.isConnected) return;
+  private readOptions(): PdfExportOptions {
+    const root = this.modalOverlay!;
     const check = (id: string) =>
       root.querySelector<HTMLInputElement>("#" + id)?.checked ?? false;
-    const options: PdfExportOptions = {
+    return {
       paperFormat: root.querySelector<HTMLSelectElement>("#pdfFormatSelect")!
         .value as "a3" | "a4",
       colorMode: root.querySelector<HTMLInputElement>(
@@ -98,6 +115,11 @@ export class PdfExportDialog {
         ),
       ].map((c) => c.dataset.pdfSection!),
     };
+  }
+  private async executeExport() {
+    const root = this.modalOverlay;
+    if (!root?.isConnected) return;
+    const options = this.readOptions();
     const button = root.querySelector<HTMLButtonElement>("#btnPdfDoExport")!,
       status = root.querySelector<HTMLElement>("#pdfExportStatus")!,
       error = root.querySelector<HTMLElement>("[data-pdf-error]")!;

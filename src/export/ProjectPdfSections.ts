@@ -120,6 +120,8 @@ export function prepareProjectPdfSections(
   paper: "a3" | "a4" = "a3",
   framed = true,
 ): ProjectPdfSection[] {
+  // An explicit empty selection must not inspect or prepare any saved reports.
+  if (Array.isArray(requested) && requested.length === 0) return [];
   const choices = projectPdfChoices(project);
   if (
     requested &&

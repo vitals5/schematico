@@ -52,6 +52,24 @@ export interface PdfExportOptions {
   additionalSections?: readonly string[];
 }
 
+/** Apply the same selection to imported report sheets as to generated lists.
+ * Keep the full project available for electrical data and reference resolution. */
+export function projectPdfPages(project: Project, options: Pick<PdfExportOptions,
+  'includeDrawings' | 'pageRange' | 'currentPageId' | 'includePartsList' | 'includeTerminalDiagram'
+>): Page[] {
+  if (options.includeDrawings === false) return [];
+  let pages = project.pages;
+  if (options.pageRange === 'current') {
+    const page = pages.find(p => p.id === options.currentPageId);
+    if (!page) throw Error('pdfPageMissing');
+    pages = [page];
+  }
+  return pages.filter(page =>
+    (page.pageType !== 'parts_list' || options.includePartsList) &&
+    (page.pageType !== 'terminal_diagram' || options.includeTerminalDiagram)
+  );
+}
+
 export class PdfExporter {
   public static async exportToPdf(project: Project, options: PdfExportOptions): Promise<Blob> {
     project=structuredClone(project);
@@ -77,15 +95,7 @@ export class PdfExporter {
     });
 
     // Filter pages to export
-    let pagesToExport: Page[] = [];
-    if (options.includeDrawings === false) pagesToExport=[];
-    else if (options.pageRange === 'current') {
-      const page = project.pages.find(p => p.id === options.currentPageId);
-      if(!page)throw Error('pdfPageMissing');
-      pagesToExport = [page];
-    } else {
-      pagesToExport = [...project.pages];
-    }
+    const pagesToExport = projectPdfPages(project, options);
 
     // Mapping from page.pageNumber and page.id to 1-based PDF page index
     const pageNumberToPdfPageIndex = new Map<string, number>();
