@@ -159,7 +159,7 @@ class VisualLens {
     this.targetCache = undefined;
   }
   mount() {
-    const header = this.root.querySelector(".eng-header");
+    const header = this.root.querySelector(".eng-header") ?? (this.root.classList.contains("cabinet-workspace")?this.root.querySelector("h2"):null);
     if (!header) return;
     header.after(this.toolbar);
     this.toolbar.innerHTML = `<strong>${t("visualLens")}</strong><button type="button" data-lens-out aria-label="${t("visualZoomOut")}">−</button><span data-lens-scale></span><button type="button" data-lens-in aria-label="${t("visualZoomIn")}">+</button><button type="button" data-lens-fit>${t("visualFit")}</button><button type="button" data-lens-reset>100%</button><button type="button" data-lens-trace aria-pressed="${this.trace}">${t("visualTrace")}</button><button type="button" data-lens-problems aria-pressed="${this.problems}">${t("visualFindings")}</button><button type="button" data-lens-next>${t("visualNextFinding")}</button><button type="button" data-lens-previous aria-label="${t("visualPrevious")}">‹</button><button type="button" data-lens-following aria-label="${t("visualFollowing")}">›</button><button type="button" data-lens-properties>${t("visualProperties")}</button><select data-lens-target aria-label="${t("visualDrawingTarget")}" hidden></select><button type="button" data-lens-drawing hidden>${t("visualDrawing")}</button><select data-lens-jump aria-label="${t("visualJump")}"></select><div class="eng-lens-map" data-lens-map aria-hidden="true"></div><span data-lens-context role="status"></span><button type="button" data-lens-clear aria-label="${t("visualClear")}">×</button>`;

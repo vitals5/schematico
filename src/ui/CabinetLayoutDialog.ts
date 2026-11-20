@@ -1,3 +1,4 @@
+import { mountEngineeringVisualLens } from "./EngineeringVisualLens";
 import { visualDrawingTargets } from "./EngineeringDrawing";
 import type { Project } from "../model/types";
 import {
@@ -27,9 +28,103 @@ import { finishEngineeringDialog } from "./EngineeringDialog";
 import { bindArticleModalKeys, focusArticleModal } from "./ArticleModal";
 import { articleError, downloadArticleFile } from "./ArticleCatalogDialog";
 import { escapeSvg as esc } from "../model/ImportedDrawing";
-import { t, type TranslationKey } from "../i18n";
+import { t, tr, type TranslationKey } from "../i18n";
 export class CabinetLayoutDialog {
   private el = document.createElement("div");
+  private workspaceClose?: () => void;
+  private workspaceSave?: (saveAs: boolean) => void;
+  private workspaceChanged?: () => void;
+  get statusLabel() {
+    return `${this.layout.name} · ${this.layout.widthMm} × ${this.layout.heightMm} mm · ${this.layout.items.length} ${tr("Objekte", "objects")} · ${tr("Raster", "Grid")} ${this.layout.gridMm} mm`;
+  }
+  get hasUndo() {
+    return this.past.length > 0;
+  }
+  get hasRedo() {
+    return this.future.length > 0;
+  }
+  get selectedLayoutId() {
+    return this.layout.id;
+  }
+  get embedded() {
+    return !!this.workspaceClose;
+  }
+  get dirty() {
+    const saved = cabinetLayouts(this.source).find(
+      (l) => l.id === this.layout.id,
+    );
+    return saved
+      ? JSON.stringify(saved) !== JSON.stringify(this.layout)
+      : this.past.length > 0 || this.layout.items.length > 0;
+  }
+  mount(
+    host: HTMLElement,
+    onClose: () => void,
+    onSave?: (saveAs: boolean) => void,
+    onChanged?: () => void,
+  ) {
+    this.workspaceClose = onClose;
+    this.workspaceSave = onSave;
+    this.workspaceChanged = onChanged;
+    this.show(host);
+  }
+  closeWorkspace(force = false): boolean {
+    if (
+      !force &&
+      this.dirty &&
+      !confirm(
+        tr(
+          "Nicht übernommene Aufbauänderungen verwerfen?",
+          "Discard unapplied cabinet changes?",
+        ),
+      )
+    )
+      return false;
+    this.el.remove();
+    this.workspaceClose?.();
+    return true;
+  }
+  commitPending(): boolean {
+    if (!this.dirty) return true;
+    try {
+      this.onApply(
+        new CabinetLayoutEdit(this.source, this.layout).apply(
+          this.getProject(),
+        ),
+      );
+      this.source = structuredClone(this.getProject());
+      this.past = [];
+      this.future = [];
+      this.render();
+      return true;
+    } catch (e) {
+      this.error = articleError(e);
+      this.render();
+      return false;
+    }
+  }
+  syncProject() {
+    if (this.dirty) return;
+    const id = this.layout.id;
+    this.source = structuredClone(this.getProject());
+    this.candidates = cabinetCandidates(this.source);
+    this.past = [];
+    this.future = [];
+    this.layout = structuredClone(
+      cabinetLayouts(this.source).find((l) => l.id === id) ??
+        cabinetLayouts(this.source)[0] ??
+        this.fresh(),
+    );
+    this.render();
+  }
+  undoWorkspace(redo = false) {
+    if ((redo ? this.future : this.past).length) {
+      this.history(redo);
+      return true;
+    }
+    return false;
+  }
+
   private source: Project;
   private layout: CabinetLayout;
   private candidates: ReturnType<typeof cabinetCandidates>;
@@ -61,12 +156,15 @@ export class CabinetLayoutDialog {
     private getProject: () => Project,
     private onApply: (p: Project) => void,
     private navigate: (p: string, c: string) => void,
+    selectedLayoutId?: string,
   ) {
     this.source = structuredClone(getProject());
     this.candidates = cabinetCandidates(this.source);
     if (!this.candidates.length) this.panel = "standard";
     this.layout = structuredClone(
-      cabinetLayouts(this.source)[0] ?? this.fresh(),
+      cabinetLayouts(this.source).find((l) => l.id === selectedLayoutId) ??
+        cabinetLayouts(this.source)[0] ??
+        this.fresh(),
     );
   }
   private fresh(): CabinetLayout {
@@ -81,16 +179,53 @@ export class CabinetLayoutDialog {
       items: [],
     };
   }
-  show() {
+  show(host?: HTMLElement) {
     if (document.getElementById("cabinetLayoutDialog")) return;
     this.el.id = "cabinetLayoutDialog";
-    this.el.className = "modal-backdrop";
+    this.el.className = host ? "cabinet-workspace" : "modal-backdrop";
     this.el.style.cssText =
       "position:fixed;inset:0;z-index:4100;display:flex;align-items:center;justify-content:center";
-    document.body.append(this.el);
-    bindArticleModalKeys(this.el, () => this.el.remove());
+    if (host) {
+      this.el.removeAttribute("style");
+      host.append(this.el);
+    } else document.body.append(this.el);
+    if (!host) bindArticleModalKeys(this.el, () => this.el.remove());
     this.el.addEventListener("keydown", (e) => {
+      if (
+        this.embedded &&
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "s"
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.workspaceSave?.(e.shiftKey);
+        return;
+      }
+      if (
+        this.embedded &&
+        (e.ctrlKey || e.metaKey) &&
+        ["o", "p"].includes(e.key.toLowerCase())
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        document
+          .getElementById(
+            e.key.toLowerCase() === "o" ? "btnOpenProject" : "btnExportPdf",
+          )
+          ?.click();
+        return;
+      }
+      if (this.embedded) e.stopPropagation();
       if ((e.target as Element).matches("input,textarea,select")) return;
+      if (
+        this.embedded &&
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "y"
+      ) {
+        e.preventDefault();
+        this.history(true);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         this.history(e.shiftKey);
@@ -318,8 +453,21 @@ export class CabinetLayoutDialog {
       this.plateExpanded = (e.target as HTMLDetailsElement).open;
     };
     this.bindLibrary();
-    q("[data-close]").onclick = () => this.el.remove();
+    q("[data-close]").onclick = () =>
+      this.embedded ? this.closeWorkspace() : this.el.remove();
+    if (this.embedded)
+      q("[data-close]").textContent = tr("Zum Schaltplan", "Back to drawing");
     q("[data-new]").onclick = () => {
+      if (
+        this.dirty &&
+        !confirm(
+          tr(
+            "Nicht übernommene Aufbauänderungen verwerfen?",
+            "Discard unapplied cabinet changes?",
+          ),
+        )
+      )
+        return;
       this.layout = this.fresh();
       this.past = [];
       this.future = [];
@@ -327,6 +475,18 @@ export class CabinetLayoutDialog {
       this.render();
     };
     q("[data-layout]").onchange = (e) => {
+      if (
+        this.dirty &&
+        !confirm(
+          tr(
+            "Nicht übernommene Aufbauänderungen verwerfen?",
+            "Discard unapplied cabinet changes?",
+          ),
+        )
+      ) {
+        this.render();
+        return;
+      }
       const found = cabinetLayouts(this.source).find(
         (b) => b.id === (e.target as HTMLSelectElement).value,
       );
@@ -567,7 +727,9 @@ export class CabinetLayoutDialog {
     q("[data-pdf]").onclick = () =>
       safe(() => {
         new CabinetLayoutEdit(this.source, l).apply(this.getProject());
-        cabinetPdf(l, labels, this.source.name, this.source).save("schematico-cabinet.pdf");
+        cabinetPdf(l, labels, this.source.name, this.source).save(
+          "schematico-cabinet.pdf",
+        );
       });
     q("[data-svg]").onclick = () =>
       safe(() => {
@@ -579,29 +741,30 @@ export class CabinetLayoutDialog {
         );
       });
     this.bindDrag();
-    finishEngineeringDialog(this.el, {
-      kind: "cabinet",
-      description: t("cabinetSubtitle"),
-      wide: true,
-      drawing: {
-        project: this.getProject,
-        navigate: this.navigate,
-        targets: (id) => {
-          const i = l.items.find(
-            (i) => JSON.stringify(["cabinet", l.id, i.id]) === id,
-          );
-          return i?.source
-            ? visualDrawingTargets(
-                this.getProject(),
-                JSON.stringify([
-                  "terminal",
-                  JSON.stringify([i.source.pageId, i.source.componentId]),
-                ]),
-              )
-            : [];
+    if (!this.embedded)
+      finishEngineeringDialog(this.el, {
+        kind: "cabinet",
+        description: t("cabinetSubtitle"),
+        wide: true,
+        drawing: {
+          project: this.getProject,
+          navigate: this.navigate,
+          targets: (id) => {
+            const i = l.items.find(
+              (i) => JSON.stringify(["cabinet", l.id, i.id]) === id,
+            );
+            return i?.source
+              ? visualDrawingTargets(
+                  this.getProject(),
+                  JSON.stringify([
+                    "terminal",
+                    JSON.stringify([i.source.pageId, i.source.componentId]),
+                  ]),
+                )
+              : [];
+          },
         },
-      },
-    });
+      });
     for (const { selector, left, top } of view) {
       const node = this.el.querySelector<HTMLElement>(selector);
       if (node) {
@@ -609,7 +772,43 @@ export class CabinetLayoutDialog {
         node.scrollTop = top;
       }
     }
-    focusArticleModal(this.el);
+    if (!this.embedded) focusArticleModal(this.el);
+    else {
+      const heading = this.el.querySelector("h2")!;
+      const back = document.createElement("button");
+      back.className = "btn";
+      back.dataset.workspaceDrawing = "";
+      back.textContent = tr(
+        "← Schaltplan / Grundriss",
+        "← Drawing / floor plan",
+      );
+      back.onclick = () => this.closeWorkspace();
+      heading.append(" ", back);
+      const section = this.el.querySelector<HTMLElement>("section")!;
+      section.setAttribute("role", "region");
+      section.removeAttribute("aria-modal");
+      section.setAttribute("aria-label", t("cabinetTitle"));
+      section.tabIndex = -1;
+      mountEngineeringVisualLens(this.el, {
+        project: this.getProject,
+        navigate: this.navigate,
+        targets: (id) => {
+          const item = l.items.find(
+            (i) => JSON.stringify(["cabinet", l.id, i.id]) === id,
+          );
+          return item?.source
+            ? visualDrawingTargets(
+                this.getProject(),
+                JSON.stringify([
+                  "terminal",
+                  JSON.stringify([item.source.pageId, item.source.componentId]),
+                ]),
+              )
+            : [];
+        },
+      });
+      this.workspaceChanged?.();
+    }
   }
   private libraryPanel(rails: CabinetItem[]) {
     const list = findCabinetStandards(this.librarySearch, this.libraryCategory),

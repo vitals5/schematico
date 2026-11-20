@@ -309,3 +309,32 @@
 .cb-svg.is-panning {
   cursor: grabbing;
 }
+
+/* The cabinet uses the application's main work surface, without modal chrome. */
+.cabinet-mode > #canvasContainer,
+.cabinet-mode > #leftSidebar,
+.cabinet-mode > #rightSidebar,
+.cabinet-mode > .sidebar-resizer { display:none !important; }
+.cabinet-workspace-host { flex:1; min-width:0; min-height:0; overflow:hidden; background:var(--bg-primary,#111a26); }
+#cabinetLayoutDialog.cabinet-workspace { height:100%; min-height:0; color:var(--text-primary,#dbe7f3); }
+#cabinetLayoutDialog.cabinet-workspace > section { height:100%; display:flex; flex-direction:column; box-sizing:border-box; overflow:hidden; padding:12px 16px; }
+#cabinetLayoutDialog.cabinet-workspace h2 { font-size:16px; margin:0; }
+#cabinetLayoutDialog.cabinet-workspace .cb-layout { flex:1; min-height:0; grid-template-columns:250px minmax(0,1fr) 240px; gap:12px; }
+#cabinetLayoutDialog.cabinet-workspace .cb-tools,
+#cabinetLayoutDialog.cabinet-workspace .cb-properties,
+#cabinetLayoutDialog.cabinet-workspace .cb-main { overflow:auto; min-height:0; max-height:none; }
+#cabinetLayoutDialog.cabinet-workspace .cb-tools,
+#cabinetLayoutDialog.cabinet-workspace .cb-properties { padding:10px; background:var(--bg-secondary,#1b2736); border-radius:6px; }
+#cabinetLayoutDialog.cabinet-workspace .cb-canvas { min-height:300px; }
+#cabinetLayoutDialog.cabinet-workspace footer { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding-top:10px; }
+#cabinetLayoutDialog.cabinet-workspace footer span { flex:1; font-size:12px; }
+@media(max-width:1000px){#cabinetLayoutDialog.cabinet-workspace .cb-layout{grid-template-columns:190px minmax(260px,1fr) 190px;overflow:auto;}}
+@media(max-width:700px){#cabinetLayoutDialog.cabinet-workspace .cb-layout{display:block;overflow:auto;}#cabinetLayoutDialog.cabinet-workspace .cb-tools,#cabinetLayoutDialog.cabinet-workspace .cb-properties,#cabinetLayoutDialog.cabinet-workspace .cb-main{max-height:none;overflow:visible;} }
+body.cabinet-editor-active .draw-tools > :not(#btnCabinetWorkspace) { display:none; }
+body.cabinet-editor-active #btnCabinetWorkspace { background:var(--accent,#246baa); color:white; }
+#cabinetLayoutDialog.cabinet-workspace h2 { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+body.cabinet-editor-active .selection-tools,
+body.cabinet-editor-active .view-tools,
+body.cabinet-editor-active .panel-tools,
+body.cabinet-editor-active .inspector-tools { display:none; }
+#cabinetLayoutDialog.cabinet-workspace [data-lens-toolbar] { flex:none; }

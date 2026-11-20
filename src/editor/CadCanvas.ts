@@ -952,6 +952,7 @@ export class CadCanvas {
 
     // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
+      if(document.getElementById('cabinetWorkspaceHost'))return;
       this.lastMousePress = null;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement
         || (e.target as HTMLElement)?.isContentEditable || (e.target as Element)?.closest?.('.modal-backdrop')) return;

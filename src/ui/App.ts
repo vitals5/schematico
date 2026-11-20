@@ -76,6 +76,24 @@ import { collectFloorPlanLegendItems } from '../model/FloorPlanRenderer';
 export class App {
   private project!: Project;
   private canvas!: CadCanvas;
+  private cabinetEditor?:CabinetLayoutDialog;
+  private lastCabinet?:{projectId:string;id:string};
+  private cabinetHost?:HTMLElement;
+  private openCabinetWorkspace(){
+    if(this.cabinetEditor)return;
+    this.canvas.finishInteraction();
+    const host=document.createElement('main');host.id='cabinetWorkspaceHost';host.className='cabinet-workspace-host';
+    document.getElementById('canvasContainer')!.after(host);this.cabinetHost=host;
+    document.getElementById('mainContainer')!.classList.add('cabinet-mode');document.body.classList.add('cabinet-editor-active');
+    const button=document.getElementById('btnCabinetWorkspace');button?.setAttribute('aria-pressed','true');
+    this.cabinetEditor=new CabinetLayoutDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{
+      if(!this.cabinetEditor?.closeWorkspace())return;
+      const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);
+      if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();
+    },this.lastCabinet?.projectId===this.project.id?this.lastCabinet.id:undefined);
+    this.cabinetEditor.mount(host,()=>{if(this.cabinetEditor)this.lastCabinet={projectId:this.project.id,id:this.cabinetEditor.selectedLayoutId};this.cabinetEditor=undefined;host.remove();this.cabinetHost=undefined;document.getElementById('mainContainer')?.classList.remove('cabinet-mode');document.body.classList.remove('cabinet-editor-active');button?.setAttribute('aria-pressed','false');this.canvas.fitToScreen();this.updateHistoryButtons();this.updateStatusBar();},saveAs=>void this.saveProjectJson(saveAs),()=>{this.updateHistoryButtons();this.updateStatusBar();});
+  }
+
   private history = new ProjectHistory();
   private inputSession = 0;
   private selectedComponent: PlacedComponent | null = null;
@@ -162,10 +180,13 @@ export class App {
     if (this.isRightCollapsed) this.setRightPanelCollapsed(true);
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => {
+      window.addEventListener('beforeunload', (event) => {
+        if(this.cabinetEditor?.dirty){event.preventDefault();event.returnValue='';}
         this.saveActiveProject();
       });
       window.addEventListener('keydown', (e) => {
+        if(this.cabinetEditor && !((e.ctrlKey||e.metaKey)&&['s','o','z','y'].includes(e.key.toLowerCase())))return;
+
         if (e.defaultPrevented) return;
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement
           || (e.target as HTMLElement)?.isContentEditable || (e.target as Element)?.closest?.('.modal-backdrop')) return;
@@ -1226,6 +1247,7 @@ export class App {
 
     // Smart PDF Export
     document.getElementById('btnExportPdf')?.addEventListener('click', () => {
+      if(this.cabinetEditor&&!this.cabinetEditor.commitPending())return;
       new PdfExportDialog(this.project, this.project.activePageId).show();
     });
 
@@ -1256,6 +1278,8 @@ export class App {
       document.getElementById(id)?.addEventListener('click', (e) => {
         e.stopPropagation();
         closeAllMenus();
+        if(this.cabinetEditor && /^(menuInsert|menuWire$|menuCut$|menuCopy$|menuPaste$|menuDuplicate$|menuDelete$|menuRotate$|menuGroup$|menuUngroup$|menuNewPage$|menuDeletePage$|menuNewCoverPage$)/.test(id)){if(!this.cabinetEditor.closeWorkspace())return;}
+        if(this.cabinetEditor && (id==='menuExportPdf')&&!this.cabinetEditor.commitPending())return;
         action();
       });
     };
@@ -1394,7 +1418,8 @@ export class App {
     });
 
     // Projektdaten
-    bindMenuOpt('menuCabinetLayout',()=>{this.canvas.finishInteraction();new CabinetLayoutDialog(()=>this.project,p=>this.applyProjectTransaction(p),(pageId,componentId)=>{const page=this.project.pages.find(p=>p.id===pageId),c=page?.components.find(c=>c.id===componentId);if(c)this.canvas.focusInspection({pageId,pageNumber:page!.pageNumber,componentId,x:c.x,y:c.y});this.updateUI();}).show();});
+    bindMenuOpt('menuCabinetLayout',()=>this.openCabinetWorkspace());
+    document.getElementById('btnCabinetWorkspace')?.addEventListener('click',()=>{if(this.cabinetEditor)this.cabinetEditor.closeWorkspace();else this.openCabinetWorkspace();});
     bindMenuOpt('menuProjectRevisions',()=>this.openProjectRevisions());
     bindMenuOpt('menuChangeImpact',()=>{void this.openChangeImpact();});
     bindMenuOpt('menuDimensioning',()=>{void this.openElectricalDimensioning();});
@@ -1485,6 +1510,7 @@ export class App {
 
   private updateStatusBar(): void {
     const statusRight = document.getElementById('statusRight');
+    if(this.cabinetEditor){if(statusRight)statusRight.textContent=this.cabinetEditor.statusLabel;return;}
     const activePage = this.project.pages.find(p => p.id === this.project.activePageId);
     if (statusRight && activePage && this.canvas) {
       const isEn = getUiLanguage() === 'en';
@@ -1718,14 +1744,15 @@ export class App {
   }
 
   private updateHistoryButtons(): void {
-    for (const [id, enabled] of [['btnUndo', this.history.canUndo], ['menuUndo', this.history.canUndo],
-      ['btnRedo', this.history.canRedo], ['menuRedo', this.history.canRedo]] as const) {
+    for (const [id, enabled] of [['btnUndo', !!this.cabinetEditor?.hasUndo||this.history.canUndo], ['menuUndo', !!this.cabinetEditor?.hasUndo||this.history.canUndo],
+      ['btnRedo', !!this.cabinetEditor?.hasRedo||this.history.canRedo], ['menuRedo', !!this.cabinetEditor?.hasRedo||this.history.canRedo]] as const) {
       const button = document.getElementById(id) as HTMLButtonElement | null;
       if (button) { button.disabled = !enabled; button.setAttribute('aria-disabled', String(!enabled)); }
     }
   }
 
   private undo(): void {
+    if(this.cabinetEditor?.undoWorkspace())return;
     this.canvas.finishInteraction();
     this.history.record(this.project);
     const previous = this.history.undo();
@@ -1733,6 +1760,7 @@ export class App {
   }
 
   private redo(): void {
+    if(this.cabinetEditor?.undoWorkspace(true))return;
     this.canvas.finishInteraction();
     this.history.record(this.project);
     const next = this.history.redo();
@@ -1758,6 +1786,7 @@ export class App {
     this.updateToolButtons('btnToolSelect');
     this.updateFloatingSelectionBar();
     this.updateUI();
+    this.cabinetEditor?.syncProject();
   }
 
   private updateUI(): void {
@@ -5034,6 +5063,7 @@ export class App {
       if(result.electricalInspection)sessionDiagnostics.record('electrical_inspection',{origin:'import',report:result.electricalInspection});
       
       if (result.extractedProject) {
+        if(this.cabinetEditor&&!this.cabinetEditor.closeWorkspace())return false;
         this.project = result.extractedProject;
         const firstFile = selectedFiles[0];
         const electronFilePath = sourceInfo?.filePath || (selectedFiles.length === 1 ? (firstFile as any)?.path : undefined);
@@ -5072,6 +5102,7 @@ export class App {
   }
 
   private createNewProject(): void {
+    if(this.cabinetEditor&&!this.cabinetEditor.closeWorkspace())return;
     this.currentFilePath = null;
     this.currentFileHandle = null;
     this.currentFileFormat = 'json';
@@ -5177,6 +5208,7 @@ export class App {
   }
 
   private async saveProjectJson(forceSaveAs = false): Promise<void> {
+    if(this.cabinetEditor&&!this.cabinetEditor.commitPending())return;
     this.project.modified = new Date().toISOString().split('T')[0];
     this.saveActiveProject();
 

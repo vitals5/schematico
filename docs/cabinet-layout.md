@@ -1,6 +1,6 @@
 # Schaltschrank-Aufbau in 2D
 
-**Projekt → Schaltschrank-Aufbau 2D…** öffnet einen eigenen mechanischen Entwurfsbereich. Montageplatten, Tragschienen, Verdrahtungskanäle und Gerätekörper werden in Millimetern gespeichert. Dieser Bereich verschiebt keine Schaltzeichen und erzeugt keine elektrischen Verbindungen.
+**Projekt → Schaltschrank-Aufbau 2D…** öffnet den mechanischen Arbeitsmodus direkt in der Hauptarbeitsfläche. Alternativ schaltet die Schaltfläche **Schaltschrank** in der oberen Werkzeugleiste um. Es wird kein separates Dialogfenster geöffnet. Bibliothek und Montagewerkzeuge stehen links, die Aufbauzeichnung in der Mitte und die Objekteigenschaften rechts. Mit **Schaltplan / Grundriss** gelangt man zurück zur Zeichnung. Bestehende Aufbauten bleiben unverändert im Projekt gespeichert. Montageplatten, Tragschienen, Verdrahtungskanäle und Gerätekörper werden in Millimetern gespeichert. Dieser Bereich verschiebt keine Schaltzeichen und erzeugt keine elektrischen Verbindungen.
 
 ## Maße und Gerätebezüge
 
@@ -18,7 +18,7 @@ Eine neue Platte beginnt mit 600 × 800 mm, 10 mm Rand und 5 mm Raster. Dies sin
 - Ein Gerät auswählen, seine bekannten oder manuell eingegebenen Maße prüfen und optional eine horizontale Schiene auswählen. Beim Platzieren wird eine freie Rasterlage zwischen den vorhandenen Hindernissen gesucht. Wird keine passende Lage gefunden, wird kein überlappendes Gerät ergänzt. Dies ist eine Einfügehilfe, keine globale Aufbauoptimierung.
 - Objekte lassen sich anklicken und ziehen. Pfeiltasten bewegen das fokussierte Objekt um einen Rasterschritt. X/Y, Breite, Höhe, zusätzliche Abstände und 0°/90°-Einbaulage lassen sich über **Eigenschaften anwenden** ändern.
 - Geräte mit Schienenzuordnung sitzen mittig auf der horizontalen Schiene. Beim Verschieben der Schiene werden sie gemeinsam mitgenommen. Beim Entfernen der Schiene bleiben die Geräte an ihren absoluten Positionen und werden zu freien Platzierungen.
-- Die Fokuslinse bietet Zoom von 25 bis 800 Prozent, eine Übersicht und Objektnavigation. Strg+Mausrad zoomt innerhalb der Zeichnung. Die gespeicherten Millimetermaße bleiben unverändert. Vorhandene Gerätebezüge öffnen mit **Im Plan ansehen** die Schaltplanstelle und anschließend denselben Aufbauentwurf wieder.
+- Die Fokuslinse bietet Zoom von 25 bis 800 Prozent, eine Übersicht und Objektnavigation. Strg+Mausrad zoomt innerhalb der Zeichnung. Die gespeicherten Millimetermaße bleiben unverändert. Vorhandene Gerätebezüge öffnen mit **Im Plan ansehen** die Schaltplanstelle im Haupteditor. Beim erneuten Öffnen des Schaltschrankmodus wird die zuletzt gewählte gespeicherte Platte desselben Projekts ausgewählt.
 
 **Entwurf zurück/wiederholen** und Strg+Z beziehungsweise Strg+Umschalt+Z verwalten bis zu 50 lokale Entwurfsschritte. Das Projekt wird erst durch **Aufbau übernehmen** verändert. Die gesamte Übernahme ist anschließend ein gewöhnlicher Projekt-Rückgängig-Schritt. **Neu laden (Entwurf verwerfen)** liest den aktuellen Stand ein; eine zwischenzeitliche Projektänderung blockiert die Übernahme einer alten Vorschau.
 
@@ -61,3 +61,13 @@ Standardbauteile sind eigenständige mechanische Aufbauobjekte. Sie erzeugen kei
 Objekte lassen sich mit Maus, Stift oder einem Finger ziehen. Das SVG übernimmt die Touch-Geste, damit der Browser sie nicht als native Scrollbewegung abbricht. Auf freier Zeichenfläche wird die Ansicht verschoben; die mittlere Maustaste verschiebt die Ansicht auch über einem Objekt. Schienengebundene Geräte bleiben beim Ziehen auf ihrer Schiene; die ganze Schiene nimmt ihre Geräte mit. Zoom und Scrollposition bleiben beim Auswählen, Verschieben und Rückgängigmachen erhalten. Ein vom System abgebrochener Ziehvorgang verwirft seine Vorschau.
 
 Der optionale Browser-Regressionslauf verwendet echte Chromium-Touch-Gesten, einschließlich der nativen Gestenerkennung: `python -m pip install playwright`, `python -m playwright install chromium`, anschließend bei laufendem Entwicklungsserver `python scripts/test-cabinet-pointer.py --url http://127.0.0.1:5173`. Er prüft Maus und Touch auf Desktop- und Mobilgröße, alle Aufbauobjektarten, Schienenbindung, Abbruch, Capture-Verlust, Zoom/Scrollposition, Hintergrundverschiebung sowie Speichern und Rückgängig.
+
+## Haupteditor und Speichern
+
+Der Aufbau nutzt die vollständige Hauptarbeitsfläche. Die Werkzeuge des ausgeblendeten Schaltplans sind in diesem Modus ausgeblendet; Tastenkürzel verändern keine unsichtbaren Schaltzeichen. Die Statuszeile zeigt die aktuelle Montageplatte, Millimetermaße, Objektzahl und das Aufbauraster.
+
+Platzieren und Verschieben erfolgen weiterhin in einem prüfbaren Entwurf. **Aufbau übernehmen** überträgt einen gültigen Entwurf in das Projekt. Die globale Speicherschaltfläche beziehungsweise **Strg+S** übernimmt einen gültigen Aufbauentwurf vor dem Speichern ebenfalls; fehlerhafte Entwürfe werden angezeigt und nicht stillschweigend als alter Stand gespeichert. Einzelne Eigenschaften müssen zuvor über **Eigenschaften anwenden** in den Entwurf übernommen werden.
+
+Die globalen Rückgängig-/Wiederholen-Schaltflächen bearbeiten zuerst lokale Entwurfsschritte, danach die Projektgeschichte. Bei Projekt-Rückgängig aktualisiert sich der sichtbare Aufbau. Ein Wechsel zur Zeichnung, auf eine andere Platte oder zu einem anderen Projekt fragt vor dem Verwerfen nicht übernommener Aufbauänderungen nach. Ein neuer Projektbestand übernimmt keine Entwürfe des vorherigen Projekts. Der PDF-Dialog in der Hauptleiste übernimmt vor dem Öffnen einen gültigen Aufbauentwurf; die direkten PDF-/SVG-Ausgaben bleiben ebenfalls verfügbar.
+
+Optionaler Browser-Smoke-Test: `python scripts/browser/cabinet-workspace.py http://localhost:4198` (Python Playwright und Chromium erforderlich). Er prüft die eingebettete Hauptfläche, sichere Ansichtswechsel, lokale/globale Historie, Strg+S, Persistenz, PDF und schmale Ansichten.
