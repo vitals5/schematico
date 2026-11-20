@@ -20,7 +20,7 @@ import { setUiLanguage } from "../i18n";
 const p = fixture(),
   kinds: MeterFieldKind[] = ["meter", "distribution", "reserve"];
 let checked = 0;
-for (let count = 1; count <= 5; count++)
+for (let count = 1; count <= 7; count++)
   for (const heightMm of meterCabinetHeights) {
     for (let mask = 0; mask < 3 ** count; mask++) {
       const fields = Array.from(
@@ -54,11 +54,11 @@ for (let count = 1; count <= 5; count++)
       checked++;
     }
   }
-assert.equal(checked, 1452);
+assert.equal(checked, 13116);
 assert.throws(() => createMeterCabinet({ heightMm: 999, fields: ["meter"] }));
 assert.throws(() => createMeterCabinet({ heightMm: 1100, fields: [] }));
 assert.throws(() =>
-  createMeterCabinet({ heightMm: 1100, fields: Array(6).fill("meter") }),
+  createMeterCabinet({ heightMm: 1100, fields: Array(8).fill("meter") }),
 );
 assert.throws(() =>
   createMeterCabinet({ heightMm: 1100, fields: ["unknown" as MeterFieldKind] }),
@@ -115,5 +115,5 @@ malformed.sections![0].widthMm = 99999;
 assert(!cabinetSchemaValid(malformed));
 setUiLanguage("de");
 console.log(
-  "Meter cabinet templates: 1–5 fields, four heights, all 1452 field combinations, clear meter zones, full 12-module rails, editing, guides, landscape PDF, persistence and undo passed",
+  "Meter cabinet templates: 1–7 fields, four heights, all 13116 field combinations, clear meter zones, full 12-module rails, editing, guides, landscape PDF, persistence and undo passed",
 );

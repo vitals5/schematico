@@ -1,6 +1,7 @@
 import type { CabinetLayout } from "./CabinetLayout";
 import { tr } from "../i18n";
 
+export const meterCabinetFields = [1, 2, 3, 4, 5, 6, 7] as const;
 export const meterCabinetHeights = [950, 1100, 1250, 1400] as const;
 export type MeterFieldKind = "meter" | "distribution" | "reserve";
 export const meterFieldLabel = (kind: MeterFieldKind) =>
@@ -21,7 +22,7 @@ export function createMeterCabinet(
   if (
     !meterCabinetHeights.some((h) => h === options.heightMm) ||
     options.fields.length < 1 ||
-    options.fields.length > 5 ||
+    options.fields.length > meterCabinetFields.length ||
     options.fields.some(
       (f) => !["meter", "distribution", "reserve"].includes(f),
     )

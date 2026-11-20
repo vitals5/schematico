@@ -15,7 +15,7 @@ async def main():
   await expect(editor.locator('.cb-svg')).to_have_attribute('data-cabinet-theme','dark')
   await editor.locator('[data-add-rail]').click();await editor.locator('[data-apply]').click()
   await editor.locator('[data-meter-open]').click()
-  await expect(editor.locator('[data-meter-fields] option')).to_have_count(5)
+  await expect(editor.locator('[data-meter-fields] option')).to_have_count(7)
   await expect(editor.locator('[data-meter-height] option')).to_have_count(4)
   await editor.locator('[data-meter-fields]').select_option('3');await editor.locator('[data-meter-height]').select_option('1400');await editor.locator('[data-meter-kind="2"]').select_option('reserve')
   await editor.locator('[data-meter-create]').click();await expect(editor.locator('[data-cabinet-item]')).to_have_count(15);await expect(editor.locator('.cb-section')).to_have_count(5)
@@ -34,6 +34,14 @@ async def main():
   assert 'data-cabinet-theme="light"' in svg and 'fill="#fcfdff"' in svg and 'fill="#12161f"' not in svg
   async with page.expect_download() as event:await editor.locator('[data-pdf]').click()
   assert pathlib.Path(await (await event.value).path()).read_bytes().startswith(b'%PDF')
+  await editor.locator('[data-meter-fields]').select_option('7')
+  await expect(editor.locator('[data-meter-kind]')).to_have_count(7)
+  await editor.locator('[data-meter-create]').click()
+  await expect(editor.locator('.cb-svg')).to_have_attribute('viewBox','0 0 1800 1400')
+  await expect(editor.locator('[data-cabinet-item]')).to_have_count(51)
+  async with page.expect_download() as event:await page.locator('#btnSaveJson').click()
+  seven=json.loads(pathlib.Path(await (await event.value).path()).read_text())['cabinetLayouts'][-1]
+  assert seven['widthMm']==1800 and len(seven['sections'])==9 and len(seven['items'])==51
   await page.screenshot(path='/tmp/schematico-meter-template.png')
   assert not errors,errors
   await browser.close();print('Meter cabinet UI: field/height/role selection, new-board isolation, full 12-module rails, editable guides, undo, project save, SVG and PDF passed')

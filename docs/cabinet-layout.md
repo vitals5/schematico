@@ -14,7 +14,7 @@ Der Gerätebestand verwendet bestätigte physische Geräte beziehungsweise einze
 
 ### Zählerschrankvorlagen
 
-**Zählerschrankvorlagen** in der oberen Aufbauleiste öffnet den Vorlagenbereich links. Angeboten werden 1 bis 5 Felder und die Höhen **950, 1100, 1250 und 1400 mm**. Pro Feld sind **Zählerfeld**, **Verteilerfeld** und **Reservefeld** wählbar. Die Vorlagen verwenden herstellerunabhängige Planungsmaße: 250 mm Feldraster und je 25 mm seitlichen Rand. Daraus ergeben sich Gesamtbreiten von 300, 550, 800, 1050 und 1300 mm.
+**Zählerschrankvorlagen** in der oberen Aufbauleiste öffnet den Vorlagenbereich links. Angeboten werden 1 bis 7 Felder und die Höhen **950, 1100, 1250 und 1400 mm**. Pro Feld sind **Zählerfeld**, **Verteilerfeld** und **Reservefeld** wählbar. Die Vorlagen verwenden herstellerunabhängige Planungsmaße: 250 mm Feldraster und je 25 mm seitlichen Rand. Daraus ergeben sich Gesamtbreiten von 300, 550, 800, 1050, 1300, 1550 und 1800 mm.
 
 Zählerfelder besitzen einen freien 450-mm-Zählerbereich, einen 300-mm-Unterbereich und einen höhenabhängigen oberen Anschlussraum. Oben und unten liegen vorkonfigurierte TH35-Schienen. Verteilerfelder erhalten Schienenreihen im Abstand von 150 mm; Reservefelder bleiben frei. Jede Schiene ist 216 mm breit und bietet geometrisch Platz für zwölf 18-mm-Module. Ein 1-mm-Platzierungsraster verhindert künstliche Lücken zwischen diesen Modulen. Gerätespezifische Abstände müssen weiterhin in den Geräteeigenschaften berücksichtigt werden.
 
