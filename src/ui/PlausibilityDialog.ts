@@ -258,7 +258,9 @@ export class PlausibilityDialog {
       byId = new Map(messages.map((m, index) => [m.id, { m, index }]));
     const body = modal.querySelector('#reviewBody')!;
     const originLabel = (m: PlausibilityMessage) =>
-      m.articleData
+      m.articleData?.inheritedFromGroupId
+        ? t('articleFromGroup',{name:m.articleData.inheritedFromGroupBmk||m.articleData.inheritedFromGroupId})
+        : m.articleData
         ? t(('articleState_' + m.articleData.state) as any)
         : t('articleState_import_unknown');
     const registry = new DeviceRegistry(this.project);

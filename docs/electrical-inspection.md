@@ -28,6 +28,8 @@ Ein optionales Verweisziel darf fehlen. Ein bereits gedruckter, fehlerhafter Ver
 
 ## Editor, Import und KI
 
+Ein gültiger Artikel an einer Baugruppe deckt ihre enthaltenen Darstellungen ab, auch über verschachtelte Gruppen. Diese erhalten den Status **Artikel an Hauptfunktion / Baugruppe** mit Herkunftsangabe **Artikel über Baugruppe …** und keine zusätzliche Meldung `missing_article`. Anschluss-, Leitungs- und Potenzialprüfungen laufen für die Mitglieder weiterhin. Eine rein grafische Gruppe ohne Artikelzuweisung, ungültige Zuordnungen oder mehrdeutige/zyklische Mitgliedschaft verdecken keine fehlenden Artikel. Gruppenartikel werden den Mitgliedern nicht als eigene Artikelzuweisung eingeschrieben.
+
 Der Meldungsdialog zeigt die Regelkennung und den betroffenen Anschluss beziehungsweise die Leitung. **Zur Fundstelle springen** zentriert die tatsächliche Stelle und wählt das Element oder die Leitung aus. **Erneut prüfen** aktualisiert den Bericht; **Prüfbericht herunterladen** exportiert den gerade angezeigten Bericht als JSON. Er enthält technische Kennzeichnungen und Ursachen, keine komplette Projektkopie.
 
 `PackageHandler.inspectFile`/`inspectFiles` liefern bei Projekten denselben Bericht als `electricalInspection`. Beim Öffnen über die Oberfläche wird er im Session-Protokoll erfasst. Die Prüfung repariert oder verwirft das importierte Projekt nicht; der aktuelle Stand kann anschließend über die Projektprüfung erneut geprüft werden.

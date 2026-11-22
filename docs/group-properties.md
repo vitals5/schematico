@@ -10,4 +10,6 @@ Eine Baugruppe auswählen und **F2**, **Enter** oder **Vollständige Eigenschaft
 - Die Anschlüsse der enthaltenen Symbole im gemeinsamen Dialog bearbeiten. Änderungen werden anhand des jeweiligen Mitglieds und Anschlusses zugeordnet.
 - Die gesamte Gruppe verschieben, drehen und skalieren. Leitungswege innerhalb der Gruppe werden mitgeführt; Verbindungen nach außen werden anschließend neu berechnet.
 
+Die elektrische Prüfung berücksichtigt die Artikelzuweisung der Baugruppe für deren Bestandteile. Bei verschachtelten Baugruppen zählt die äußere zugewiesene Baugruppe; eine zugewiesene Untergruppe innerhalb einer rein grafischen Obergruppe bleibt eigenständig. Die Stückliste zählt Gruppenartikel einschließlich Zubehör und Mengen genau einmal. Rein grafische Gruppierung ohne Artikelzuweisung ersetzt keine Artikelzuordnung.
+
 **Übernehmen** speichert ohne Schließen, **OK** speichert und schließt. **Abbrechen** verwirft seit dem letzten Übernehmen nicht gespeicherte Eingaben. Änderungen unterstützen Rückgängig/Wiederholen. Die zusätzlichen Gruppeneinstellungen bleiben im Projekt erhalten. Auflösen und Löschen sind weiterhin im Eigenschaftenbereich und über die vorhandenen Gruppenbefehle erreichbar.

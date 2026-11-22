@@ -1,4 +1,5 @@
 import {DeviceRegistry,componentAddress} from './DeviceRegistry';
+import {groupArticleUnits,type GroupArticleUnit} from './GroupArticles';
 import type { Project, Page, PlacedComponent, SymbolDefinition, PinDefinition, Wire } from './types';
 import { getSymbolForComponent } from './symbols';
 import { isConnectionSymbol, isInterruptionSymbol } from './ConnectionSymbols';
@@ -63,6 +64,7 @@ export function componentIdentity(page: Page, component: PlacedComponent, symbol
  * deliberately NOT a cache key. Keys describe candidate identity, not proof that
  * multiple placements are one physical device. No persisted schema is changed. */
 export class ProjectIndex {
+    readonly assemblyArticles=new Map<PlacedComponent,GroupArticleUnit>();
     readonly devices:DeviceRegistry;
     readonly components: IndexedComponent[] = [];
     readonly pagesById = new Map<string, Page[]>();
@@ -84,7 +86,10 @@ export class ProjectIndex {
         };
         for (const page of project.pages) {
             push(this.pagesById, page.id, page);
+            const groupOwners=project.pages.filter(p=>p.id===page.id).length===1?groupArticleUnits(page).owners:undefined;
             for (const component of page.components) {
+                const groupOwner=groupOwners?.get(component.id);
+                if(groupOwner)this.assemblyArticles.set(component,groupOwner);
                 const symbol = getSymbolForComponent(component, project);
                 const entry: IndexedComponent = { component, page, symbol, ...componentIdentity(page, component, symbol), nativeRepresentation: component.source?.format === 'NATIVE_CAD' || !!(symbol?.source && symbol.importedGraphics) };
                 const { deviceKey, referenceKey } = entry;

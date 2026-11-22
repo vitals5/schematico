@@ -8,6 +8,7 @@ import { isConnectionSymbol } from '../model/ConnectionSymbols';
 import {terminalStripBindings} from '../model/TerminalStripTypes';
 import { validateCablePart, validCableLength } from '../model/CableArticles';
 import {interpretationEnabled, isInventoryComponent} from '../model/ComponentSemantics';
+import {groupArticleUnits,groupArticles} from '../model/GroupArticles';
 
 export interface PartEntry {
   articleNumber: string;
@@ -50,15 +51,22 @@ export class PartsListGenerator {
 
     for (const page of project.pages) {
       // Process groups as single composite devices / articles in BOM
-      const rootGroups = (page.groups ?? []).filter(g =>
+      const roots = (page.groups ?? []).filter(g =>
         !(page.groups ?? []).some(parent => parent.members.some(m => m.kind === 'group' && m.id === g.id))
       );
+      const {units}=groupArticleUnits(page);
+      const rootGroups=[...units.map(u=>u.group),...roots.filter(root=>{
+        if(units.some(u=>u.group===root))return false;
+        const selection=groupSelection(page,root.id);
+        return !units.some(u=>u.selection.componentIds?.some(id=>selection.componentIds?.includes(id))||u.selection.cableIds?.some(id=>selection.cableIds?.includes(id)));
+      })];
       const groupedCompIds = new Set<string>();
 
       for (const group of rootGroups) {
         // An unassigned graphical group is not a purchased assembly. Do not
         // suppress real article assignments on its members either.
-        if(assignedOnly && !(group.articleAssignment?.items?.length || !group.articleAssignment && group.articleNumber?.trim()))continue;
+        const assigned=groupArticles(group);
+        if(assignedOnly && !assigned.length)continue;
         const groupSel = groupSelection(page, group.id);
         for (const compId of groupSel.componentIds ?? []) {
           groupedCompIds.add(compId);
@@ -69,9 +77,6 @@ export class PartsListGenerator {
           continue;
         }
 
-        const assigned = group.articleAssignment?.items?.length
-          ? group.articleAssignment.items
-          : [];
         if (group.articleAssignment && !assigned.length) continue;
 
         const items = assigned.length

@@ -20,6 +20,8 @@ export interface ArticleDataContext {
     articleNumber?: string;
     manufacturer?: string;
     inheritedFromComponentId?: string;
+    inheritedFromGroupId?: string;
+    inheritedFromGroupBmk?: string;
     sourceObjectType?: number;
 }
 /** Classify evidence; never infer that missing destination fields prove an empty source database. */
@@ -33,6 +35,13 @@ export function articleDataContext(entry: IndexedComponent, index: ProjectIndex)
         sourceObjectType: c.source?.objectType };
     const own=effectiveArticles(c,index.project),owner=index.devices.owner(componentAddress(entry.page,c));
     if(!own.length&&owner&&owner.component!==c){const inherited=effectiveArticles(owner.component,index.project);if(inherited.length)return {...base,state:'inherited',articleNumber:owner.component.articleNumber,articleNumbers:inherited.map(a=>a.articleNumber),manufacturer:owner.component.manufacturer,inheritedFromComponentId:owner.component.id};}
+    const assembly=index.assemblyArticles.get(c);
+    if(!own.length&&assembly){
+        const primary=assembly.items.find(a=>a.role==='main')??assembly.items[0];
+        return {...base,role:'auxiliary',state:'inherited',articleNumber:primary.articleNumber,
+            articleNumbers:assembly.items.map(a=>a.articleNumber),manufacturer:primary.manufacturer,
+            inheritedFromGroupId:assembly.group.id,inheritedFromGroupBmk:assembly.group.bmk||assembly.group.name};
+    }
     if(c.articleAssignment)return {...base,state:own.length?'assigned':'unassigned',articleNumber:c.articleNumber,articleNumbers:own.map(a=>a.articleNumber),manufacturer:c.manufacturer};
     const references=activeImportedArticles(c);
     if(references)return {...base,state:'assigned',articleNumber:c.articleNumber,articleNumbers:references.map(r=>r.articleNumber),manufacturer:c.manufacturer};
