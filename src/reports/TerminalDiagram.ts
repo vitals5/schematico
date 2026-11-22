@@ -7,8 +7,13 @@ import { Project } from '../model/types';
 import {ProjectIndex,scopedDesignation,displayDesignation,type ProjectStructure} from '../model/ProjectIndex';
 import {ElectricalNetService} from '../model/ElectricalNetService';
 import {isTerminalComponent,interpretationEnabled} from '../model/ComponentSemantics';
+import {terminalLevelValues,terminalPinSide} from '../model/TerminalFunctions';
 
 export interface TerminalEntry {
+  levelId?:string;
+  levelDesignation?:string;
+  pinIds?:string[];
+  mainFunction?:boolean;
   stripIdentity?:TerminalStripIdentity;
   assemblyPosition?:number;
   terminalStrip: string;      // e.g. "-X1"
@@ -88,22 +93,26 @@ export class TerminalDiagramGenerator {
   public static generateTerminalReport(project: Project): Map<string, TerminalEntry[]> {
     const index=new ProjectIndex(project);
     const nets=new ElectricalNetService(index);
-    const records=new Map<string,{tag:string;structure:ProjectStructure;entries:TerminalEntry[]}>(),lastStrip=new Map<string,string>();
+    const records=new Map<string,{tag:string;structure:ProjectStructure;entries:TerminalEntry[];count:number}>(),lastStrip=new Map<string,string>();
     for(const entry of index.components){
       if(!isTerminalComponent(project,entry.component,entry.symbol))continue;
       const {component:comp,page,structure}=entry,scope=JSON.stringify([page.id,structure]);
       const configured=comp.terminal,colon=entry.tag.indexOf(':'),tag=configured?.strip|| (entry.tag?(colon>0?entry.tag.slice(0,colon):entry.tag):lastStrip.get(scope)??'-X1');
       if(entry.tag)lastStrip.set(scope,tag);
       const key=scopedDesignation(structure,tag);
-      const record=records.get(key)??{tag,structure,entries:[]};records.set(key,record);
+      const record=records.get(key)??{tag,structure,entries:[],count:0};records.set(key,record);
+      const levels=terminalLevelValues(comp,entry.symbol);
+      const sequence=String(++record.count);
+      for(const level of levels.length>1?levels:[undefined]) {
       const internal=new Set<string>(),external=new Set<string>(),colors=new Set<string>(),sections=new Set<string>();
       for(const own of index.pinsFor(entry)){
+        if(level&&!level.pinIds.includes(own.id))continue;
         const trace=nets.traceTargets(own);
         for(const other of trace.targets){
         const targetScope=other.owner.structure;
         const targetTag=targetScope.plant===structure.plant&&targetScope.location===structure.location?other.owner.tag:displayDesignation(targetScope,other.owner.tag);
-        const target=(targetTag||'-')+':'+other.label;
-        ((configured?.pinSides[own.id]??(own.id==='1'?'internal':'external'))==='internal'?internal:external).add(target);
+        const target=(levels.length===1&&levels[0].pinIds.length>2?own.label+': ':'')+(targetTag||'-')+':'+other.label;
+        (terminalPinSide(comp,entry.symbol,own.id)==='internal'?internal:external).add(target);
         }
         for(const connection of trace.connections){
         if(connection.wire.color)colors.add(connection.wire.color);
@@ -112,8 +121,14 @@ export class TerminalDiagramGenerator {
       }
       const designation=colon>0?entry.tag.slice(colon+1).trim():'',legacy=comp.functionText.match(/\b(U1|V1|W1|PE|\d+)\b/)?.[0];
       const clean=interpretationEnabled(project,'nativeRoles');
-      const number=clean?(configured?.number||designation||'?'):configured?(configured.number+(configured.level?'/'+configured.level:'')):designation||legacy||String(record.entries.length+1);
-      record.entries.push({terminalStrip:tag,terminalNumber:clean&&configured?.level?number+'/'+configured.level:number,numberSource:clean?(configured?.number||designation?'designation':'unresolved'):designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:(comp.functionText||'Durchgangsklemme')+((project.logicalConnections??[]).some(w=>w.terminalBridge&&(w.from.componentId===comp.id||w.to.componentId===comp.id))?' · Brücke':''),wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
+      const number=clean?(configured?.number||designation||'?'):configured?configured.number:designation||legacy||sequence;
+      const levelName=level?.designation||configured?.level;
+      const hasBridge=(project.logicalConnections??[]).some(w=>w.terminalBridge&&(
+        w.from.componentId===comp.id&&(!level||level.pinIds.includes(w.from.pinId))||
+        w.to.componentId===comp.id&&(!level||level.pinIds.includes(w.to.pinId))));
+      record.entries.push({...(level?{levelId:level.id,levelDesignation:level.designation,pinIds:level.pinIds,mainFunction:level.id===entry.symbol?.terminalDefinition?.mainLevel}:{}),
+        terminalStrip:tag,terminalNumber:levelName?number+'/'+levelName:number,numberSource:clean?(configured?.number||designation?'designation':'unresolved'):designation?'designation':legacy?'legacy_text':'sequence',pageId:page.id,componentId:comp.id,internalTarget:[...internal].join(', ')||'-',externalTarget:[...external].join(', ')||'-',functionText:(level?(level.functionText||''):(comp.functionText||'Durchgangsklemme'))+(hasBridge?' · Brücke':''),wireColor:[...colors].join(', '),crossSection:[...sections].join(', ')});
+      }
     }
     const strips=new Map<string,TerminalEntry[]>(),configuration=terminalStripBindings(project);
     for(const record of records.values()){

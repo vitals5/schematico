@@ -120,6 +120,9 @@ export type DrawingPrimitive =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number; anchor?: 'start' | 'middle' | 'end'; rotation?: number };
 
 export interface SymbolDefinition {
+  /** Separate terminal functions in one physical housing. Electrical links are
+   * specified independently by electrical.permanentConnections. */
+  terminalDefinition?: import('./TerminalFunctions').TerminalDefinition;
   functionDefinition?:string;
   articleRequirement?: 'required' | 'optional' | 'none';
   referenceRequirement?: 'required' | 'optional';

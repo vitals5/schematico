@@ -6,6 +6,7 @@ import { getSymbolById } from './symbols';
 import { interruptionLabelPosition, interruptionReferencePosition, isInterruptionSymbol } from './ConnectionSymbols';
 import { standardTerminalId, rotatedLocalPoint } from './SymbolGeometry';
 import { splitCrossReferenceLines } from './CrossReferenceNavigation';
+import {terminalLevelValues} from './TerminalFunctions';
 
 export interface CalculatedLabelPosition {
   maxWidth?: number;
@@ -360,6 +361,22 @@ export function terminalDesignation(comp: PlacedComponent, sym: SymbolDefinition
   const technical = comp.deviceTag || comp.technicalCharacteristics;
   if (technical) return computeTechnicalDataPosition(comp, sym).visible ? technical : '';
   return computeFunctionTextPosition(comp, sym).visible ? comp.functionText : '';
+}
+
+/** Dynamic level text shares the pin-label visibility, rotation and scale rules. */
+export function terminalFunctionLabels(comp:PlacedComponent,sym:SymbolDefinition,scale=1):{key:string;text:string;position:CalculatedLabelPosition}[] {
+  const levels=terminalLevelValues(comp,sym);if(levels.length<2)return [];
+  return levels.flatMap(level=>{
+    const pins=sym.pins.filter(p=>level.pinIds.includes(p.id)),x=pins.reduce((sum,p)=>sum+p.x,0)/pins.length;
+    const pos=(x:number,y:number,fontSize:number,visible:boolean,anchor:CalculatedLabelPosition['anchor']='start',maxWidth?:number,rotation=0):CalculatedLabelPosition=>
+      ({x:x*scale,y:y*scale,fontSize:fontSize*scale,visible,anchor,rotation,transform:labelTransform(x*scale,y*scale,comp.rotation,rotation),...(maxWidth?{maxWidth:maxWidth*scale}:{})});
+    const pinCfg=comp.pinLabelPosition,fnCfg=comp.functionTextPosition;
+    const labels=[{key:'level-'+level.id,text:level.designation,position:pos(x+3+(pinCfg?.offsetX??0),(sym.height>32?12:sym.height/2+2)+(pinCfg?.offsetY??0),comp.pinLabelFontSize??pinCfg?.fontSize??5,pinCfg?.visible!==false,'start',pinCfg?.maxWidth??10,pinCfg?.rotation??0)}];
+    const own=comp.terminal?.levels?.[level.id]?.functionText;
+    if(own&&own!==comp.functionText)labels.push({key:'level-text-'+level.id,text:own,
+      position:pos(x+(fnCfg?.offsetX??0),sym.height+10+(fnCfg?.offsetY??0),fnCfg?.fontSize??5,fnCfg?.visible!==false,'middle',fnCfg?.maxWidth??14,fnCfg?.rotation??0)});
+    return labels;
+  });
 }
 
 export function arePinLabelsVisible(comp: PlacedComponent, sym?: SymbolDefinition): boolean {

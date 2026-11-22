@@ -10,7 +10,10 @@ import { projectRevision } from '../layout/types';
 import {terminalStripBindings,terminalIdentity,terminalStripKey} from './TerminalStripTypes';
 import {isTerminalComponent} from './ComponentSemantics';
 import { cablePartFindings, cablePartLabel } from './CableArticles';
+import {terminalLevelValues,validTerminalLevelSettings} from './TerminalFunctions';
 export interface TerminalSettings {
+  /** Stable library level ID -> editable designation and function text. */
+  levels?: Record<string, { designation: string; functionText?: string }>;
   strip: string;
   number: string;
   level: string;
@@ -60,14 +63,18 @@ export function inspectWiring(
     terminals = new Map<string, typeof index.components>();
   for (const e of index.components) {
     if (!isTerminalComponent(project,e.component,e.symbol)) continue;
+    if(!validTerminalLevelSettings(e.component,e.symbol))messages.push({code:'terminal_strip_configuration',pageId:e.page.id,componentId:e.component.id,details:'Invalid terminal level configuration'});
     const settings = terminalSettings(e.component);
     if (!settings.number) continue;
+    const levels=terminalLevelValues(e.component,e.symbol);
+    for(const level of levels.length>1?levels.map(l=>l.designation):[settings.level]) {
     const key = JSON.stringify([
       scopedDesignation(e.structure, settings.strip),
       settings.number,
-      settings.level,
+      level,
     ]);
     terminals.set(key, [...(terminals.get(key) ?? []), e]);
+    }
   }
   for (const [key, entries] of terminals)
     if (entries.length > 1)
@@ -219,6 +226,7 @@ export class WiringEditPlan {
       e.component.terminal.strip = edit.settings.strip.trim();
       e.component.terminal.number = edit.settings.number.trim();
       e.component.terminal.level = edit.settings.level.trim();
+      if(!validTerminalLevelSettings(e.component,e.symbol))throw new Error('wiringInvalid');
       e.component.bmk =
         e.component.terminal.strip + ':' + e.component.terminal.number;
       const owner=project.terminalStrips?.find(s=>s.positions.some(pos=>pos.kind==='terminal'&&pos.members.some(a=>a.pageId===edit.target.pageId&&a.componentId===edit.target.componentId)));

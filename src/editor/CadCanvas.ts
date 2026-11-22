@@ -1,5 +1,5 @@
 import { ProjectIndex } from '../model/ProjectIndex';
-import {wrapLabelText, terminalDesignation} from '../model/LabelLayout';
+import {wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
 import type {InspectionLocation} from '../model/ElectricalInspection';
 import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup, groupSelection, memberKeys } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
@@ -3612,6 +3612,7 @@ export class CadCanvas {
 
           <!-- Terminal Pins -->
           ${pinsSvg}
+          ${hideLabels?'':terminalFunctionLabels(comp,sym,s).filter(l=>l.position.visible).map(l=>`<text data-terminal-label="${l.key}" x="${l.position.x}" y="${l.position.y}" ${l.position.transform} font-size="${l.position.fontSize}" text-anchor="${l.position.anchor}" fill="#cbd5e0">${labelText(wrapLabelText(l.text,l.position.fontSize,l.position.maxWidth),l.position.x,l.position.fontSize)}</text>`).join('')}
           ${comp.deviceBox?`<rect class="box-resize-handle" data-element-box-resize="${comp.id}" x="${sym.width-4}" y="${sym.height-4}" width="8" height="8" fill="#63b3ed" style="cursor:nwse-resize;display:${isSelected&&!this.multipleSelection?'block':'none'}"/>`:''}
         </g>
       `;

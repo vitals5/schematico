@@ -53,6 +53,13 @@ export function getMacroCategoryLabel(categoryId: string, lang: Language = getUi
 }
 
 export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; description?: string }> = {
+  terminal_feed_3: { name: '3-Wire Feed-Through Terminal' },
+  terminal_feed_4: { name: '4-Wire Feed-Through Terminal' },
+  terminal_double: { name: 'Double-Level Terminal' },
+  terminal_triple: { name: 'Triple-Level Terminal' },
+  terminal_installation_l_n_pe: { name: 'Installation Terminal L/N/PE' },
+  terminal_installation_l_l_pe: { name: 'Installation Terminal L/L/PE' },
+  terminal_installation_l_n_pe_disconnect: { name: 'Installation Terminal L/N/PE with Neutral Disconnect' },
   coil: { name: 'Contactor Coil', description: 'Coil for contactor or relay' },
   no_contact: { name: 'NO Contact (Auxiliary)', description: 'Normally open auxiliary contact' },
   nc_contact: { name: 'NC Contact (Auxiliary)', description: 'Normally closed auxiliary contact' },
@@ -372,6 +379,8 @@ const PHRASE_REPLACEMENTS: [RegExp, string][] = [
   [/Drehstrommotor/g, 'Three-Phase Motor'],
   [/Wechselstrommotor/g, 'Single-Phase AC Motor'],
   [/Installations-Etagenklemme/g, 'Multi-Level Installation Terminal'],
+  [/Doppelstockklemme/g, 'Double-Level Terminal'],
+  [/Dreistockklemme/g, 'Triple-Level Terminal'],
   [/Durchgangsklemme/g, 'Feed-Through Terminal'],
   [/PE-Schutzleiterklemme/g, 'PE Protective Earth Terminal'],
   [/Schutzleiter-Klemme/g, 'Ground Terminal (PE)'],

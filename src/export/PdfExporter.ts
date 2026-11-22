@@ -5,7 +5,7 @@ import { renderPdfGraphics } from "./PdfGraphics";
 import { prepareProjectPdfSections } from './ProjectPdfSections';
 import { appendManufacturingReportPdf } from './ManufacturingReportPdf';
 import { renderCabinetPdfPage } from '../ui/CabinetDrawing';
-import {wrapLabelText, terminalDesignation} from '../model/LabelLayout';
+import {wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
 import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
@@ -811,6 +811,13 @@ export class PdfExporter {
       }
 
       // Draw Labels according to component type
+      if(!hideLabels||comp.showLabels)for(const item of terminalFunctionLabels(comp,sym,s)){
+        const pos=item.position;if(!pos.visible)continue;
+        const point=rotatedLocalPoint(pos,scaledSym,comp.rotation);
+        doc.setFont('helvetica','normal');doc.setFontSize(pos.fontSize*sy*72/25.4);doc.setTextColor(0,0,0);
+        doc.text(wrapLabelText(item.text,pos.fontSize,pos.maxWidth),(comp.x+point.x)*sx,(comp.y+point.y)*sy,
+          {align:pos.anchor==='middle'?'center':pos.anchor==='end'?'right':'left',angle:-pos.rotation,lineHeightFactor:1.2});
+      }
       const arrowPos = interruptionLabelPosition(project, comp, sym);
       if (isInterruptionSymbol(sym) && arrowPos) {
         const local = arrowPos;

@@ -1,4 +1,6 @@
 import {isTerminalComponent} from '../model/ComponentSemantics';
+import {terminalFields,collectTerminalFields} from './TerminalFields';
+import {terminalPinSide,terminalLevels} from '../model/TerminalFunctions';
 import {TerminalStripDialog} from './TerminalStripDialog';
 import './WiringWorkspace.css';
 import './TerminalCableWorkspace.css';
@@ -105,7 +107,7 @@ export class WiringDialog {
             ([id, side]) =>
               `${id}: ${t(side === 'internal' ? 'wiringInternal' : 'wiringExternal')}`,
           )
-          .join('\n')
+          .join('\n') + '\n' + Object.entries(edit.settings.levels??{}).map(([id,level])=>`${t('wiringLevel')} ${id}: ${level.designation} · ${level.functionText??''}`).join('\n')
       );
     }
     const c = this.source.pages
@@ -162,15 +164,14 @@ export class WiringDialog {
     this.el.innerHTML = `<section role="dialog" aria-modal="true" style="width:min(1200px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:20px;border:1px solid #526170;border-radius:8px"><h2>${t('wiringManage')}</h2><button class="btn" data-repairs>${t('repairTitle')}</button><div role="alert" style="color:#fca5a5">${esc(this.error)}</div><fieldset><legend>${t('wiringTerminals')}</legend><select class="form-input" data-terminal><option value="">—</option>${terminalOptions.map((o) => `<option value="${esc(o.value)}" ${o.value === this.terminal ? 'selected' : ''}>${esc(o.e.page.pageNumber + ' · ' + o.e.component.bmk + ' · ' + o.e.component.functionText)}</option>`).join('')}</select>
  ${
    selected && settings
-     ? `${field('strip', t('wiringStrip'), settings.strip)}${field('number', t('wiringNumber'), settings.number)}${field('level', t('wiringLevel'), settings.level)}<div style="display:flex;gap:8px;flex-wrap:wrap">${this.index
-         .pinsFor(selected)
+     ? `${field('strip', t('wiringStrip'), settings.strip)}${field('number', t('wiringNumber'), settings.number)}${terminalLevels(selected.symbol).length<2?field('level', t('wiringLevel'), settings.level):''}<div style="display:flex;gap:8px;flex-wrap:wrap">${(terminalLevels(selected.symbol).length?[]:this.index.pinsFor(selected))
          .map(
            (p) =>
-             `<label>${esc(p.label)}<select data-side="${esc(p.id)}"><option value="internal" ${(settings.pinSides[p.id] ?? (p.id === '1' ? 'internal' : 'external')) === 'internal' ? 'selected' : ''}>${t('wiringInternal')}</option><option value="external" ${(settings.pinSides[p.id] ?? (p.id === '1' ? 'internal' : 'external')) === 'external' ? 'selected' : ''}>${t('wiringExternal')}</option></select></label>`,
+             `<label>${esc(p.label)}<select data-side="${esc(p.id)}"><option value="internal" ${terminalPinSide({...selected.component,terminal:settings},selected.symbol,p.id) === 'internal' ? 'selected' : ''}>${t('wiringInternal')}</option><option value="external" ${terminalPinSide({...selected.component,terminal:settings},selected.symbol,p.id) === 'external' ? 'selected' : ''}>${t('wiringExternal')}</option></select></label>`,
          )
          .join(
            '',
-         )}</div><button class="btn" data-save-terminal>${t('articlesPreview')}</button>`
+         )}</div>${selected.symbol?terminalFields({...selected.component,terminal:settings},selected.symbol,false):''}<button class="btn" data-save-terminal>${t('articlesPreview')}</button>`
      : ''
  }
  <details data-old-terminal-report></details>
@@ -243,28 +244,15 @@ export class WiringDialog {
         });
     this.el
       .querySelector('[data-save-terminal]')
-      ?.addEventListener('click', () =>
-        this.prepare({
-          kind: 'terminal',
-          target: {
-            pageId: selected!.page.id,
-            componentId: selected!.component.id,
-          },
-          settings: {
-            strip: input('strip'),
-            number: input('number'),
-            level: input('level'),
-            pinSides: Object.fromEntries(
-              [
-                ...this.el.querySelectorAll<HTMLSelectElement>('[data-side]'),
-              ].map((s) => [
-                s.dataset.side!,
-                s.value as 'internal' | 'external',
-              ]),
-            ),
-          },
-        }),
-      );
+      ?.addEventListener('click', () => {
+        try {
+          const fields=selected?.symbol?collectTerminalFields(this.el,selected.component,selected.symbol):undefined;
+          this.prepare({kind:'terminal',target:{pageId:selected!.page.id,componentId:selected!.component.id},settings:{
+            ...(fields??settings!),strip:input('strip'),number:input('number'),level:terminalLevels(selected?.symbol).length>1?settings!.level:input('level'),
+            pinSides:fields?.pinSides??Object.fromEntries([...this.el.querySelectorAll<HTMLSelectElement>('[data-side]')].map(s=>[s.dataset.side!,s.value as 'internal'|'external'])),
+          }});
+        }catch(e){this.error=articleError(e);this.render();}
+      });
     this.el
       .querySelector('[data-save-cable]')
       ?.addEventListener('click', () =>
@@ -433,7 +421,7 @@ export class WiringDialog {
     mountTerminalCableWorkspace(this.el,this.snapshot,this.workspace,{
       openConfigurator:()=>{const identity=this.snapshot.terminals[0]?.entry.stripIdentity??this.source.terminalStrips?.[0]??{plant:'',location:'',strip:''};new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show();},
       configure:identity=>new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show(),
-      pickTerminal:key=>{this.terminal=key;this.workspace.tab='terminals';this.workspace.panel='terminal';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
+      pickTerminal:key=>{this.terminal=JSON.stringify(JSON.parse(key).slice(0,2));this.workspace.tab='terminals';this.workspace.panel='terminal';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
       pickCable:(key,core)=>{this.cable=key;this.core=core??'';this.workspace.tab='cables';this.workspace.panel=core?'core':'cable';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
       refresh:()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.workspace.panel=undefined;this.render();},
       closePanel:()=>{this.workspace.panel=undefined;this.preview=undefined;this.draft=undefined;this.error='';this.render();}

@@ -34,6 +34,8 @@ Editor und PDF verwenden dieselben Vektordaten. Die Symbole bleiben beim Speiche
 
 ## Kompakte Klemmen
 
+Die [Klemmentypen und Etagenfunktionen](terminal-functions.md) ergänzen 3-/4-Leiter-Durchgangsklemmen, Doppel-/Dreistockklemmen und Installationsetagenklemmen mit getrennten Funktionen, editierbaren Etagen und einer gemeinsamen Artikelzuordnung. Funktionstexte neuer Klemmen bleiben standardmäßig leer.
+
 **Reihenklemme** und **Schutzleiterklemme (PE)** sind bei neuem Einfügen mit 100 % jetzt so groß wie zuvor mit 50 %. Kontur, Anschlussabstand und Einfügepunkt sind gemeinsam halbiert (6 × 10 mm bei normalem Projektmaßstab). Auf dem 2-mm-Halbraster lassen sich beide Anschlüsse exakt ausrichten; Autoconnect funktioniert weiter in beiden Anschlussrichtungen und nach Drehung.
 
 Bereits gespeicherte Platzierungen behalten ihre bisherige Geometrie und ihren individuellen Zoomfaktor. Alte Projekte und Makros übernehmen dafür die bisherigen Definitionen in ihre Projektbibliothek, damit vorhandene Verbindungen an ihren Anschlüssen bleiben. Importierte und ausdrücklich im Projekt hinterlegte Symbole werden nicht verkleinert.

@@ -1,7 +1,7 @@
 import type { DrawingPrimitive as G, PinDefinition as Pin, SymbolDefinition as Symbol } from './types';
 import { drawingToSvg } from './ImportedDrawing';
 
-type Shape = { width: number; height: number; pins: Pin[]; graphics: G[]; electrical?: Symbol['electrical'] };
+type Shape = { width: number; height: number; pins: Pin[]; graphics: G[]; electrical?: Symbol['electrical']; terminalDefinition?: Symbol['terminalDefinition'] };
 const ink = 'currentColor';
 const line = (x1:number,y1:number,x2:number,y2:number,dash?:number[]):G => ({kind:'line',x1,y1,x2,y2,color:ink,width:.8,...(dash?{dash}:{})});
 const rect = (x:number,y:number,width:number,height:number):G => ({kind:'rect',x,y,width,height,color:ink,lineWidth:.8});
@@ -104,7 +104,8 @@ function terminal(levels:number,pe=false,disconnect=false,fused=false):Shape {
     if(pe)graphics.push(...ground(x,46));
   }
   const groups=Array.from({length:levels},(_,i)=>[`${i+1}.1`,`${i+1}.2`]);
-  return {width,height,pins,graphics,electrical:{permanentConnections:disconnect||fused?[]:groups,
+  return {width,height,pins,graphics,terminalDefinition:{kind:pe?'pe':disconnect?'disconnect':fused?'fused':levels>1?'multi_level':'feed_through',mainLevel:'1',
+    levels:groups.map((pinIds,i)=>({id:String(i+1),designation:String(i+1),pinIds,potential:pe?'PE':'undefined',...(disconnect||fused?{disconnectable:true}:{})}))},electrical:{permanentConnections:disconnect||fused?[]:groups,
     ...(disconnect||fused?{conditionalConnections:groups}:{})}};
 }
 function sockets(names:string[]):Shape {
@@ -153,8 +154,8 @@ type Meta={ properties?:Record<string,string>; keywords?:string[]; alternatives?
 function add(family:string,id:string,name:string,category:Symbol['category'],prefix:string,shape:Shape,meta:Meta={}) {
   const key=id.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\+/g,'plus').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
   symbols.push({id:`catalog_${family}_${key}`,name,category,standard:meta.standard??'DIN EN 60617',defaultBmkPrefix:prefix,
-    defaultFunctionText:meta.functionText??name.split(' – ')[0],description:name,unitsPerMm:2,width:shape.width,height:shape.height,
-    insertionPoint:shape.pins[0]?{x:shape.pins[0].x,y:shape.pins[0].y}:{x:0,y:0},pins:shape.pins,electrical:shape.electrical,importedGraphics:shape.graphics,svgContent:drawingToSvg(shape.graphics),
+    defaultFunctionText:meta.functionText??(shape.terminalDefinition?'':name.split(' – ')[0]),description:name,unitsPerMm:2,width:shape.width,height:shape.height,
+    insertionPoint:shape.pins[0]?{x:shape.pins[0].x,y:shape.pins[0].y}:{x:0,y:0},pins:shape.pins,electrical:shape.electrical,terminalDefinition:shape.terminalDefinition,importedGraphics:shape.graphics,svgContent:drawingToSvg(shape.graphics),
     family,keywords:[...FAMILY_KEYWORDS[family]??[],...meta.keywords??[]],bmkPrefixes:[prefix,...meta.alternatives??[]].filter(Boolean),variantProperties:meta.properties??{},
     technicalCharacteristics:meta.technical??Object.values(meta.properties??{}).join(' | '),...(meta.master?{isMaster:true}:{})});
 }
@@ -220,10 +221,14 @@ for(const poles of [3,4,5,6,7,8])add('isolator',`${poles}p`,`Lasttrennschalter /
 for(const poles of [3,4])add('isolator',`repair_${poles}p`,`Reparaturschalter – ${poles}P, abschließbar`,'relays','-Q',power(poles,'isolator'),{properties:{Pole:`${poles}P`,Ausführung:'abschließbar'}});
 
 // 3. Isolated terminal levels, PE paths, testing and separate phase buses.
-for(const technology of ['Federzug','Schraube','Push-in'])for(const levels of [1,2,3])add('feed_terminal',technology+'_'+levels,`Durchgangsklemme – ${technology}, ${levels}-stöckig`,'terminals','-X',terminal(levels),{properties:{Anschlusstechnik:technology,Etagen:String(levels)}});
+for(const technology of ['Federzug','Schraube','Push-in'])for(const levels of [1,2,3])add('feed_terminal',technology+'_'+levels,`${levels===1?'Durchgangsklemme':levels===2?'Doppelstockklemme':'Dreistockklemme'} – ${technology}, ${levels}-stöckig`,'terminals','-X',terminal(levels),{properties:{Anschlusstechnik:technology,Etagen:String(levels)}});
 for(const technology of ['Federzug','Schraube','Push-in'])for(const kind of ['L/L/PE','L/N/PE']) {
   const s=terminal(3);s.pins.forEach((p,i)=>p.name=kind.split('/')[Math.floor(i/2)]);s.graphics.push(...ground(48,46));
+  s.terminalDefinition!.kind='installation';
+  s.terminalDefinition!.levels.forEach((level,i)=>{const potential=kind.split('/')[i] as 'L'|'N'|'PE';level.potential=potential;level.designation=potential==='L'&&kind==='L/L/PE'?'L'+(i+1):potential;
+    for(const pin of s.pins.filter(p=>level.pinIds.includes(p.id)))pin.electricalRole=potential==='PE'?'protective_earth':potential==='N'?'neutral':'power';});
   if(kind.includes('N')){s.graphics=s.graphics.filter(g=>!(g.kind==='line'&&g.x1===32&&g.y1===26));s.graphics.push(line(32,26,38,36));
+    s.terminalDefinition!.levels[1].disconnectable=true;
     s.electrical={permanentConnections:[['1.1','1.2'],['3.1','3.2']],conditionalConnections:[['2.1','2.2']]};}
   add('installation_terminal',technology+'_'+kind.replaceAll('/','_'),`Installations-Etagenklemme – ${kind}, ${technology}`,'terminals','-X',s,{properties:{Belegung:kind,Anschlusstechnik:technology,...(kind.includes('N')?{Neutralleiter:'N-Sammeltrennschieber'}:{})}});
 }

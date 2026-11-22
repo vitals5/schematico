@@ -11,6 +11,7 @@ import { EXTENDED_SYMBOL_DEFINITIONS } from './ExtendedSymbols';
 import { STANDARD_IEC_SYMBOLS } from './StandardIecSymbols';
 import { INSTALLATION_SYMBOLS } from './InstallationSymbols';
 import { scaleSymbolDefinition } from './SymbolGeometry';
+import { TERMINAL_SYMBOLS } from './TerminalSymbols';
 import { getSharedCatalogSymbol, sharedCatalogSymbols } from './GitHubCatalog';
 
 export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
@@ -307,7 +308,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
     category: 'terminals',
     standard: 'DIN EN 60617',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'Reihenklemme',
+    defaultFunctionText: '',
     width: 24,
     height: 40,
     pins: [
@@ -327,7 +328,7 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
     category: 'terminals',
     standard: 'DIN EN 60617',
     defaultBmkPrefix: '-X',
-    defaultFunctionText: 'PE-Klemme',
+    defaultFunctionText: '',
     width: 24,
     height: 40,
     pins: [
@@ -1455,7 +1456,13 @@ export const SYMBOL_DEFINITIONS: SymbolDefinition[] = [
   }
 ];
 
-SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...INSTALLATION_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, ...CONNECTION_VARIANTS, DEVICE_BOX_SYMBOL);
+SYMBOL_DEFINITIONS.push(...STANDARD_IEC_SYMBOLS, ...INSTALLATION_SYMBOLS, ...EXTENDED_SYMBOL_DEFINITIONS, ...TERMINAL_SYMBOLS, ...CONNECTION_VARIANTS, DEVICE_BOX_SYMBOL);
+
+for (const id of ['terminal_single','terminal_pe']) {
+  const symbol=SYMBOL_DEFINITIONS.find(s=>s.id===id)!;
+  symbol.terminalDefinition={kind:id==='terminal_pe'?'pe':'feed_through',mainLevel:'0',
+    levels:[{id:'0',designation:'0',pinIds:symbol.pins.map(p=>p.id),potential:id==='terminal_pe'?'PE':'undefined'}]};
+}
 
 // Portable library semantics. Project-owned/imported definitions are never changed here.
 for (const symbol of SYMBOL_DEFINITIONS) {
@@ -1602,7 +1609,7 @@ export function getComponentSymbolLibrary(components: PlacedComponent[]): Symbol
   const ids = new Set(components.map(component => component.symbolId));
   return JSON.parse(JSON.stringify([...ids].flatMap(id => {
     const s = getSymbolById(id);
-    return s && (historicalTerminals.has(id) || activeProject?.symbolLibrary?.some(d => d.id === id) || s.unitsPerMm !== 2) ? [s] : [];
+    return s && (s.terminalDefinition || historicalTerminals.has(id) || activeProject?.symbolLibrary?.some(d => d.id === id) || s.unitsPerMm !== 2) ? [s] : [];
   })));
 }
 

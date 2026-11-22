@@ -1,4 +1,5 @@
 import {ArticleCatalogDialog} from './ArticleCatalogDialog';
+import {terminalFields,applyTerminalFields} from './TerminalFields';
 import {groupPropertiesSession} from '../model/GroupProperties';
 import { wrapLabelText, type CalculatedLabelPosition } from '../model/LabelLayout';
 import {importedArticleFields} from './ImportedArticleFields';
@@ -441,6 +442,7 @@ export class PropertiesDialog {
               }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? tr('Keine gemeinsamen Anschlüsse auf allen Elementen','No common pins across all elements') : escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
+          ${!this.isMulti&&sym?terminalFields(this.component,sym):''}
           ${renderInspectionFields(this.component,this.components,this.project,this.dirtyFields)}
         </div>
       `;
@@ -1853,5 +1855,6 @@ export class PropertiesDialog {
         if (!isNaN(sc)) this.component.scale = sc;
       }
     }
+    if(!this.isMulti&&sym&&!applyTerminalFields(modal,this.component,sym))return false;
   }
 }
