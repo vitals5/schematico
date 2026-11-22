@@ -14,9 +14,11 @@ import { componentInsertionPoint, rotatedLocalPoint } from './SymbolGeometry';
 import { t } from '../i18n';
 import {dimensioningResults} from './ElectricalDimensioning';
 import {articleDataContext,ARTICLE_DATA_STATES,type ArticleDataContext} from './ArticleDataAnalysis';
+import {aggregateGroupArticleFindings} from './GroupInspection';
 export const ELECTRICAL_RULES = ['dimensioning_input','dimensioning_limit','terminal_strip_configuration','plc_configuration','bus_configuration','connector_configuration','potential_anchor_invalid','potential_definition_collision','potential_policy_mismatch','terminal_number_duplicate','cable_core_duplicate','cable_wire_missing','cable_wire_reused','cable_reserve_connected','cable_core_unassigned','cable_count_mismatch','cable_article_assignment','cable_length_missing','cable_length_invalid','invalid_article_assignment','article_incompatible','article_spec_unknown','invalid_physical_device','missing_article', 'unwired', 'required_pin_open', 'reserve_pin_connected', 'missing_device_tag', 'duplicate_page_id', 'duplicate_component_id', 'duplicate_master', 'duplicate_device_tag', 'duplicate_terminal', 'invalid_endpoint', 'invalid_internal_group', 'neutral_pe_connection', 'potential_conflict', 'unresolved_reference', 'missing_reference_target', 'missing_master_reference'] as const;
 export type ElectricalRule = typeof ELECTRICAL_RULES[number];
 export interface InspectionLocation {
+    groupId?: string;
     pageId: string;
     pageNumber: string;
     cableId?:string;coreId?:string;
@@ -28,6 +30,7 @@ export interface InspectionLocation {
     y: number;
 }
 export interface InspectionFinding {
+    groupId?: string;
     articleData?: ArticleDataContext;
     id: string;
     ruleId: ElectricalRule;
@@ -169,7 +172,7 @@ export function inspectElectricalProject(project: Project, index = new ProjectIn
             add('potential_conflict', constrained.map(p => [portIdentity(p.pin), p.value]).sort(), 'error', locations[0], t('plausMsgPotentialConflict', { names: names.join(', ') }), t('plausRecPotentialConflict'), { netId: net.id, constraints: names }, locations);
         }
     }
-    const unique = [...new Map(messages.map(m => [m.id, m])).values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const unique = [...new Map(aggregateGroupArticleFindings(project,messages).map(m => [m.id, m])).values()].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     const summary = { errors: unique.filter(m => m.severity === 'error').length, warnings: unique.filter(m => m.severity === 'warning').length, infos: unique.filter(m => m.severity === 'info').length };
     return { schemaVersion: 1, domain: 'electrical', projectId: project.id, projectName: project.name, status: summary.errors ? 'errors' : summary.warnings ? 'warnings' : summary.infos ? 'infos' : 'no_findings', summary, coverage: { placements: index.components.length, unknownInternalConnections: index.components.filter(e => index.pinsFor(e).length && nets.knowledge.get(e) === 'unknown').length, unknownPinRoles: index.components.flatMap(e => index.pinsFor(e)).filter(p => p.role === 'unknown').length, switchStatesSimulated: false, standardsCertified: false }, articleDataSummary,rules: ELECTRICAL_RULES, messages: unique };
 }

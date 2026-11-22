@@ -305,6 +305,16 @@ export class CadCanvas {
   public focusInspection(location:InspectionLocation):void {
     if(!this.project.pages.some(p=>p.id===location.pageId))return;
     this.focusReference({...location,label:'',start:0,end:0});
+    if(location.groupId&&this.activePage.groups?.some(g=>g.id===location.groupId)){
+      this.setElementSelection(groupSelection(this.activePage,location.groupId));
+      const bounds=selectionBounds(this.activePage,this.project,this.getElementSelection());
+      if(bounds){const rect=this.container.getBoundingClientRect();
+        this.scale=Math.max(.05,Math.min(this.scale,Math.max(1,rect.width-80)/Math.max(1,bounds.right-bounds.left),Math.max(1,rect.height-80)/Math.max(1,bounds.bottom-bounds.top)));
+        this.panX=rect.width/2-(bounds.left+bounds.right)/2*this.scale;
+        this.panY=rect.height/2-(bounds.top+bounds.bottom)/2*this.scale;
+      }
+      this.render();return;
+    }
     const cable=this.activePage.cables?.find(c=>c.id===location.cableId);if(cable){this.selectedCableId=cable.id;this.selectedComponentId=null;this.selectedWireId=null;this.callbacks.onSelectCable?.(cable);this.render();}
     const wire=this.activePage.wires.find(w=>w.id===location.wireId);
     if(wire){this.selectedComponentId=null;this.selectedWireId=wire.id;this.callbacks.onSelectComponent(null);this.callbacks.onSelectWire(wire);this.render();}

@@ -12,4 +12,6 @@ Eine Baugruppe auswählen und **F2**, **Enter** oder **Vollständige Eigenschaft
 
 Die elektrische Prüfung berücksichtigt die Artikelzuweisung der Baugruppe für deren Bestandteile. Bei verschachtelten Baugruppen zählt die äußere zugewiesene Baugruppe; eine zugewiesene Untergruppe innerhalb einer rein grafischen Obergruppe bleibt eigenständig. Die Stückliste zählt Gruppenartikel einschließlich Zubehör und Mengen genau einmal. Rein grafische Gruppierung ohne Artikelzuweisung ersetzt keine Artikelzuordnung.
 
+Fehlen Artikelzuordnungen innerhalb einer Gruppe, fasst der Prüfbericht die betroffenen Mitglieder in einer Gruppenmeldung zusammen. Über **Gruppenartikel bearbeiten** gelangt man direkt zu diesen Eigenschaften. Die Gruppenmeldung bewahrt die einzelnen Mitglieder als Details; sie ersetzt weder eine tatsächliche Zuordnung noch die elektrischen Anschlussprüfungen.
+
 **Übernehmen** speichert ohne Schließen, **OK** speichert und schließt. **Abbrechen** verwirft seit dem letzten Übernehmen nicht gespeicherte Eingaben. Änderungen unterstützen Rückgängig/Wiederholen. Die zusätzlichen Gruppeneinstellungen bleiben im Projekt erhalten. Auflösen und Löschen sind weiterhin im Eigenschaftenbereich und über die vorhandenen Gruppenbefehle erreichbar.

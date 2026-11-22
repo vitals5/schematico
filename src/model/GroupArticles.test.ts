@@ -17,7 +17,7 @@ const group:ElementGroup={id:'assembly',bmk:'-Q1',name:'Assembly',
 p.pages[0].groups=[group];
 const before=structuredClone(p);
 function context(p:Project,id:string){const index=new ProjectIndex(p);return articleDataContext(index.component(id)!,index);}
-const missing=(p:Project)=>inspectElectricalProject(p).messages.filter(m=>m.ruleId==='missing_article').map(m=>m.componentId);
+const missing=(p:Project)=>inspectElectricalProject(p).messages.filter(m=>m.ruleId==='missing_article').flatMap(m=>m.groupId?m.relatedLocations.map(l=>l.componentId):[m.componentId]);
 assert.equal(context(p,a.id).state,'inherited');
 assert.equal(context(p,a.id).inheritedFromGroupId,group.id);
 assert.equal(context(p,a.id).inheritedFromGroupBmk,'-Q1');

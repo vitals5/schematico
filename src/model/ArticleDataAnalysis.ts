@@ -9,7 +9,7 @@ export type ArticleDataState = typeof ARTICLE_DATA_STATES[number];
 export interface ArticleDataContext {
     state: ArticleDataState;
     articleNumbers?: string[];
-    role: 'auxiliary' | 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown' | 'graphic' | 'device_connection' | 'connector';
+    role: 'auxiliary' | 'main' | 'contact' | 'terminal' | 'connection' | 'structure' | 'annotation' | 'native_part' | 'component' | 'unknown' | 'graphic' | 'device_connection' | 'connector' | 'group';
     symbolId: string;
     plant: string;
     location: string;

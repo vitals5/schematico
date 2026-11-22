@@ -50,6 +50,7 @@ export function findingFingerprint(
         wireId: l.wireId,
         cableId: l.cableId,
         coreId: l.coreId,
+        groupId: l.groupId,
         pages: pages.map((p) => ({
           higherLevel: p.higherLevel,
           location: p.location,
@@ -69,6 +70,7 @@ export function findingFingerprint(
             })),
           wires: p.wires.filter((w) => w.id === l.wireId),
           cables: p.cables?.filter((c) => c.id === l.cableId),
+          groups: l.groupId?p.groups?.filter(g=>g.id===l.groupId):undefined,
         })),
       };
     }),

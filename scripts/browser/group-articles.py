@@ -25,9 +25,7 @@ async def main():
         errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
         await page.goto(sys.argv[1] if len(sys.argv)>1 else 'http://127.0.0.1:4198',wait_until='networkidle')
         await page.evaluate("document.querySelectorAll('.modal-backdrop').forEach(e=>e.remove())")
-        async def inspect(p):
-            await page.locator('#fileInput').set_input_files(dict(name='group-article-test.json',mimeType='application/json',buffer=json.dumps(p).encode()))
-            await page.wait_for_function("name=>document.querySelector('#headerProjectName')?.textContent===name",arg=p['name'])
+        async def open_report():
             await page.locator('#menuDataTrigger').click()
             await page.locator('#menuPlausibility').click()
             root=page.locator('#plausibilityModal')
@@ -35,6 +33,10 @@ async def main():
             async with page.expect_download() as event:await root.locator('#btnExportPlaus').click()
             report=json.loads(pathlib.Path(await (await event.value).path()).read_text())
             return root,report
+        async def inspect(p):
+            await page.locator('#fileInput').set_input_files(dict(name='group-article-test.json',mimeType='application/json',buffer=json.dumps(p).encode()))
+            await page.wait_for_function("name=>document.querySelector('#headerProjectName')?.textContent===name",arg=p['name'])
+            return await open_report()
         p=fixture();root,report=await inspect(p)
         missing=[m['componentId'] for m in report['messages'] if m['ruleId']=='missing_article']
         assert missing==['outside'],missing
@@ -47,11 +49,27 @@ async def main():
         await page.keyboard.press('Escape')
         unassigned=copy.deepcopy(p);unassigned['name']='Graphical group inspection'
         del unassigned['pages'][0]['groups'][0]['articleAssignment']
+        del unassigned['pages'][0]['groups'][0]['bmk']
         root,report=await inspect(unassigned)
-        assert set(m['componentId'] for m in report['messages'] if m['ruleId']=='missing_article')=={'a','b','outside'}
+        missing=[m for m in report['messages'] if m['ruleId']=='missing_article']
+        assert len(missing)==2
+        group=next(m for m in missing if m.get('groupId')=='assembly')
+        assert set(l['componentId'] for l in group['relatedLocations'])=={'a','b'}
+        await root.locator('#reviewRule').select_option('missing_article')
+        await expect(root.locator('.plaus-row[data-group-id="assembly"]')).to_have_count(1)
+        await expect(root.locator('.plaus-row[data-comp-id="a"]')).to_have_count(0)
+        await root.locator('[data-edit-group]').click()
+        properties=page.locator('#propertiesModal')
+        await expect(properties).to_be_visible()
+        await expect(properties.locator('#propBmk')).to_have_value('')
+        await properties.locator('[data-tab="part"]').click()
+        await properties.locator('#propArticleNumber').fill('ASSEMBLY-NEW')
+        await properties.locator('#btnSaveProp').click()
+        root,report=await open_report()
+        assert [m['componentId'] for m in report['messages'] if m['ruleId']=='missing_article']==['outside']
         assert not errors,errors
         await browser.close()
-        print('Group inspection UI: inherited assembly provenance, one independent missing article, retained electrical findings, JSON export, filtered rows and unassigned graphical groups passed')
+        print('Group inspection UI: assigned assembly coverage, unassigned group aggregation, preserved member evidence, direct group properties, article assignment and successful reinspection passed')
 
 
 asyncio.run(main())

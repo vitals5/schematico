@@ -47,6 +47,7 @@ export class PlausibilityDialog {
     location: import('../model/ElectricalInspection').InspectionLocation,
   ) => void;
   private onArticles?: (addresses: ComponentAddress[]) => void;
+  private onGroup?: (pageId: string, groupId: string) => void;
   private filters: ReviewFilters = {};
   private taskStatus = '';
   private taskChange = '';
@@ -73,6 +74,7 @@ export class PlausibilityDialog {
             location: import('../model/ElectricalInspection').InspectionLocation,
           ) => void;
           onManageArticles?: (addresses: ComponentAddress[]) => void;
+          onManageGroup?: (pageId: string, groupId: string) => void;
           onNavigateToPage: (pageId: string, componentId?: string) => void;
           onNavigateToFinding?: (finding: PlausibilityMessage) => void;
         },
@@ -86,6 +88,7 @@ export class PlausibilityDialog {
       this.getProject = onNavigateOrOptions.getProject;
       this.onFinding = onNavigateOrOptions.onNavigateToFinding;
       this.onArticles = onNavigateOrOptions.onManageArticles;
+      this.onGroup = onNavigateOrOptions.onManageGroup;
       this.onWiring = onNavigateOrOptions.onManageWiring;
       this.onPotential = onNavigateOrOptions.onManagePotential;
       this.onDimensioning = onNavigateOrOptions.onManageDimensioning;
@@ -275,11 +278,11 @@ export class PlausibilityDialog {
             })
             .join('')
         : '';
-      return `<tr class="plaus-row" data-finding-index="${index}" data-page-id="${escapeSvg(m.pageId)}" data-comp-id="${escapeSvg(m.componentId ?? '')}" style="border-bottom:1px solid #3e4656;cursor:pointer">
+      return `<tr class="plaus-row" data-finding-index="${index}" data-page-id="${escapeSvg(m.pageId)}" data-comp-id="${escapeSvg(m.componentId ?? '')}" data-group-id="${escapeSvg(m.groupId??'')}" style="border-bottom:1px solid #3e4656;cursor:pointer">
       <td style="padding:6px">${task.current ? `<input type="checkbox" data-task-check="${index}" ${this.selectedTasks.has(m.id) ? 'checked' : ''} ${this.onApply ? '' : 'disabled'}>` : ''}${escapeSvg(t(({ error: 'plausSeverityError', warning: 'plausSeverityWarning', info: 'plausSeverityInfo' } as const)[m.severity]))}</td><td>${escapeSvg(m.pageNumber)}</td><td>${escapeSvg(m.bmk || '-')}</td>
-      <td style="padding:6px"><div>${escapeSvg(m.message)}</div>${compatibilityDetails ? `<ul>${compatibilityDetails}</ul>` : ''}<div style="color:#9ae6b4">${escapeSvg(t(('worklist_' + (task.current ? task.status : 'resolved')) as any))} · ${escapeSvg(t(('worklist_' + task.change) as any))}${task.reason ? ' · ' + escapeSvg(task.reason) : ''}${task.staleDecision ? ' · ' + t('worklistStale') : ''}</div><div style="font-size:10px;color:#90cdf4">${escapeSvg(m.ruleId)} · ${escapeSvg(m.location.pinId ?? m.location.wireId ?? '')}</div>
+      <td style="padding:6px"><div>${escapeSvg(m.message)}</div>${compatibilityDetails ? `<ul>${compatibilityDetails}</ul>` : ''}${m.groupId?`<details><summary>${escapeSvg(t('articlesItems'))} (${m.relatedLocations.length})</summary><ul>${m.relatedLocations.map(l=>`<li>${escapeSvg(l.componentId??'')} · ${escapeSvg(l.pageNumber)}</li>`).join('')}</ul></details>`:''}<div style="color:#9ae6b4">${escapeSvg(t(('worklist_' + (task.current ? task.status : 'resolved')) as any))} · ${escapeSvg(t(('worklist_' + task.change) as any))}${task.reason ? ' · ' + escapeSvg(task.reason) : ''}${task.staleDecision ? ' · ' + t('worklistStale') : ''}</div><div style="font-size:10px;color:#90cdf4">${escapeSvg(m.ruleId)} · ${escapeSvg(m.location.pinId ?? m.location.wireId ?? '')}</div>
       <div style="font-size:10px">${escapeSvg(originLabel(m))} · ${escapeSvg(t(('articleRole_' + (m.articleData?.role ?? 'unknown')) as any))} · ${escapeSvg(m.articleData?.symbolId ?? '')}</div>
-      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${task.current && this.onArticles && articleRepairRules.has(m.ruleId) ? `<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>` : ''}${task.current && this.onWiring && (m.ruleId.startsWith('cable_') || m.ruleId === 'terminal_number_duplicate') ? `<button class="btn" data-edit-wiring>${t('wiringManage')}</button>` : ''}${task.current && this.onDimensioning && m.ruleId.startsWith('dimensioning_') ? `<button class="btn" data-edit-dimensioning>${t('electricalDimensioning')}</button>` : ''}${task.current && this.onPotential && m.ruleId.startsWith('potential_') ? `<button class="btn" data-edit-potential>${t('potentialTitle')}</button>` : ''}</td></tr>`;
+      <div style="font-size:10px;color:#a0aec0">${escapeSvg(m.recommendation)}</div></td><td><button class="btn btn-jump">${t('plausBtnNavigate')} ➔</button>${task.current&&this.onGroup&&m.groupId?`<button class="btn" data-edit-group>${t('plausEditGroup')}</button>`:''}${task.current && !m.groupId && this.onArticles && articleRepairRules.has(m.ruleId) ? `<button class="btn" data-edit-article>${t('articlesReviewOne')}</button>` : ''}${task.current && this.onWiring && (m.ruleId.startsWith('cable_') || m.ruleId === 'terminal_number_duplicate') ? `<button class="btn" data-edit-wiring>${t('wiringManage')}</button>` : ''}${task.current && this.onDimensioning && m.ruleId.startsWith('dimensioning_') ? `<button class="btn" data-edit-dimensioning>${t('electricalDimensioning')}</button>` : ''}${task.current && this.onPotential && m.ruleId.startsWith('potential_') ? `<button class="btn" data-edit-potential>${t('potentialTitle')}</button>` : ''}</td></tr>`;
     };
     const addressesFor = (findings: PlausibilityMessage[]) => [
       ...new Map(
@@ -287,7 +290,7 @@ export class PlausibilityDialog {
           .filter(
             (m) =>
               taskById.get(m.id)?.current &&
-              articleRepairRules.has(m.ruleId),
+              !m.groupId && articleRepairRules.has(m.ruleId),
           )
           .flatMap((m) => [m.location, ...m.relatedLocations])
           .filter((l) => l.componentId)
@@ -488,6 +491,9 @@ export class PlausibilityDialog {
         this.onWiring?.(finding.location);
         closeModal();
         return;
+      }
+      if (el.closest('[data-edit-group]')&&finding.groupId) {
+        closeModal();this.onGroup?.(finding.pageId,finding.groupId);return;
       }
       if (el.closest('[data-edit-article]')) {
         repairArticles(addressesFor([finding]));

@@ -1446,6 +1446,12 @@ export class App {
         getProject:()=>this.project,
         onApply:next=>this.applyProjectTransaction(next),
         onManageArticles:addresses=>this.openArticleWorkbench(addresses),
+        onManageGroup:(pageId,groupId)=>{
+          const page=this.project.pages.find(p=>p.id===pageId),group=page?.groups?.find(g=>g.id===groupId);
+          if(!page||!group)return;
+          this.canvas.focusInspection({pageId,pageNumber:page.pageNumber,groupId,x:0,y:0});this.updateUI();
+          this.openGroupPropertiesDialog(page,group);
+        },
         onManageWiring:location=>this.openWiringWorkbench(location),
         onManagePotential:id=>this.openPotentialDefinitions(id),
         onManageDimensioning:id=>{const r=this.project.dimensioning?.find(r=>r.id===id);if(r)void this.openElectricalDimensioning(r);},

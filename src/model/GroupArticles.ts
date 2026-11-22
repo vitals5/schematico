@@ -25,7 +25,7 @@ export interface GroupArticleUnit {
 }
 /** Outer assigned assemblies own their nested representations. Ambiguous,
  * missing and cyclic membership never establishes inherited article coverage. */
-export function groupArticleUnits(page: Page) {
+export function groupArticleUnits(page: Page, includeUnassigned = false) {
   const groups=page.groups??[],byId=new Map(groups.map(g=>[g.id,g]));
   const uniqueIds=new Set(groups.filter(g=>typeof g.id==='string'&&g.id.trim()&&groups.filter(v=>v.id===g.id).length===1).map(g=>g.id));
   const componentCounts=new Map<string,number>();
@@ -46,15 +46,22 @@ export function groupArticleUnits(page: Page) {
     active.delete(id);cache.set(id,nested);
     return nested;
   };
-  const candidates=groups.flatMap(group=>{
-    const items=groupArticles(group);if(!items.length)return [];
+  const expanded=groups.flatMap(group=>{
+    const items=groupArticles(group);if(!items.length&&!includeUnassigned)return [];
     const nested=expand(group.id);return nested?[{group,items,nested,selection:groupSelection(page,group.id)}]:[];
   });
+  const candidates=expanded.filter(g=>g.items.length);
   const units:GroupArticleUnit[]=candidates.filter(c=>!candidates.some(other=>other!==c&&other.nested.has(c.group.id)));
   const owners=new Map<string,GroupArticleUnit>();const ambiguous=new Set<string>();
   for(const unit of units)for(const id of unit.selection.componentIds??[]){
     if(owners.has(id)){owners.delete(id);ambiguous.add(id);}
     if(!ambiguous.has(id))owners.set(id,unit);
   }
-  return {units,owners};
+  const roots=includeUnassigned?expanded.filter(c=>!expanded.some(other=>other!==c&&other.nested.has(c.group.id))):[];
+  const inspectionOwners=new Map<string,GroupArticleUnit>(),inspectionAmbiguous=new Set<string>();
+  for(const unit of roots)for(const id of unit.selection.componentIds??[]){
+    if(inspectionOwners.has(id)){inspectionOwners.delete(id);inspectionAmbiguous.add(id);}
+    if(!inspectionAmbiguous.has(id))inspectionOwners.set(id,unit);
+  }
+  return {units,owners,inspectionOwners};
 }
