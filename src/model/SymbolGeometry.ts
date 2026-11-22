@@ -2,6 +2,12 @@ import { DrawingPrimitive, PlacedComponent, SymbolDefinition } from './types';
 
 export type Point = { x: number; y: number };
 
+/** Historical library snapshots retain the same terminal label conventions. */
+export function standardTerminalId(symbol: SymbolDefinition): 'terminal_single' | 'terminal_pe' | undefined {
+  return /^(terminal_(?:single|pe))(?::legacy-geometry)?(?::import-\d+)*$/.exec(symbol.id)?.[1] as
+    'terminal_single' | 'terminal_pe' | undefined;
+}
+
 /** Exact quarter turns shared by insertion, pins and rotation. */
 export function rotatedLocalPoint(point: Point, symbol: SymbolDefinition, rotation: number): Point {
   const cx = symbol.width / 2, cy = symbol.height / 2, dx = point.x - cx, dy = point.y - cy;

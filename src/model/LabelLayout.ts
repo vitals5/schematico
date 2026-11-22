@@ -4,7 +4,7 @@
 import { PlacedComponent, TextFormatConfig, SymbolDefinition, PinDefinition, Project } from './types';
 import { getSymbolById } from './symbols';
 import { interruptionLabelPosition, interruptionReferencePosition, isInterruptionSymbol } from './ConnectionSymbols';
-import { rotatedLocalPoint } from './SymbolGeometry';
+import { standardTerminalId, rotatedLocalPoint } from './SymbolGeometry';
 import { splitCrossReferenceLines } from './CrossReferenceNavigation';
 
 export interface CalculatedLabelPosition {
@@ -354,11 +354,19 @@ export function computeAdditionalTextPosition(comp: PlacedComponent, sym: Symbol
   return pos;
 }
 
+/** The terminal designation is stored device/function text, never an invented
+ * pin number. Its source field controls visibility in every renderer. */
+export function terminalDesignation(comp: PlacedComponent, sym: SymbolDefinition): string {
+  const technical = comp.deviceTag || comp.technicalCharacteristics;
+  if (technical) return computeTechnicalDataPosition(comp, sym).visible ? technical : '';
+  return computeFunctionTextPosition(comp, sym).visible ? comp.functionText : '';
+}
+
 export function arePinLabelsVisible(comp: PlacedComponent, sym?: SymbolDefinition): boolean {
   if (comp.pinLabelPosition?.visible !== undefined) return comp.pinLabelPosition.visible;
   if (!sym || sym.pins.length === 0) return false;
   const isConn = !sym.importedGraphics && sym.category === 'connections';
-  const isTerminal = sym.id === 'terminal_single';
+  const isTerminal = standardTerminalId(sym) === 'terminal_single';
   return sym.pins.some(pin => {
     const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
     if (sym.source || label) return !!label && label.visible !== false;
@@ -370,7 +378,7 @@ export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefini
   const cfg = comp.pinLabelPosition;
   const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
   const isConn = !sym.importedGraphics && sym.category === 'connections';
-  const isTerminal = sym.id === 'terminal_single';
+  const isTerminal = standardTerminalId(sym) === 'terminal_single';
   const defaultVisible = (sym.source || label) ? (!!label && label.visible !== false) : (!isConn && !isTerminal);
   const visible = cfg?.visible !== undefined ? cfg.visible : defaultVisible;
 

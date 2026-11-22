@@ -454,6 +454,8 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  /** Revision of built-in symbol geometry used by newly placed components. */
+  symbolGeometryRevision?: 1;
   dataInterpretation?: import('./ComponentSemantics').DataInterpretation;
   changeImpactReview?: import('./ChangeImpact').ChangeImpactReview;
   revisions?: import('./ProjectRevisions').SavedProjectRevision[];

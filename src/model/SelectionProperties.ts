@@ -1,3 +1,4 @@
+import { standardTerminalId } from './SymbolGeometry';
 import { Page, Project, TextFormatConfig } from './types';
 import { ElementSelection, selectionCount } from './ElementSelection';
 import { getDrawingUnitsPerMm, getSymbolForComponent } from './symbols';
@@ -121,12 +122,12 @@ export function sharedPropertyValue(page:Page,project:Project,s:ElementSelection
     else if(key==='boxLineWidth'&&c.deviceBox)values.push(c.deviceBox.lineWidth/units);
     else if(key==='width'&&c.deviceBox)values.push(c.deviceBox.width/units);
     else if(key==='height'&&c.deviceBox)values.push(c.deviceBox.height/units);
-    else if(key==='bmkFontSize')values.push((c.bmkPosition?.fontSize ?? (sym.id==='terminal_single'?7.5:computeBmkPosition(c,sym).fontSize))/units);
+    else if(key==='bmkFontSize')values.push((c.bmkPosition?.fontSize ?? (standardTerminalId(sym)==='terminal_single'?7.5:computeBmkPosition(c,sym).fontSize))/units);
     else if(key==='functionFontSize')values.push(computeFunctionTextPosition(c,sym).fontSize/units);
     else if(key==='additionalFontSize')values.push(computeAdditionalTextPosition(c,sym).fontSize/units);
     else if(key==='technicalFontSize')values.push(computeTechnicalDataPosition(c,sym).fontSize/units);
     else if(key==='crossRefFontSize')values.push((c.crossRefFontSize ?? 8)/units);
-    else if(key==='pinFontSize')values.push((c.pinLabelFontSize ?? Object.values(c.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? (sym.id==='terminal_single'?7.5:6.5))/units);
+    else if(key==='pinFontSize')values.push((c.pinLabelFontSize ?? Object.values(c.pins).find(p=>p.labelPosition)?.labelPosition?.fontSize ?? sym.pins.find(p=>p.labelPosition)?.labelPosition?.fontSize ?? (standardTerminalId(sym)==='terminal_single'?7.5:6.5))/units);
     else if(key==='bmk')values.push(c.bmk ?? '');
     else if(key==='functionText'||key==='additionalText'||key==='deviceTag'||key==='technicalCharacteristics')values.push(c[key] ?? '');
     else if(key==='higherLevel')values.push(c.higherLevelFunction ?? '');

@@ -1,7 +1,7 @@
 import { componentFromBox, deviceBoxDefinition } from './DeviceBoxElement';
 import type { MacroItem, WindowMacro } from './MacroManager';
 import type { PlacedComponent, SymbolDefinition, TextFormatConfig } from './types';
-import { SYMBOL_DEFINITIONS } from './symbols';
+import { SYMBOL_DEFINITIONS, historicalTerminalDefinition, SYMBOL_GEOMETRY_REVISION } from './symbols';
 import { componentInsertionPoint, rotatedLocalPoint, scaleSymbolDefinition } from './SymbolGeometry';
 import { remapNativeMacroData } from './NativeMacroData';
 
@@ -16,6 +16,11 @@ export function macroForPlacement(macro: MacroItem): WindowMacro {
   if (copy.type === 'ema') return copy;
   const page = copy.page, components = page.components, firstSource = components[0];
   const library = copy.symbolLibrary ??= [];
+  if (copy.symbolGeometryRevision !== SYMBOL_GEOMETRY_REVISION) for (const c of components) {
+    if (library.some(s => s.id === c.symbolId)) continue;
+    const historical = historicalTerminalDefinition(c.symbolId);
+    if (historical) library.push(historical);
+  }
   const units = copy.unitsPerMm ?? library.find(s => s.unitsPerMm)?.unitsPerMm ?? 2;
   const unique = (prefix: string) => { let id = prefix, n = 0; while (components.some(c => c.id === id)) id = `${prefix}_${++n}`; return id; };
   const addAnnotation = (id: string, width: number, height: number): PlacedComponent => {

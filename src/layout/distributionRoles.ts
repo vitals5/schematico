@@ -1,3 +1,4 @@
+import { standardTerminalId } from '../model/SymbolGeometry';
 import type {SymbolDefinition, PinDefinition} from '../model/types';
 import {isInterruptionSymbol} from '../model/ConnectionSymbols';
 
@@ -29,7 +30,7 @@ export function socketPorts(symbol:SymbolDefinition|undefined){
 export function isDistributionFeed(symbol:SymbolDefinition|undefined):boolean{
  if(!symbol)return false;
  if(isInterruptionSymbol(symbol))return true;
- if(!(['feed_terminal','pe_terminal'].includes(symbol.family??'')||['terminal_single','terminal_pe'].includes(symbol.id))||symbol.pins.length!==2)return false;
+ if(!(['feed_terminal','pe_terminal'].includes(symbol.family??'')||!!standardTerminalId(symbol))||symbol.pins.length!==2)return false;
  const top=symbol.pins.filter(p=>p.direction==='top'),bottom=symbol.pins.filter(p=>p.direction==='bottom');
  return top.length===1&&bottom.length===1&&Math.abs(top[0].x-bottom[0].x)<1e-6;
 }

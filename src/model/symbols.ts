@@ -1477,6 +1477,39 @@ for (const symbol of SYMBOL_DEFINITIONS) {
     : { x: symbol.pins[0]?.x ?? 0, y: symbol.pins[0]?.y ?? 0 };
 }
 
+// Keep known historical contours for unversioned drawings/macros. Compact
+// defaults must not move the pins of already placed terminal symbols.
+export const SYMBOL_GEOMETRY_REVISION = 1 as const;
+const historicalTerminals = new Map<string, SymbolDefinition>();
+for (const id of ['terminal_single', 'terminal_pe']) {
+  const symbol = SYMBOL_DEFINITIONS.find(s => s.id === id)!;
+  historicalTerminals.set(id, structuredClone(symbol));
+  Object.assign(symbol, { ...scaleSymbolDefinition(symbol, 1), unitsPerMm: 2 });
+}
+
+export function historicalTerminalDefinition(id: string): SymbolDefinition | undefined {
+  const definition = historicalTerminals.get(id);
+  return definition && structuredClone(definition);
+}
+
+/** Snapshot only known historical built-ins. Explicit project/imported master
+ * data takes precedence. Wires still reference the same component/pin IDs. */
+export function preserveTerminalGeometry(
+  project: Project, components: PlacedComponent[], revision?: number,
+  suppliedDefinitions: SymbolDefinition[] = project.symbolLibrary ?? []
+): void {
+  if (revision === SYMBOL_GEOMETRY_REVISION) return;
+  for (const [id, definition] of historicalTerminals) {
+    if (suppliedDefinitions.some(s => s.id === id)) continue;
+    const placements = components.filter(c => c.symbolId === id && !c.importedSymbol);
+    if (!placements.length) continue;
+    const historicalId = id + ':legacy-geometry';
+    for (const c of placements) c.symbolId = historicalId;
+    mergeProjectSymbolLibrary(project, [{ ...structuredClone(definition), id: historicalId,
+      name: `${definition.name} · ${definition.width / 2} × ${definition.height / 2} mm` }], placements);
+  }
+}
+
 let activeProject: Project | undefined;
 const scaledBuiltins = new WeakMap<SymbolDefinition, Map<number, SymbolDefinition>>();
 
@@ -1544,6 +1577,8 @@ export function mergeProjectSymbolLibrary(
 export function setProjectSymbolLibrary(project: Project): void {
   migrateLegacyData(project);
   project.symbolLibrary ??= [];
+  preserveTerminalGeometry(project, project.pages.flatMap(p => p.components), project.symbolGeometryRevision);
+  project.symbolGeometryRevision = SYMBOL_GEOMETRY_REVISION;
   for(const definition of project.symbolLibrary)if(isDeviceBoxDefinition(definition)){definition.deviceBox=true;definition.category='structure';if(!definition.name.includes('Gerätekasten'))definition.name='Gerätekasten · '+definition.name;}
   for (const page of project.pages) {
     const frames=page.boxes?.filter(box=>box.kind==='device')??[];
@@ -1567,7 +1602,7 @@ export function getComponentSymbolLibrary(components: PlacedComponent[]): Symbol
   const ids = new Set(components.map(component => component.symbolId));
   return JSON.parse(JSON.stringify([...ids].flatMap(id => {
     const s = getSymbolById(id);
-    return s && (activeProject?.symbolLibrary?.some(d => d.id === id) || s.unitsPerMm !== 2) ? [s] : [];
+    return s && (historicalTerminals.has(id) || activeProject?.symbolLibrary?.some(d => d.id === id) || s.unitsPerMm !== 2) ? [s] : [];
   })));
 }
 

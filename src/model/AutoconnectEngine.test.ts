@@ -72,8 +72,8 @@ assert(pin3_270.direction === 'right', 'Pin 3 at 270° direction is "right"');
 assert(pin3_270.worldX === 120 && pin3_270.worldY === 110, 'Pin 3 at 270° is (120, 110)');
 
 console.log('\n--- 3. Testing Vertical & Horizontal Autoconnecting ---');
-// Component A (Terminal single: top pin at (6,0) dir top, bottom pin at (6,24) dir bottom)
-// Terminal width: 12, height: 24
+// Component A (Terminal single: top pin at (6,0) dir top, bottom pin at (6,20) dir bottom)
+// Terminal width: 12, height: 20
 const termA: PlacedComponent = {
   id: 'termA',
   symbolId: 'terminal_single',
@@ -84,7 +84,7 @@ const termA: PlacedComponent = {
   rotation: 0,
   pins: {}
 };
-// Terminal A bottom pin is at x = 200 + 6 = 206, y = 100 + 24 = 124, dir = 'bottom'
+// Terminal A bottom pin is at x = 200 + 6 = 206, y = 100 + 20 = 120, dir = 'bottom'
 
 // Component B aligned directly below Component A
 const termB: PlacedComponent = {
@@ -103,7 +103,7 @@ let pairs = AutoconnectEngine.findAutoconnectPairs([termA, termB]);
 assert(pairs.length === 1, `Found 1 vertical autoconnect pair (got ${pairs.length})`);
 assert(pairs[0].orientation === 'vertical', 'Pair orientation is vertical');
 assert(pairs[0].pin1.componentId === 'termA' && pairs[0].pin2.componentId === 'termB', 'Connected termA to termB');
-assert(pairs[0].distance === 180 - 140, `Distance is ${180 - 140}px`);
+assert(pairs[0].distance === 180 - 120, `Distance is ${180 - 120}px`);
 
 // Test Horizontal Autoconnecting between T-pieces or corners
 const tLeft: PlacedComponent = {
@@ -173,8 +173,8 @@ console.log('\n--- 5. Testing Live Autoconnect Preview ---');
 // Test ghost preview while dragging or placing termB
 const previews = AutoconnectEngine.getAutoconnectPreview([termA], termB);
 assert(previews.length === 1, `Live preview generates 1 target connection segment (got ${previews.length})`);
-assert(previews[0].x1 === 212 && previews[0].y1 === 180, 'Preview start point matches moving pin');
-assert(previews[0].targetX === 212 && previews[0].targetY === 140, 'Preview target matches existing component pin');
+assert(previews[0].x1 === 206 && previews[0].y1 === 180, 'Preview start point matches moving pin');
+assert(previews[0].targetX === 206 && previews[0].targetY === 120, 'Preview target matches existing component pin');
 
 console.log('\n--- 6. Testing Rotation of All Elements ---');
 // Rotating any element (e.g. corner symbol, motor, contactor, etc.)
@@ -261,7 +261,7 @@ const halfTermTop: PlacedComponent = {
   symbolId: 'terminal_single',
   bmk: '-X2:1',
   functionText: '',
-  x: 236 - 12, // pin at x + 12 = 236
+  x: 236 - 6, // pin at x + 6 = 236
   y: 100,
   rotation: 0,
   pins: {}
@@ -271,7 +271,7 @@ const halfTermBottom: PlacedComponent = {
   symbolId: 'terminal_single',
   bmk: '-X2:2',
   functionText: '',
-  x: 236 - 12, // pin at x + 12 = 236
+  x: 236 - 6, // pin at x + 6 = 236
   y: 160,
   rotation: 0,
   pins: {}
@@ -282,12 +282,12 @@ assert(halfPairs.length === 1, `Halbraster components connect automatically (got
 assert(halfPairs[0].pin1.worldX === 236 && halfPairs[0].pin2.worldX === 236, 'Both pins aligned at half-raster X=236');
 
 // Tolerance test: Pin 1 at X=236, Pin 2 at X=235 (1px subpixel delta)
-halfTermBottom.x = 235 - 12;
+halfTermBottom.x = 235 - 6;
 const tolPairs = AutoconnectEngine.findAutoconnectPairs([halfTermTop, halfTermBottom]);
 assert(tolPairs.length === 1, `Pins within <= 2px tolerance cluster and connect (got ${tolPairs.length})`);
 
 // Non-matching test: Pin 1 at X=236, Pin 2 at X=232 (4px difference: distinct columns)
-halfTermBottom.x = 232 - 12;
+halfTermBottom.x = 232 - 6;
 const diffPairs = AutoconnectEngine.findAutoconnectPairs([halfTermTop, halfTermBottom]);
 assert(diffPairs.length === 0, `Pins on different raster columns (4px apart) do NOT false-connect (got ${diffPairs.length})`);
 

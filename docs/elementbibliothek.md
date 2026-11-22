@@ -31,3 +31,11 @@ Elektrische Grundsymbole werden mit Anschlussgrafik dargestellt; komplexe Elektr
 Die Anschlüsse der neuen Vorlagen liegen bei 2 Zeichnungseinheiten/mm auf einem Raster von 8 Einheiten, mit 16 Einheiten Anschlussabstand. Einfügen und Drehen erhalten das Raster; beim Wechsel des Projektmaßstabs skalieren Kontur und Anschlüsse gemeinsam. Steckdosen haben pro Kontakt nur einen äußeren Anschluss. Etagen und Phasen sind getrennt; das Cu-System hat drei Phaseneingänge. Mechanische Schienen und Kanäle besitzen keine elektrischen Anschlüsse.
 
 Editor und PDF verwenden dieselben Vektordaten. Die Symbole bleiben beim Speichern und beim Makroaustausch reguläre Bibliothekselemente.
+
+## Kompakte Klemmen
+
+**Reihenklemme** und **Schutzleiterklemme (PE)** sind bei neuem Einfügen mit 100 % jetzt so groß wie zuvor mit 50 %. Kontur, Anschlussabstand und Einfügepunkt sind gemeinsam halbiert (6 × 10 mm bei normalem Projektmaßstab). Auf dem 2-mm-Halbraster lassen sich beide Anschlüsse exakt ausrichten; Autoconnect funktioniert weiter in beiden Anschlussrichtungen und nach Drehung.
+
+Bereits gespeicherte Platzierungen behalten ihre bisherige Geometrie und ihren individuellen Zoomfaktor. Alte Projekte und Makros übernehmen dafür die bisherigen Definitionen in ihre Projektbibliothek, damit vorhandene Verbindungen an ihren Anschlüssen bleiben. Importierte und ausdrücklich im Projekt hinterlegte Symbole werden nicht verkleinert.
+
+Die Reihenklemme erzeugt keine Ersatzbeschriftung „1“ mehr. Ihre seitliche Bezeichnung stammt aus Gerätebezeichnung, technischen Daten oder Funktionstext und folgt der Sichtbarkeit des jeweiligen Feldes unter **Anzeige**. Editor, Layoutprüfung und PDF berücksichtigen diese Einstellung gemeinsam.

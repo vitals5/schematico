@@ -5,7 +5,7 @@ import { renderPdfGraphics } from "./PdfGraphics";
 import { prepareProjectPdfSections } from './ProjectPdfSections';
 import { appendManufacturingReportPdf } from './ManufacturingReportPdf';
 import { renderCabinetPdfPage } from '../ui/CabinetDrawing';
-import {wrapLabelText} from '../model/LabelLayout';
+import {wrapLabelText, terminalDesignation} from '../model/LabelLayout';
 import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
@@ -13,7 +13,7 @@ import { coverPageTemplate, coverPageTextRuns, coverPageLogo } from '../model/Co
 import { prepareProjectPresentation } from '../model/PresentationNaming';
 import { defaultPlotFrame, frameTextCell, frameTextValue, fitFrameText } from '../model/PlotFrame';
 import { interruptionLabelPosition, isInterruptionSymbol, isConnectionSymbol } from '../model/ConnectionSymbols';
-import { rotatedLocalPoint } from '../model/SymbolGeometry';
+import { standardTerminalId, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { getAutoSymbolScale, calculateArcControlPoint, computeFloorPlanLegendLayout } from '../model/FloorPlanRenderer';
 import { referenceTargets, splitCrossReferenceLines } from '../model/CrossReferenceNavigation';
 // src/export/PdfExporter.ts
@@ -767,7 +767,7 @@ export class PdfExporter {
       const routingGlyph = isConnectionGraphic(comp, sym);
       const isInterruption = isInterruptionSymbol(sym);
       const isConnection = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || isConnectionSymbol(sym) || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
-      const isTerminal = sym.id === 'terminal_single';
+      const isTerminal = standardTerminalId(sym) === 'terminal_single';
 
       const connectedWire = graphicWires.get(comp.id)
         ?? page.wires.find(w => w.from.componentId === comp.id || w.to.componentId === comp.id);
@@ -835,9 +835,9 @@ export class PdfExporter {
         } else if (sym.id === 'potential_rail_source') {
           doc.text(comp.functionText || comp.bmk, compX - 1.5, compY + compH * 0.5 + 1.2, { align: 'right' });
         }
-      } else if (isTerminal) {
+      } else if (isTerminal && (!hideLabels || comp.showLabels) && terminalDesignation(comp,sym)) {
         // Terminal: draw terminal designation beside circle and BMK above
-        const termNum = comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1';
+        const termNum = terminalDesignation(comp,sym);
         doc.setFont('courier', 'bold');
         doc.setFontSize((comp.pinLabelFontSize ?? 7.5) * sy * 72 / 25.4);
         doc.setTextColor(50, 50, 50);

@@ -8,7 +8,7 @@ import { boxDrawing } from './DeviceBox';
 
 import JSZip from 'jszip';
 import { Project, Page, PlacedComponent, Wire, SymbolDefinition, PageImage, CableDefinition, PageBox, ElementGroup } from './types';
-import { getSymbolForComponent, getComponentSymbolLibrary, getDrawingUnitsPerMm, mergeProjectSymbolLibrary, getSymbolDefinitions } from './symbols';
+import { getSymbolForComponent, getComponentSymbolLibrary, getDrawingUnitsPerMm, mergeProjectSymbolLibrary, getSymbolDefinitions, preserveTerminalGeometry, SYMBOL_GEOMETRY_REVISION, historicalTerminalDefinition } from './symbols';
 import { macroForPlacement } from './MacroPlacement';
 import { computeFunctionTextPosition } from './LabelLayout';
 import { drawingToSvg, escapeSvg } from './ImportedDrawing';
@@ -18,6 +18,7 @@ import { remapNativeMacroData } from './NativeMacroData';
 import type { NativeMacroData } from './NativeMacroData';
 
 export interface WindowMacro {
+  symbolGeometryRevision?: 1;
   configuration?:import('./MacroParameters').MacroConfiguration;
   isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
@@ -46,6 +47,7 @@ export interface WindowMacro {
 }
 
 export interface PageMacro {
+  symbolGeometryRevision?: 1;
   configuration?:import('./MacroParameters').MacroConfiguration;
   isArticlePackage?: boolean;
   nativeData?: NativeMacroData;
@@ -1345,6 +1347,7 @@ export class MacroManager {
         category: parsed.category || 'Importierte Seitenmakros',
         description: parsed.description || `Seitenmakro aus ${filename}`,
         symbolLibrary: parsed.symbolLibrary,
+        symbolGeometryRevision: parsed.symbolGeometryRevision,
         configuration: parsed.configuration, nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics, pages: parsed.pages,
         unitsPerMm: parsed.unitsPerMm,
         page: parsed.page || {
@@ -1369,6 +1372,7 @@ export class MacroManager {
       category: parsed.category || 'Importierte Fenstermakros',
       description: parsed.description || `Fenstermakro aus ${filename}`,
       symbolLibrary: parsed.symbolLibrary,
+        symbolGeometryRevision: parsed.symbolGeometryRevision,
       configuration: parsed.configuration, nativeData: parsed.nativeData, importDiagnostics: parsed.importDiagnostics,
       unitsPerMm: parsed.unitsPerMm,
       components: parsed.components || [],
@@ -1508,6 +1512,7 @@ export class MacroManager {
       width: Math.max(40, maxX - minX),
       height: Math.max(40, maxY - minY),
       components: clonedComponents,
+      symbolGeometryRevision: SYMBOL_GEOMETRY_REVISION,
       unitsPerMm: getDrawingUnitsPerMm(),
       handlePoint: (() => { const sym = getSymbolForComponent(components[0]);
         const p = sym ? componentInsertionPoint(components[0], sym) : components[0];
@@ -1550,6 +1555,7 @@ export class MacroManager {
       created: new Date().toISOString().split('T')[0],
       page: pageClone,
       nativeData:remapNativeMacroData(page.nativeData,new Map(page.components.map(c=>[c.id,c.id])),pageClone.id,page.id),importDiagnostics:page.importDiagnostics,
+      symbolGeometryRevision: SYMBOL_GEOMETRY_REVISION,
       unitsPerMm: getDrawingUnitsPerMm(),
       symbolLibrary: getComponentSymbolLibrary(page.components)
     };
@@ -1632,7 +1638,10 @@ export class MacroManager {
       }
     }
 
-    if (project) mergeProjectSymbolLibrary(project, macro.symbolLibrary ?? [], newComponents);
+    if (project) {
+      mergeProjectSymbolLibrary(project, macro.symbolLibrary ?? [], newComponents);
+      preserveTerminalGeometry(project, newComponents, macro.symbolGeometryRevision, macro.symbolLibrary ?? []);
+    }
     for (const c of newComponents) for (const pin of Object.values(c.pins))
       if (pin.wireIds) pin.wireIds = pin.wireIds.map(id => wireIds.get(id)).filter((id): id is string => !!id);
     const images = (macro.images ?? []).map(image => ({ ...structuredClone(image), id: 'image_' + crypto.randomUUID(),
@@ -1697,6 +1706,7 @@ export class MacroManager {
       }
     }
     mergeProjectSymbolLibrary(project, macro.symbolLibrary ?? [], pageClone.components);
+    preserveTerminalGeometry(project, pageClone.components, macro.symbolGeometryRevision, macro.symbolLibrary ?? []);
     const newPageId = 'page_' + Math.random().toString(36).substring(2, 9);
     pageClone.id = newPageId;
 
@@ -1776,7 +1786,9 @@ export class MacroManager {
 
     let symbolsPreview = (preview.boxes??[]).map(box=>`<g transform="translate(8,8) scale(${scale})">${drawingToSvg(boxDrawing(box))}</g>`).join('');
     for (const c of components) {
-      const base = preview.symbolLibrary?.find(symbol => symbol.id === c.symbolId) ?? getSymbolForComponent(c);
+      const base = preview.symbolLibrary?.find(symbol => symbol.id === c.symbolId)
+        ?? (preview.symbolGeometryRevision !== SYMBOL_GEOMETRY_REVISION ? historicalTerminalDefinition(c.symbolId) : undefined)
+        ?? getSymbolForComponent(c);
       const sym=base && deviceBoxDefinition(c,base);
       if (sym) {
         const fn = computeFunctionTextPosition(c, sym);

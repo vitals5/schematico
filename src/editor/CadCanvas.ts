@@ -1,5 +1,5 @@
 import { ProjectIndex } from '../model/ProjectIndex';
-import {wrapLabelText} from '../model/LabelLayout';
+import {wrapLabelText, terminalDesignation} from '../model/LabelLayout';
 import type {InspectionLocation} from '../model/ElectricalInspection';
 import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup, groupSelection, memberKeys } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
@@ -28,7 +28,7 @@ import { AutoconnectEngine, AutoconnectPreviewSegment } from '../model/Autoconne
 import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, setComponentLabelText } from '../model/LabelLayout';
 import { WindowMacro, MacroManager } from '../model/MacroManager';
 import { mergeNativeMacroData } from '../model/NativeMacroData';
-import { componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
+import { standardTerminalId, componentInsertionPoint, positionAtInsertionPoint, scalePlacedComponent, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { floorPlanToSvg, floorPlanLegendToSvg, computeFloorPlanLegendLayout, findNearestWall, getAutoSymbolScale } from '../model/FloorPlanRenderer';
 import { gridForPage, gridStep, snapCoordinate, snapSymbolPosition, GridResolution } from '../model/DrawingGrid';
 import { t, tr, getUiLanguage } from '../i18n';
@@ -3505,7 +3505,7 @@ export class CadCanvas {
 
       const isInterruption = isInterruptionSymbol(sym);
       const isConn = isInterruption || (!sym.importedGraphics && (sym.category === 'connections' || sym.id.startsWith('potential_arrow') || sym.id === 'potential_rail_source'));
-      const isTerminal = sym.id === 'terminal_single';
+      const isTerminal = standardTerminalId(sym) === 'terminal_single';
       const isSelected = this.getElementSelection().componentIds.includes(comp.id);
       const connectedWire = graphicWires.get(comp.id) ?? (isConn ? this.activePage.wires.find(w => w.from.componentId === comp.id || w.to.componentId === comp.id) : undefined);
       const strokeColor = isSelected ? '#63b3ed' : comp.deviceBox?.color??(isConn || isConnectionGraphic(comp, sym)
@@ -3588,7 +3588,7 @@ export class CadCanvas {
             <!-- Cross Reference -->
           ` : isTerminal && !hideLabels ? `
             <!-- Terminal designation and BMK -->
-            <text ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${labelText(wrapLabelText(comp.deviceTag || comp.technicalCharacteristics || comp.functionText || '1',comp.pinLabelFontSize ?? 7.5,fnPos.maxWidth),sym.width+2,comp.pinLabelFontSize ?? 7.5)}</text>
+            ${terminalDesignation(comp,sym) ? `<text data-label="terminalDesignation" ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${labelText(wrapLabelText(terminalDesignation(comp,sym),comp.pinLabelFontSize ?? 7.5,fnPos.maxWidth),sym.width+2,comp.pinLabelFontSize ?? 7.5)}</text>` : ''}
             ${comp.bmk && bmkPos.visible && !comp.bmk.startsWith('comp_') ? `
               <text ${bmkPos.transform} x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="${bmkPos.anchor}">${labelText(comp.bmk, bmkPos.x, bmkPos.fontSize)}</text>
             ` : ''}

@@ -1,7 +1,7 @@
-import {wrapLabelText} from '../model/LabelLayout';
+import {wrapLabelText, terminalDesignation} from '../model/LabelLayout';
 import {electricalPinGroups} from '../model/ElectricalDefinition';
 import { pinStub } from './router';
-import { componentInsertionPoint } from '../model/SymbolGeometry';
+import { standardTerminalId, componentInsertionPoint } from '../model/SymbolGeometry';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
 import type {
@@ -198,7 +198,7 @@ export function componentShapes(
         sym.id === 'potential_rail_source'));
   const bmk = computeBmkPosition(comp, sym),
     fn = computeFunctionTextPosition(comp, sym);
-  if (!conn && sym.id !== 'terminal_single') {
+  if (!conn && standardTerminalId(sym) !== 'terminal_single') {
     label('bmk', comp.bmk, bmk, 'monospace', 'bold');
     label('function', comp.functionText, fn, 'sans-serif', fn.fontWeight);
     label(
@@ -209,14 +209,11 @@ export function componentShapes(
       computeTechnicalDataPosition(comp, sym),
       'sans-serif',
     );
-  } else if (sym.id === 'terminal_single') {
+  } else if (standardTerminalId(sym) === 'terminal_single') {
     label('bmk', comp.bmk, bmk, 'monospace', 'bold');
     label(
       'terminal',
-      comp.deviceTag ||
-        comp.technicalCharacteristics ||
-        comp.functionText ||
-        '1',
+      terminalDesignation(comp,sym),
       {
         ...fn,
         x: sym.width + 2,
