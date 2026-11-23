@@ -2,6 +2,18 @@
 
 **Projekt → Klemmeneditor…** ist der zentrale Ort für die Konfiguration. Derselbe Editor öffnet sich über **Eigenschaften → Schaltzeichen → Im Klemmeneditor bearbeiten…**, die Artikelansicht einer Klemme sowie über Klemmenkarten und Brücken in **Klemmen und Kabel**.
 
+## Klemmenreihe anlegen – ohne Symbolbibliothek
+
+1. Links **＋ Klemmenreihe anlegen** wählen. In einem leeren Projekt ist derselbe Einstieg auch direkt in der Mitte sichtbar.
+2. Das vorgeschlagene Kennzeichen (z. B. `-X1`) verwenden oder ändern. Anlage und Einbauort sind mit dem aktuellen Blatt vorbelegt und unter der gleichnamigen Aufklappsektion erreichbar.
+3. Klemmentyp, Anzahl und erste Nummer festlegen. Die Anzeige nennt sofort den Nummernbereich. Durchgangs-, PE-, Drei-/Vierleiter-, Mehrstock-, Installations-, Trenn- und Sicherungsklemmen werden aus der normalen Bibliothek erzeugt. Pro Vorgang sind bis zu 100 Klemmen möglich.
+4. Die automatische Blattwahl verwenden oder ein bestimmtes normales Stromlaufplanblatt wählen. Die Automatik erzeugt bei Bedarf weitere Blätter; bei einer bestehenden Reihe nutzt sie zuerst deren letzte geeignete Seite. Vorhandene Inhalte werden nicht verschoben. Die Platzierung berücksichtigt Symbol- und Textgrenzen, Raster und elektrische Anschlussachsen. Es entstehen keine automatischen Brücken zwischen den neuen Klemmen oder zum Bestand.
+5. **Reihe anlegen und prüfen** zeigt die neue Reihe im gemeinsamen Entwurf und öffnet direkt die Änderungsprüfung. **Übernehmen** speichert. Das Blatt der ausgewählten neuen Klemme wird danach angezeigt.
+
+Mit **Zunächst nur eine leere Reihe anlegen** wird nur die Reihe gespeichert; es entstehen weder Schaltzeichen noch neue Blätter. Zum Bestücken die Reihe links wählen und **＋ Klemmen hinzufügen** anklicken. Das funktioniert auch mit bereits vorhandenen Reihen. Die nächste freie fortlaufende Nummer wird vorgeschlagen; bereits vergebene Nummern werden nicht überschrieben. Verschiedene Klemmentypen lassen sich durch wiederholtes Ergänzen kombinieren.
+
+**Abbrechen** verwirft nur die offenen Assistenteneingaben. Bis zur gemeinsamen Übernahme bleibt das Projekt unverändert. Auch angelegte Blätter und Klemmen gehören zum Entwurf und werden bei dessen Verwerfen vollständig zurückgenommen. Nach der Übernahme ist der gesamte Vorgang ein Rückgängig-Schritt. Die Klemmen sind normale editierbare Bibliothekselemente; Artikel können danach im Register **Artikel** zugeordnet werden.
+
 ## Orientierung
 
 - **Links:** Klemmenleisten mit Anlage und Einbauort. Gleiche sichtbare Namen in unterschiedlichen Strukturkontexten bleiben getrennt.

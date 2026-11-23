@@ -370,3 +370,76 @@
     display: none;
   }
 }
+#terminalEditorDialog .te-nav .te-create-button {
+  background: var(--accent, #3182ce);
+  color: white;
+  font-weight: 600;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 18px;
+  border-color: #79b6e5;
+}
+#terminalEditorDialog .is-creating .te-body {
+  grid-template-columns: 205px minmax(0, 1fr);
+}
+#terminalEditorDialog .is-creating .te-inspector,
+#terminalEditorDialog .is-creating .te-center > [data-create-panel] ~ *,
+#terminalEditorDialog .is-creating [data-preview] {
+  display: none !important;
+}
+#terminalEditorDialog [data-create-panel] {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 8px;
+}
+#terminalEditorDialog .te-row-form {
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  padding-bottom: 20px;
+}
+#terminalEditorDialog .te-row-form h2 {
+  margin: 14px 0 8px;
+}
+#terminalEditorDialog .te-row-form .te-card {
+  padding: 16px;
+}
+#terminalEditorDialog .te-row-form summary {
+  margin-top: 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+#terminalEditorDialog .te-row-range {
+  color: var(--accent-bright, #8acaff);
+  margin-top: 12px;
+  font-weight: 600;
+}
+#terminalEditorDialog .te-empty-option {
+  padding: 0 16px;
+}
+#terminalEditorDialog .te-grid h3 {
+  font-size: 17px;
+  margin: 10px 0;
+}
+#terminalEditorDialog .te-grid p {
+  margin-bottom: 12px;
+}
+@media (max-width: 850px) {
+  #terminalEditorDialog .is-creating .te-body {
+    grid-template-columns: 1fr;
+  }
+  #terminalEditorDialog .is-creating .te-nav {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  #terminalEditorDialog .is-creating .te-center {
+    height: auto;
+    min-height: 0;
+    flex: 1;
+  }
+  #terminalEditorDialog .is-creating .te-body {
+    overflow: hidden;
+  }
+}

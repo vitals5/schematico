@@ -1,4 +1,11 @@
 import "./TerminalEditor.css";
+import {
+  defaultTerminalRowForm,
+  terminalRowForm,
+  readTerminalRowForm,
+  updateTerminalRowForm,
+  type TerminalRowFormState,
+} from "./TerminalRowForm";
 import type { Project } from "../model/types";
 import type {
   AssignedArticle,
@@ -79,6 +86,7 @@ export class TerminalEditorDialog {
   private dirtyControls = new Set<Element>();
   private review = false;
   private closing = false;
+  private creation?: TerminalRowFormState;
   constructor(
     private getProject: () => Project,
     private onApply: (p: Project) => void,
@@ -128,6 +136,47 @@ export class TerminalEditorDialog {
     });
     this.render();
   }
+  private beginCreation(append = false) {
+    if (!this.canLeave()) return;
+    this.creation = defaultTerminalRowForm(
+      this.session.project,
+      append ? this.strip()?.identity : undefined,
+    );
+    this.formDirty = true;
+    this.error = "";
+    this.render();
+  }
+  private createRow() {
+    if (!this.creation) return;
+    readTerminalRowForm(this.el, this.creation);
+    const form = this.creation;
+    try {
+      const created = this.session.createRow({
+        mode: form.mode,
+        identity: form.identity,
+        symbolId: form.symbolId,
+        count: form.empty ? 0 : form.count.trim() ? Number(form.count) : NaN,
+        startNumber: form.startNumber.trim() ? Number(form.startNumber) : NaN,
+        pageId: form.empty ? undefined : form.pageId || undefined,
+        title: tr("Klemmenreihe", "Terminal strip") + " " + form.identity.strip,
+      });
+      this.snapshot = terminalEditorSnapshot(this.session.project);
+      this.stripKey = terminalStripKey(created.identity);
+      this.selected = created.members[0] ? key(created.members[0]) : "";
+      this.selectedAccessory = "";
+      this.creation = undefined;
+      this.formDirty = false;
+      this.checked.clear();
+      this.search = "";
+      this.offset = 0;
+      this.review = true;
+      this.error = "";
+      this.normaliseSelection();
+      this.render();
+    } catch (e) {
+      this.message(e);
+    }
+  }
   private strip() {
     return this.snapshot.strips.find((s) => s.key === this.stripKey);
   }
@@ -149,6 +198,15 @@ export class TerminalEditorDialog {
   }
   private canLeave() {
     if (!this.formDirty) return true;
+    if (this.creation) {
+      this.message(
+        tr(
+          "Die Reihe zuerst anlegen oder den Assistenten mit „Abbrechen“ verlassen.",
+          "Create the strip first or leave the assistant with Cancel.",
+        ),
+      );
+      return false;
+    }
     this.message(
       tr(
         "Bitte die Eingaben zuerst vormerken oder mit „Eingaben zurücksetzen“ verwerfen.",
@@ -234,7 +292,16 @@ export class TerminalEditorDialog {
   private commit() {
     if (!this.canLeave()) return;
     try {
-      this.onApply(this.session.apply(this.getProject()));
+      const next = this.session.apply(this.getProject()),
+        target = this.row();
+      if (
+        target &&
+        !this.baselineProject.pages.some((page) =>
+          page.components.some((c) => c.id === target.address.componentId),
+        )
+      )
+        next.activePageId = target.address.pageId;
+      this.onApply(next);
       this.session = new TerminalEditorSession(this.getProject());
       this.baselineProject = this.session.baseline;
       this.snapshot = terminalEditorSnapshot(this.session.project);
@@ -263,16 +330,17 @@ export class TerminalEditorDialog {
         ["bridges", tr("Brücken", "Bridges")],
         ["checks", tr("Prüfung", "Checks")],
       ];
-    this.el.innerHTML = `<section class="te-shell" role="dialog" aria-modal="true" aria-label="${tr("Klemmeneditor", "Terminal editor")}"><header class="te-header"><div><h2>${tr("Klemmeneditor", "Terminal editor")}</h2><p>${tr("Klemmenleiste wählen · Klemme auswählen · Eigenschaften bearbeiten · Änderungen prüfen", "Choose a strip · Select a terminal · Edit properties · Review changes")}</p></div><button class="btn" data-close aria-label="${t("close")}">✕</button></header><div class="te-body"><nav class="te-nav" aria-label="${tr("Klemmenleisten", "Terminal strips")}">${this.snapshot.strips.map((s) => `<button data-strip-key="${esc(s.key)}" aria-current="${s.key === this.stripKey}"><strong>${esc(s.identity.strip || "—")}</strong><small>${esc([s.identity.plant && "=" + s.identity.plant, s.identity.location && "+" + s.identity.location].filter(Boolean).join(" ") || tr("Ohne Strukturkennzeichen", "No structure designation"))}</small><small>${s.rows.length} ${tr("Platzierungen", "placements")}${s.issues ? " · ! " + s.issues : ""}</small></button>`).join("") || `<p class="te-note">${tr("Noch keine Klemmen im Projekt. Platzieren Sie zuerst ein Klemmensymbol aus der Bibliothek.", "There are no terminals in the project. Place a terminal symbol from the library first.")}</p>`}</nav><main class="te-center"><div class="te-toolbar"><strong>${esc(strip?.identity.strip ?? "—")}</strong><input class="form-input" data-search placeholder="${tr("Nummer, Text, Artikel oder Blatt suchen…", "Search number, text, part or sheet…")}" aria-label="${t("wiringSearch")}" value="${esc(this.search)}"><button class="btn" data-export>${tr("Leiste als CSV", "Strip as CSV")}</button></div><div class="te-note">${tr("Die Reihenfolge zeigt den physischen Aufbau. Etagen einer Geräteposition gehören zu einem Gehäuse.", "Order represents physical assembly. Levels at one device position share a housing.")}</div><div class="te-rail" data-rail aria-label="${tr("Klemmenaufbau", "Terminal assembly")}"></div><div class="te-grid" data-grid></div><div class="te-actions"><span data-count class="te-note"></span><span style="flex:1"></span><button class="btn" data-prev>${t("reviewPrevious")}</button><button class="btn" data-next>${t("reviewNext")}</button></div></main><aside class="te-inspector"><div class="te-context"><strong>${esc(accessory?.kind === "accessory" ? accessory.description : row?.entry.component.bmk || tr("Klemme auswählen", "Select a terminal"))}</strong><p class="te-note">${accessory ? tr("Zubehörposition · ohne elektrische Funktion", "Accessory position · no electrical function") : row ? esc((row.positionNumber ? tr("Geräteposition", "Device position") + " " + row.positionNumber + " · " : "") + (row.main ? tr("Hauptklemme / Artikelträger", "Main terminal / article owner") : tr("Nebenfunktion", "Secondary function")) + " · " + t("page") + " " + row.entry.page.pageNumber) : tr("Wählen Sie eine Zeile oder eine Klemme in der grafischen Aufbauleiste.", "Select a row or a terminal in the assembly rail.")}</p>${row && !accessory && this.navigate ? `<button class="btn" data-navigate>${tr("Im Schaltplan anzeigen", "Show in schematic")}</button>` : ""}</div><div class="te-tabs" role="tablist" aria-label="${tr("Klemmeneinstellungen", "Terminal settings")}">${tabs.map(([id, label]) => `<button role="tab" data-tab="${id}" ${accessory && id !== "device" ? "disabled" : ""} aria-selected="${this.tab === id}" aria-controls="te-details" id="te-tab-${id}">${label}</button>`).join("")}</div><div class="te-details" id="te-details" role="tabpanel" aria-labelledby="te-tab-${this.tab}">${this.details(strip, row)}</div></aside></div><div role="alert" data-editor-error>${esc(this.error)}</div><div class="te-preview" data-preview hidden></div><footer></footer></section>`;
+    this.el.innerHTML = `<section class="te-shell ${this.creation ? "is-creating" : ""}" role="dialog" aria-modal="true" aria-label="${tr("Klemmeneditor", "Terminal editor")}"><header class="te-header"><div><h2>${tr("Klemmeneditor", "Terminal editor")}</h2><p>${tr("Klemmenleiste wählen · Klemme auswählen · Eigenschaften bearbeiten · Änderungen prüfen", "Choose a strip · Select a terminal · Edit properties · Review changes")}</p></div><button class="btn" data-close aria-label="${t("close")}">✕</button></header><div class="te-body"><nav class="te-nav" aria-label="${tr("Klemmenleisten", "Terminal strips")}"><button class="te-create-button" data-create-row>＋ ${tr("Klemmenreihe anlegen", "Create terminal strip")}</button>${this.snapshot.strips.map((s) => `<button data-strip-key="${esc(s.key)}" aria-current="${s.key === this.stripKey}"><strong>${esc(s.identity.strip || "—")}</strong><small>${esc([s.identity.plant && "=" + s.identity.plant, s.identity.location && "+" + s.identity.location].filter(Boolean).join(" ") || tr("Ohne Strukturkennzeichen", "No structure designation"))}</small><small>${s.rows.length} ${tr("Platzierungen", "placements")}${s.issues ? " · ! " + s.issues : ""}</small></button>`).join("") || `<p class="te-note">${tr("Noch keine Klemmenreihe vorhanden. Legen Sie hier Ihre erste Reihe an.", "No terminal strip yet. Create your first strip here.")}</p>`}</nav><main class="te-center"><div data-create-panel ${this.creation ? "" : "hidden"}>${this.creation ? terminalRowForm(this.session.project, this.creation) : ""}</div><div class="te-toolbar"><strong>${esc(strip?.identity.strip ?? "—")}</strong>${strip ? `<button class="btn btn-primary" data-add-terminals>＋ ${tr("Klemmen hinzufügen", "Add terminals")}</button>` : ""}<input class="form-input" data-search placeholder="${tr("Nummer, Text, Artikel oder Blatt suchen…", "Search number, text, part or sheet…")}" aria-label="${t("wiringSearch")}" value="${esc(this.search)}"><button class="btn" data-export>${tr("Leiste als CSV", "Strip as CSV")}</button></div><div class="te-note">${tr("Die Reihenfolge zeigt den physischen Aufbau. Etagen einer Geräteposition gehören zu einem Gehäuse.", "Order represents physical assembly. Levels at one device position share a housing.")}</div><div class="te-rail" data-rail aria-label="${tr("Klemmenaufbau", "Terminal assembly")}"></div><div class="te-grid" data-grid></div><div class="te-actions"><span data-count class="te-note"></span><span style="flex:1"></span><button class="btn" data-prev>${t("reviewPrevious")}</button><button class="btn" data-next>${t("reviewNext")}</button></div></main><aside class="te-inspector"><div class="te-context"><strong>${esc(accessory?.kind === "accessory" ? accessory.description : row?.entry.component.bmk || tr("Klemme auswählen", "Select a terminal"))}</strong><p class="te-note">${accessory ? tr("Zubehörposition · ohne elektrische Funktion", "Accessory position · no electrical function") : row ? esc((row.positionNumber ? tr("Geräteposition", "Device position") + " " + row.positionNumber + " · " : "") + (row.main ? tr("Hauptklemme / Artikelträger", "Main terminal / article owner") : tr("Nebenfunktion", "Secondary function")) + " · " + t("page") + " " + row.entry.page.pageNumber) : tr("Wählen Sie eine Zeile oder eine Klemme in der grafischen Aufbauleiste.", "Select a row or a terminal in the assembly rail.")}</p>${row && !accessory && this.navigate ? `<button class="btn" data-navigate>${tr("Im Schaltplan anzeigen", "Show in schematic")}</button>` : ""}</div><div class="te-tabs" role="tablist" aria-label="${tr("Klemmeneinstellungen", "Terminal settings")}">${tabs.map(([id, label]) => `<button role="tab" data-tab="${id}" ${accessory && id !== "device" ? "disabled" : ""} aria-selected="${this.tab === id}" aria-controls="te-details" id="te-tab-${id}">${label}</button>`).join("")}</div><div class="te-details" id="te-details" role="tabpanel" aria-labelledby="te-tab-${this.tab}">${this.details(strip, row)}</div></aside></div><div role="alert" data-editor-error>${esc(this.error)}</div><div class="te-preview" data-preview hidden></div><footer></footer></section>`;
     this.el.querySelector(".terminal-fields [data-terminal-error]")?.remove();
     for (const input of this.el.querySelectorAll<HTMLInputElement>(
       "[data-terminal-field=number],[data-terminal-field=level],[data-terminal-field=levelDesignation]",
     ))
       input.readOnly = false;
     this.renderRows();
+    if (this.creation) updateTerminalRowForm(this.el, this.creation);
     this.renderFooter();
     this.bind();
-    if (this.review) this.renderReview();
+    if (this.review && !this.creation) this.renderReview();
     focusArticleModal(this.el);
   }
   private renderRows() {
@@ -341,7 +409,7 @@ export class TerminalEditorDialog {
         ? `<span class="te-note">${tr("Weitere Positionen in der Tabelle", "More positions in the table")}</span>`
         : "");
     this.el.querySelector("[data-grid]")!.innerHTML =
-      `<table><thead><tr><th aria-label="${tr("Auswahl", "Selection")}">✓</th>${[tr("Position", "Position"), tr("Klemme / Etage", "Terminal / level"), tr("Funktion", "Function"), tr("Ziele innen / außen", "Internal / external targets"), tr("Artikel", "Part"), t("page")].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${shown.map((r, i) => `<tr tabindex="0" data-address="${esc(r.key)}" aria-selected="${this.selected === r.key}" class="${this.selected === r.key ? "is-active " : ""}${i === 0 || r.position?.id !== shown[i - 1].position?.id ? "te-position-start" : ""}"><td><input type="checkbox" data-check="${esc(r.key)}" aria-label="${esc(r.entry.component.bmk)} ${tr("für Mehrstockklemme markieren", "mark for multi-level assembly")}" ${this.checked.has(r.key) ? "checked" : ""}></td><td>${r.positionNumber ?? "—"}</td><td><strong>${esc(terminalSettings(r.entry.component).number || "?")}</strong><small>${esc(r.levelText)}</small><span class="te-badge ${r.main ? "is-main" : ""}">${r.main ? tr("Haupt", "Main") : tr("Neben", "Secondary")}</span>${r.entry.component.terminal?.functionId ? `<span class="te-badge">${tr("Teilklemme", "Partial")}</span>` : ""}</td><td>${esc(r.entry.symbol ? getLocalizedSymbol(r.entry.symbol).name : "?")}<small>${esc(r.entry.component.functionText)}</small>${r.issues.length ? `<span class="te-badge">! ${r.issues.length}</span>` : ""}</td><td><small>${esc([...new Set(r.reports.map((v) => v.internalTarget))].join(" · "))}</small><small>${esc([...new Set(r.reports.map((v) => v.externalTarget))].join(" · "))}</small></td><td>${esc(r.article || "—")}</td><td>${esc(r.entry.page.pageNumber)}</td></tr>`).join("") || `<tr><td colspan="7" class="te-note">${tr("Keine passenden Klemmen. Suchfilter löschen oder eine andere Leiste wählen.", "No matching terminals. Clear the filter or choose another strip.")}</td></tr>`}</tbody></table>`;
+      `<table><thead><tr><th aria-label="${tr("Auswahl", "Selection")}">✓</th>${[tr("Position", "Position"), tr("Klemme / Etage", "Terminal / level"), tr("Funktion", "Function"), tr("Ziele innen / außen", "Internal / external targets"), tr("Artikel", "Part"), t("page")].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${shown.map((r, i) => `<tr tabindex="0" data-address="${esc(r.key)}" aria-selected="${this.selected === r.key}" class="${this.selected === r.key ? "is-active " : ""}${i === 0 || r.position?.id !== shown[i - 1].position?.id ? "te-position-start" : ""}"><td><input type="checkbox" data-check="${esc(r.key)}" aria-label="${esc(r.entry.component.bmk)} ${tr("für Mehrstockklemme markieren", "mark for multi-level assembly")}" ${this.checked.has(r.key) ? "checked" : ""}></td><td>${r.positionNumber ?? "—"}</td><td><strong>${esc(terminalSettings(r.entry.component).number || "?")}</strong><small>${esc(r.levelText)}</small><span class="te-badge ${r.main ? "is-main" : ""}">${r.main ? tr("Haupt", "Main") : tr("Neben", "Secondary")}</span>${r.entry.component.terminal?.functionId ? `<span class="te-badge">${tr("Teilklemme", "Partial")}</span>` : ""}</td><td>${esc(r.entry.symbol ? getLocalizedSymbol(r.entry.symbol).name : "?")}<small>${esc(r.entry.component.functionText)}</small>${r.issues.length ? `<span class="te-badge">! ${r.issues.length}</span>` : ""}</td><td><small>${esc([...new Set(r.reports.map((v) => v.internalTarget))].join(" · "))}</small><small>${esc([...new Set(r.reports.map((v) => v.externalTarget))].join(" · "))}</small></td><td>${esc(r.article || "—")}</td><td>${esc(r.entry.page.pageNumber)}</td></tr>`).join("") || `<tr><td colspan="7" class="te-note">${!strip ? `<h3>${tr("Ihre erste Klemmenreihe", "Your first terminal strip")}</h3><p>${tr("Wählen Sie Kennzeichen, Klemmentyp und Anzahl. Die Nummerierung und Platzierung erledigt der Assistent.", "Choose a designation, terminal type and quantity. The assistant handles numbering and placement.")}</p><button class="btn btn-primary" data-create-row>${tr("Klemmenreihe anlegen", "Create terminal strip")}</button>` : !strip.rows.length ? `<h3>${tr("Diese Klemmenreihe ist noch leer", "This terminal strip is empty")}</h3><button class="btn btn-primary" data-add-terminals>${tr("Klemmen hinzufügen", "Add terminals")}</button>` : tr("Keine passenden Klemmen. Suchfilter löschen oder eine andere Leiste wählen.", "No matching terminals. Clear the filter or choose another strip.")}</td></tr>`}</tbody></table>`;
     this.el.querySelector("[data-count]")!.textContent =
       `${rows.length ? this.offset + 1 : 0}–${Math.min(this.offset + 100, rows.length)} / ${rows.length} · ${this.checked.size} ${tr("für Mehrstockklemme markiert", "marked for multi-level assembly")}`;
     (this.el.querySelector("[data-prev]") as HTMLButtonElement).disabled =
@@ -512,6 +580,23 @@ export class TerminalEditorDialog {
   }
   private renderFooter() {
     const footer = this.el.querySelector("footer")!;
+    if (this.creation && !this.closing) {
+      footer.innerHTML = `<span class="te-note">${tr("Zuerst die Reihe konfigurieren, dann prüfen und übernehmen.", "Configure the strip, then review and apply.")}</span><div class="te-actions"><button class="btn" data-cancel-row>${tr("Abbrechen", "Cancel")}</button><button class="btn btn-primary" data-stage-row>${this.creation.mode === "new" ? tr("Reihe anlegen und prüfen", "Create strip and review") : tr("Klemmen hinzufügen und prüfen", "Add terminals and review")}</button></div>`;
+      footer
+        .querySelector("[data-stage-row]")!
+        .addEventListener("click", () => this.createRow());
+      footer
+        .querySelector("[data-cancel-row]")!
+        .addEventListener("click", () => {
+          this.creation = undefined;
+          this.formDirty = false;
+          this.dirtyControls.clear();
+          this.error = "";
+          this.render();
+        });
+      return;
+    }
+
     footer.innerHTML = this.closing
       ? `<strong>${tr("Nicht übernommene Änderungen verwerfen?", "Discard unapplied changes?")}</strong><div class="te-actions"><button class="btn" data-keep>${tr("Weiter bearbeiten", "Keep editing")}</button><button class="btn" data-discard-close>${tr("Verwerfen und schließen", "Discard and close")}</button></div>`
       : `<span class="te-note" data-draft-status>${this.formDirty ? tr("Eingaben noch nicht vorgemerkt", "Fields not yet staged") : this.session.changed ? tr("Entwurf geändert · Projekt noch unverändert", "Draft changed · project unchanged") : tr("Projekt unverändert · Änderungen werden erst nach der Prüfung übernommen", "Project unchanged · changes are applied only after review")}</span><div class="te-actions"><button class="btn" data-undo ${this.session.canUndo && !this.formDirty ? "" : "disabled"} title="Strg+Z">↶</button><button class="btn" data-redo ${this.session.canRedo && !this.formDirty ? "" : "disabled"}>↷</button><button class="btn" data-reset-draft ${this.session.changed ? "" : "disabled"}>${tr("Entwurf verwerfen", "Discard draft")}</button><button class="btn" data-review ${this.session.changed ? "" : "disabled"}>${tr("Änderungen prüfen", "Review changes")}</button><button class="btn btn-primary" data-apply ${this.session.changed && this.review && !this.formDirty ? "" : "disabled"}>${t("articlesApply")}</button></div>`;
@@ -588,6 +673,17 @@ export class TerminalEditorDialog {
         .forEach((node) => node.addEventListener("click", action));
     const value = (id: string) =>
       this.el.querySelector<HTMLInputElement>(`[data-field="${id}"]`)!.value;
+    on(".te-nav [data-create-row]", () => this.beginCreation());
+    on(".te-toolbar [data-add-terminals]", () => this.beginCreation(true));
+    this.el
+      .querySelector("[data-create-panel]")
+      ?.addEventListener("input", () => {
+        if (this.creation) {
+          readTerminalRowForm(this.el, this.creation);
+          updateTerminalRowForm(this.el, this.creation);
+          this.renderFooter();
+        }
+      });
     on("[data-close]", () => this.requestClose());
     on("[data-navigate]", () => {
       if (!this.canLeave()) return;
@@ -664,6 +760,14 @@ export class TerminalEditorDialog {
       this.renderRows();
     });
     this.el.querySelector("[data-grid]")!.addEventListener("click", (e) => {
+      if ((e.target as Element).closest("[data-create-row]")) {
+        this.beginCreation();
+        return;
+      }
+      if ((e.target as Element).closest("[data-add-terminals]")) {
+        this.beginCreation(true);
+        return;
+      }
       const check = (e.target as Element).closest<HTMLInputElement>(
         "[data-check]",
       );

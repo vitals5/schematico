@@ -14,6 +14,10 @@ import {
 } from "./TerminalDistribution";
 import { ArticleEditPlan, type ArticleEdit } from "./ArticleEdit";
 import { ArticleFunctionPlan } from "./ArticleFunctions";
+import {
+  TerminalRowCreationPlan,
+  type TerminalRowCreation,
+} from "./TerminalRowCreation";
 import { validateTerminalComponentEdit } from "./TerminalEditValidation";
 
 // History restores root fields in a different insertion order. Compare their
@@ -60,6 +64,15 @@ export class TerminalEditorSession {
     this.history.record(next);
     this.draft = next;
     this.dirty = draftContent(next) !== draftContent(this.original);
+  }
+  createRow(options: TerminalRowCreation) {
+    const plan = new TerminalRowCreationPlan(this.draft, options);
+    this.record(plan.apply(this.draft));
+    return {
+      identity: plan.identity,
+      members: plan.members,
+      newPageIds: plan.newPageIds,
+    };
   }
   wiring(edit: WiringEdit, functionText?: string) {
     const next = new WiringEditPlan(this.draft, edit).apply(this.draft);

@@ -174,6 +174,25 @@ export function terminalEditorChanges(
     a = collect(before),
     b = collect(after);
   const changes: { label: string; before: string; after: string }[] = [];
+  const oldStrips = new Map(before.strips.map((s) => [s.key, s])),
+    newStrips = new Map(after.strips.map((s) => [s.key, s]));
+  for (const scope of new Set([...oldStrips.keys(), ...newStrips.keys()]))
+    if (!oldStrips.has(scope) || !newStrips.has(scope)) {
+      const old = oldStrips.get(scope),
+        next = newStrips.get(scope);
+      changes.push({
+        label: tr("Klemmenreihe", "Terminal strip"),
+        before: old ? old.identity.strip : "—",
+        after: next
+          ? next.identity.strip +
+            " · " +
+            next.rows.length +
+            " " +
+            tr("Klemmen", "terminals")
+          : "—",
+      });
+    }
+
   const values = (r: TerminalEditorRow) => {
     const c = r.entry.component,
       v = terminalSettings(c);
