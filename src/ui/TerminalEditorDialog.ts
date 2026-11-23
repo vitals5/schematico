@@ -692,6 +692,7 @@ export class TerminalEditorDialog {
       if (row) this.select(row);
     });
     this.el.querySelector("[data-grid]")!.addEventListener("keydown", (e) => {
+      if ((e.target as Element).closest("input,button,select,textarea")) return;
       const event = e as KeyboardEvent,
         node = (e.target as Element).closest<HTMLElement>("[data-address]");
       if (node && ["Enter", " "].includes(event.key)) {

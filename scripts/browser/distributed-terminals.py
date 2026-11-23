@@ -69,6 +69,7 @@ async def main():
    c=json.loads(json.dumps(base));c.update(id='t'+str(i),bmk='-X1:'+str(i+1),terminal=dict(strip='-X1',number=str(i+1),level='',pinSides={}));large['pages'][0]['components'].append(c)
   await load(large);await page.locator('#menuProjectTrigger').click();await page.locator('#menuTerminalEditor').click();await expect(root.locator('tr[data-address]')).to_have_count(100)
   await root.locator('[data-search]').fill('-X1:220');await expect(root.locator('tr[data-address]')).to_have_count(1);await expect(root.locator('[data-grid]')).to_contain_text('220')
+  checkbox=root.locator('[data-grid] input[data-check]');await checkbox.focus();await page.keyboard.press('Space');await expect(root.locator('[data-grid] input[data-check]')).to_be_checked();await expect(root.locator('[data-tab="device"]')).to_have_attribute('aria-selected','true')
   await root.locator('[data-close]').click()
   assert not errors,errors;await browser.close();print('Central terminal UI: common entry points, dirty-edit guard, composed preview, local and application undo, main-owned parts, cross-sheet movement, partial functions, explicit discard and persistence passed')
 asyncio.run(main())
