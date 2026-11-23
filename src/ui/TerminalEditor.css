@@ -1,0 +1,372 @@
+#terminalEditorDialog {
+  position: fixed;
+  inset: 0;
+  z-index: 4400;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0009;
+  color: var(--text-primary, #e7edf5);
+}
+#terminalEditorDialog [hidden] {
+  display: none !important;
+}
+#terminalEditorDialog .te-shell {
+  width: min(1680px, 100%);
+  height: min(980px, calc(100dvh - 36px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-panel, #17202d);
+  border: 1px solid var(--border-color, #46566a);
+  border-radius: 10px;
+  box-shadow: 0 20px 80px #0008;
+}
+#terminalEditorDialog header.te-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-color, #46566a);
+}
+#terminalEditorDialog h2 {
+  margin: 0;
+  font-size: 21px;
+}
+#terminalEditorDialog p {
+  line-height: 1.45;
+}
+#terminalEditorDialog .te-header p {
+  margin: 4px 0 0;
+  color: var(--text-secondary, #a9b9ca);
+  font-size: 12px;
+}
+#terminalEditorDialog .te-body {
+  display: grid;
+  grid-template-columns: 205px minmax(300px, 1fr) minmax(345px, 430px);
+  flex: 1;
+  min-height: 0;
+}
+#terminalEditorDialog .te-nav {
+  padding: 14px 10px;
+  border-right: 1px solid var(--border-color, #46566a);
+  overflow: auto;
+  background: var(--bg-secondary, #121c28);
+}
+#terminalEditorDialog .te-nav button {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 7px;
+  padding: 10px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+#terminalEditorDialog .te-nav button[aria-current="true"] {
+  background: #3282cf25;
+  border-color: #59a8e8;
+}
+#terminalEditorDialog small {
+  font-size: 11px;
+  color: var(--text-secondary, #abb9c8);
+}
+#terminalEditorDialog .te-center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  gap: 12px;
+}
+#terminalEditorDialog .te-toolbar,
+#terminalEditorDialog .te-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#terminalEditorDialog .te-toolbar input {
+  flex: 1;
+  min-width: 130px;
+}
+#terminalEditorDialog .te-rail {
+  display: flex;
+  overflow: auto;
+  gap: 5px;
+  padding: 10px 5px;
+  background: linear-gradient(
+    0deg,
+    transparent 44%,
+    #6e859655 44%,
+    #6e859655 58%,
+    transparent 58%
+  );
+  min-height: 75px;
+  max-height: 110px;
+}
+#terminalEditorDialog .te-rail button {
+  flex: 0 0 auto;
+  min-width: 52px;
+  max-width: 100px;
+  padding: 7px 5px;
+  border: 1px solid #728294;
+  background: var(--bg-input, #21374c);
+  color: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#terminalEditorDialog .te-rail button.is-selected {
+  outline: 2px solid #63b3ed;
+}
+#terminalEditorDialog .te-grid {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+  border: 1px solid var(--border-color, #46566a);
+  border-radius: 5px;
+}
+#terminalEditorDialog table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+#terminalEditorDialog th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary, #182637);
+  z-index: 1;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 500;
+}
+#terminalEditorDialog td,
+#terminalEditorDialog th {
+  padding: 9px 7px;
+  border-bottom: 1px solid var(--border-color, #3a4758);
+  vertical-align: top;
+}
+#terminalEditorDialog tr[data-address] {
+  cursor: pointer;
+}
+#terminalEditorDialog tr.is-active {
+  background: #3282cf24;
+}
+#terminalEditorDialog tr[data-address]:hover {
+  background: #3282cf16;
+}
+#terminalEditorDialog td small {
+  display: block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#terminalEditorDialog .te-position-start td {
+  border-top: 2px solid #8293a460;
+}
+#terminalEditorDialog .te-badge {
+  display: inline-block;
+  padding: 2px 5px;
+  margin: 1px;
+  border: 1px solid #6d8194;
+  border-radius: 3px;
+  font-size: 10px;
+}
+#terminalEditorDialog .te-badge.is-main {
+  border-color: #63b3ed;
+  color: #8acaff;
+}
+#terminalEditorDialog .te-inspector {
+  border-left: 1px solid var(--border-color, #46566a);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#terminalEditorDialog .te-context {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color, #46566a);
+}
+#terminalEditorDialog .te-context strong {
+  font-size: 16px;
+}
+#terminalEditorDialog .te-tabs {
+  display: flex;
+  gap: 0;
+  overflow: auto;
+  border-bottom: 1px solid var(--border-color, #46566a);
+}
+#terminalEditorDialog .te-tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 9px;
+  color: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 12px;
+}
+#terminalEditorDialog .te-tabs button[aria-selected="true"] {
+  border-color: #63b3ed;
+  color: #8acaff;
+}
+#terminalEditorDialog .te-details {
+  padding: 14px 16px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+#terminalEditorDialog label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+#terminalEditorDialog .te-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+#terminalEditorDialog .te-card {
+  border: 1px solid var(--border-color, #46566a);
+  padding: 12px;
+  border-radius: 5px;
+  margin: 12px 0;
+}
+#terminalEditorDialog .te-card h3 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+#terminalEditorDialog .te-note {
+  font-size: 12px;
+  color: var(--text-secondary, #b7c6d5);
+}
+#terminalEditorDialog .te-note.is-warning {
+  color: #f6c36a;
+}
+#terminalEditorDialog [role="alert"] {
+  padding: 0 18px;
+  color: #ffb2b2;
+  white-space: pre-wrap;
+  max-height: 75px;
+  overflow: auto;
+}
+#terminalEditorDialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-color, #46566a);
+}
+#terminalEditorDialog .te-preview {
+  padding: 12px 18px;
+  max-height: 180px;
+  overflow: auto;
+  background: var(--bg-secondary, #121c28);
+  border-top: 1px solid var(--border-color, #46566a);
+}
+#terminalEditorDialog .terminal-fields {
+  padding: 10px !important;
+}
+#terminalEditorDialog .terminal-fields > p {
+  display: none;
+}
+#terminalEditorDialog .terminal-fields > div {
+  grid-template-columns: 1fr 1fr !important;
+}
+#terminalEditorDialog .terminal-fields section > div {
+  flex-wrap: wrap;
+}
+#terminalEditorDialog .form-input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+#terminalEditorDialog .te-port {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+#terminalEditorDialog .te-port:before {
+  content: "";
+  height: 7px;
+  width: 7px;
+  flex: none;
+  border: 1px solid #8acaff;
+  border-radius: 50%;
+}
+@media (max-width: 1150px) {
+  #terminalEditorDialog .te-body {
+    grid-template-columns: 150px minmax(260px, 1fr) 345px;
+  }
+  #terminalEditorDialog .te-nav {
+    padding: 8px 4px;
+  }
+}
+@media (max-width: 850px) {
+  #terminalEditorDialog {
+    padding: 5px;
+  }
+  #terminalEditorDialog .te-shell {
+    height: calc(100dvh - 10px);
+  }
+  #terminalEditorDialog .te-body {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr);
+    overflow: auto;
+  }
+  #terminalEditorDialog .te-nav {
+    grid-column: 1/-1;
+    display: flex;
+    gap: 8px;
+    max-height: 90px;
+    border-bottom: 1px solid #46566a;
+    overflow: auto;
+  }
+  #terminalEditorDialog .te-nav button {
+    min-width: 140px;
+    margin: 0;
+  }
+  #terminalEditorDialog .te-center {
+    padding: 8px;
+  }
+  #terminalEditorDialog footer {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 600px) {
+  #terminalEditorDialog .te-nav {
+    flex: none;
+    min-height: 76px;
+  }
+  #terminalEditorDialog .te-body {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+  #terminalEditorDialog .te-center {
+    flex: none;
+    height: 340px;
+  }
+  #terminalEditorDialog .te-inspector {
+    flex: none;
+    min-height: 400px;
+    border-top: 1px solid #46566a;
+  }
+  #terminalEditorDialog .te-details {
+    overflow: visible;
+  }
+  #terminalEditorDialog .te-header p {
+    display: none;
+  }
+}

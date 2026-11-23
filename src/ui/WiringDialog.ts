@@ -1,8 +1,5 @@
 import {isTerminalComponent} from '../model/ComponentSemantics';
-import {terminalFields,collectTerminalFields} from './TerminalFields';
-import {terminalPinSide,terminalLevels} from '../model/TerminalFunctions';
-import {TerminalFunctionDialog} from './TerminalFunctionDialog';
-import {TerminalStripDialog} from './TerminalStripDialog';
+import {TerminalEditorDialog,type TerminalEditorTab} from './TerminalEditorDialog';
 import './WiringWorkspace.css';
 import './TerminalCableWorkspace.css';
 import {terminalCableSnapshot,type TerminalCableSnapshot} from './TerminalCableVisuals';
@@ -14,7 +11,6 @@ import type { Project } from '../model/types';
 import { ProjectIndex } from '../model/ProjectIndex';
 import {
   WiringEditPlan,
-  terminalSettings,
   type WiringEdit,
 } from '../model/WiringManagement';
 import { bindArticleModalKeys, focusArticleModal } from './ArticleModal';
@@ -65,6 +61,7 @@ export class WiringDialog {
     if(initial?.cableId){this.workspace.tab='cables';this.workspace.panel=initial.coreId?'core':'cable';}
   }
   show() {
+    if(this.terminal&&!this.cable){const [pageId,componentId]=JSON.parse(this.terminal);this.openTerminals({pageId,componentId});return;}
     if (document.getElementById('wiringDialog')) return;
     this.el.id = 'wiringDialog';
     this.el.className = 'modal-backdrop';
@@ -73,6 +70,9 @@ export class WiringDialog {
     document.body.append(this.el);
     bindArticleModalKeys(this.el, () => this.el.remove());
     this.render();
+  }
+  private openTerminals(target?:import('../model/ArticleTypes').ComponentAddress,identity?:import('../model/TerminalStripTypes').TerminalStripIdentity,tab?:TerminalEditorTab){
+    new TerminalEditorDialog(this.getProject,this.onApply,{target,identity,tab},a=>{this.el.remove();this.navigate?.(a.pageId,a.componentId);},()=>{if(!this.el.isConnected)return;this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();}).show();
   }
   private prepare(edit: WiringEdit) {
     this.draft = structuredClone(edit);
@@ -130,13 +130,6 @@ export class WiringDialog {
         e,
       })),
       selected = terminalOptions.find((e) => e.value === this.terminal)?.e,
-      settings = selected
-        ? this.draft?.kind === 'terminal' &&
-          this.draft.target.componentId === selected.component.id &&
-          this.draft.target.pageId === selected.page.id
-          ? this.draft.settings
-          : terminalSettings(selected.component)
-        : undefined,
       cables = this.source.pages.flatMap((page) =>
         (page.cables ?? []).map((c) => ({
           page,
@@ -151,40 +144,11 @@ export class WiringDialog {
           ? { ...baseCore, ...this.draft }
           : baseCore
         : undefined,
-      report = this.snapshot.report,
-      endpoints = terminals.flatMap((e) =>
-        this.index
-          .pinsFor(e)
-          .map((p) => ({
-            value: JSON.stringify([e.page.id, e.component.id, p.id]),
-            label: `${e.page.pageNumber} · ${e.component.bmk}:${p.label}`,
-          })),
-      );
+      report = this.snapshot.report;
     const field = (id: string, label: string, value: string) =>
       `<label>${esc(label)}<input class="form-input" data-${id} value="${esc(value)}"></label>`;
     this.el.innerHTML = `<section role="dialog" aria-modal="true" style="width:min(1200px,100%);max-height:94vh;overflow:auto;background:#17202d;color:#eee;padding:20px;border:1px solid #526170;border-radius:8px"><h2>${t('wiringManage')}</h2><button class="btn" data-repairs>${t('repairTitle')}</button><div role="alert" style="color:#fca5a5">${esc(this.error)}</div><fieldset><legend>${t('wiringTerminals')}</legend><select class="form-input" data-terminal><option value="">—</option>${terminalOptions.map((o) => `<option value="${esc(o.value)}" ${o.value === this.terminal ? 'selected' : ''}>${esc(o.e.page.pageNumber + ' · ' + o.e.component.bmk + ' · ' + o.e.component.functionText)}</option>`).join('')}</select>
- ${
-   selected && settings
-     ? `${field('strip', t('wiringStrip'), settings.strip)}${field('number', t('wiringNumber'), settings.number)}${terminalLevels(selected.symbol).length<2?field('level', t('wiringLevel'), settings.level):''}<div style="display:flex;gap:8px;flex-wrap:wrap">${(terminalLevels(selected.symbol).length?[]:this.index.pinsFor(selected))
-         .map(
-           (p) =>
-             `<label>${esc(p.label)}<select data-side="${esc(p.id)}"><option value="internal" ${terminalPinSide({...selected.component,terminal:settings},selected.symbol,p.id) === 'internal' ? 'selected' : ''}>${t('wiringInternal')}</option><option value="external" ${terminalPinSide({...selected.component,terminal:settings},selected.symbol,p.id) === 'external' ? 'selected' : ''}>${t('wiringExternal')}</option></select></label>`,
-         )
-         .join(
-           '',
-         )}</div>${selected.symbol?terminalFields({...selected.component,terminal:settings},selected.symbol,false):''}<button class="btn" data-save-terminal>${t('articlesPreview')}</button><button class="btn" data-terminal-functions>${tr('Etagen, Teilklemmen und Zuordnung…','Levels, partial terminals and ownership…')}</button>`
-     : ''
- }
- <details data-old-terminal-report></details>
- <details><summary>${t('wiringBridge')}</summary><div style="display:flex;gap:8px;flex-wrap:wrap">${['from', 'to'].map((k) => `<select class="form-input" data-bridge-${k}>${endpoints.map((p) => `<option value="${esc(p.value)}">${esc(p.label)}</option>`).join('')}</select>`).join('')}<select data-bridge-type><option value="plug">${t('wiringPlug')}</option><option value="wire">${t('wiringWireBridge')}</option></select><button class="btn" data-bridge>${t('articlesPreview')}</button></div>${(
-   this.source.logicalConnections ?? []
- )
-   .filter((w) => w.terminalBridge)
-   .map(
-     (w) =>
-       `<div>${esc(w.from.componentId + ':' + w.from.pinId + ' → ' + w.to.componentId + ':' + w.to.pinId)} <button class="btn" data-remove-bridge="${esc(w.id)}">${t('wiringBridgeRemove')}</button></div>`,
-   )
-   .join('')}</details></fieldset>
+ <p>${tr('Klemmenleiste, Etagen, Artikel und Brücken gemeinsam bearbeiten.','Edit terminal strips, levels, parts and bridges together.')}</p><button class="btn btn-primary" data-terminal-editor>${tr('Klemmeneditor öffnen…','Open terminal editor…')}</button><details data-old-terminal-report></details><details><summary>${t('wiringBridge')}</summary><button class="btn" data-open-bridges>${tr('Brücken im Klemmeneditor bearbeiten…','Edit bridges in terminal editor…')}</button></details></fieldset>
  <fieldset style="margin-top:12px"><legend>${t('wiringCables')}</legend><select class="form-input" data-cable><option value="">—</option>${cables.map((o) => `<option value="${esc(o.value)}" ${o.value === this.cable ? 'selected' : ''}>${esc(o.page.pageNumber + ' · ' + o.c.bmk + ' · ' + o.c.cableType)}</option>`).join('')}</select>${selectedCable ? `<button class="btn" data-cable-article>${esc(tr('Artikel, Länge & Stromkreis','Part, length & circuit'))}</button>${field('cable-bmk', 'BMK', selectedCable.c.bmk)}${field('cable-type', t('engineeringCableType'), selectedCable.c.cableType)}${field('cable-section', t('wiringCrossSection'), selectedCable.c.crossSection)}${field('count', t('wiringCoreCount'), selectedCable.c.coreCount === undefined ? '' : String(selectedCable.c.coreCount))}<button class="btn" data-save-cable>${t('articlesPreview')}</button><button class="btn" data-reserves>${t('wiringReserves')}</button><div class="eng-core-picker"><label>${t('engineeringCableCore')}<select class="form-input" data-core><option value="">—</option>${selectedCable.c.cores.map((c) => `<option value="${esc(c.id)}" ${this.core === c.id ? 'selected' : ''}>${esc((c.designation ?? '?') + ' · ' + (c.color ?? '') + (c.reserve ? ' · ' + t('wiringReserve') : ''))}</option>`).join('')}</select></label></div>` : ''}
  ${selectedCore ? `${field('designation', t('engineeringCoreDesignation'), selectedCore.designation ?? '')}${field('color', t('wiringColor'), selectedCore.color ?? '')}${field('section', t('wiringCrossSection'), selectedCore.crossSection ?? selectedCable!.c.crossSection)}<label><input type="checkbox" data-reserve ${selectedCore.reserve ? 'checked' : ''}> ${t('wiringReserve')}</label><label>${t('wiringWireIds')}<select class="form-input" multiple size="5" data-wires>${selectedCable!.page.wires.map((w) => `<option value="${esc(w.id)}" ${selectedCore.wireIds?.includes(w.id) ? 'selected' : ''}>${esc(w.id + ' · ' + w.from.componentId + ':' + w.from.pinId + ' → ' + w.to.componentId + ':' + w.to.pinId)}</option>`).join('')}</select></label><button class="btn" data-save-core>${t('articlesPreview')}</button>` : ''}</fieldset>
  <p>${t('wiringExportHint')}</p><button class="btn" data-export>${t('wiringExport')}</button>${this.preview ? `<fieldset data-preview><legend>${t('articlesPreview')}</legend><pre style="white-space:pre-wrap">${esc(this.summary)}</pre><ul>${this.preview.findings.map((i) => `<li>${esc(t(i.code as any))} · ${esc(i.componentId ?? i.cableId ?? '')} · ${esc(i.coreId ?? '')} · ${esc(i.details)}</li>`).join('')}</ul></fieldset>` : ''}<footer style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" data-close>${t('close')}</button><button class="btn" data-apply ${this.preview ? '' : 'disabled'}>${t('articlesApply')}</button></footer></section>`;
@@ -243,18 +207,8 @@ export class WiringDialog {
           this.draft = undefined;
           this.render();
         });
-    this.el
-      .querySelector('[data-save-terminal]')
-      ?.addEventListener('click', () => {
-        try {
-          const fields=selected?.symbol?collectTerminalFields(this.el,selected.component,selected.symbol):undefined;
-          this.prepare({kind:'terminal',target:{pageId:selected!.page.id,componentId:selected!.component.id},settings:{
-            ...(fields??settings!),strip:input('strip'),number:input('number'),level:terminalLevels(selected?.symbol).length>1?settings!.level:input('level'),
-            pinSides:fields?.pinSides??Object.fromEntries([...this.el.querySelectorAll<HTMLSelectElement>('[data-side]')].map(s=>[s.dataset.side!,s.value as 'internal'|'external'])),
-          }});
-        }catch(e){this.error=articleError(e);this.render();}
-      });
-    this.el.querySelector('[data-terminal-functions]')?.addEventListener('click',()=>{if(!selected)return;new TerminalFunctionDialog(this.getProject,this.onApply,{pageId:selected.page.id,componentId:selected.component.id},a=>{this.el.remove();this.navigate?.(a.pageId,a.componentId);},undefined,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();}).show();});
+    this.el.querySelector('[data-terminal-editor]')?.addEventListener('click',()=>this.openTerminals(selected?{pageId:selected.page.id,componentId:selected.component.id}:undefined));
+    this.el.querySelector('[data-open-bridges]')?.addEventListener('click',()=>this.openTerminals(selected?{pageId:selected.page.id,componentId:selected.component.id}:undefined,undefined,'bridges'));
     this.el
       .querySelector('[data-save-cable]')
       ?.addEventListener('click', () =>
@@ -295,29 +249,6 @@ export class WiringDialog {
               .selectedOptions,
           ].map((o) => o.value),
         }),
-      );
-    this.el.querySelector('[data-bridge]')?.addEventListener('click', () => {
-      const parse = (k: string) => {
-        const a = JSON.parse(
-          this.el.querySelector<HTMLSelectElement>('[data-bridge-' + k + ']')!
-            .value || '[]',
-        );
-        return { pageId: a[0], componentId: a[1], pinId: a[2] };
-      };
-      this.prepare({
-        kind: 'bridge',
-        from: parse('from'),
-        to: parse('to'),
-        bridgeType: this.el.querySelector<HTMLSelectElement>(
-          '[data-bridge-type]',
-        )!.value as 'plug' | 'wire',
-      });
-    });
-    for (const b of this.el.querySelectorAll<HTMLElement>(
-      '[data-remove-bridge]',
-    ))
-      b.addEventListener('click', () =>
-        this.prepare({ kind: 'remove_bridge', id: b.dataset.removeBridge! }),
       );
     this.el.querySelector('[data-export]')?.addEventListener('click', () => {
       const terminals = [...report].flatMap(([strip, rows]) =>
@@ -421,9 +352,10 @@ export class WiringDialog {
     this.el.querySelector('[data-cable-article]')?.addEventListener('click',()=>{if(!selectedCable)return;new CableArticleDialog(this.getProject,p=>{this.onApply(p);this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},{pageId:selectedCable.page.id,cableId:selectedCable.c.id}).show();});
     this.el.querySelector('[data-repairs]')?.addEventListener('click',()=>new CableRepairDialog(this.getProject,p=>{this.onApply(p);this.el.remove();}).show());
     mountTerminalCableWorkspace(this.el,this.snapshot,this.workspace,{
-      openConfigurator:()=>{const identity=this.snapshot.terminals[0]?.entry.stripIdentity??this.source.terminalStrips?.[0]??{plant:'',location:'',strip:''};new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show();},
-      configure:identity=>new TerminalStripDialog(this.getProject,this.onApply,identity,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();},this.navigate).show(),
-      pickTerminal:key=>{this.terminal=JSON.stringify(JSON.parse(key).slice(0,2));this.workspace.tab='terminals';this.workspace.panel='terminal';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
+      openConfigurator:()=>this.openTerminals(),
+      configure:identity=>this.openTerminals(undefined,identity),
+      openBridges:()=>this.openTerminals(undefined,undefined,'bridges'),
+      pickTerminal:k=>{const [pageId,componentId]=JSON.parse(k);this.openTerminals({pageId,componentId});},
       pickCable:(key,core)=>{this.cable=key;this.core=core??'';this.workspace.tab='cables';this.workspace.panel=core?'core':'cable';this.preview=undefined;this.draft=undefined;this.error='';this.render();},
       refresh:()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.workspace.panel=undefined;this.render();},
       closePanel:()=>{this.workspace.panel=undefined;this.preview=undefined;this.draft=undefined;this.error='';this.render();}

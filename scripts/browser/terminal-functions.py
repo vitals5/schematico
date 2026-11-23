@@ -34,7 +34,8 @@ async def main():
   stock=components[4]
   pos=await point(stock['x']+6,stock['y']+10);await page.mouse.dblclick(pos['x'],pos['y'])
   dialog=page.locator('#propertiesModal');await expect(dialog).to_be_visible()
-  await expect(dialog.locator('[data-terminal-level]')).to_have_count(3)
+  await expect(dialog.locator('[data-terminal-level]')).to_have_count(0)
+  await expect(dialog.locator('[data-manage-terminals]')).to_be_visible()
   # An unchanged properties visit must leave inferred terminal data absent.
   await dialog.locator('#btnSaveProp').click()
   saved=await save();stock=saved['pages'][0]['components'][4];assert 'terminal' not in stock
@@ -45,9 +46,11 @@ async def main():
   assert stock['functionText']=='Global function' and 'terminal' not in stock
   pos=await point(stock['x']+6,stock['y']+10);await page.mouse.dblclick(pos['x'],pos['y'])
   await dialog.locator('#propFunctionText').fill('')
-  await dialog.locator('#terminal-strip').fill('-X4');await dialog.locator('#terminal-number').fill('5')
-  await dialog.locator('#terminal-designation-2').fill('N-Load');await dialog.locator('#terminal-text-2').fill('Load neutral')
-  await dialog.locator('#btnSaveProp').click()
+  await dialog.locator('[data-manage-terminals]').click()
+  editor=page.locator('#terminalEditorDialog')
+  await editor.locator('#terminal-strip').fill('-X4');await editor.locator('#terminal-number').fill('5')
+  await editor.locator('#terminal-designation-2').fill('N-Load');await editor.locator('#terminal-text-2').fill('Load neutral')
+  await editor.locator('[data-stage-function]').click();await editor.locator('[data-review]').click();await editor.locator('[data-apply]').click();await editor.locator('[data-close]').click()
   saved=await save();stock=saved['pages'][0]['components'][4]
   assert stock['bmk']=='-X4:5' and stock['terminal']['levels']['2']=={'designation':'N-Load','functionText':'Load neutral'}
   await expect(page.locator('#'+stock['id']+' [data-terminal-label="level-2"]')).to_have_text('N-Load')
@@ -56,13 +59,12 @@ async def main():
   root=page.locator('#wiringDialog')
   card=root.locator('[data-terminal-key]').filter(has_text='5/N-Load').first
   await card.click()
-  await expect(root.locator('[data-terminal]')).to_have_value(json.dumps(['p',stock['id']],separators=(',',':')))
-  await expect(root.locator('[data-terminal-level]')).to_have_count(3)
-  await root.locator('[data-number]').fill('6')
-  await root.locator('#terminal-text-2').fill('Changed neutral')
-  await root.locator('[data-save-terminal]').click()
-  await expect(root.locator('[data-apply]')).to_be_enabled();await root.locator('[data-apply]').click()
-  if await root.count():await root.locator('[data-close]').click()
+  await expect(editor).to_be_visible()
+  await expect(editor.locator('[data-terminal-level]')).to_have_count(3)
+  await editor.locator('#terminal-number').fill('6')
+  await editor.locator('#terminal-text-2').fill('Changed neutral')
+  await editor.locator('[data-stage-function]').click();await editor.locator('[data-review]').click();await editor.locator('[data-apply]').click();await editor.locator('[data-close]').click()
+  await root.locator('[data-close]').click()
   saved=await save();stock=saved['pages'][0]['components'][4]
   assert stock['bmk']=='-X4:6' and stock['terminal']['levels']['2']['functionText']=='Changed neutral'
   pos=await point(stock['x']+6,stock['y']+10);await page.mouse.dblclick(pos['x'],pos['y'])
@@ -77,6 +79,6 @@ async def main():
   await page.screenshot(path='/workspace/scratch/terminal-functions-editor.png')
   assert not errors,errors
   await browser.close()
-  print('Terminal UI: blank real placement defaults, stock-level properties, unchanged data guard, edits, workbench level cards/apply, label visibility and reload passed')
+  print('Terminal UI: blank real placement defaults, central level editor, unchanged data guard, edits, common workbench entry and atomic apply, label visibility and reload passed')
 
 asyncio.run(main())

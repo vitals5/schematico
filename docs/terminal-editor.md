@@ -1,0 +1,49 @@
+# Klemmeneditor
+
+**Projekt → Klemmeneditor…** ist der zentrale Ort für die Konfiguration. Derselbe Editor öffnet sich über **Eigenschaften → Schaltzeichen → Im Klemmeneditor bearbeiten…**, die Artikelansicht einer Klemme sowie über Klemmenkarten und Brücken in **Klemmen und Kabel**.
+
+## Orientierung
+
+- **Links:** Klemmenleisten mit Anlage und Einbauort. Gleiche sichtbare Namen in unterschiedlichen Strukturkontexten bleiben getrennt.
+- **Mitte:** Grafische Aufbauleiste und Tabelle mit Geräteposition, Klemmennummer, Etage, Haupt-/Nebenfunktion, Anschlusszielen, Artikel und Blatt. Eine Zeile oder Aufbauposition auswählen, um rechts ihre Einstellungen zu sehen.
+- **Rechts:** Die Register **Funktion**, **Aufbau**, **Artikel**, **Brücken** und **Prüfung** bearbeiten dieselbe Auswahl und denselben Entwurf.
+
+Die grafische Aufbauleiste stellt die physische Reihenfolge schematisch dar. Sie ist keine maßstäbliche Montagezeichnung. Die Tabelle zeigt 100 Platzierungen je Seite; die Suche berücksichtigt den vollständigen Bestand. Die Grafik ist auf die ersten 100 Positionen begrenzt. Weitere Positionen bleiben über Tabelle und Suche erreichbar. Keine dieser Anzeigegrenzen kürzt den CSV-Export.
+
+## Sicherer Ablauf
+
+1. Klemmenleiste und Klemme auswählen.
+2. Gewünschte Einstellungen ändern und mit der passenden Schaltfläche **vormerken**.
+3. Weitere Klemmen oder Register bearbeiten. Vorgemerkte Änderungen bleiben gemeinsam im Entwurf.
+4. **Änderungen prüfen** zeigt die Unterschiede zum Ausgangsstand und die geänderten Artikelmengen.
+5. **Übernehmen** speichert den gesamten Entwurf als einen rückgängig machbaren Projektschritt. Der Editor bleibt für die nächste Bearbeitung geöffnet.
+
+Noch nicht vorgemerkte Eingaben blockieren einen Auswahl- oder Registerwechsel. **Eingaben zurücksetzen** verwirft sie. Die Pfeile im Fußbereich und Strg+Z/Strg+Umschalt+Z beziehungsweise Strg+Y bearbeiten die Entwurfshistorie. **Entwurf verwerfen** setzt alle vorgemerkten Änderungen zurück. Beim Schließen mit offenen Änderungen erscheint die Wahl **Weiter bearbeiten** oder **Verwerfen und schließen**. Ein inzwischen außerhalb des Editors geändertes Projekt wird bei der Übernahme nicht überschrieben.
+
+## Funktion
+
+Hier werden Leiste, Klemmennummer, Etage, Sortierkennung, Funktionstexte und die internen/externen Anschlussseiten gepflegt. Bei einem Symbol mit mehreren Etagen gibt es Beschriftungsfelder je Etage. Die Anschlusslogik stammt weiterhin aus der Bibliotheksdefinition; aus einem identischen BMK entsteht keine elektrische Verbindung.
+
+Bei Teilklemmen gelten Nummer und Etage gemeinsam für alle Teilplatzierungen der logischen Funktion. Eine konfigurierte Klemme kann nicht ohne Klärung ihrer Bestückungszuordnung in eine andere Leiste umbenannt werden.
+
+## Aufbau
+
+**Früher / Später** verschiebt die vollständige Geräteposition. **Nach Sortierkennung** sortiert numerisch, hält Etagen zusammen und lässt Zubehör an seinen bisherigen Plätzen. Die Bestückung wird beim ersten benötigten Aufbauvorgang ausdrücklich im Entwurf angelegt; das bloße Öffnen des Editors verändert das Projekt nicht.
+
+**Etagen aufteilen** erzeugt getrennt verschiebbare Schaltzeichen für die Etagen einer Mehrstockklemme. Unterste oder oberste Etage kann Hauptklemme sein. **Teilklemmen erstellen** erzeugt separat platzierbare Anschlusspunkte einer unterstützten Durchgangs-/PE-Klemmenfunktion. Dabei bleiben Anschlusspositionen, Leitungswege und die geprüfte elektrische Netzstruktur erhalten. Der Dialog nennt zugehörige Platzierungen und ihre Blätter.
+
+Zum Zusammenfassen bereits einzeln gezeichneter Etagen die gewünschten Positionen über die Tabellenkästchen markieren. Die Markierung umfasst jeweils alle Mitglieder einer vorhandenen Geräteposition. Anschließend je Funktion eine eindeutige Etage angeben und **Zusammenfassen vormerken** wählen. Widersprüchliche Artikel, Zeichnungsgruppen oder unvollständige Zuordnungen werden zurückgewiesen. **Etagen trennen** löst eine geeignete physische Etagenzuordnung auf. Eine elektrische Teilklemmenfunktion darf dabei nicht still verloren gehen.
+
+**Platzierung auf anderes Blatt verschieben** ist für unverdrahtete Platzierungen vorgesehen. X/Y bezeichnet den Einfügepunkt. Eine Veränderung der elektrischen Netzstruktur wird zurückgewiesen. **Im Schaltplan anzeigen** steht nach der Übernahme zur Navigation bereit.
+
+**Zubehör hinzufügen** erzeugt eine unabhängige Bestückungsposition, beispielsweise einen Endhalter. Katalogauswahl, manuelle Artikeldaten, Menge, Bearbeiten und Entfernen bleiben im selben Editor. Ein mechanisch erfasster Brückenkamm erzeugt keine elektrische Brücke. Unter **Erweiterte Verwaltung** lässt sich eine Bestückung mit den vorhandenen Schutzregeln zurücksetzen; die Vorschau zeigt auch wegfallendes Zubehör.
+
+## Artikel, Brücken und Prüfung
+
+**Artikel** verwaltet Hauptartikel, Zubehör und Mengen für die ganze Geräteposition, auch wenn eine Nebenfunktion ausgewählt ist. Katalogdaten und ihre Nachweise werden beibehalten. Funktionsschablonen werden mit dem Anschlussbild verglichen; unbekannte Daten bleiben ungeprüft. Abweichende Typen oder das Ersetzen einer bestehenden Funktionszuordnung benötigen die ausdrücklich angezeigte Bestätigung. Das Zusammenfassen von Etagen ist kein Hersteller-Kompatibilitätsnachweis.
+
+**Brücken** verbindet ausdrücklich gewählte Anschlussstellen und zeigt die vorhandenen Steck-/Drahtbrücken der Leiste. Bereits verbundene Anschlüsse und widersprüchliche feste Potenziale werden zurückgewiesen; insbesondere ist eine neue N–PE-Verbindung gesperrt. Die Vorschau nennt hinzugefügte beziehungsweise entfernte Brücken. Es werden keine zusätzlichen Leitungszüge über die Blattgrafik erfunden.
+
+**Prüfung** zeigt Klemmenhinweise der ausgewählten Leiste und führt zur betroffenen Auswahl. Dies ersetzt nicht den vollständigen elektrischen Prüflauf. **Leiste als CSV** exportiert alle Klemmenzeilen der gewählten Leiste sowie ihre eigenständigen Zubehörpositionen. Die projektweiten Klemmen-, Kabel-/Ader- und Brückenlisten bleiben unter **Klemmen und Kabel → Daten & Berichte** verfügbar.
+
+Bibliothek, Gerätezuordnung, Netzmodell und Projektdateiformat bleiben die gemeinsamen Grundlagen. Die Beschreibung der [Klemmentypen und Etagenfunktionen](terminal-functions.md) erläutert die elektrische Bedeutung der einzelnen Symbole.

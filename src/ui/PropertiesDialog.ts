@@ -453,8 +453,8 @@ export class PropertiesDialog {
               }).join('') : `<span style="font-size: 11px; color: #a0aec0;">${this.isMulti ? tr('Keine gemeinsamen Anschlüsse auf allen Elementen','No common pins across all elements') : escapeSvg(t('propPinsNone'))}</span>`}
             </div>
           </div>
-          ${!this.isMulti&&sym?terminalFields(this.component,sym):''}
-          ${!this.isMulti&&(sym?.terminalDefinition||this.component.terminal)?`<section style="border:1px solid #526170;padding:10px;border-radius:5px">${this.terminalDevice?`<p>${this.terminalDevice.isMain?tr('Hauptklemme · Artikelträger','Main terminal · article owner'):tr('Nebenklemme / Teilklemme','Secondary / partial terminal')} · ${tr('Geräteposition','Device position')} ${this.terminalDevice.position??'—'}</p>`:''}${this.callbacks.onManageTerminals?`<button class="btn" data-manage-terminals>${tr('Etagen, Teilklemmen und Zuordnung…','Levels, partial terminals and ownership…')}</button>`:''}</section>`:''}
+          ${!this.isMulti&&sym&&!this.callbacks.onManageTerminals?terminalFields(this.component,sym):''}
+          ${!this.isMulti&&(sym?.terminalDefinition||this.component.terminal)?`<section style="border:1px solid #526170;padding:10px;border-radius:5px">${this.terminalDevice?`<p>${this.terminalDevice.isMain?tr('Hauptklemme · Artikelträger','Main terminal · article owner'):tr('Nebenklemme / Teilklemme','Secondary / partial terminal')} · ${tr('Geräteposition','Device position')} ${this.terminalDevice.position??'—'}</p>`:''}${this.callbacks.onManageTerminals?`<button class="btn" data-manage-terminals>${tr('Im Klemmeneditor bearbeiten…','Edit in terminal editor…')}</button>`:''}</section>`:''}
           ${renderInspectionFields(this.component,this.components,this.project,this.dirtyFields)}
         </div>
       `;
@@ -633,6 +633,7 @@ export class PropertiesDialog {
     }
 
     if (this.activeTab === 'part') {
+      if(!this.isMulti&&this.callbacks.onManageTerminals&&(sym?.terminalDefinition||this.component.terminal))return `<section><h3>${tr('Artikel der Klemme','Terminal parts')}</h3><p>${tr('Artikel, Zubehör und Funktionszuordnung werden gemeinsam mit Etagen und Geräteposition im Klemmeneditor verwaltet.','Parts, accessories and function allocation are managed together with levels and device position in the terminal editor.')}</p><button class="btn btn-primary" data-manage-articles>${tr('Artikel im Klemmeneditor bearbeiten…','Edit parts in terminal editor…')}</button></section>`;
       if(!this.isMulti&&this.terminalDevice&&!this.terminalDevice.isMain)return `<section><p>${tr('Dieser Klemmenfunktion ist der Artikel der Hauptklemme zugeordnet. Die Stückzahl wird für das gemeinsame Gerät einmal gezählt.','This terminal function uses the article of its main terminal. The common device is counted once.')}</p>${this.callbacks.onOpenTerminalMain?`<button class="btn" data-open-terminal-main>${tr('Artikel an der Hauptklemme bearbeiten','Edit article at the main terminal')}</button>`:''}${this.callbacks.onManageArticles?`<button class="btn" data-manage-articles>${t('articlesOpenFromProperties')}</button>`:''}</section>`;
       const mfrMeta = fieldMeta('manufacturer', 'propManufacturer', this.component.manufacturer || '', 'z.B. Siemens / Hager / Finder');
       const artMeta = fieldMeta('articleNumber', 'propArticleNumber', this.component.articleNumber || '', 'z.B. 3RT2016-1BB41');
