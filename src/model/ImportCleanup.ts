@@ -10,20 +10,23 @@ import { TerminalDiagramGenerator } from '../reports/TerminalDiagram';
 import { connectionList } from '../reports/ConnectionList';
 import { connectionRepresentationPairs } from './ConnectionRepresentations';
 import { projectRevision } from '../layout/types';
+import { structureImportedTerminals, type TerminalStructurePreview } from './ImportedTerminalStructure';
 
 export const cleanupDefaults: DataInterpretation = {
   version: 1, nativeRoles: true, assignedArticlesOnly: true, consolidateConnections: true,
 };
 export interface CleanupIssue {
   id: string;
-  kind: 'graphic' | 'device_connection' | 'connector' | 'terminal_number' | 'device_candidate' | 'connection_conflict' | 'cable_core_count';
+  kind: 'graphic' | 'device_connection' | 'connector' | 'terminal_number' | 'terminal_structure' | 'device_candidate' | 'connection_conflict' | 'cable_core_count';
   addresses: ComponentAddress[];
   label: string;
   details: string;
   wireIds?: string[];
   cableId?: string;
   pageId?: string;
+  terminalReason?: import('./ImportedTerminalStructure').TerminalRecognitionReason;
 }
+export interface ImportCleanupOptions { structureTerminals?: boolean }
 export interface CleanupMetrics {
   navigator: number;
   terminals: number;
@@ -44,12 +47,19 @@ function validateProfile(profile: DataInterpretation): DataInterpretation {
   return { version: 1, nativeRoles: profile.nativeRoles,
     assignedArticlesOnly: profile.assignedArticlesOnly, consolidateConnections: profile.consolidateConnections };
 }
-export function importCleanupPreview(project: Project, input = cleanupDefaults) {
+function calculateCleanup(project: Project, input: DataInterpretation, options: ImportCleanupOptions) {
   const profile = validateProfile(input);
-  const interpreted: Project = { ...project, dataInterpretation: profile };
+  const initial: Project = { ...project, dataInterpretation: structuredClone(profile) };
+  const structured = options.structureTerminals ? structureImportedTerminals(initial) : undefined;
+  const interpreted = structured?.project ?? initial;
   const index = new ProjectIndex(project);
   const roles: Partial<Record<ComponentRole, number>> = {};
   const issues: CleanupIssue[] = [];
+  for (const issue of structured?.preview.issues ?? []) issues.push({
+    id: 'terminal-structure:' + JSON.stringify(issue.addresses), kind: 'terminal_structure',
+    addresses: issue.addresses, label: [issue.strip, issue.number].filter(Boolean).join(':'),
+    details: issue.reason, terminalReason: issue.reason,
+  });
   const groups = new Map<string, typeof index.components>();
   let assignedPlacements = 0;
   for (const e of index.components) {
@@ -71,7 +81,8 @@ export function importCleanupPreview(project: Project, input = cleanupDefaults) 
       label:entries[0].tag,details:entries.length+' · '+entries.map(e=>e.page.pageNumber).filter((p,i,a)=>a.indexOf(p)===i).join(', ')});
   }
   const terminals = TerminalDiagramGenerator.generateTerminalReport(interpreted);
-  for(const entries of terminals.values())for(const t of entries)if(t.numberSource==='unresolved')
+  const reviewedTerminals=new Set(issues.filter(i=>i.kind==='terminal_structure').flatMap(i=>i.addresses.map(a=>JSON.stringify([a.pageId,a.componentId]))));
+  for(const entries of terminals.values())for(const t of entries)if(t.numberSource==='unresolved'&&!reviewedTerminals.has(JSON.stringify([t.pageId,t.componentId])))
     issues.push({id:'terminal:'+JSON.stringify([t.pageId,t.componentId]),kind:'terminal_number',
       addresses:[{pageId:t.pageId!,componentId:t.componentId!}],label:t.terminalStrip,details:t.componentId!});
   const pairs=connectionRepresentationPairs(index.connections);
@@ -90,32 +101,38 @@ export function importCleanupPreview(project: Project, input = cleanupDefaults) 
     Number.isInteger(cable.coreCount)&&cable.coreCount!==cable.cores.length
   )issues.push({id:'cable:'+JSON.stringify([page.id,cable.id]),kind:'cable_core_count',addresses:[],
     label:cable.bmk||cable.id,details:cable.coreCount+' / '+cable.cores.length,cableId:cable.id,pageId:page.id});
-  return {
+  const preview = {
     schema:'schematico-import-cleanup-preview' as const,version:1 as const,
     projectId:project.id,profile,before:metrics(project),after:metrics(interpreted,connectionRows.length),roles,assignedPlacements,
     source:{pages:project.pages.length,placements:index.components.length,
       drawnWires:project.pages.reduce((n,p)=>n+p.wires.length,0),logicalConnections:project.logicalConnections?.length??0,
       cabinets:project.cabinetLayouts?.length??0,cabinetItems:project.cabinetLayouts?.reduce((n,b)=>n+b.items.length,0)??0},
     representationPairs:pairs.length,issues,
+    terminalStructure: structured?.preview as TerminalStructurePreview | undefined,
   };
+  return { project: interpreted, preview };
+}
+export function importCleanupPreview(project: Project, input = cleanupDefaults, options: ImportCleanupOptions = {}) {
+  return calculateCleanup(project, input, options).preview;
 }
 export type ImportCleanupPreview = ReturnType<typeof importCleanupPreview>;
 
-/** Only a versioned interpretation profile changes. Source objects, geometry,
- * pins, articles, routes and cabinet data are copied without any rewriting. */
+/** The profile and optional evidenced terminal metadata change. Source symbols,
+ * geometry, pins, articles, routes and cabinet data remain intact. */
 export class ImportCleanupPlan {
   readonly #base: string;
-  readonly #profile: DataInterpretation;
+  readonly #next: Project;
   readonly preview: ImportCleanupPreview;
-  constructor(project: Project, profile = cleanupDefaults) {
+  constructor(project: Project, profile = cleanupDefaults, options: ImportCleanupOptions = {}) {
     this.#base=projectRevision(project);
-    this.#profile=validateProfile(profile);
-    this.preview=importCleanupPreview(project,this.#profile);
+    const result=calculateCleanup(project,profile,options);
+    this.#next=structuredClone(result.project);
+    this.preview=result.preview;
   }
   apply(current: Project): Project {
     if(projectRevision(current)!==this.#base)throw Error('articlesProjectStale');
-    const next=structuredClone(current);
-    next.dataInterpretation=structuredClone(this.#profile);
+    const next=structuredClone(this.#next);
+    next.activePageId=current.activePageId;
     next.modified=new Date().toISOString();
     return next;
   }

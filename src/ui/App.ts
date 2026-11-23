@@ -635,7 +635,7 @@ export class App {
     },a=>this.openArticleWorkbench(a),issue=>{
       const page=this.project.pages.find(p=>p.id===issue?.pageId),cable=page?.cables?.find(c=>c.id===issue?.cableId);
       this.openWiringWorkbench(page&&cable?{pageId:page.id,pageNumber:page.pageNumber,cableId:cable.id,x:cable.start.x,y:cable.start.y}:undefined);
-    },()=>this.openConnectionNavigator()).show();
+    },()=>this.openConnectionNavigator(),a=>new TerminalEditorDialog(()=>this.project,p=>this.applyProjectTransaction(p),{target:a},target=>{const page=this.project.pages.find(p=>p.id===target.pageId),c=page?.components.find(c=>c.id===target.componentId);if(page&&c){this.canvas.focusInspection({...target,pageNumber:page.pageNumber,x:c.x,y:c.y});this.updateUI();}}).show()).show();
   }
   private openArticleWorkbench(initial:ComponentAddress[]=[]):void {
     this.canvas.finishInteraction();this.history.record(this.project);
