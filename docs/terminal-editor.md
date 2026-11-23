@@ -7,7 +7,7 @@
 1. Links **＋ Klemmenreihe anlegen** wählen. In einem leeren Projekt ist derselbe Einstieg auch direkt in der Mitte sichtbar.
 2. Das vorgeschlagene Kennzeichen (z. B. `-X1`) verwenden oder ändern. Anlage und Einbauort sind mit dem aktuellen Blatt vorbelegt und unter der gleichnamigen Aufklappsektion erreichbar.
 3. Klemmentyp, Anzahl und erste Nummer festlegen. Die Anzeige nennt sofort den Nummernbereich. Durchgangs-, PE-, Drei-/Vierleiter-, Mehrstock-, Installations-, Trenn- und Sicherungsklemmen werden aus der normalen Bibliothek erzeugt. Pro Vorgang sind bis zu 100 Klemmen möglich.
-4. Die automatische Blattwahl verwenden oder ein bestimmtes normales Stromlaufplanblatt wählen. Die Automatik erzeugt bei Bedarf weitere Blätter; bei einer bestehenden Reihe nutzt sie zuerst deren letzte geeignete Seite. Vorhandene Inhalte werden nicht verschoben. Die Platzierung berücksichtigt Symbol- und Textgrenzen, Raster und elektrische Anschlussachsen. Es entstehen keine automatischen Brücken zwischen den neuen Klemmen oder zum Bestand.
+4. Die automatische Blattwahl verwenden oder ein bestimmtes normales Stromlaufplanblatt wählen. Die Automatik erzeugt bei Bedarf weitere Blätter; bei einer bestehenden Reihe nutzt sie zuerst deren letzte geeignete Seite. Vorhandene Inhalte werden nicht verschoben. Die Platzierung erzeugt eine durchgehende horizontale Reihe mit gemeinsamer Achse und berücksichtigt Symbol- und Textgrenzen sowie das Raster. Reicht die Breite nicht aus, wird die Reihe auf einem weiteren Blatt fortgesetzt. Das Reihen-BMK steht jeweils an der ersten Klemme; alle Klemmen zeigen ihre Nummer. Die vollständigen BMKs bleiben für Artikel, Verweise und Prüfungen erhalten. Es entstehen keine automatischen Brücken zwischen den neuen Klemmen oder zum Bestand.
 5. **Reihe anlegen und prüfen** zeigt die neue Reihe im gemeinsamen Entwurf und öffnet direkt die Änderungsprüfung. **Übernehmen** speichert. Das Blatt der ausgewählten neuen Klemme wird danach angezeigt.
 
 Mit **Zunächst nur eine leere Reihe anlegen** wird nur die Reihe gespeichert; es entstehen weder Schaltzeichen noch neue Blätter. Zum Bestücken die Reihe links wählen und **＋ Klemmen hinzufügen** anklicken. Das funktioniert auch mit bereits vorhandenen Reihen. Die nächste freie fortlaufende Nummer wird vorgeschlagen; bereits vergebene Nummern werden nicht überschrieben. Verschiedene Klemmentypen lassen sich durch wiederholtes Ergänzen kombinieren.
@@ -40,6 +40,8 @@ Bei Teilklemmen gelten Nummer und Etage gemeinsam für alle Teilplatzierungen de
 
 ## Aufbau
 
+**Auf diesem Blatt horizontal anordnen** richtet vorhandene unverdrahtete Klemmen der gewählten Reihe gerade aus und übernimmt die Reihenbeschriftung. Die Änderung wird als Entwurf geprüft; verdrahtete, gedrehte oder gruppierte Platzierungen werden nicht still verschoben.
+
 **Früher / Später** verschiebt die vollständige Geräteposition. **Nach Sortierkennung** sortiert numerisch, hält Etagen zusammen und lässt Zubehör an seinen bisherigen Plätzen. Die Bestückung wird beim ersten benötigten Aufbauvorgang ausdrücklich im Entwurf angelegt; das bloße Öffnen des Editors verändert das Projekt nicht.
 
 **Etagen aufteilen** erzeugt getrennt verschiebbare Schaltzeichen für die Etagen einer Mehrstockklemme. Unterste oder oberste Etage kann Hauptklemme sein. **Teilklemmen erstellen** erzeugt separat platzierbare Anschlusspunkte einer unterstützten Durchgangs-/PE-Klemmenfunktion. Dabei bleiben Anschlusspositionen, Leitungswege und die geprüfte elektrische Netzstruktur erhalten. Der Dialog nennt zugehörige Platzierungen und ihre Blätter.
@@ -59,3 +61,5 @@ Zum Zusammenfassen bereits einzeln gezeichneter Etagen die gewünschten Position
 **Prüfung** zeigt Klemmenhinweise der ausgewählten Leiste und führt zur betroffenen Auswahl. Dies ersetzt nicht den vollständigen elektrischen Prüflauf. **Leiste als CSV** exportiert alle Klemmenzeilen der gewählten Leiste sowie ihre eigenständigen Zubehörpositionen. Die projektweiten Klemmen-, Kabel-/Ader- und Brückenlisten bleiben unter **Klemmen und Kabel → Daten & Berichte** verfügbar.
 
 Bibliothek, Gerätezuordnung, Netzmodell und Projektdateiformat bleiben die gemeinsamen Grundlagen. Die Beschreibung der [Klemmentypen und Etagenfunktionen](terminal-functions.md) erläutert die elektrische Bedeutung der einzelnen Symbole.
+
+Drei- und vieradrige Durchgangsklemmen verwenden beim Anlegen eine Bibliotheksvariante mit senkrechten Anschlüssen. Die zugehörige Funktionsdefinition und die Anschlusskennungen bleiben erhalten. Zahlen und Reihen-BMK werden in Editor, Vorschau und PDF nach derselben Darstellungsregel ausgegeben.

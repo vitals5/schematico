@@ -14,6 +14,8 @@ import {terminalLevelValues,validTerminalLevelSettings} from './TerminalFunction
 import {distributedTerminalBindings} from './DistributedTerminalTypes';
 import {assertTerminalAssignments} from './TerminalEditValidation';
 export interface TerminalSettings {
+  /** Printed strip heading at the start of a horizontal run; logical BMK stays complete. */
+  rowDisplay?: 'start' | 'continuation';
   functionId?: string;
   sortingKey?: string;
   levelDesignation?: string;

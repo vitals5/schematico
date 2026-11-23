@@ -14,6 +14,7 @@ import {
 } from "./TerminalDistribution";
 import { ArticleEditPlan, type ArticleEdit } from "./ArticleEdit";
 import { ArticleFunctionPlan } from "./ArticleFunctions";
+import { TerminalRowAlignmentPlan } from "./TerminalRowAlignment";
 import {
   TerminalRowCreationPlan,
   type TerminalRowCreation,
@@ -73,6 +74,16 @@ export class TerminalEditorSession {
       members: plan.members,
       newPageIds: plan.newPageIds,
     };
+  }
+  alignRow(
+    pageId: string,
+    identity: import("./TerminalStripTypes").TerminalStripIdentity,
+  ) {
+    this.record(
+      new TerminalRowAlignmentPlan(this.draft, pageId, identity).apply(
+        this.draft,
+      ),
+    );
   }
   wiring(edit: WiringEdit, functionText?: string) {
     const next = new WiringEditPlan(this.draft, edit).apply(this.draft);

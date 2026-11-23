@@ -5,7 +5,7 @@ import { renderPdfGraphics } from "./PdfGraphics";
 import { prepareProjectPdfSections } from './ProjectPdfSections';
 import { appendManufacturingReportPdf } from './ManufacturingReportPdf';
 import { renderCabinetPdfPage } from '../ui/CabinetDrawing';
-import {wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
+import {componentBmkText,wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
 import { renderSymbolSvg } from './SymbolSvg';
 import { boxDrawing } from '../model/DeviceBox';
 import { cableDrawing } from '../model/CableDefinition';
@@ -814,7 +814,7 @@ export class PdfExporter {
       if(!hideLabels||comp.showLabels)for(const item of terminalFunctionLabels(comp,sym,s)){
         const pos=item.position;if(!pos.visible)continue;
         const point=rotatedLocalPoint(pos,scaledSym,comp.rotation);
-        doc.setFont('helvetica','normal');doc.setFontSize(pos.fontSize*sy*72/25.4);doc.setTextColor(0,0,0);
+        doc.setFont(item.key==='terminal-number'?'courier':'helvetica',pos.fontWeight==='bold'?'bold':'normal');doc.setFontSize(pos.fontSize*sy*72/25.4);doc.setTextColor(0,0,0);
         doc.text(wrapLabelText(item.text,pos.fontSize,pos.maxWidth),(comp.x+point.x)*sx,(comp.y+point.y)*sy,
           {align:pos.anchor==='middle'?'center':pos.anchor==='end'?'right':'left',angle:-pos.rotation,lineHeightFactor:1.2});
       }
@@ -870,7 +870,7 @@ export class PdfExporter {
         };
         if (!hideLabels || comp.showLabels) {
           if (!isConnection && (!isTerminal || !comp.bmk.startsWith('comp_')))
-            drawLabel(comp.bmk, computeBmkPosition(comp, sym), true, [140, 95, 0]);
+            drawLabel(componentBmkText(comp,sym), computeBmkPosition(comp, sym,s), true, [140, 95, 0]);
           if (!isConnection && !isTerminal) {
             drawLabel(comp.functionText, computeFunctionTextPosition(comp, sym), false, [0, 0, 0]);
             const tech = comp.deviceTag ? comp.deviceTag + (comp.technicalCharacteristics ? ' · ' + comp.technicalCharacteristics : '') : comp.technicalCharacteristics || '';

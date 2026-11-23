@@ -474,7 +474,7 @@ export class TerminalEditorDialog {
             insertionPoint: { x: anchor.x * scale, y: anchor.y * scale },
           })
         : { x: c.x, y: c.y };
-    return `<section class="te-card"><h3>${tr("Geräteposition und Reihenfolge", "Device position and order")}</h3><p class="te-note">${tr("Ein Gehäuse kann mehrere Etagen besitzen. Die Artikel werden an der Hauptklemme geführt.", "One housing may have multiple levels. Parts belong to the main terminal.")}</p><div class="te-actions"><button class="btn" data-order="up">← ${tr("Früher", "Earlier")}</button><button class="btn" data-order="down">${tr("Später", "Later")} →</button><button class="btn" data-sort>${tr("Nach Sortierkennung", "By sorting key")}</button></div>${
+    return `<section class="te-card"><h3>${tr("Geräteposition und Reihenfolge", "Device position and order")}</h3><p class="te-note">${tr("Ein Gehäuse kann mehrere Etagen besitzen. Die Artikel werden an der Hauptklemme geführt.", "One housing may have multiple levels. Parts belong to the main terminal.")}</p><button class="btn" data-align-row>${tr("Auf diesem Blatt horizontal anordnen","Arrange horizontally on this sheet")}</button><div class="te-actions"><button class="btn" data-order="up">← ${tr("Früher", "Earlier")}</button><button class="btn" data-order="down">${tr("Später", "Later")} →</button><button class="btn" data-sort>${tr("Nach Sortierkennung", "By sorting key")}</button></div>${
       device
         ? `<label>${tr("Hauptklemme / Artikelträger", "Main terminal / article owner")}<select class="form-input" data-main-target>${mainCandidates
             .map((a) => {
@@ -872,6 +872,7 @@ export class TerminalEditorDialog {
         }),
       );
     });
+    on('[data-align-row]',()=>{if(!row||!strip||!this.canLeave())return;if(this.change(s=>s.alignRow(row.address.pageId,strip.identity))){this.review=true;this.renderReview();this.renderFooter();}});
     on("[data-main]", () => {
       if (!row || !strip || !this.canStage("[data-main]")) return;
       const target = addressFromKey(

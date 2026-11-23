@@ -1,4 +1,4 @@
-import {wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
+import {componentBmkText,wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
 import {electricalPinGroups} from '../model/ElectricalDefinition';
 import { pinStub } from './router';
 import { standardTerminalId, componentInsertionPoint } from '../model/SymbolGeometry';
@@ -198,9 +198,9 @@ export function componentShapes(
         sym.id === 'potential_rail_source'));
   const bmk = computeBmkPosition(comp, sym),
     fn = computeFunctionTextPosition(comp, sym);
-  for(const item of terminalFunctionLabels(comp,sym))label(item.key,item.text,item.position,'sans-serif');
+  for(const item of terminalFunctionLabels(comp,sym))label(item.key,item.text,item.position,item.key==='terminal-number'?'monospace':'sans-serif',item.position.fontWeight);
   if (!conn && standardTerminalId(sym) !== 'terminal_single') {
-    label('bmk', comp.bmk, bmk, 'monospace', 'bold');
+    label('bmk', componentBmkText(comp,sym), bmk, 'monospace', 'bold');
     label('function', comp.functionText, fn, 'sans-serif', fn.fontWeight);
     label(
       'technical',
@@ -211,7 +211,7 @@ export function componentShapes(
       'sans-serif',
     );
   } else if (standardTerminalId(sym) === 'terminal_single') {
-    label('bmk', comp.bmk, bmk, 'monospace', 'bold');
+    label('bmk', componentBmkText(comp,sym), bmk, 'monospace', 'bold');
     label(
       'terminal',
       terminalDesignation(comp,sym),

@@ -1,3 +1,4 @@
+import {normaliseTerminalRowHeadings} from '../model/TerminalFunctions';
 import {CabinetLayoutDialog} from './CabinetLayoutDialog';
 import type {CircuitDimensioning} from '../model/ElectricalDimensioning';
 import {ManufacturingReportDialog} from './ManufacturingReportDialog';
@@ -563,7 +564,7 @@ export class App {
     this.canvas.setPage(this.project.activePageId || this.project.pages[0].id);
   }
 
-  private applyProjectTransaction(next:Project){this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
+  private applyProjectTransaction(next:Project){for(const page of next.pages)normaliseTerminalRowHeadings(page);this.history.record(this.project);this.history.breakGroup();this.restoreHistory(next);}
   private openPotentialDefinitions(id?:string){this.canvas.finishInteraction();this.history.record(this.project);new PotentialDialog(()=>this.project,p=>this.applyProjectTransaction(p),id).show();}
   private openAutomationNavigator():void {
     this.canvas.finishInteraction();

@@ -1,4 +1,4 @@
-import type { PlacedComponent, SymbolDefinition } from './types';
+import type { PlacedComponent, SymbolDefinition, Page } from './types';
 
 export interface TerminalLevel {
   id: string;
@@ -56,4 +56,11 @@ export function terminalPinSide(component: PlacedComponent, symbol: SymbolDefini
     return level.pinIds[0] === id ? 'internal' : 'external';
   }
   return id === '1' ? 'internal' : 'external';
+}
+
+/** Maintain the first printed heading when a row member is moved/deleted. Only
+ * explicitly row-formatted terminals participate; imported drawings stay intact. */
+export function normaliseTerminalRowHeadings(page:Page){
+ const groups=new Map<string,PlacedComponent[]>();for(const c of page.components){if(!c.terminal?.rowDisplay)continue;const scope=JSON.stringify([(c.higherLevelFunction??page.higherLevel??'').trim().replace(/^=+/,''),(c.mountingLocation??page.location??'').trim().replace(/^\++/,''),c.terminal.strip]);groups.set(scope,[...groups.get(scope)??[],c]);}
+ for(const members of groups.values())members.sort((a,b)=>a.x-b.x||a.y-b.y).forEach((c,i)=>c.terminal!.rowDisplay=i===0?'start':'continuation');
 }

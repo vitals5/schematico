@@ -53,6 +53,8 @@ export function getMacroCategoryLabel(categoryId: string, lang: Language = getUi
 }
 
 export const SYMBOL_EXACT_TRANSLATIONS: Record<string, { name: string; description?: string }> = {
+  terminal_feed_3_row: { name: '3-Wire Feed-Through Terminal – Row View' },
+  terminal_feed_4_row: { name: '4-Wire Feed-Through Terminal – Row View' },
   terminal_feed_3: { name: '3-Wire Feed-Through Terminal' },
   terminal_feed_4: { name: '4-Wire Feed-Through Terminal' },
   terminal_double: { name: 'Double-Level Terminal' },

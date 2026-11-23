@@ -1,5 +1,6 @@
+import {normaliseTerminalRowHeadings} from '../model/TerminalFunctions';
 import { ProjectIndex } from '../model/ProjectIndex';
-import {wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
+import {componentBmkText,wrapLabelText, terminalDesignation, terminalFunctionLabels} from '../model/LabelLayout';
 import type {InspectionLocation} from '../model/ElectricalInspection';
 import { canGroupSelection, createElementGroup, dissolveElementGroups, expandGroupedSelection, selectedRootGroups, pruneElementGroups, selectionMembers, membersSelection, selectedGroup, groupSelection, memberKeys } from '../model/ElementGroups';
 import { newDeviceBox, resizeDeviceBox, geometryFromSymbol } from '../model/DeviceBoxElement';
@@ -2548,6 +2549,7 @@ export class CadCanvas {
 
   private notifyModified(): void {
     pruneElementGroups(this.activePage);
+    normaliseTerminalRowHeadings(this.activePage);
     CrossReferenceEngine.updateProjectCrossReferences(this.project);
     this.callbacks.onProjectModified?.();
   }
@@ -3526,7 +3528,7 @@ export class CadCanvas {
         ? this.getWireColor(connectedWire?.potential ?? 'Signal', connectedWire?.color) : '#e2e8f0');
 
       const scaledSym = s === 1 ? sym : { ...sym, width: scaledW, height: scaledH };
-      const bmkPos = computeBmkPosition(comp, scaledSym);
+      const bmkPos = comp.terminal?.rowDisplay?computeBmkPosition(comp,sym,s):computeBmkPosition(comp, scaledSym);
       const fnPos = computeFunctionTextPosition(comp, scaledSym);
       const arrowPos = interruptionLabelPosition(this.project, comp, scaledSym);
       if (arrowPos) Object.assign(fnPos, arrowPos, { transform: labelTransform(arrowPos.x, arrowPos.y, comp.rotation) });
@@ -3586,7 +3588,7 @@ export class CadCanvas {
           ${!isConn && !isTerminal && !hideLabels ? `
             <!-- BMK Label (z.B. -K1, -Q1) -->
             ${bmkPos.visible ? `
-              <text data-label="bmkPosition" x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="${escapeSvg(bmkPos.fontColor || '#f6e05e')}" text-anchor="${bmkPos.anchor}" ${bmkPos.transform}>${labelText(comp.bmk, bmkPos.x, bmkPos.fontSize)}</text>
+              <text data-label="bmkPosition" x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="${escapeSvg(bmkPos.fontColor || '#f6e05e')}" text-anchor="${bmkPos.anchor}" ${bmkPos.transform}>${labelText(componentBmkText(comp,sym), bmkPos.x, bmkPos.fontSize)}</text>
             ` : ''}
             
             <!-- Function text (Funktionstext) -->
@@ -3604,7 +3606,7 @@ export class CadCanvas {
             <!-- Terminal designation and BMK -->
             ${terminalDesignation(comp,sym) ? `<text data-label="terminalDesignation" ${labelTransform(sym.width + 2, sym.height / 2 + 3, comp.rotation)} x="${sym.width + 2}" y="${sym.height / 2 + 3}" font-size="${comp.pinLabelFontSize ?? 7.5}" font-weight="bold" font-family="monospace" fill="#cbd5e0">${labelText(wrapLabelText(terminalDesignation(comp,sym),comp.pinLabelFontSize ?? 7.5,fnPos.maxWidth),sym.width+2,comp.pinLabelFontSize ?? 7.5)}</text>` : ''}
             ${comp.bmk && bmkPos.visible && !comp.bmk.startsWith('comp_') ? `
-              <text ${bmkPos.transform} x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="${bmkPos.anchor}">${labelText(comp.bmk, bmkPos.x, bmkPos.fontSize)}</text>
+              <text data-label="bmkPosition" ${bmkPos.transform} x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="#f6e05e" text-anchor="${bmkPos.anchor}">${labelText(componentBmkText(comp,sym), bmkPos.x, bmkPos.fontSize)}</text>
             ` : ''}
           ` : (isInterruptionSymbol(sym) || sym.id === 'potential_rail_source' ? (() => {
             const pos = arrowPos ?? { x: -4, y: sym.height / 2 + 3, anchor: 'end' };
@@ -3626,7 +3628,7 @@ export class CadCanvas {
 
           <!-- Terminal Pins -->
           ${pinsSvg}
-          ${hideLabels?'':terminalFunctionLabels(comp,sym,s).filter(l=>l.position.visible).map(l=>`<text data-terminal-label="${l.key}" x="${l.position.x}" y="${l.position.y}" ${l.position.transform} font-size="${l.position.fontSize}" text-anchor="${l.position.anchor}" fill="#cbd5e0">${labelText(wrapLabelText(l.text,l.position.fontSize,l.position.maxWidth),l.position.x,l.position.fontSize)}</text>`).join('')}
+          ${hideLabels?'':terminalFunctionLabels(comp,sym,s).filter(l=>l.position.visible).map(l=>`<text data-terminal-label="${l.key}" x="${l.position.x}" y="${l.position.y}" ${l.position.transform} font-size="${l.position.fontSize}" font-weight="${l.position.fontWeight??'normal'}" font-family="${l.key==='terminal-number'?'monospace':'sans-serif'}" text-anchor="${l.position.anchor}" fill="#cbd5e0">${labelText(wrapLabelText(l.text,l.position.fontSize,l.position.maxWidth),l.position.x,l.position.fontSize)}</text>`).join('')}
           ${comp.deviceBox?`<rect class="box-resize-handle" data-element-box-resize="${comp.id}" x="${sym.width-4}" y="${sym.height-4}" width="8" height="8" fill="#63b3ed" style="cursor:nwse-resize;display:${isSelected&&!this.multipleSelection?'block':'none'}"/>`:''}
         </g>
       `;

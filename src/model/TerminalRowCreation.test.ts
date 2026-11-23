@@ -92,8 +92,8 @@ for (const units of [1, 2, 4])
           grid = page.grid!;
         assert(
           Math.abs(
-            (pin.worldX - grid.origin.x) / (grid.spacing / 2) -
-              Math.round((pin.worldX - grid.origin.x) / (grid.spacing / 2)),
+            (pin.worldX - grid.origin.x) / (grid.spacing / 4) -
+              Math.round((pin.worldX - grid.origin.x) / (grid.spacing / 4)),
           ) < 1e-7,
         );
       }

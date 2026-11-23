@@ -16,11 +16,14 @@ import { TerminalStripEditPlan } from "./TerminalStrips";
 import { isTerminalComponent } from "./ComponentSemantics";
 import { terminalSettings } from "./WiringManagement";
 import { projectRevision } from "../layout/types";
-import { componentShapes, snapshotPage, usableArea } from "../layout/geometry";
-import { contains, overlaps, union, translate } from "../layout/rect";
-import type { Rect } from "../layout/types";
-import { gridForPage, snapSymbolPosition } from "./DrawingGrid";
-import { AutoconnectEngine, type RotatedPinInfo } from "./AutoconnectEngine";
+import {
+  horizontalRowPitch,
+  horizontalTerminalRow,
+  terminalRowSymbolId,
+  terminalRowPairKeys,
+  sameTerminalRowPairs,
+} from "./TerminalRowLayout";
+import { gridForPage } from "./DrawingGrid";
 
 /** Explicitly supported standard functions; source project masters with these
  * IDs are still resolved through the normal project library. */
@@ -153,21 +156,6 @@ function newSheet(
     plotFrame,
   };
 }
-const pairKeys = (page: Page, p: Project) =>
-  new Set(
-    AutoconnectEngine.findAutoconnectPairs(page.components, 2, 0, p).map(
-      (pair) =>
-        [
-          JSON.stringify([pair.pin1.componentId, pair.pin1.pinId]),
-          JSON.stringify([pair.pin2.componentId, pair.pin2.pinId]),
-        ]
-          .sort()
-          .join("|"),
-    ),
-  );
-const samePairs = (a: Set<string>, b: Set<string>) =>
-  a.size === b.size && [...a].every((k) => b.has(k));
-
 /** Creates normal editable library elements and physical strip positions. The
  * operation is isolated and all-or-nothing, including automatic extra sheets.
  * Creation is not a request to bridge any of the new or existing terminals. */
@@ -230,7 +218,7 @@ export class TerminalRowCreationPlan {
       n++
     )
       if (used.has(String(n))) throw new Error("terminalRowNumberUsed");
-    const symbol = getSymbolById(options.symbolId, p);
+    const symbol = getSymbolById(terminalRowSymbolId(options.symbolId), p);
     if (
       !TERMINAL_ROW_SYMBOL_IDS.includes(
         options.symbolId as (typeof TERMINAL_ROW_SYMBOL_IDS)[number],
@@ -271,58 +259,28 @@ export class TerminalRowCreationPlan {
         },
       }),
     );
-    const u = getDrawingUnitsPerMm(p),
-      bounds = components.length
-        ? union(
-            components.flatMap((c) =>
-              componentShapes(c, symbol, p).map((shape) => shape.rect),
-            ),
-          )
-        : { x: 0, y: 0, width: 0, height: 0 };
-    const originalPairs = new Map<string, Set<string>>();
+    const pitch = horizontalRowPitch(components, p),
+      originalPairs = new Map<string, Set<string>>();
     let page = options.pageId
-        ? p.pages.find((page) => page.id === options.pageId)
-        : options.mode === "append"
-          ? [...p.pages]
-              .reverse()
-              .find(
-                (page) =>
-                  page.pageType === "schematic" &&
-                  !page.importedDrawing &&
-                  page.components.some(
-                    (c) =>
-                      isTerminalComponent(p, c, getSymbolForComponent(c, p)) &&
-                      terminalStripKey(terminalIdentity(page, c)) === scope,
-                  ),
-              )
-          : undefined,
-      obstacles: Rect[] = [],
-      pins: RotatedPinInfo[] = [],
-      area: Rect,
-      step = 4,
-      cellWidth = 0,
-      cellHeight = 0;
+      ? p.pages.find((page) => page.id === options.pageId)
+      : options.mode === "append"
+        ? [...p.pages]
+            .reverse()
+            .find(
+              (page) =>
+                page.pageType === "schematic" &&
+                !page.importedDrawing &&
+                page.components.some(
+                  (c) =>
+                    isTerminalComponent(p, c, getSymbolForComponent(c, p)) &&
+                    terminalStripKey(terminalIdentity(page, c)) === scope,
+                ),
+            )
+        : undefined;
+    let run: ReturnType<typeof horizontalTerminalRow> | undefined;
     const prepare = (target: Page) => {
-      area = usableArea(target, p);
-      const grid = gridForPage(target, 4 * u);
-      step = Math.max(grid.spacing / 2 / u, 2);
-      cellWidth = Math.ceil((bounds.width + 6) / step) * step;
-      cellHeight = Math.ceil((bounds.height + 12) / step) * step;
-      const snapshot = snapshotPage(target, p);
-      obstacles = [
-        ...snapshot.nodes.map((n) => n.rect),
-        ...snapshot.frames.map((f) => f.rect),
-        ...snapshot.edges.flatMap((e) =>
-          e.points.slice(1).map((point, i) =>
-            union([
-              { ...point, width: 0, height: 0 },
-              { ...e.points[i], width: 0, height: 0 },
-            ]),
-          ),
-        ),
-      ];
-      pins = AutoconnectEngine.getAllPins(target.components, p);
-      originalPairs.set(target.id, pairKeys(target, p));
+      originalPairs.set(target.id, terminalRowPairKeys(target, p));
+      run = horizontalTerminalRow(target, p, identity, pitch);
     };
     if (page) prepare(page);
     for (const c of components) {
@@ -334,85 +292,24 @@ export class TerminalRowCreationPlan {
           this.newPageIds.push(page.id);
           prepare(page);
         }
-        const grid = gridForPage(page, 4 * u),
-          space = area!;
-        // Regular row cells first, then small grid offsets where an existing pin
-        // axis would otherwise create an unwanted automatic connection.
-        search: for (
-          let y = space.y + 3;
-          y + bounds.height <= space.y + space.height - 3;
-          y += cellHeight
-        ) {
-          for (
-            let x = space.x + 3;
-            x + bounds.width <= space.x + space.width - 3;
-            x += cellWidth
-          ) {
-            for (let dy = 0; dy < Math.min(cellHeight, 16); dy += step) {
-              for (let dx = 0; dx < Math.min(cellWidth, 24); dx += step) {
-                const position = snapSymbolPosition(
-                    { x: (x + dx - bounds.x) * u, y: (y + dy - bounds.y) * u },
-                    symbol,
-                    0,
-                    grid,
-                    grid.spacing / 2,
-                  ),
-                  box = translate(bounds, position.x / u, position.y / u);
-                if (
-                  !contains(space, box) ||
-                  obstacles.some((r) => overlaps(r, box, 2))
-                )
-                  continue;
-                c.x = position.x;
-                c.y = position.y;
-                const candidate = symbol.pins.map((pin) =>
-                  AutoconnectEngine.getRotatedPinInfo(c, pin, symbol),
-                );
-                if (
-                  candidate.some((a) =>
-                    pins.some((b) => {
-                      const vertical = (d: string) =>
-                        d === "top" || d === "bottom";
-                      return (
-                        vertical(a.direction) === vertical(b.direction) &&
-                        Math.abs(
-                          vertical(a.direction)
-                            ? a.worldX - b.worldX
-                            : a.worldY - b.worldY,
-                        ) <=
-                          2 + 1e-8
-                      );
-                    }),
-                  )
-                )
-                  continue;
-                page.components.push(c);
-                pins.push(...candidate);
-                obstacles.push(box);
-                this.members.push({ pageId: page.id, componentId: c.id });
-                placed = true;
-                break search;
-              }
-            }
-          }
-        }
-        if (!placed) {
-          if (options.pageId) throw new Error("terminalRowCapacity");
-          if (!page.components.length) throw new Error("terminalRowCapacity");
+        placed = run!.place(c, symbol);
+        if (placed) this.members.push({ pageId: page.id, componentId: c.id });
+        else {
+          if (options.pageId || !page.components.length)
+            throw new Error("terminalRowCapacity");
           page = undefined;
         }
       }
       if (!placed) throw new Error("terminalRowCapacity");
     }
-    for (const [pageId, before] of originalPairs) {
+    for (const [pageId, before] of originalPairs)
       if (
-        !samePairs(
+        !sameTerminalRowPairs(
           before,
-          pairKeys(p.pages.find((page) => page.id === pageId)!, p),
+          terminalRowPairKeys(p.pages.find((page) => page.id === pageId)!, p),
         )
       )
         throw new Error("terminalDistributionTopology");
-    }
     let strip = p.terminalStrips?.find((s) => terminalStripKey(s) === scope);
     if (!strip) {
       if (components.length) {

@@ -27,6 +27,17 @@ export function labelWrapWidth(cfg: TextFormatConfig | undefined, sym: SymbolDef
   return cfg?.maxWidth ?? (['functionTextPosition','technicalDataPosition','additionalTextPosition'].includes(key) ? Math.max(40 * (sym.unitsPerMm ?? 2),16 * (cfg?.fontSize ?? 8)) : undefined);
 }
 const automatic = (cfg?: TextFormatConfig) => !cfg?.preset || cfg.preset === 'auto';
+/** Strip presentation never changes the device identity used in reports/references. */
+export function componentBmkText(comp:PlacedComponent,sym?:SymbolDefinition):string {
+  if(comp.terminal?.rowDisplay&&sym?.terminalDefinition)return comp.terminal.rowDisplay==='start'?comp.terminal.strip:comp.terminal.number;
+  return comp.bmk;
+}
+export function terminalRowAnchor(sym:SymbolDefinition){const circle=sym.importedGraphics?.find(g=>g.kind==='circle');return circle?.kind==='circle'?{x:circle.x,y:circle.y}:{x:sym.pins[0]?.x??sym.width/2,y:sym.height/2};}
+function rowNumberPosition(comp:PlacedComponent,sym:SymbolDefinition,scale=1):CalculatedLabelPosition{
+ const u=(sym.unitsPerMm??2)/2,anchor=terminalRowAnchor(sym),cfg=comp.bmkPosition;
+ const x=(anchor.x+4*u)*scale,y=(anchor.y-4*u)*scale,rotation=cfg?.rotation??0;
+ return {x,y,anchor:cfg?.alignment??'start',rotation,fontSize:(cfg?.fontSize??5*u)*scale,visible:cfg?.visible!==false,transform:labelTransform(x,y,comp.rotation,rotation),fontColor:cfg?.fontColor,fontWeight:'bold'};
+}
 /** Display-only word wrapping; stored equipment text and font sizes stay intact. */
 export function wrapLabelText(text:string,size:number,width?:number):string {
   if(!width||width<=0)return text;
@@ -47,7 +58,7 @@ export function wrapLabelText(text:string,size:number,width?:number):string {
  * Only automatic, visible, populated labels consume lines in this block. */
 function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key: LabelKey): CalculatedLabelPosition {
   const data: [LabelKey, string, number][] = [
-    ['bmkPosition', comp.bmk ?? '', 10], ['functionTextPosition', comp.functionText ?? '', 8],
+    ['bmkPosition', componentBmkText(comp,sym) ?? '', comp.terminal?.rowDisplay?5*(sym.unitsPerMm??2)/2:10], ['functionTextPosition', comp.functionText ?? '', 8],
     ['technicalDataPosition', [comp.deviceTag, comp.technicalCharacteristics].filter(Boolean).join(' · '), 8],
     ['additionalTextPosition', comp.additionalText ?? '', 8], ['crossRefPosition', comp.crossRef ?? '', comp.crossRefFontSize ?? 8]
   ];
@@ -70,8 +81,10 @@ function automaticLeftPosition(comp: PlacedComponent, sym: SymbolDefinition, key
   throw new Error('Beschriftungsposition fehlt.');
 }
 
-export function computeBmkPosition(comp: PlacedComponent, sym: SymbolDefinition): CalculatedLabelPosition {
+export function computeBmkPosition(comp: PlacedComponent, sym: SymbolDefinition, scale=1): CalculatedLabelPosition {
   const cfg = comp.bmkPosition;
+  if(automatic(cfg)&&comp.terminal?.rowDisplay==='continuation')return rowNumberPosition(comp,sym,scale);
+  if(comp.terminal?.rowDisplay&&scale!==1)sym={...sym,width:sym.width*scale,height:sym.height*scale};
   if (automatic(cfg)) return automaticLeftPosition(comp, sym, 'bmkPosition');
   const preset = cfg?.preset || 'top';
   let x = sym.width / 2;
@@ -365,8 +378,9 @@ export function terminalDesignation(comp: PlacedComponent, sym: SymbolDefinition
 
 /** Dynamic level text shares the pin-label visibility, rotation and scale rules. */
 export function terminalFunctionLabels(comp:PlacedComponent,sym:SymbolDefinition,scale=1):{key:string;text:string;position:CalculatedLabelPosition}[] {
-  const levels=terminalLevelValues(comp,sym);if(!levels.length||levels.length<2&&!comp.terminal?.level)return [];
-  return levels.flatMap(level=>{
+  const headingNumber=comp.terminal?.rowDisplay==='start'?[{key:'terminal-number',text:comp.terminal.number,position:rowNumberPosition(comp,sym,scale)}]:[];
+  const levels=terminalLevelValues(comp,sym);if(!levels.length||levels.length<2&&!comp.terminal?.level)return headingNumber;
+  return [...headingNumber,...levels.flatMap(level=>{
     const pins=sym.pins.filter(p=>level.pinIds.includes(p.id)),x=pins.reduce((sum,p)=>sum+p.x,0)/pins.length;
     const pos=(x:number,y:number,fontSize:number,visible:boolean,anchor:CalculatedLabelPosition['anchor']='start',maxWidth?:number,rotation=0):CalculatedLabelPosition=>
       ({x:x*scale,y:y*scale,fontSize:fontSize*scale,visible,anchor,rotation,transform:labelTransform(x*scale,y*scale,comp.rotation,rotation),...(maxWidth?{maxWidth:maxWidth*scale}:{})});
@@ -377,12 +391,13 @@ export function terminalFunctionLabels(comp:PlacedComponent,sym:SymbolDefinition
     if(own&&own!==comp.functionText)labels.push({key:'level-text-'+level.id,text:own,
       position:pos(x+(fnCfg?.offsetX??0),sym.height+10+(fnCfg?.offsetY??0),fnCfg?.fontSize??5,fnCfg?.visible!==false,'middle',fnCfg?.maxWidth??14,fnCfg?.rotation??0)});
     return labels;
-  });
+  })];
 }
 
 export function arePinLabelsVisible(comp: PlacedComponent, sym?: SymbolDefinition): boolean {
   if (comp.pinLabelPosition?.visible !== undefined) return comp.pinLabelPosition.visible;
   if (!sym || sym.pins.length === 0) return false;
+  if(comp.terminal?.rowDisplay)return sym.pins.some(pin=>comp.pins[pin.id]?.labelPosition?.visible===true);
   const isConn = !sym.importedGraphics && sym.category === 'connections';
   const isTerminal = standardTerminalId(sym) === 'terminal_single';
   return sym.pins.some(pin => {
@@ -397,7 +412,7 @@ export function computePinLabelPosition(comp: PlacedComponent, sym: SymbolDefini
   const label = comp.pins[pin.id]?.labelPosition ?? pin.labelPosition;
   const isConn = !sym.importedGraphics && sym.category === 'connections';
   const isTerminal = standardTerminalId(sym) === 'terminal_single';
-  const defaultVisible = (sym.source || label) ? (!!label && label.visible !== false) : (!isConn && !isTerminal);
+  const defaultVisible = comp.terminal?.rowDisplay ? comp.pins[pin.id]?.labelPosition?.visible===true : (sym.source || label) ? (!!label && label.visible !== false) : (!isConn && !isTerminal);
   const visible = cfg?.visible !== undefined ? cfg.visible : defaultVisible;
 
   let x: number;

@@ -53,4 +53,11 @@ for (const [id,name,potentials,disconnectN] of [
   });
   add(id,name,12+(levels.length-1)*16,20,pins,graphics,{kind:id.includes('installation')?'installation':'multi_level',mainLevel:'1',levels});
 }
+// Vertical connection variants keep neighbouring terminals electrically
+// separate while arranging their terminal marks on a common horizontal axis.
+for(const count of [3,4]){
+ const pins:PinDefinition[]=[{id:'a',name:'a',x:4,y:0,direction:'top'},{id:'b',name:'b',x:4,y:20,direction:'bottom'},{id:'c',name:'c',x:20,y:0,direction:'top'},...(count===4?[{id:'d',name:'d',x:20,y:20,direction:'bottom'} as PinDefinition]:[])];
+ add(`terminal_feed_${count}_row`,`${count}-Leiter-Durchgangsklemme – Reihendarstellung`,24,20,pins,[line(4,0,4,10),line(4,10,4,20),line(4,10,10,10),circle(12,10),line(14,10,20,10),line(20,0,20,10),...(count===4?[line(20,10,20,20)]:[])],{kind:'feed_through',mainLevel:'0',levels:[{id:'0',designation:'0',potential:'undefined',pinIds:pins.map(p=>p.id)}]});
+ symbols.at(-1)!.functionDefinition=`symbol:terminal_feed_${count}`;
+}
 export const TERMINAL_SYMBOLS = symbols;

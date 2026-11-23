@@ -19,7 +19,7 @@ import { editorArticles, assignMainCatalogArticle } from '../model/EditorArticle
 import { editorArticleOptions, componentArticleKey } from './EditorArticlePicker';
 import { catalogKey } from '../model/CatalogRecord';
 import type { CatalogArticle } from '../model/ArticleTypes';
-import { computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, arePinLabelsVisible, setComponentLabelText } from '../model/LabelLayout';
+import {componentBmkText,terminalFunctionLabels, computeBmkPosition, computeFunctionTextPosition, computeAdditionalTextPosition, computeTechnicalDataPosition, computeCrossReferencePosition, computePinLabelPosition, arePinLabelsVisible, setComponentLabelText } from '../model/LabelLayout';
 import { componentInsertionPoint, positionAtInsertionPoint, rotatedLocalPoint } from '../model/SymbolGeometry';
 import { isInterruptionSymbol } from '../model/ConnectionSymbols';
 import { resizeDeviceBox } from '../model/DeviceBoxElement';
@@ -922,7 +922,7 @@ export class PropertiesDialog {
     const vbH = Math.max(...points.map(p=>p.y))-vbY+45;
 
     const bmkSvg = (!isConn && bmkPos.visible) ? `
-      <text x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="${escapeSvg(bmkPos.fontColor || '#f6e05e')}" text-anchor="${bmkPos.anchor}" ${bmkPos.transform}>${escapeSvg(this.component.bmk)}</text>
+      <text x="${bmkPos.x}" y="${bmkPos.y}" font-size="${bmkPos.fontSize}" font-weight="bold" font-family="monospace" fill="${escapeSvg(bmkPos.fontColor || '#f6e05e')}" text-anchor="${bmkPos.anchor}" ${bmkPos.transform}>${escapeSvg(componentBmkText(this.component,sym))}</text>
     ` : '';
 
     const fnSvg = (!isConn && fnPos.visible) ? `
@@ -959,6 +959,7 @@ export class PropertiesDialog {
 
         <!-- Labels -->
         ${bmkSvg}
+        ${terminalFunctionLabels(this.component,sym).filter(l=>l.key==='terminal-number'&&l.position.visible).map(l=>`<text x="${l.position.x}" y="${l.position.y}" font-size="${l.position.fontSize}" font-family="monospace" font-weight="${l.position.fontWeight??'normal'}" text-anchor="${l.position.anchor}" ${l.position.transform} fill="#cbd5e0">${escapeSvg(l.text)}</text>`).join('')}
         ${fnSvg}
         ${techSvg}
         ${additionalPos.visible && this.component.additionalText ? `<text class="additional-text" x="${additionalPos.x}" y="${additionalPos.y}" font-size="${additionalPos.fontSize}" font-family="sans-serif" fill="${escapeSvg(additionalPos.fontColor || '#e2e8f0')}" text-anchor="${additionalPos.anchor}" ${additionalPos.transform}>${previewLabel(this.component.additionalText,additionalPos)}</text>` : ''}

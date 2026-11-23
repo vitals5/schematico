@@ -121,7 +121,7 @@ export class TerminalDistributionPlan {
       const c:PlacedComponent={...structuredClone(original),id:main?original.id:'terminal_'+crypto.randomUUID(),symbolId:definition.id,
         higherLevelFunction:original.higherLevelFunction??page.higherLevel,mountingLocation:original.mountingLocation??page.location,
         functionText:plan.level.functionText,pins:Object.fromEntries(Object.entries(original.pins).filter(([id])=>plan.ids.includes(id))),
-        terminal:{...settings,...(functionId?{functionId}:{}),levels:undefined,
+        terminal:{...settings,...(settings.rowDisplay?{rowDisplay:settings.rowDisplay==='start'&&i===0?'start' as const:'continuation' as const}:{}),...(functionId?{functionId}:{}),levels:undefined,
           level:partial?settings.level:String(i+1),levelDesignation:partial?settings.levelDesignation:plan.level.designation,
           sortingKey:settings.sortingKey?settings.sortingKey+'.'+String(i+1).padStart(3,'0'):String(i+1).padStart(3,'0'),
           pinSides:Object.fromEntries(plan.ids.map(id=>[id,terminalPinSide(original,symbol,id)]))}};

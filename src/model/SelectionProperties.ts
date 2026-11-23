@@ -122,7 +122,7 @@ export function sharedPropertyValue(page:Page,project:Project,s:ElementSelection
     else if(key==='boxLineWidth'&&c.deviceBox)values.push(c.deviceBox.lineWidth/units);
     else if(key==='width'&&c.deviceBox)values.push(c.deviceBox.width/units);
     else if(key==='height'&&c.deviceBox)values.push(c.deviceBox.height/units);
-    else if(key==='bmkFontSize')values.push((c.bmkPosition?.fontSize ?? (standardTerminalId(sym)==='terminal_single'?7.5:computeBmkPosition(c,sym).fontSize))/units);
+    else if(key==='bmkFontSize')values.push((c.bmkPosition?.fontSize ?? (c.terminal?.rowDisplay?computeBmkPosition(c,sym).fontSize:standardTerminalId(sym)==='terminal_single'?7.5:computeBmkPosition(c,sym).fontSize))/units);
     else if(key==='functionFontSize')values.push(computeFunctionTextPosition(c,sym).fontSize/units);
     else if(key==='additionalFontSize')values.push(computeAdditionalTextPosition(c,sym).fontSize/units);
     else if(key==='technicalFontSize')values.push(computeTechnicalDataPosition(c,sym).fontSize/units);
