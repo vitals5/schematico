@@ -2,6 +2,7 @@ import { ProjectIndex, interruptionTag, type IndexedComponent, type IndexedPin, 
 import { electricalDefinition, electricalPinGroups, type ElectricalKnowledge } from './ElectricalDefinition';
 import { isConnectionSymbol, isInterruptionSymbol } from './ConnectionSymbols';
 import { PortGraph } from './PortGraph';
+import {distributedTerminalBindings,terminalPortKey} from './DistributedTerminalTypes';
 import type { PinDefinition, Project } from './types';
 
 export const portIdentity = (pin: IndexedPin): string => JSON.stringify([pin.owner.component.id, pin.id]);
@@ -24,7 +25,7 @@ export interface ElectricalIssue {
   pinIds?: string[];
   netId?: string;
 }
-type Link = { from: string; to: string; kind: 'wire' | 'permanent' | 'reference'; connection?: IndexedConnection };
+type Link = { from: string; to: string; kind: 'wire' | 'permanent' | 'reference' | 'terminal'; connection?: IndexedConnection };
 
 /** Static conductor topology, not a simulation of energised equipment or switch
  * states. Build after edits, alongside the operation-scoped ProjectIndex. */
@@ -74,6 +75,18 @@ export class ElectricalNetService {
         for (const key of keys.slice(1)) this.link(keys[0], key, 'permanent');
       }
       for (const group of definition.conditional) validate(group, 'conditional');
+    }
+    const terminals=distributedTerminalBindings(index.project);
+    for(const issue of terminals.issues)for(const a of issue.members){const e=index.component(a.componentId,a.pageId);if(!e)continue;this.incomplete.add(e);
+      this.issues.push({id:JSON.stringify(['invalid_internal_group',issue.functionId,a]),code:'invalid_internal_group',pageId:a.pageId,componentId:a.componentId,pinIds:[]});}
+    for(const f of terminals.valid.values()){
+      const points=new Map<string,string[]>();
+      for(const placement of f.placements)for(const [pinId,logical] of Object.entries(placement.pinMap)){
+        const key=terminalPortKey(placement.target.componentId,pinId);if(this.ports.has(key))points.set(logical,[...(points.get(logical)??[]),key]);
+      }
+      for(const group of [...points.keys()].map(id=>[id]).concat(f.permanentConnections)){
+        const keys=group.flatMap(id=>points.get(id)??[]);for(const key of keys.slice(1))this.link(keys[0],key,'terminal');
+      }
     }
     for (const connection of index.connections) {
       const { from, to, wire } = connection;
@@ -155,6 +168,9 @@ export class ElectricalNetService {
         continue;
       }
       for (const link of this.adjacency.get(key) ?? []) {
+        // Report every declared terminal point separately, then aggregate its
+        // placements. Do not mix source-side targets through the internal link.
+        if(link.kind==='terminal')continue;
         const next = link.from === key ? link.to : link.from;
         if (this.ports.get(next)!.owner === start.owner && next !== startKey) continue;
         if (link.connection) connections.add(link.connection);

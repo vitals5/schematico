@@ -1,6 +1,7 @@
 import {isTerminalComponent} from '../model/ComponentSemantics';
 import {terminalFields,collectTerminalFields} from './TerminalFields';
 import {terminalPinSide,terminalLevels} from '../model/TerminalFunctions';
+import {TerminalFunctionDialog} from './TerminalFunctionDialog';
 import {TerminalStripDialog} from './TerminalStripDialog';
 import './WiringWorkspace.css';
 import './TerminalCableWorkspace.css';
@@ -171,7 +172,7 @@ export class WiringDialog {
          )
          .join(
            '',
-         )}</div>${selected.symbol?terminalFields({...selected.component,terminal:settings},selected.symbol,false):''}<button class="btn" data-save-terminal>${t('articlesPreview')}</button>`
+         )}</div>${selected.symbol?terminalFields({...selected.component,terminal:settings},selected.symbol,false):''}<button class="btn" data-save-terminal>${t('articlesPreview')}</button><button class="btn" data-terminal-functions>${tr('Etagen, Teilklemmen und Zuordnung…','Levels, partial terminals and ownership…')}</button>`
      : ''
  }
  <details data-old-terminal-report></details>
@@ -253,6 +254,7 @@ export class WiringDialog {
           }});
         }catch(e){this.error=articleError(e);this.render();}
       });
+    this.el.querySelector('[data-terminal-functions]')?.addEventListener('click',()=>{if(!selected)return;new TerminalFunctionDialog(this.getProject,this.onApply,{pageId:selected.page.id,componentId:selected.component.id},a=>{this.el.remove();this.navigate?.(a.pageId,a.componentId);},undefined,()=>{this.source=structuredClone(this.getProject());this.index=new ProjectIndex(this.source);this.snapshot=terminalCableSnapshot(this.source,this.index);this.preview=undefined;this.draft=undefined;this.error='';this.render();}).show();});
     this.el
       .querySelector('[data-save-cable]')
       ?.addEventListener('click', () =>

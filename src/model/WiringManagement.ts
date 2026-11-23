@@ -11,7 +11,12 @@ import {terminalStripBindings,terminalIdentity,terminalStripKey} from './Termina
 import {isTerminalComponent} from './ComponentSemantics';
 import { cablePartFindings, cablePartLabel } from './CableArticles';
 import {terminalLevelValues,validTerminalLevelSettings} from './TerminalFunctions';
+import {distributedTerminalBindings} from './DistributedTerminalTypes';
+import {assertTerminalAssignments} from './TerminalEditValidation';
 export interface TerminalSettings {
+  functionId?: string;
+  sortingKey?: string;
+  levelDesignation?: string;
   /** Stable library level ID -> editable designation and function text. */
   levels?: Record<string, { designation: string; functionText?: string }>;
   strip: string;
@@ -61,11 +66,15 @@ export function inspectWiring(
 ): WiringFinding[] {
   const messages: WiringFinding[] = [],
     terminals = new Map<string, typeof index.components>();
+  const distributed=distributedTerminalBindings(project),seenFunctions=new Set<string>();
+  for(const issue of distributed.issues)for(const a of issue.members)messages.push({code:'terminal_strip_configuration',pageId:a.pageId,componentId:a.componentId,details:issue.reason+' · '+issue.functionId});
   for (const e of index.components) {
     if (!isTerminalComponent(project,e.component,e.symbol)) continue;
     if(!validTerminalLevelSettings(e.component,e.symbol))messages.push({code:'terminal_strip_configuration',pageId:e.page.id,componentId:e.component.id,details:'Invalid terminal level configuration'});
     const settings = terminalSettings(e.component);
     if (!settings.number) continue;
+    const part=distributed.byPlacement.get(JSON.stringify([e.page.id,e.component.id]));
+    if(part){if(seenFunctions.has(part.id))continue;seenFunctions.add(part.id);}
     const levels=terminalLevelValues(e.component,e.symbol);
     for(const level of levels.length>1?levels.map(l=>l.designation):[settings.level]) {
     const key = JSON.stringify([
@@ -229,8 +238,14 @@ export class WiringEditPlan {
       if(!validTerminalLevelSettings(e.component,e.symbol))throw new Error('wiringInvalid');
       e.component.bmk =
         e.component.terminal.strip + ':' + e.component.terminal.number;
+      const partial=distributedTerminalBindings(project).byPlacement.get(JSON.stringify([edit.target.pageId,edit.target.componentId]));
+      if(partial)for(const placement of partial.placements){const peer=index.component(placement.target.componentId,placement.target.pageId);if(!peer||peer===e)continue;
+        peer.component.terminal={...terminalSettings(peer.component),strip:e.component.terminal.strip,number:e.component.terminal.number,level:e.component.terminal.level,levelDesignation:e.component.terminal.levelDesignation};
+        peer.component.bmk=e.component.bmk;
+      }
       const owner=project.terminalStrips?.find(s=>s.positions.some(pos=>pos.kind==='terminal'&&pos.members.some(a=>a.pageId===edit.target.pageId&&a.componentId===edit.target.componentId)));
       if(owner&&terminalStripKey(terminalIdentity(e.page,e.component))!==terminalStripKey(owner))throw new Error('terminalStripMoveFirst');
+      assertTerminalAssignments(project,p);
     } else if (edit.kind === 'bridge') {
       const a = index.component(edit.from.componentId, edit.from.pageId),
         b = index.component(edit.to.componentId, edit.to.pageId),

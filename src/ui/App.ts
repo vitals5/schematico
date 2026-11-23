@@ -53,6 +53,8 @@ import { cableCrossings } from '../model/CableDefinition';
 import { Project, Page, PlacedComponent, Wire, CableDefinition, PageText, WallSegment, WallOpening, ElementGroup } from '../model/types';
 import { selectedGroup, groupArticleKey, assignGroupCatalogArticle, groupSelection } from '../model/ElementGroups';
 import { getSymbolDefinitions, getSymbolById, getSymbolForComponent, setProjectSymbolLibrary, mergeProjectSymbolLibrary, getDrawingUnitsPerMm, getComponentSymbolLibrary } from '../model/symbols';
+import {TerminalFunctionDialog} from './TerminalFunctionDialog';
+import {DeviceRegistry} from '../model/DeviceRegistry';
 import { ProjectHistory } from '../model/ProjectHistory';
 import { referenceMarkup } from '../model/CrossReferenceNavigation';
 import { ELEMENT_CATEGORIES, symbolMatchesQuery } from '../model/SymbolCatalogue';
@@ -640,8 +642,13 @@ export class App {
   }
 
   public openPropertiesDialog(comp: PlacedComponent): void {
+    const addresses=this.project.pages.flatMap(p=>p.components.filter(c=>c.id===comp.id).map(c=>({pageId:p.id,componentId:c.id})));
+    const terminalDevice=addresses.length===1&&(comp.terminal||getSymbolForComponent(comp,this.project)?.terminalDefinition)?new DeviceRegistry(this.project).forComponent(addresses[0]):undefined;
+    const navigate=(address:ComponentAddress)=>{const page=this.project.pages.find(p=>p.id===address.pageId),c=page?.components.find(c=>c.id===address.componentId);if(!page||!c)return;this.canvas.focusInspection({pageId:page.id,pageNumber:page.pageNumber,componentId:c.id,x:c.x,y:c.y});this.updateUI();this.openPropertiesDialog(c);};
     new PropertiesDialog(comp, this.project, {
-      onManageArticles:()=>this.openArticleWorkbench(this.project.pages.flatMap(p=>p.components.filter(c=>c.id===comp.id).map(c=>({pageId:p.id,componentId:c.id})))),
+      onManageArticles:()=>this.openArticleWorkbench(terminalDevice?.members??addresses),
+      onManageTerminals:()=>{if(addresses.length===1)new TerminalFunctionDialog(()=>this.project,p=>this.applyProjectTransaction(p),addresses[0],navigate,a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(page&&c)this.openWiringWorkbench({...a,pageNumber:page.pageNumber,x:c.x,y:c.y});}).show();},
+      onOpenTerminalMain:navigate,
       onNavigateToReference: (index) => this.canvas.followReference(comp, index),
       onSave: (updated) => {
         // 1. Mutate the original comp in-place so all references stay updated

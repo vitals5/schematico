@@ -344,6 +344,11 @@ export class CadCanvas {
     if (!link) return false;
     const source = this.activePage.components.find(c => c.id === link.getAttribute('data-crossref-source'));
     if (!source) return false;
+    const pointer='touches' in event?(event as TouchEvent).touches[0]:event as MouseEvent;
+    if(pointer&&Number.isFinite(pointer.clientX)&&Number.isFinite(pointer.clientY)){
+      const world=this.screenToWorld(pointer.clientX,pointer.clientY),body=this.findComponentAt(world.x,world.y);
+      if(body&&!body.deviceBox&&body.id!==source.id)return false;
+    }
     event.preventDefault(); event.stopPropagation();
     return this.followReference(source, Number(link.getAttribute('data-crossref-index') ?? 0));
   }
@@ -1078,9 +1083,11 @@ export class CadCanvas {
   private onDoubleClick(e: MouseEvent): void {
     if(this.selectedImageId||this.selectedBoxId){this.callbacks.onOpenSelectionProperties?.();return;}
     if(this.multipleSelection){this.callbacks.onOpenSelectionProperties?.();return;}
-    if ((e.target as Element)?.closest?.('[data-crossref-source],[data-cable-id]')) return;
     const world = this.screenToWorld(e.clientX, e.clientY);
-    const comp = this.componentFromEvent(e)??this.findComponentAt(world.x, world.y);
+    if ((e.target as Element)?.closest?.('[data-cable-id]')) return;
+    const reference=(e.target as Element)?.closest?.('[data-crossref-source]');
+    if(reference){const body=this.findComponentAt(world.x,world.y);if(!body||body.deviceBox||body.id===reference.getAttribute('data-crossref-source'))return;}
+    const comp = this.componentHit(e,world);
     if (comp) {
       this.callbacks.onOpenProperties?.(comp);
     } else if(this.activePage.pageType==='cover') {
@@ -1495,7 +1502,7 @@ export class CadCanvas {
 
     // Ctrl + Click (or Cmd + Click) on any symbol jumps directly to its cross-reference counterpart!
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && this.mode === 'select') {
-      const clickedComp = this.componentFromEvent(e) ?? this.findComponentAt(world.x, world.y);
+      const clickedComp = this.componentHit(e,world);
       if (clickedComp) {
         const targets = this.getComponentReferenceTargets(clickedComp);
         if (targets.length > 0) {
@@ -1671,7 +1678,7 @@ export class CadCanvas {
     }
 
     // Check if clicked on a component
-    const clickedComp = this.componentFromEvent(e)??this.findComponentAt(world.x, world.y, false);
+    const clickedComp = this.componentHit(e,world);
     if (clickedComp) {
       // SVG redraw replaces DOM nodes between clicks. Recognize a double click
       // by the stable model identity, rather than relying on the removed target.
@@ -1876,7 +1883,7 @@ export class CadCanvas {
 
     // Cursor hint when Ctrl is pressed over a linked symbol
     if ((e.ctrlKey || e.metaKey) && this.mode === 'select' && !this.selectionDrag) {
-      const comp = this.componentFromEvent(e) ?? this.findComponentAt(world.x, world.y);
+      const comp = this.componentHit(e,world);
       if (comp && this.getComponentReferenceTargets(comp).length > 0) {
         this.svg.style.cursor = 'pointer';
       } else if (this.svg.style.cursor === 'pointer') {
@@ -2055,7 +2062,7 @@ export class CadCanvas {
       }
 
       // Check component (with finger touch hitbox padding)
-      const clickedComp = this.componentFromEvent(e)??this.findComponentAt(world.x, world.y, true);
+      const clickedComp = this.componentHit(e,world,true);
       if (clickedComp && this.mode === 'select') {
         e.preventDefault();
         this.selectedComponentId = clickedComp.id;
@@ -2576,6 +2583,13 @@ export class CadCanvas {
 
   private componentFromEvent(event:Event):PlacedComponent|undefined {
     const id=(event.target as Element)?.closest?.('.component')?.getAttribute('id');return this.activePage.components.find(c=>c.id===id);
+  }
+
+  /** A neighbouring label must not steal a click on an actual symbol body. */
+  private componentHit(event:Event,world:{x:number;y:number},touch=false):PlacedComponent|null|undefined {
+    const direct=this.componentFromEvent(event);
+    const body=(event.target as Element)?.closest?.('text')?this.findComponentAt(world.x,world.y):undefined;
+    return body??direct??this.findComponentAt(world.x,world.y,touch);
   }
 
   private findPinAt(x: number, y: number, isTouch: boolean = false): { componentId: string; pinId: string } | null {

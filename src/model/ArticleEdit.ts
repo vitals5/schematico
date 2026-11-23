@@ -37,6 +37,7 @@ export class ArticleEditPlan {
     const result = structuredClone(project),
       registry = new DeviceRegistry(result);
     if (edit.kind === 'unlink') {
+      if(result.distributedTerminalFunctions?.some(f=>edit.deviceIds.includes(f.deviceId)))throw new Error('terminalDistributionPartialOwnership');
       if (
         !edit.deviceIds.length ||
         new Set(edit.deviceIds).size !== edit.deviceIds.length ||
@@ -60,8 +61,10 @@ export class ArticleEditPlan {
         linkPhysicalDevice(result, edit.targets, edit.main);
       if (edit.kind === 'assign') {
         const items = validateAssignments(edit.items);
-        for (const a of edit.targets)
-          setArticleAssignment(registry.placement(a)!.component, items);
+        for (const a of edit.targets){const device=registry.forComponent(a);
+          if(device?.terminalPositionId&&!device.members.every(m=>edit.targets.some(t=>addressKey(t)===addressKey(m))))throw new Error('articlesDeviceConflict');
+          setArticleAssignment(registry.placement(a)!.component,device?.terminalPositionId&&addressKey(device.main)!==addressKey(a)?[]:items);
+        }
       }
       if (edit.kind === 'function')
         for (const a of edit.targets) {

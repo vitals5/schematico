@@ -1,5 +1,8 @@
-import {ArticleCatalogDialog} from './ArticleCatalogDialog';
+import {ArticleCatalogDialog,articleError} from './ArticleCatalogDialog';
+import {validateTerminalComponentEdit} from '../model/TerminalEditValidation';
 import {terminalFields,applyTerminalFields} from './TerminalFields';
+import {DeviceRegistry,componentAddress,addressKey} from '../model/DeviceRegistry';
+import type {ComponentAddress,PhysicalDevice} from '../model/ArticleTypes';
 import {groupPropertiesSession} from '../model/GroupProperties';
 import { wrapLabelText, type CalculatedLabelPosition } from '../model/LabelLayout';
 import {importedArticleFields} from './ImportedArticleFields';
@@ -26,6 +29,8 @@ import { SharedProperty, SelectionPatch, sharedPropertyValue, applySelectionProp
 
 
 export interface PropertiesDialogCallbacks {
+  onManageTerminals?:()=>void;
+  onOpenTerminalMain?:(a:ComponentAddress)=>void;
   onManageArticles?:()=>void;
   onSave: (updated: PlacedComponent) => void;
   onSaveMultiple?: (updatedList: PlacedComponent[]) => void;
@@ -45,6 +50,7 @@ export class PropertiesDialog {
   private differingFields = new Set<string>();
   private resetPositionsTriggered = false;
   private selectedArticle?: CatalogArticle;
+  private terminalDevice?:{device:PhysicalDevice;isMain:boolean;position?:number};
 
   constructor(componentOrComponents: PlacedComponent | PlacedComponent[], project: Project, callbacks: PropertiesDialogCallbacks) {
     if (Array.isArray(componentOrComponents) && componentOrComponents.length > 0) {
@@ -62,6 +68,11 @@ export class PropertiesDialog {
     this.project = project;
     this.callbacks = callbacks;
     this.component = JSON.parse(JSON.stringify(this.components[0]));
+    if(!this.isMulti&&(this.component.terminal||getSymbolForComponent(this.component,project)?.terminalDefinition)){
+      const matches=project.pages.flatMap(page=>page.components.filter(c=>c.id===this.component.id).map(c=>({page,c})));
+      if(matches.length===1){const a=componentAddress(matches[0].page,matches[0].c),device=new DeviceRegistry(project).forComponent(a);
+        if(device){const strip=project.terminalStrips?.find(s=>s.positions.some(p=>p.id===device.terminalPositionId));this.terminalDevice={device,isMain:addressKey(a)===addressKey(device.main),position:strip?strip.positions.findIndex(p=>p.id===device.terminalPositionId)+1:undefined};}}
+    }
 
     if (this.isMulti) {
       this.initMultiComponentState();
@@ -379,7 +390,7 @@ export class PropertiesDialog {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
               <label class="form-label">${escapeSvg(t('propVisibleBmk'))}</label>
-              <input type="text" id="propBmk" class="form-input" value="${escapeSvg(bmkMeta.value)}" placeholder="${escapeSvg(bmkMeta.placeholder)}">
+              <input type="text" id="propBmk" class="form-input" ${this.component.terminal?.functionId?'readonly':''} value="${escapeSvg(bmkMeta.value)}" placeholder="${escapeSvg(bmkMeta.placeholder)}">
             </div>
             <div>
               <label class="form-label">${escapeSvg(t('propFullBmkPreview'))}</label>
@@ -443,6 +454,7 @@ export class PropertiesDialog {
             </div>
           </div>
           ${!this.isMulti&&sym?terminalFields(this.component,sym):''}
+          ${!this.isMulti&&(sym?.terminalDefinition||this.component.terminal)?`<section style="border:1px solid #526170;padding:10px;border-radius:5px">${this.terminalDevice?`<p>${this.terminalDevice.isMain?tr('Hauptklemme · Artikelträger','Main terminal · article owner'):tr('Nebenklemme / Teilklemme','Secondary / partial terminal')} · ${tr('Geräteposition','Device position')} ${this.terminalDevice.position??'—'}</p>`:''}${this.callbacks.onManageTerminals?`<button class="btn" data-manage-terminals>${tr('Etagen, Teilklemmen und Zuordnung…','Levels, partial terminals and ownership…')}</button>`:''}</section>`:''}
           ${renderInspectionFields(this.component,this.components,this.project,this.dirtyFields)}
         </div>
       `;
@@ -621,6 +633,7 @@ export class PropertiesDialog {
     }
 
     if (this.activeTab === 'part') {
+      if(!this.isMulti&&this.terminalDevice&&!this.terminalDevice.isMain)return `<section><p>${tr('Dieser Klemmenfunktion ist der Artikel der Hauptklemme zugeordnet. Die Stückzahl wird für das gemeinsame Gerät einmal gezählt.','This terminal function uses the article of its main terminal. The common device is counted once.')}</p>${this.callbacks.onOpenTerminalMain?`<button class="btn" data-open-terminal-main>${tr('Artikel an der Hauptklemme bearbeiten','Edit article at the main terminal')}</button>`:''}${this.callbacks.onManageArticles?`<button class="btn" data-manage-articles>${t('articlesOpenFromProperties')}</button>`:''}</section>`;
       const mfrMeta = fieldMeta('manufacturer', 'propManufacturer', this.component.manufacturer || '', 'z.B. Siemens / Hager / Finder');
       const artMeta = fieldMeta('articleNumber', 'propArticleNumber', this.component.articleNumber || '', 'z.B. 3RT2016-1BB41');
       const partDescMeta = fieldMeta('technicalCharacteristics', 'propPartDesc', this.component.technicalCharacteristics || '', t('propPartDescPlaceholder'));
@@ -1314,6 +1327,7 @@ export class PropertiesDialog {
       }
     }
 
+    try{for(const c of this.components)validateTerminalComponentEdit(this.project,c);}catch(e){let error=modal.querySelector<HTMLElement>('[data-terminal-edit-error]');if(!error){error=document.createElement('p');error.dataset.terminalEditError='true';error.setAttribute('role','alert');modal.querySelector('#propTabContent')?.append(error);}error.textContent=articleError(e);return false;}
     if (this.callbacks.onSaveMultiple) {
       this.callbacks.onSaveMultiple(this.components.map(c => structuredClone(c)));
     } else {
@@ -1583,6 +1597,8 @@ export class PropertiesDialog {
   }
 
   private bindTabInternalEvents(modal: HTMLElement): void {
+    modal.querySelector('[data-manage-terminals]')?.addEventListener('click',()=>{if(this.saveChanges(modal)===false)return;modal.remove();this.callbacks.onManageTerminals?.();});
+    modal.querySelector('[data-open-terminal-main]')?.addEventListener('click',()=>{if(this.saveChanges(modal)===false||!this.terminalDevice)return;modal.remove();this.callbacks.onOpenTerminalMain?.(this.terminalDevice.device.main);});
     modal.querySelector('[data-manage-articles]')?.addEventListener('click',()=>{if(this.saveChanges(modal)===false)return;modal.remove();this.callbacks.onManageArticles?.();});
     // Article quick select
     const quickPart = modal.querySelector('#quickPartSelect') as HTMLSelectElement;
@@ -1856,5 +1872,8 @@ export class PropertiesDialog {
       }
     }
     if(!this.isMulti&&sym&&!applyTerminalFields(modal,this.component,sym))return false;
+    if(!this.isMulti)try{validateTerminalComponentEdit(this.project,this.component);}catch(e){
+      let error=modal.querySelector<HTMLElement>('[data-terminal-error],[data-terminal-edit-error]');if(!error){error=document.createElement('p');error.dataset.terminalEditError='true';error.setAttribute('role','alert');modal.querySelector('#propTabContent')?.append(error);}error.textContent=articleError(e);return false;
+    }
   }
 }

@@ -7,6 +7,7 @@ import { functionType } from './FunctionDefinitions';
 import { getSymbolForComponent } from './symbols';
 import { articleCompatibility } from './ArticleCompatibility';
 import { projectRevision } from '../layout/types';
+import {distributedTerminalBindings,terminalArticleFunction} from './DistributedTerminalTypes';
 export interface FunctionSuggestion {
   address: ComponentAddress;
   bmk: string;
@@ -29,25 +30,24 @@ export function articleFunctions(
   targets: ComponentAddress[],
 ): FunctionSuggestion[] {
   const registry = new DeviceRegistry(project);
+  const terminals=targets.some(a=>registry.placement(a)?.component.terminal?.functionId)?distributedTerminalBindings(project):undefined;
   return targets.map((address) => {
     const e = registry.placement(address);
     if (!e) throw new Error('articlesSelectionInvalid');
     const s = getSymbolForComponent(e.component, project),
       owner = registry.owner(address)!,
       article = primaryArticle(effectiveArticles(owner.component, project)),
-      type = e.component.articleFunctionType ?? (s && functionType(s)),
-      pins =
-        s?.pins
-          .map((p) => (e.component.pins[p.id]?.customLabel ?? p.name).trim())
-          .sort() ?? [];
+      logical=s?terminalArticleFunction(project,address,e.component,s,terminals):undefined,
+      type = logical?.type,
+      pins = logical?.pins??[];
     return {
       address: structuredClone(address),
       bmk: e.component.bmk,
       article: article?.articleNumber ?? '',
       actualType: type,
       actualPins: pins,
-      current: e.component.articleFunctionId,
-      sameFunctionAs: e.component.articleFunctionRepresentation?.primary,
+      current: logical?.current,
+      sameFunctionAs: logical?.primary,
       devicePeers: (registry.forComponent(address)?.members ?? [])
         .filter((a) => addressKey(a) !== addressKey(address))
         .map((a) => {
@@ -142,6 +142,19 @@ export class ArticleFunctionPlan {
         functionId: candidate.id,
         pins: [...row.actualPins],
       };
+    }
+    const partials=choices.some(c=>registry.placement(c.address)?.component.terminal?.functionId)?distributedTerminalBindings(result):undefined;
+    for(const f of partials?.valid.values()??[]){
+      const selected=choices.filter(c=>f.placements.some(p=>addressKey(p.target)===addressKey(c.address)));if(!selected.length)continue;
+      if(new Set(selected.map(c=>c.functionId)).size!==1)throw new Error('functionNoCandidate');
+      const owner=registry.forComponent(selected[0].address)!.main;
+      if(selected.some(c=>c.sameFunctionAs&&(addressKey(c.sameFunctionAs)!==addressKey(owner)||addressKey(c.address)===addressKey(owner))))throw new Error('functionRepresentationInvalid');
+      const assignment=structuredClone(registry.placement(selected[0].address)!.component);
+      for(const placement of f.placements){const c=registry.placement(placement.target)!.component;
+        c.articleFunctionId=assignment.articleFunctionId;c.articleFunctionEvidence=structuredClone(assignment.articleFunctionEvidence);
+        if(assignment.articleFunctionType===undefined)delete c.articleFunctionType;else c.articleFunctionType=assignment.articleFunctionType;
+        if(addressKey(placement.target)===addressKey(owner))delete c.articleFunctionRepresentation;else c.articleFunctionRepresentation={primary:structuredClone(owner)};
+      }
     }
     for (const choice of choices)
       if (choice.sameFunctionAs) {

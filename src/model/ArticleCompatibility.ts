@@ -4,6 +4,7 @@ import type { Project } from './types';
 import { DeviceRegistry } from './DeviceRegistry';
 import { effectiveArticles, primaryArticle } from './ArticleAssignments';
 import { getSymbolForComponent } from './symbols';
+import {distributedTerminalBindings,terminalArticleFunction} from './DistributedTerminalTypes';
 export type CompatibilityCode =
   | 'missing_specification'
   | 'unverified_specification'
@@ -55,6 +56,7 @@ export function articleCompatibility(
   if (spec.verification !== 'user_checked') add('unverified_specification');
   const group = registry.forComponent(address),
     members = group?.members ?? [address];
+  const terminals=members.some(a=>registry.placement(a)?.component.terminal?.functionId)?distributedTerminalBindings(project):undefined;
   const uses = new Map<
     string,
     {
@@ -77,13 +79,9 @@ export function articleCompatibility(
       add('unknown_symbol', c.id);
       continue;
     }
-    const labels = s.pins
-        .map((p) => c.pins[p.id]?.customLabel ?? p.name)
-        .map((n) => n.trim())
-        .sort(),
-      type = c.articleFunctionType ?? functionType(s);
-    const candidates = c.articleFunctionId
-      ? spec.functions.filter((f) => f.id === c.articleFunctionId)
+    const logical=terminalArticleFunction(project,member,c,s,terminals),labels=logical.pins,type=logical.type;
+    const candidates = logical.current
+      ? spec.functions.filter((f) => f.id === logical.current)
       : spec.functions.length === 1
         ? spec.functions
         : spec.functions.filter(
@@ -96,7 +94,7 @@ export function articleCompatibility(
       add(
         candidates.length
           ? 'ambiguous_function'
-          : c.articleFunctionId
+          : logical.current
             ? 'function_not_found'
             : 'unknown_function',
         c.id,
@@ -111,7 +109,7 @@ export function articleCompatibility(
         componentId: c.id,
         type,
         labels,
-        primary: c.articleFunctionRepresentation?.primary,
+        primary: logical.primary,
       },
     ]);
     if (!type) add('unknown_function', c.id);

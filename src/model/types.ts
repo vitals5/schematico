@@ -457,6 +457,8 @@ export interface ImportedArticleMaster {
   manufacturer?: string; manufacturerCode?: string; description?: string; partial: boolean;
 }
 export interface Project {
+  /** Explicit logical functions whose connection points are drawn separately. */
+  distributedTerminalFunctions?: import('./DistributedTerminalTypes').DistributedTerminalFunction[];
   /** Revision of built-in symbol geometry used by newly placed components. */
   symbolGeometryRevision?: 1;
   dataInterpretation?: import('./ComponentSemantics').DataInterpretation;

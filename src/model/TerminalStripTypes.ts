@@ -32,6 +32,7 @@ export function terminalStripBindings(project:Project){
    if(position.kind==='terminal'){
     if(!members.length||new Set(members.map(terminalAddressKey)).size!==members.length)reasons.add('terminalStripPositionInvalid');
     for(const a of members){const found=placements.get(terminalAddressKey(a));if(pages.get(a.pageId)!==1||componentIds.get(a.componentId)!==1||found?.length!==1){reasons.add('terminalStripMemberMissing');continue;}const {page,component}=found[0];if(!isTerminalComponent(project,component,getSymbolForComponent(component,project))||terminalStripKey(terminalIdentity(page,component))!==terminalStripKey(strip))reasons.add('terminalStripMemberScope');if(membership.get(terminalAddressKey(a))!==1)reasons.add('terminalStripMemberOverlap');}
+    if(members.length>1){const levels=new Map<string,string>();for(const a of members){const c=placements.get(terminalAddressKey(a))?.[0]?.component;if(!c)continue;const level=c.terminal?.level??'',identity=c.terminal?.functionId??terminalAddressKey(a);if(!level&&!c.terminal?.functionId||levels.has(level)&&levels.get(level)!==identity)reasons.add('terminalStripLevelsInvalid');levels.set(level,identity);}}
     const owners=[...new Set(members.flatMap(a=>ownersByMember.get(terminalAddressKey(a))??[]))];
     if(position.deviceId){const own=owners.filter(d=>d.id===position.deviceId);if(owners.length!==1||own.length!==1||own[0].terminalPositionId!==position.id||own[0].verification!=='user_confirmed'||own[0].members.length!==members.length||!own[0].members.every(a=>members.some(m=>terminalAddressKey(a)===terminalAddressKey(m)))||!members.some(a=>terminalAddressKey(a)===terminalAddressKey(own[0].main)))reasons.add('terminalStripOwnership');}
     else if(members.length!==1||owners.length)reasons.add('terminalStripOwnership');
@@ -47,7 +48,10 @@ export function terminalDeviceBinding(device:PhysicalDevice,bindings:ReturnType<
 }
 /** Unknown/new placements retain their existing relative order after configured positions. */
 export function orderedTerminalEntries<T extends {pageId?:string;componentId?:string}>(project:Project,identity:TerminalStripIdentity,entries:T[],data=terminalStripBindings(project)){
- const strips=(project.terminalStrips??[]).filter(s=>terminalStripKey(s)===terminalStripKey(identity));if(strips.length!==1)return entries;
+ const strips=(project.terminalStrips??[]).filter(s=>terminalStripKey(s)===terminalStripKey(identity));if(strips.length!==1){
+  const keys=new Map(project.pages.flatMap(page=>page.components.flatMap(c=>c.terminal?.sortingKey?[[terminalAddressKey({pageId:page.id,componentId:c.id}),c.terminal.sortingKey] as const]:[])));
+  const collator=new Intl.Collator('en',{numeric:true});return entries.map((entry,i)=>({entry,i,key:keys.get(terminalAddressKey({pageId:entry.pageId??'',componentId:entry.componentId??''}))})).sort((a,b)=>a.key&&b.key?collator.compare(a.key,b.key)||a.i-b.i:a.key?-1:b.key?1:a.i-b.i).map(r=>r.entry);
+ }
  const order=new Map<string,number>();strips[0].positions.forEach((p,i)=>{if(p.kind==='terminal'&&data.bindings.get(p.id)?.valid)p.members.forEach((a,j)=>order.set(terminalAddressKey(a),i*10000+j));});
  return entries.map((entry,i)=>({entry,i,rank:order.get(terminalAddressKey({pageId:entry.pageId??'',componentId:entry.componentId??''}))??Infinity})).sort((a,b)=>a.rank-b.rank||a.i-b.i).map(r=>r.entry);
 }
