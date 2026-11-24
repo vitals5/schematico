@@ -2,6 +2,8 @@
 
 **Projekt → Klemmeneditor…** ist der zentrale Ort für die Konfiguration. Derselbe Editor öffnet sich über **Eigenschaften → Schaltzeichen → Im Klemmeneditor bearbeiten…**, die Artikelansicht einer Klemme sowie über Klemmenkarten und Brücken in **Klemmen und Kabel**.
 
+Unter **Einfügen → Klemme / Klemmenreihe…** startet direkt die Anlage mit einer Klemme als Vorgabe; für eine Reihe lässt sich die Anzahl erhöhen. **Einfügen → Klemmeneditor…** öffnet die bestehende Konfiguration. Beide Befehle sind auch im aufklappbaren **Element**-Menü der Werkzeugleiste erreichbar. Das Öffnen und Ausfüllen des Assistenten verändert das Projekt erst nach der geprüften Übernahme.
+
 ## Klemmenreihe anlegen – ohne Symbolbibliothek
 
 1. Links **＋ Klemmenreihe anlegen** wählen. In einem leeren Projekt ist derselbe Einstieg auch direkt in der Mitte sichtbar.

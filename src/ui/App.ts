@@ -1327,7 +1327,9 @@ export class App {
     bindMenuOpt('menuDeviceNavigator',()=>this.openDeviceNavigator());
     bindMenuOpt('menuImportCleanup',()=>this.openImportCleanup());
     bindMenuOpt('menuPotentialDefinitions',()=>this.openPotentialDefinitions());
-    bindMenuOpt('menuTerminalEditor',()=>{this.canvas.finishInteraction();this.history.record(this.project);new TerminalEditorDialog(()=>this.project,p=>this.applyProjectTransaction(p),{},a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(page&&c){this.canvas.focusInspection({...a,pageNumber:page.pageNumber,x:c.x,y:c.y});this.updateUI();}}).show();});
+    const openTerminalEditor=(createRow=false)=>{this.canvas.finishInteraction();this.history.record(this.project);new TerminalEditorDialog(()=>this.project,p=>this.applyProjectTransaction(p),{createRow},a=>{const page=this.project.pages.find(p=>p.id===a.pageId),c=page?.components.find(c=>c.id===a.componentId);if(page&&c){this.canvas.focusInspection({...a,pageNumber:page.pageNumber,x:c.x,y:c.y});this.updateUI();}}).show();};
+    bindMenuOpt('menuTerminalEditor',()=>openTerminalEditor());
+    bindMenuOpt('menuInsertTerminal',()=>openTerminalEditor(true));
     bindMenuOpt('menuWiringWorkbench',()=>this.openWiringWorkbench());
     bindMenuOpt('menuConnectionNavigator',()=>this.openConnectionNavigator());
     bindMenuOpt('menuConnectorNavigator',()=>this.openConnectorNavigator());

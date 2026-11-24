@@ -53,6 +53,7 @@ export type TerminalEditorTab =
   | "bridges"
   | "checks";
 interface Initial {
+  createRow?: boolean;
   target?: ComponentAddress;
   identity?: TerminalStripIdentity;
   tab?: TerminalEditorTab;
@@ -109,6 +110,11 @@ export class TerminalEditorDialog {
     if (!this.stripKey && initial.identity)
       this.stripKey = terminalStripKey(initial.identity);
     this.normaliseSelection();
+    if (initial.createRow) {
+      this.creation = defaultTerminalRowForm(this.session.project);
+      this.creation.count = "1";
+      this.formDirty = true;
+    }
   }
   show() {
     if (document.getElementById("terminalEditorDialog")) return;

@@ -53,7 +53,7 @@ export function renderAppHeader(projectName:string):string {
           opt('menuCleanupConnections',t('menuCleanupConnections'))+opt('menuRotate',t('menuRotate'),t('keyR'))+opt('menuDelete',t('menuDelete'),t('keyDel'))+separator+
           opt('menuGroup',t('menuGroup'),t('keyCtrlG'))+opt('menuUngroup',t('menuUngroup'),t('keyCtrlShiftG')),'menu-item')}
         ${menu('menuInsertTrigger',t('menuInsert'),
-          opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertText',t('menuInsertText'),'T')+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
+          opt('menuInsertSym',t('menuInsertSym'),t('keyIns'))+opt('menuInsertConnections',t('menuInsertConnections'))+opt('menuInsertTerminal',tr('Klemme / Klemmenreihe…','Terminal / terminal strip…'))+proxy('menuTerminalEditor',tr('Klemmeneditor…','Terminal editor…'))+opt('menuWire',t('menuWire'),t('keyD'))+opt('menuInsertText',t('menuInsertText'),'T')+opt('menuInsertCable',t('menuInsertCable'))+opt('menuInsertBox',t('menuInsertBox'))+opt('menuInsertImage',t('menuInsertImage'))+separator+
           heading(t('headingMacros'))+opt('menuInsertMacro',t('menuInsertMacro'))+opt('menuInsertPageMacro',t('menuInsertPageMacro'))+separator+
           heading(t('headingPages'))+opt('menuNewPage',t('menuNewPage'))+opt('menuNewCoverPage',t('menuNewCoverPage'))+opt('menuImportFloorPlan',t('menuImportFloorPlan'))+opt('menuImportFloorPlanPage',t('menuImportFloorPlanPage'))+opt('menuDeletePage',t('menuDeletePage')),'menu-item')}
         ${menu('menuViewTrigger',t('menuView'),
@@ -85,7 +85,7 @@ export function renderAppHeader(projectName:string):string {
           <div class="insert-split">
             ${tool('btnOpenSymbolSelection',t('toolInsertSym'),'add',t('toolInsertSymLabel'),'btn-primary')}
             ${menu('btnMoreInsert',`${headerIcon('chevron')}<span class="sr-only">${t('toolMoreInsert')}</span>`,
-              opt('btnOpenConnections',t('menuInsertConnections'))+opt('btnInsertText',t('menuInsertText'))+opt('btnDeviceBox',t('menuInsertBox'))+opt('btnCableDefinition',t('menuInsertCable'))+opt('btnAddImage',t('menuInsertImage'))+separator+
+              opt('btnOpenConnections',t('menuInsertConnections'))+proxy('menuInsertTerminal',tr('Klemme / Klemmenreihe…','Terminal / terminal strip…'))+proxy('menuTerminalEditor',tr('Klemmeneditor…','Terminal editor…'))+opt('btnInsertText',t('menuInsertText'))+opt('btnDeviceBox',t('menuInsertBox'))+opt('btnCableDefinition',t('menuInsertCable'))+opt('btnAddImage',t('menuInsertImage'))+separator+
               proxy('menuInsertMacro',t('menuInsertMacro'))+proxy('menuInsertPageMacro',t('menuInsertPageMacro')),'insert-menu')}
           </div>
         </div>
