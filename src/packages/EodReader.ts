@@ -81,8 +81,22 @@ export function readEodTable(bytes: Uint8Array, index: Uint8Array, table: keyof 
 
 /** Same indexed serialization is used by project tables and embedded symbol libraries. */
 export function readIndexedEodRecords(bytes: Uint8Array, index: Uint8Array,
-  layout: { size: number; typedIndex: boolean }, table: string): EodRecord[] {
-  const count = bytes.length / layout.size;
+  layout: { size: number; typedIndex: boolean; recordOverhead?: 1 | 5 }, table: string): EodRecord[] {
+  // The native index declares the fixed data capacity. Project records have a
+  // five-byte trailer, embedded library records a one-byte trailer. Versions
+  // change capacities; never infer them from divisors or scan deleted slots.
+  let size = layout.size;
+  const nativeHeader = index.length >= 49 &&
+    [0xfe, 0x53, 2, 2, 4, 4, 15, 255].every((value, i) => index[i] === value) && index[11] === 4;
+  if (nativeHeader) {
+    const capacity = index[12] * 65536 + index[13] * 256 + index[14];
+    if (capacity < 8 || capacity > 16 * 1024 * 1024) throw new Error(`Ungültige ${table}.eox Datensatzlänge.`);
+    const overhead = layout.recordOverhead ?? 5;
+    size = capacity + overhead;
+    // An allocated but empty native table has a single zero byte, not a slot.
+    if (bytes.length === 1 && bytes[0] === 0 && new DataView(index.buffer,index.byteOffset,index.byteLength).getUint32(33) === 0) return [];
+  }
+  const count = bytes.length / size;
   if (!Number.isInteger(count)) throw new Error(`Nicht unterstütztes ${table}.eod Datensatzformat.`);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const iv = new DataView(index.buffer, index.byteOffset, index.byteLength);
@@ -90,7 +104,7 @@ export function readIndexedEodRecords(bytes: Uint8Array, index: Uint8Array,
   for (let i = 3; i + 4 <= index.length; i++) {
     const row = iv.getUint32(i);
     if (row === 0 || row > count) continue;
-    const start = (row - 1) * layout.size;
+    const start = (row - 1) * size;
     const id = view.getUint32(start), type = view.getUint16(start + 4);
     if (layout.typedIndex
       ? index[i - 3] === (id & 255) && iv.getUint16(i - 2) === type
@@ -98,8 +112,8 @@ export function readIndexedEodRecords(bytes: Uint8Array, index: Uint8Array,
   }
   const result = new Map<string, EodRecord>();
   for (const row of active) {
-    const start = (row - 1) * layout.size, id = view.getUint32(start), type = view.getUint16(start + 4);
-    const slot = bytes.subarray(start, start + layout.size);
+    const start = (row - 1) * size, id = view.getUint32(start), type = view.getUint16(start + 4);
+    const slot = bytes.subarray(start, start + size);
     for (let i = 6; i + 8 <= slot.length; i++) {
       let data: Uint8Array | undefined, partial = false;
       if (slot[i] === 0x61 && slot[i + 1] === 0xea) data = slot.subarray(i);

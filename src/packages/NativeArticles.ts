@@ -99,15 +99,11 @@ export class NativeArticles {
                 return undefined;
             }
             const bytes = await data.async('uint8array');
-            if (bytes.length % layouts[name].size !== 0) {
-                reader.messages.push(`${name}: unbekanntes Datensatzlayout; keine Artikelzuordnung abgeleitet.`);
-                return undefined;
-            }
             try {
                 return readIndexedEodRecords(bytes, await index.async('uint8array'), layouts[name], name);
             }
             catch {
-                reader.messages.push(`${name}: Index nicht lesbar; keine Artikelzuordnung abgeleitet.`);
+                reader.messages.push(`${name}: Datensatzlayout oder Index nicht lesbar; keine Artikelzuordnung abgeleitet.`);
                 return undefined;
             }
         };

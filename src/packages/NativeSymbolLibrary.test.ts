@@ -153,7 +153,7 @@ for (const [number, variant, segments] of [
 const libraryInstances = readIndexedEodRecords(
   await zip.file(`${root}IEC_symbol.sdb/Instance.eod`)!.async('uint8array'),
   await zip.file(`${root}IEC_symbol.sdb/Instance.eox`)!.async('uint8array'),
-  { size: 134, typedIndex: false }, 'Instance');
+  { size: 134, typedIndex: false, recordOverhead: 1 }, 'Instance');
 for (const id of [56590, 56597, 56606]) {
   const source = libraryInstances.find(r => r.id === id)!;
   assert(source, `Missing indexed socket arc ${id}`);

@@ -378,6 +378,7 @@ Schematico provides a dedicated **Installation Plan Page Type** for residential,
 ### Import
 - **Schematico Projects:** Native JSON format (`.json`).
 - **Standard Archive Packages:** Unpack `.zw1`, `.zip`, and split multi-part archives (`.001`, `.002`) directly in the browser via integrated WebAssembly 7-Zip.
+- **Version-aware project tables:** Read native table capacities from their source indices, including allocated empty tables, while retaining indexed object/type checks and embedded symbol and article assignments. See [project import](docs/project-import.md).
 - **Macros &amp; Components:** Window macros (`.ema`), page macros (`.ems`), component data (`.edz`), and 2D cabinet outlines (`.fp1`).
 - **Floor Plans &amp; Blueprints:** Architectural graphics (`PNG`, `JPEG`, `WebP`, `PDF`).
 

@@ -284,7 +284,7 @@ export class NativeSymbolLibrary {
       const path = `${this.root}${library}.sdb/${name}`;
       const data = this.zip.file(`${path}.eod`), ix = this.zip.file(`${path}.eox`);
       if (!data || !ix) throw new Error(`Eingebettete Symbolbibliothek unvollständig: ${path}`);
-      return readIndexedEodRecords(await data.async('uint8array'), await ix.async('uint8array'), { size, typedIndex: false }, name);
+      return readIndexedEodRecords(await data.async('uint8array'), await ix.async('uint8array'), { size, typedIndex: false, recordOverhead: 1 }, name);
     };
     const [symbols, variants, instances] = await Promise.all([table('Symbol', 901), table('Variant', 635), table('Instance', 134)]);
     const symbolsById = new Map(symbols.map(s => [s.id, s]));

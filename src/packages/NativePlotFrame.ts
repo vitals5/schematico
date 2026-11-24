@@ -11,8 +11,8 @@ export async function readNativePlotFrame(zip: JSZip, root: string, instances: E
   let start=-1;
   outer:for(let i=0;i<=settings.length-encoded.length;i++){for(let j=0;j<encoded.length;j++)if(settings[i+j]!==encoded[j])continue outer;start=i+encoded.length;break;}
   if(start<0)return;
-  const bytes=await eod.async('uint8array');if(bytes.length%1297)return;
-  const forms=readIndexedEodRecords(bytes,await eox.async('uint8array'),{size:1297,typedIndex:true},'Form');
+  const bytes=await eod.async('uint8array');let forms:EodRecord[];
+  try{forms=readIndexedEodRecords(bytes,await eox.async('uint8array'),{size:1297,typedIndex:true},'Form');}catch{return;}
   const window=new TextDecoder('latin1').decode(settings.subarray(start,start+256)).toUpperCase();
   const form=forms.find(f=>f.type===21 && f.string(0xede6) && window.includes(f.string(0xede6).toUpperCase()));
   if(!form)return;

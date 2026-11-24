@@ -61,7 +61,7 @@ const functions = readEodTable(await zip.file(root + 'Function.eod')!.async('uin
   await zip.file(root + 'Function.eox')!.async('uint8array'), 'Function');
 const readLibrary = async (name: string, size: number) => readIndexedEodRecords(
   await zip.file(root + 'SPECIAL.sdb/' + name + '.eod')!.async('uint8array'),
-  await zip.file(root + 'SPECIAL.sdb/' + name + '.eox')!.async('uint8array'), { size, typedIndex: false }, name);
+  await zip.file(root + 'SPECIAL.sdb/' + name + '.eox')!.async('uint8array'), { size, typedIndex: false, recordOverhead: 1 }, name);
 const symbol = (await readLibrary('Symbol', 901)).find(r => (r.number(0xeb52) ?? 0) === 0)!;
 const variant = (await readLibrary('Variant', 635)).find(r => r.number(0xed95, 4, 4) === symbol.id && (r.number(0xed96, 1) ?? 0) === 0)!;
 const sourceLayers = await readNativeLayers(zip, root);

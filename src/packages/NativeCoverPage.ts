@@ -48,8 +48,9 @@ export async function readNativeCoverPage(zip: JSZip, root: string, instances: E
   const pageData = zip.file(root + 'Page.eod'), pageIndex = zip.file(root + 'Page.eox');
   if (!data || !index || !pageData || !pageIndex) return;
   const bytes = await data.async('uint8array');
-  if (bytes.length % 1297) return;
-  const forms = readIndexedEodRecords(bytes, await index.async('uint8array'), { size: 1297, typedIndex: true }, 'Form');
+  let forms: EodRecord[];
+  try { forms = readIndexedEodRecords(bytes, await index.async('uint8array'), { size: 1297, typedIndex: true }, 'Form'); }
+  catch { return; }
   const pages = readEodTable(await pageData.async('uint8array'), await pageIndex.async('uint8array'), 'Page');
   const reference = pages.map(page => page.string(0x2b07, 4)).find(name => /^F26_/i.test(name));
   const form = reference && forms.find(record => record.type === 51 && record.string(0xede6).toLowerCase() === reference.toLowerCase());

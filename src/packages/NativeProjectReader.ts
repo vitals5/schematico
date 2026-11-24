@@ -102,7 +102,6 @@ export class NativeProjectReader {
       const data = zip.file(`${root}${name}.eod`), index = zip.file(`${root}${name}.eox`);
       if (!data || !index) return;
       const bytes = await data.async('uint8array');
-      if (bytes.length % EOD_LAYOUTS[name].size !== 0) return;
       tables[name] = readEodTable(bytes, await index.async('uint8array'), name);
     }
     const library = await NativeSymbolLibrary.create(zip, root);

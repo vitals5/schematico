@@ -261,7 +261,11 @@ export class EdbProjectParser {
 
     // Determine initial active page (first schematic page, or page 1)
     let activePageId = pages[0]?.id || 'p_1';
-    const firstSchematic = pages.find(p => p.pageType === 'schematic' && p.pageNumber === '1') 
+    const hasContent = (p: Page) => p.components.some(c => c.source?.routingUsed !== false) ||
+      !!(p.texts?.length || p.images?.length || p.boxes?.length || p.cables?.length);
+    const firstSchematic = pages.find(p => p.pageType === 'schematic' && p.pageNumber === '1' && hasContent(p))
+      || pages.find(p => p.pageType === 'schematic' && hasContent(p))
+      || pages.find(p => p.pageType === 'schematic' && p.pageNumber === '1')
       || pages.find(p => p.pageType === 'schematic') 
       || pages[0];
     if (firstSchematic) activePageId = firstSchematic.id;
