@@ -561,6 +561,7 @@ export class App {
     });
 
     // Make sure initial page is loaded
+    this.canvas.showConnectionPoints = readAppSetting('show_connection_points') !== 'false';
     this.canvas.setPage(this.project.activePageId || this.project.pages[0].id);
   }
 
@@ -1391,6 +1392,12 @@ export class App {
     bindMenuOpt('menuDelete', () => this.canvas.deleteSelected());
 
     // Ansicht
+    bindMenuOpt('menuToggleConnectionPoints', () => {
+      this.canvas.showConnectionPoints = this.canvas.showConnectionPoints === false;
+      writeAppSetting('show_connection_points', String(this.canvas.showConnectionPoints));
+      this.canvas.render();
+      this.updateGridButtonState();
+    });
     bindMenuOpt('menuFit', () => this.canvas.fitToScreen());
     bindMenuOpt('menuZoom100', () => this.canvas.resetZoom());
     bindMenuOpt('menuZoomIn', () => this.canvas.zoomIn());
@@ -1536,6 +1543,10 @@ export class App {
       }
       document.querySelectorAll('#menuToggleAutoconnect, [data-header-command="menuToggleAutoconnect"]').forEach(el=>{
         el.setAttribute('aria-pressed',String(this.canvas.autoconnectEnabled));el.classList.toggle('checked',this.canvas.autoconnectEnabled);
+      });
+      document.querySelectorAll('#menuToggleConnectionPoints, [data-header-command="menuToggleConnectionPoints"]').forEach(el=>{
+        const visible=this.canvas.showConnectionPoints!==false;
+        el.setAttribute('aria-pressed',String(visible));el.classList.toggle('checked',visible);
       });
     }
     this.updateStatusBar();

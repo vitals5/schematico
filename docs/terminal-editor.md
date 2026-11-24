@@ -4,6 +4,8 @@
 
 Unter **Einfügen → Klemme / Klemmenreihe…** startet direkt die Anlage mit einer Klemme als Vorgabe; für eine Reihe lässt sich die Anzahl erhöhen. **Einfügen → Klemmeneditor…** öffnet die bestehende Konfiguration. Beide Befehle sind auch im aufklappbaren **Element**-Menü der Werkzeugleiste erreichbar. Das Öffnen und Ausfüllen des Assistenten verändert das Projekt erst nach der geprüften Übernahme.
 
+**Ansicht → Anschlussmarkierungen anzeigen** blendet die blauen Anschluss-Hilfskreise ein oder aus. Derselbe Schalter steht im Raster-Menü der Werkzeugleiste. Die Anzeige wird lokal gespeichert und verändert weder Projekt noch Anschlussbezeichnungen, Verdrahtung oder Autoconnect. Ausgeblendete Anschlüsse bleiben beim Verdrahten anwählbar; die aktive Fangmarkierung zeigt weiterhin das aktuelle Verbindungsziel. Kreise, die Teil des Bibliothekssymbols sind, werden nicht ausgeblendet; die Hilfsmarkierungen sind ohnehin kein Bestandteil des PDF-Exports.
+
 ## Klemmenreihe anlegen – ohne Symbolbibliothek
 
 1. Links **＋ Klemmenreihe anlegen** wählen. In einem leeren Projekt ist derselbe Einstieg auch direkt in der Mitte sichtbar.

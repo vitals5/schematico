@@ -59,7 +59,7 @@ export function renderAppHeader(projectName:string):string {
         ${menu('menuViewTrigger',t('menuView'),
           opt('menuFit',t('menuFit'),t('keyF'))+opt('menuZoom100',t('menuZoom100'))+opt('menuZoomIn',t('menuZoomIn'))+opt('menuZoomOut',t('menuZoomOut'))+separator+
           heading(t('headingGrid'))+opt('menuGridFull',t('menuGridFull'),'Alt+1')+opt('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+opt('menuGridFine',t('menuGridFine'),'Alt+3')+opt('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
-          opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+separator+
+          opt('menuToggleAutoconnect',t('menuToggleAutoconnect'),'', 'aria-pressed="true"')+opt('menuToggleConnectionPoints',tr('Anschlussmarkierungen anzeigen','Show connection point markers'),'', 'aria-pressed="true"')+separator+
           opt('menuToggleLeftPanel',t('menuToggleLeftPanel'))+opt('menuToggleRightPanel',t('menuToggleRightPanel'))+opt('menuToggleFloatingBar',t('menuToggleFloatingBar')),'menu-item')}
         ${menu('menuDataTrigger',t('menuData'),
           opt('menuPlausibility',t('menuPlausibility'))+opt('menuDimensioning',t('electricalDimensioning'))+opt('menuChangeImpact',tr('Änderungsfolgen','Change impact'))+opt('menuRecalcCrossRef',t('menuRecalcCrossRef'))+separator+
@@ -96,7 +96,7 @@ export function renderAppHeader(projectName:string):string {
           ${tool('btnZoomFit',t('toolFit'),'fit')}
           ${menu('btnDrawingOptions',`${headerIcon('grid')}<span class="grid-label" id="headerGridLabel">${t('toolGrid')}</span>${headerIcon('chevron')}`,
             heading(t('headingGrid'))+proxy('menuGridFull',t('menuGridFull'),'Alt+1')+proxy('menuGridHalf',t('menuGridHalf'),'H / Alt+2')+proxy('menuGridFine',t('menuGridFine'),'Alt+3')+proxy('menuGridOff',t('menuGridOff'),'Alt+0')+separator+
-            proxy('menuToggleAutoconnect',t('menuToggleAutoconnect')),'drawing-options')}
+            proxy('menuToggleAutoconnect',t('menuToggleAutoconnect'))+proxy('menuToggleConnectionPoints',tr('Anschlussmarkierungen anzeigen','Show connection point markers')),'drawing-options')}
         </div>
         <div class="toolbar-group output-tools" role="group" aria-label="${t('headingExport')}">${tool('btnExportPdf',t('toolExportPdf'),'pdf','PDF')}</div>
         <div class="toolbar-group ai-tools" role="group" aria-label="AI & MCP">${tool('btnToggleAiChat','AI Chat & MCP Bridge (Alt+A)','sparkle','AI','btn-ai-toggle')}</div>

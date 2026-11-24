@@ -78,6 +78,7 @@ export class CadCanvas {
   public gridSize: number = 8; // Legacy fallback; imported pages own their physical grid.
   public gridResolution: GridResolution = 'fine';
   public autoconnectEnabled: boolean = true;
+  public showConnectionPoints: boolean = true;
   public activeSymbolToPlace: string | null = null;
   private activeArticleToPlace?: EditorArticle;
   public activeMacroToPlace: WindowMacro | null = null;
@@ -3547,13 +3548,14 @@ export class CadCanvas {
 
       // Pins render
       const editingConnections = this.mode === 'wire' || !!this.wireStart;
+      const showConnectionPoints = this.showConnectionPoints !== false;
       const connectionPins = isConnectionSymbol(sym) || isConnectionGraphic(comp, sym);
       const pinsSvg = sym.pins.map(pin => {
         const pinX = pin.x * s;
         const pinY = pin.y * s;
         if (sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition || comp.pinLabelPosition) {
           const pinPos = computePinLabelPosition(comp, sym, pin, s);
-          const handle = (!sym.source && !connectionPins) || editingConnections
+          const handle = showConnectionPoints && ((!sym.source && !connectionPins) || editingConnections)
             ? `<circle class="pin-handle" cx="${pinX}" cy="${pinY}" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>` : '';
           const text = pinPos.visible
             ? `<text class="source-pin-label" x="${pinPos.x}" y="${pinPos.y}" font-size="${pinPos.fontSize}" font-family="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? 'Tahoma, Arial, sans-serif' : 'monospace'}" fill="${sym.source || pin.labelPosition || comp.pins[pin.id]?.labelPosition ? '#e2e8f0' : '#a0aec0'}" text-anchor="${pinPos.anchor}" ${pinPos.transform}>${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>` : '';
@@ -3562,7 +3564,7 @@ export class CadCanvas {
         if (isConn || isTerminal) {
           return `
             <g class="pin" transform="translate(${pinX}, ${pinY})">
-              ${connectionPins && editingConnections
+              ${showConnectionPoints && connectionPins && editingConnections
                 ? '<circle class="pin-handle" cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>'
                 : '<circle cx="0" cy="0" r="2.5" fill="transparent"/>'}
             </g>
@@ -3570,7 +3572,7 @@ export class CadCanvas {
         }
         return `
           <g class="pin" transform="translate(${pinX}, ${pinY})">
-            <circle cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>
+            ${showConnectionPoints ? '<circle class="pin-handle" cx="0" cy="0" r="3" fill="#2d3748" stroke="#63b3ed" stroke-width="1.2"/>' : ''}
             <text ${labelTransform((pin.direction === 'top' ? 0 : 5) * s, (pin.direction === 'top' ? -4 : 3.5) * s, comp.rotation)} x="${(pin.direction === 'top' ? 0 : 5) * s}" y="${(pin.direction === 'top' ? -4 : 3.5) * s}" font-size="${(comp.pinLabelFontSize ?? 6.5) * s}" font-family="monospace" fill="#a0aec0" text-anchor="${pin.direction === 'top' ? 'middle' : 'start'}">${escapeSvg(comp.pins[pin.id]?.customLabel ?? pin.name)}</text>
           </g>
         `;
@@ -3838,6 +3840,7 @@ export class CadCanvas {
 
   private renderHoveredPin(): string {
     if (!this.hoveredPin) return '';
+    if (this.showConnectionPoints === false && this.mode !== 'wire' && !this.wireStart) return '';
     const coord = this.getPinCoordinates(this.hoveredPin.componentId, this.hoveredPin.pinId);
     if (!coord) return '';
 
