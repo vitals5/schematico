@@ -270,7 +270,12 @@ export class KnxRouterWorkspace {
         <!-- Aktive Gruppenadresse Header -->
         <div class="knx-group-detail-header">
           <div class="knx-group-main-meta">
-            <span class="knx-group-addr-hero font-mono">${esc(group.address)}</span>
+            <input class="form-input knx-group-addr-input font-mono"
+                   type="text"
+                   value="${esc(group.address)}"
+                   data-inplace-group="${esc(group.id)}"
+                   data-group-field="address"
+                   aria-label="${esc(tr('Gruppenadresse', 'Group Address'))}">
             <div class="knx-group-name-box">
               <input class="form-input knx-group-name-input" 
                      type="text" 
@@ -589,12 +594,22 @@ export class KnxRouterWorkspace {
   private createNewGroup() {
     const project = this.getProject();
     const d = automationData(project);
-    const count = d.knxGroups.length + 1;
+    let n = 1;
+    const makeAddr = (idx: number) => `1/${1 + Math.floor((idx - 1) / 255)}/${((idx - 1) % 255) + 1}`;
+    while (
+      d.knxGroups.some(
+        g =>
+          g.network === 'KNX' &&
+          (g.address === makeAddr(n) || g.name === `${tr('Gruppenadresse', 'Group Address')} ${n}`)
+      )
+    ) {
+      n++;
+    }
     const newGroup: KnxGroup = {
       id: crypto.randomUUID(),
       network: 'KNX',
-      name: `${tr('Gruppenadresse', 'Group Address')} ${count}`,
-      address: `1/1/${count}`,
+      name: `${tr('Gruppenadresse', 'Group Address')} ${n}`,
+      address: makeAddr(n),
       dpt: '1.001',
     };
 
@@ -665,15 +680,23 @@ export class KnxRouterWorkspace {
   private addObjectToDevice(nodeId: string) {
     const project = this.getProject();
     const d = automationData(project);
+    const targetGroupId = this.selectedGroupId || d.knxGroups[0]?.id || '';
+    if (!targetGroupId) {
+      this.callbacks.onError(new Error(tr('Zuerst eine KNX-Gruppenadresse anlegen.', 'Create a KNX group address first.')));
+      return;
+    }
+
     const existing = d.knxObjects.filter(o => o.nodeId === nodeId);
-    const num = String(existing.length + 1);
+    let n = 1;
+    while (existing.some(o => Number(o.number) === n)) n++;
+    const num = String(n);
 
     const newObj: KnxObject = {
       id: crypto.randomUUID(),
       nodeId,
       number: num,
       name: `${tr('Objekt', 'Object')} ${num}`,
-      groupId: this.selectedGroupId || d.knxGroups[0]?.id || '',
+      groupId: targetGroupId,
       direction: 'send',
       dpt: '1.001',
     };
@@ -693,14 +716,21 @@ export class KnxRouterWorkspace {
   private createNewKnxNode() {
     const project = this.getProject();
     const d = automationData(project);
-    const count = d.nodes.filter(n => isKnx(n.protocol)).length + 1;
+    let n = 1;
+    while (
+      d.nodes.some(
+        node => node.network === 'KNX' && (node.name === `KNX-Gerät-${n}` || node.address === `1.1.${n}`)
+      )
+    ) {
+      n++;
+    }
 
     const newNode: BusNode = {
       id: crypto.randomUUID(),
-      name: `KNX-Gerät-${count}`,
+      name: `KNX-Gerät-${n}`,
       network: 'KNX',
       protocol: 'KNX TP',
-      address: `1.1.${count}`,
+      address: `1.1.${n}`,
       interfaceRole: 'device',
     };
 

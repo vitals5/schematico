@@ -87,11 +87,13 @@ export class BusTopologyWorkspace {
           <div class="bus-topo-toolbar-network">
             <label>${esc(tr('Netzwerk & Protokoll:', 'Network & Protocol:'))}</label>
             <select class="form-input" data-bus-action="select-network">
-              ${networkList.map(([k, net]) => `
-                <option value="${esc(k)}" ${k === this.selectedNetworkKey ? 'selected' : ''}>
-                  ${esc(net.network)} · ${esc(net.protocol)} (${net.count})
-                </option>
-              `).join('')}
+              ${networkList.length
+                ? networkList.map(([k, net]) => `
+                  <option value="${esc(k)}" ${k === this.selectedNetworkKey ? 'selected' : ''}>
+                    ${esc(net.network)} · ${esc(net.protocol)} (${net.count})
+                  </option>
+                `).join('')
+                : `<option value="">${esc(tr('Noch kein Netzwerk', 'No network yet'))}</option>`}
             </select>
           </div>
 
@@ -414,10 +416,10 @@ export class BusTopologyWorkspace {
       }
 
       // Port click on node (interactive wiring)
-      const portPin = target.closest<HTMLElement>('[data-port-click-node]');
+      const portPin = target.closest<Element>('[data-port-click-node]');
       if (portPin) {
-        const nodeId = portPin.dataset.portClickNode!;
-        const portName = portPin.dataset.portClickName!;
+        const nodeId = portPin.getAttribute('data-port-click-node')!;
+        const portName = portPin.getAttribute('data-port-click-name')!;
 
         if (!this.pendingWire) {
           // Start wiring
@@ -436,18 +438,18 @@ export class BusTopologyWorkspace {
       }
 
       // Select node
-      const nodeEl = target.closest<HTMLElement>('[data-bus-select-node]');
+      const nodeEl = target.closest<Element>('[data-bus-select-node]');
       if (nodeEl) {
-        this.selectedNodeId = nodeEl.dataset.busSelectNode!;
+        this.selectedNodeId = nodeEl.getAttribute('data-bus-select-node')!;
         this.selectedLinkId = '';
         this.callbacks.onUpdateProject(this.getProject());
         return;
       }
 
       // Select link
-      const linkEl = target.closest<HTMLElement>('[data-bus-select-link]');
+      const linkEl = target.closest<Element>('[data-bus-select-link]');
       if (linkEl) {
-        this.selectedLinkId = linkEl.dataset.busSelectLink!;
+        this.selectedLinkId = linkEl.getAttribute('data-bus-select-link')!;
         this.selectedNodeId = '';
         this.callbacks.onUpdateProject(this.getProject());
         return;
@@ -526,14 +528,26 @@ export class BusTopologyWorkspace {
       } catch {}
     }
 
-    const count = d.nodes.filter(n => n.network === net).length + 1;
+    const sameNet = d.nodes.filter(n => n.network === net);
+    let n = 1;
+    const makeAddr = (idx: number) => (isKnx(proto) ? `1.1.${idx}` : String(idx));
+    while (
+      sameNet.some(
+        node =>
+          node.name === `${proto}-Device-${n}` ||
+          (node.address && node.address.trim().toLowerCase() === makeAddr(n).toLowerCase())
+      )
+    ) {
+      n++;
+    }
+    const addr = makeAddr(n);
     const newNode: BusNode = {
       id: crypto.randomUUID(),
-      name: `${proto}-Device-${count}`,
+      name: `${proto}-Device-${n}`,
       network: net,
       protocol: proto,
-      address: String(count),
-      ipAddress: `192.168.1.${10 + count}`,
+      address: addr,
+      ...(isLoxone(proto) ? {} : {ipAddress: `192.168.1.${Math.min(254, 10 + n)}`}),
       interfaceRole: 'device',
     };
 

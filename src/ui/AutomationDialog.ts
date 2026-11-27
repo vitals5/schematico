@@ -76,7 +76,9 @@ export class AutomationDialog {
       onUpdateProject: (p: Project) => {
         this.workingProject = p;
         this.updateAnalysis();
+        this.clearError();
         this.renderWorkspaceOnly();
+        this.updateHeaderTabs();
         this.updateFooter();
       },
       onNavigate: (pageId: string, componentId: string) => {
@@ -181,7 +183,7 @@ export class AutomationDialog {
           <!-- Dropdown für Tools & Export/Import -->
           <div class="auto-header-tools">
             <details class="eng-tools-menu auto-tools">
-              <summary class="btn">${esc(tr('Daten & Export ▾', 'Data & Export ▾'))}</summary>
+              <summary class="btn">${esc(tr('Daten & Export', 'Data & Export'))}</summary>
               <div class="eng-tools-items">
                 <span class="auto-tools-label">${esc(tr('AutomationML Austausch', 'AutomationML Exchange'))}</span>
                 <button class="btn" data-aml>AutomationML…</button>
@@ -244,9 +246,78 @@ export class AutomationDialog {
 
   private renderWorkspaceOnly() {
     const mount = this.el.querySelector<HTMLElement>('[data-workspace-mount]');
-    if (mount) {
-      mount.innerHTML = this.renderActiveWorkspaceContent();
-      this.bindWorkspaceContent();
+    if (!mount) return;
+    let focusSelector: string | undefined;
+    let selStart: number | null = null;
+    let selEnd: number | null = null;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement && mount.contains(active)) {
+      for (const selector of ['[data-hw-filter="search"]', '[data-bus-filter="search"]', '[data-knx-filter="search"]']) {
+        if (active.matches(selector)) {
+          focusSelector = selector;
+          selStart = active.selectionStart;
+          selEnd = active.selectionEnd;
+          break;
+        }
+      }
+    }
+    mount.innerHTML = this.renderActiveWorkspaceContent();
+    this.bindWorkspaceContent();
+    if (focusSelector) {
+      const nextInput = mount.querySelector<HTMLInputElement>(focusSelector);
+      if (nextInput) {
+        nextInput.focus({preventScroll: true});
+        if (selStart !== null && selEnd !== null) {
+          try {
+            nextInput.setSelectionRange(selStart, selEnd);
+          } catch {}
+        }
+      }
+    }
+  }
+
+  private updateHeaderTabs() {
+    const d = automationData(this.workingProject);
+    const tabConfig: {
+      tab: AutomationWorkspaceTab;
+      countText: string;
+      issueCount: number;
+    }[] = [
+      {
+        tab: 'plc',
+        countText: `${d.controllers.length} CPU · ${d.modules.length} Mod · ${d.channels.length} E/A`,
+        issueCount: this.issues.filter(i => ['controllers', 'modules', 'channels'].includes(i.entity)).length,
+      },
+      {
+        tab: 'bus',
+        countText: `${d.nodes.length} Nodes · ${d.links.length} Links`,
+        issueCount: this.issues.filter(i => ['nodes', 'links'].includes(i.entity)).length,
+      },
+      {
+        tab: 'knx',
+        countText: `${d.knxGroups.length} GA · ${d.knxObjects.length} KO`,
+        issueCount: this.issues.filter(i => ['knxGroups', 'knxObjects'].includes(i.entity)).length,
+      },
+    ];
+
+    for (const cfg of tabConfig) {
+      const btn = this.el.querySelector<HTMLButtonElement>(`[data-tab-switch="${cfg.tab}"]`);
+      if (!btn) continue;
+      const countEl = btn.querySelector<HTMLElement>('.tab-count');
+      if (countEl) countEl.textContent = cfg.countText;
+      let badgeEl = btn.querySelector<HTMLElement>('.tab-alert-badge');
+      if (cfg.issueCount > 0) {
+        if (!badgeEl) {
+          badgeEl = document.createElement('span');
+          badgeEl.className = 'tab-alert-badge';
+          if (countEl) countEl.before(badgeEl);
+          else btn.append(badgeEl);
+        }
+        badgeEl.title = `${cfg.issueCount} ${tr('Hinweise', 'Warnings')}`;
+        badgeEl.textContent = `⚠ ${cfg.issueCount}`;
+      } else if (badgeEl) {
+        badgeEl.remove();
+      }
     }
   }
 
@@ -387,13 +458,23 @@ export class AutomationDialog {
     if (exExportBtn) {
       exExportBtn.onclick = async () => {
         try {
-          const content = await exportAutomationExchange(this.workingProject, 'channels', new Set(this.plan.map(r => r.id)));
-          downloadArticleFile(content, 'schematico-bearbeitung-channels.csv', 'text/csv;charset=utf-8');
+          const entity = this.activeTab === 'plc' ? 'channels' : this.activeTab === 'bus' ? 'nodes' : 'knxGroups';
+          const ids = new Set(automationData(this.workingProject)[entity].map(r => r.id));
+          const content = await exportAutomationExchange(this.workingProject, entity, ids);
+          downloadArticleFile(content, `schematico-bearbeitung-${entity}.csv`, 'text/csv;charset=utf-8');
         } catch (e) {
           this.showError(e);
         }
       };
     }
+
+    // Close tools dropdown when an action is selected
+    const toolsMenu = this.el.querySelector<HTMLDetailsElement>('.auto-tools');
+    toolsMenu?.querySelector('.eng-tools-items')?.addEventListener('click', e => {
+      if ((e.target as Element).closest('button')) {
+        toolsMenu.open = false;
+      }
+    });
 
     // CSV Exchange Import
     const exImportBtn = this.el.querySelector<HTMLButtonElement>('[data-exchange-import]');

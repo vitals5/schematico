@@ -183,18 +183,32 @@ export function renderPlcRackVisualizer(props: PlcRackVisualizerProps): string {
     `;
   }
 
-  // "+ Baugruppe" placeholder slot
-  html += `
-    <div class="plc-module-card plc-module-add-card"
-         role="button" tabindex="0"
-         data-add-module-prompt="${esc(rackId)}"
-         title="${esc(tr('Baugruppe zu diesem Rack hinzufügen', 'Add module to this rack'))}">
-      <div class="plc-add-card-inner">
-        <span class="plc-add-card-icon">+</span>
-        <span class="plc-add-card-text">${esc(tr('Baugruppe hinzufügen…', 'Add Module…'))}</span>
+  // Empty state or "+ Baugruppe" placeholder slot
+  if (!controller) {
+    html += `
+      <div class="plc-module-card plc-module-add-card"
+           role="button" tabindex="0"
+           data-hw-action="new-controller"
+           title="${esc(tr('Erste Steuerung (CPU) anlegen', 'Create first controller (CPU)'))}">
+        <div class="plc-add-card-inner">
+          <span class="plc-add-card-icon">+</span>
+          <span class="plc-add-card-text">${esc(tr('Erste Steuerung (CPU) anlegen', 'Create First Controller (CPU)'))}</span>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  } else {
+    html += `
+      <div class="plc-module-card plc-module-add-card"
+           role="button" tabindex="0"
+           data-add-module-prompt="${esc(rackId)}"
+           title="${esc(tr('Baugruppe zu diesem Rack hinzufügen', 'Add module to this rack'))}">
+        <div class="plc-add-card-inner">
+          <span class="plc-add-card-icon">+</span>
+          <span class="plc-add-card-text">${esc(tr('Baugruppe hinzufügen…', 'Add Module…'))}</span>
+        </div>
+      </div>
+    `;
+  }
 
   html += `
       </div>

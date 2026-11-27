@@ -3,6 +3,7 @@ import {
   automationData,
   controllerLabel,
   editAutomation,
+  plcAddress,
   type PlcController,
   type PlcModule,
   type PlcChannel,
@@ -14,7 +15,7 @@ import {escapeSvg as esc} from '../../model/ImportedDrawing';
 import {tr} from '../../i18n';
 import {renderPlcRackVisualizer} from './PlcRackVisualizer';
 import {renderPlcSignalMatrix} from './PlcSignalMatrix';
-import {PLC_MODULE_TEMPLATES, instantiatePlcModuleTemplate} from './PlcQuickTemplates';
+import {PLC_MODULE_TEMPLATES, calculateNextModulePlacement, instantiatePlcModuleTemplate} from './PlcQuickTemplates';
 
 export interface PlcHardwareWorkspaceCallbacks {
   onUpdateProject: (p: Project) => void;
@@ -114,7 +115,7 @@ export class PlcHardwareWorkspace {
             </button>
           </div>
           <div class="plc-hw-tree">
-            ${this.renderTree(data, issues, racks)}
+            ${this.renderTree(data, issues)}
           </div>
         </aside>
 
@@ -214,7 +215,7 @@ export class PlcHardwareWorkspace {
     `;
   }
 
-  private renderTree(data: ReturnType<typeof automationData>, issues: AutomationIssue[], racks: string[]): string {
+  private renderTree(data: ReturnType<typeof automationData>, issues: AutomationIssue[]): string {
     if (!data.controllers.length) {
       return `<p class="auto-muted" style="padding:10px">${esc(tr('Noch keine Steuerungen vorhanden.', 'No controllers created yet.'))}</p>`;
     }
@@ -223,6 +224,9 @@ export class PlcHardwareWorkspace {
       const isSelectedCpu = this.selectedControllerId === c.id;
       const cIssues = issues.filter(i => i.entity === 'controllers' && i.recordId === c.id);
       const cModules = data.modules.filter(m => m.controllerId === c.id);
+      const cRacks = [...new Set(['0', ...cModules.map(m => m.rack || '0')])].sort((a, b) =>
+        a.localeCompare(b, undefined, {numeric: true})
+      );
 
       return `
         <div class="plc-tree-controller ${isSelectedCpu ? 'is-active-cpu' : ''}">
@@ -233,7 +237,7 @@ export class PlcHardwareWorkspace {
           </div>
           
           <div class="plc-tree-racks">
-            ${racks.map(rack => {
+            ${cRacks.map(rack => {
               const isRackActive = isSelectedCpu && this.selectedRackId === rack;
               const rackMods = cModules.filter(m => (m.rack || '0') === rack);
 
@@ -458,7 +462,7 @@ export class PlcHardwareWorkspace {
 
     return `
       <div class="modal-backdrop plc-binding-modal-backdrop" data-hw-action="close-binding-modal">
-        <div class="plc-binding-modal" onclick="event.stopPropagation()">
+        <div class="plc-binding-modal">
           <header class="plc-binding-modal-header">
             <h4>${esc(tr('Schaltplan-Pin zuordnen', 'Assign Schematic Pin'))}</h4>
             <button class="btn-close" data-hw-action="close-binding-modal">×</button>
@@ -575,6 +579,14 @@ export class PlcHardwareWorkspace {
         return;
       }
 
+      // Rack Visualizer - Pin Dot click (check BEFORE module card so pin LED clicks aren't swallowed)
+      const selectChannel = target.closest<HTMLElement>('[data-select-channel]');
+      if (selectChannel) {
+        const chanId = selectChannel.dataset.selectChannel!;
+        this.selectChannel(chanId);
+        return;
+      }
+
       // Rack Visualizer - Module Card click
       const selectModule = target.closest<HTMLElement>('[data-select-module]');
       if (selectModule) {
@@ -583,19 +595,12 @@ export class PlcHardwareWorkspace {
         return;
       }
 
-      // Rack Visualizer - Pin Dot click
-      const selectChannel = target.closest<HTMLElement>('[data-select-channel]');
-      if (selectChannel) {
-        const chanId = selectChannel.dataset.selectChannel!;
-        this.selectChannel(chanId);
-        return;
-      }
-
       // Rack Visualizer - Add Module prompt slot
       const addPrompt = target.closest<HTMLElement>('[data-add-module-prompt]');
       if (addPrompt) {
         this.templateMenuOpen = true;
         root.querySelector('.plc-template-dropdown-menu')?.classList.add('is-open');
+        root.querySelector('.plc-template-dropdown-wrap')?.scrollIntoView({block: 'nearest'});
         return;
       }
 
@@ -643,7 +648,10 @@ export class PlcHardwareWorkspace {
       }
 
       // Close binding modal
-      if (target.closest('[data-hw-action="close-binding-modal"]')) {
+      if (
+        target.closest('button[data-hw-action="close-binding-modal"]') ||
+        target.classList.contains('plc-binding-modal-backdrop')
+      ) {
         this.bindingModalChannelId = undefined;
         this.callbacks.onUpdateProject(this.getProject());
         return;
@@ -903,11 +911,7 @@ export class PlcHardwareWorkspace {
       return;
     }
 
-    const d = automationData(project);
-    const existingModules = d.modules.filter(m => m.controllerId === this.selectedControllerId && (m.rack || '0') === this.selectedRackId);
-    const nextSlot = String(existingModules.length + 1);
-    const controller = d.controllers.find(c => c.id === this.selectedControllerId);
-    const nextBmk = `${controller?.bmk || '-KF1'}.${nextSlot}`;
+    const {nextSlot, nextBmk} = calculateNextModulePlacement(project, this.selectedControllerId, this.selectedRackId);
 
     const newModule: PlcModule = {
       id: crypto.randomUUID(),
@@ -935,17 +939,56 @@ export class PlcHardwareWorkspace {
     if (!this.selectedModuleId) return;
     const project = this.getProject();
     const d = automationData(project);
+    const mod = d.modules.find(m => m.id === this.selectedModuleId);
+    if (!mod) return;
+
     const modChannels = d.channels.filter(c => c.moduleId === this.selectedModuleId);
-    const nextNum = String(modChannels.length + 1);
+    const kindCount: Record<'DI' | 'DO' | 'AI' | 'AO', number> = {DI: 0, DO: 0, AI: 0, AO: 0};
+    for (const ch of modChannels) {
+      if (ch.kind in kindCount) kindCount[ch.kind]++;
+    }
+    let kind: 'DI' | 'DO' | 'AI' | 'AO' = 'DI';
+    let maxCount = 0;
+    for (const k of ['DI', 'DO', 'AI', 'AO'] as const) {
+      if (kindCount[k] > maxCount) {
+        maxCount = kindCount[k];
+        kind = k;
+      }
+    }
+
+    let chNum = 1;
+    while (modChannels.some(c => c.kind === kind && c.number === String(chNum))) chNum++;
+    const nextNum = String(chNum);
+
+    const area: 'I' | 'Q' = kind === 'DI' || kind === 'AI' ? 'I' : 'Q';
+    const cpuModuleIds = new Set(d.modules.filter(m => m.controllerId === mod.controllerId).map(m => m.id));
+    const existingRanges = d.channels
+      .filter(c => cpuModuleIds.has(c.moduleId))
+      .map(c => plcAddress(c.address))
+      .filter((a): a is NonNullable<ReturnType<typeof plcAddress>> => !!a && a.area === area);
+
+    const overlaps = (start: number, end: number) =>
+      existingRanges.some(r => start < r.end && end > r.start);
+
+    let address: string;
+    if (kind === 'AI' || kind === 'AO') {
+      let byte = 64;
+      while (overlaps(byte * 8, byte * 8 + 16)) byte += 2;
+      address = `%${area}W${byte}`;
+    } else {
+      let bitIndex = 0;
+      while (overlaps(bitIndex, bitIndex + 1)) bitIndex++;
+      address = `%${area}${Math.floor(bitIndex / 8)}.${bitIndex % 8}`;
+    }
 
     const newChannel: PlcChannel = {
       id: crypto.randomUUID(),
       moduleId: this.selectedModuleId,
       number: nextNum,
-      kind: 'DI',
-      address: `%I0.${modChannels.length % 8}`,
+      kind,
+      address,
       signalText: `${tr('Signal', 'Signal')} ${nextNum}`,
-      dataType: 'BOOL',
+      dataType: kind === 'AI' || kind === 'AO' ? 'INT' : 'BOOL',
       reserve: false,
     };
 
@@ -965,7 +1008,8 @@ export class PlcHardwareWorkspace {
   private createController() {
     const project = this.getProject();
     const d = automationData(project);
-    const num = d.controllers.length + 1;
+    let num = 1;
+    while (d.controllers.some(c => c.bmk === `-KF${num}`)) num++;
     const newCpu: PlcController = {
       id: crypto.randomUUID(),
       bmk: `-KF${num}`,

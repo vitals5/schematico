@@ -13,7 +13,6 @@ import {
 const surfaces: Record<string, string> = {
   cabinetLayoutDialog: "[data-cabinet-surface]",
   manufacturingReportDialog: "[data-report-preview]",
-  automationDialog: "[data-visual]",
   connectorNavigator: "[data-visual]",
   connectionNavigator: "[data-visual]",
   wiringDialog: "[data-tc-visual]",
