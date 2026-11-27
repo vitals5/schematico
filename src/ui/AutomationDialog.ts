@@ -1,141 +1,424 @@
 import './AutomationWorkspace.css';
-import {automationVisuals} from './AutomationVisuals';
 import {AutomationMlDialog} from './AutomationMlDialog';
-import {decodeKnxGroupXml,previewKnxGroupXml,exportKnxGroupXml,knxXmlMaxBytes,type KnxXmlPreview} from '../model/KnxXmlExchange';
-import {exportAutomationExchange,previewAutomationExchange,automationExchangeMaxBytes,automationExchangeIssueReport,type AutomationExchangePreview} from '../model/AutomationExchange';
+import {decodeKnxGroupXml, previewKnxGroupXml, exportKnxGroupXml, knxXmlMaxBytes} from '../model/KnxXmlExchange';
+import {exportAutomationExchange, previewAutomationExchange, automationExchangeMaxBytes, automationExchangeIssueReport, type AutomationExchangePreview} from '../model/AutomationExchange';
 import type {Project} from '../model/types';
-import {busProtocols,busProtocolHelp,isLoxone,isKnx} from '../model/BusProfiles';
-import {automationData,controllerLabel,editAutomation,inspectAutomation,type AutomationEntity,type AutomationEdit,type AutomationIssue} from '../model/Automation';
-import {automationPlan,automationCsv} from '../reports/AutomationPlan';
+import {automationData, inspectAutomation, type AutomationIssue} from '../model/Automation';
+import {automationPlan, automationCsv} from '../reports/AutomationPlan';
 import {automationPlanPdf} from '../export/AutomationPlanPdf';
 import {ProjectIndex} from '../model/ProjectIndex';
 import {projectRevision} from '../layout/types';
 import {escapeSvg as esc} from '../model/ImportedDrawing';
-import {bindArticleModalKeys,focusArticleModal} from './ArticleModal';
+import {bindArticleModalKeys, focusArticleModal} from './ArticleModal';
 import {finishEngineeringDialog} from './EngineeringDialog';
-import {downloadArticleFile,articleError} from './ArticleCatalogDialog';
+import {downloadArticleFile, articleError} from './ArticleCatalogDialog';
 import {tr} from '../i18n';
-const titles = (): Record<AutomationEntity, string> => ({
-  controllers: tr('CPUs / Steuerungen', 'CPUs / Controllers'),
-  modules: tr('Baugruppen', 'Modules'),
-  channels: tr('E/A-Kanäle', 'I/O Channels'),
-  nodes: tr('Busteilnehmer', 'Bus Nodes'),
-  links: tr('Busverbindungen / Funkzuordnungen', 'Bus Links / Wireless Assignments'),
-  knxGroups: tr('KNX-Gruppenadressen', 'KNX Group Addresses'),
-  knxObjects: tr('KNX-Kommunikationsobjekte', 'KNX Communication Objects'),
-});
-const schemas = (): Record<AutomationEntity, [string, string, string?][]> => ({
-  controllers: [['bmk', tr('CPU-BMK', 'CPU DT')], ['plant', tr('Anlage', 'Plant')], ['location', tr('Ort', 'Location')], ['description', tr('Beschreibung', 'Description')]],
-  modules: [['controllerId', 'CPU', 'controller'], ['rack', 'Rack'], ['slot', tr('Steckplatz', 'Slot')], ['bmk', tr('Baugruppen-BMK', 'Module DT')], ['description', tr('Beschreibung', 'Description')]],
-  channels: [['moduleId', tr('Baugruppe', 'Module'), 'module'], ['number', tr('Kanalnummer', 'Channel No.')], ['kind', tr('Typ', 'Type'), 'DI|DO|AI|AO'], ['address', tr('E/A-Adresse', 'I/O Address')], ['signalText', tr('Signaltext', 'Signal Text')], ['symbolicName', tr('Symbolischer SPS-Name (optional)', 'Symbolic PLC Name (optional)')], ['dataType', tr('SPS-Datentyp (optional)', 'PLC Data Type (optional)')], ['reserve', tr('Reserve', 'Spare'), 'check']],
-  nodes: [['name', tr('Teilnehmername', 'Node Name')], ['network', tr('Netzname', 'Network Name')], ['protocol', tr('Protokoll', 'Protocol'), busProtocols.join('|')], ['address', tr('Busadresse / individuelle KNX-Adresse', 'Bus Address / Individual KNX Address')], ['ipAddress', tr('IP-Adresse (optional)', 'IP Address (optional)')], ['interfaceRole', tr('Loxone-Rolle', 'Loxone Role'), 'device|interface'], ['interfaceId', tr('Schnittstelle / Tree-Zweig', 'Interface / Tree Branch'), 'interface?'], ['interfaceProfile', tr('Schnittstellenprofil', 'Interface Profile'), 'generic|air-base'], ['capacity', tr('Teilnehmergrenze laut Datenblatt (optional)', 'Node Capacity per Datasheet (optional)'), 'number'], ['controllerId', tr('CPU (optional)', 'CPU (optional)'), 'controller?']],
-  links: [['from', tr('Von Teilnehmer', 'From Node'), 'node'], ['fromPort', tr('Von Port', 'From Port')], ['to', tr('Zu Teilnehmer', 'To Node'), 'node'], ['toPort', tr('Zu Port', 'To Port')], ['lengthM', tr('Kabellänge in m (optional)', 'Cable Length in m (optional)'), 'number']],
-  knxGroups: [['network', tr('KNX-Netzname', 'KNX Network Name')], ['name', tr('Gruppenname', 'Group Name')], ['address', tr('Gruppenadresse (z. B. 1/2/3 oder 1/515)', 'Group Address (e.g. 1/2/3 or 1/515)')], ['dpt', tr('Datenpunkttyp (optional, z. B. 1.001)', 'Datapoint Type (optional, e.g. 1.001)')], ['description', tr('Beschreibung (optional)', 'Description (optional)')]],
-  knxObjects: [['nodeId', tr('KNX-Teilnehmer', 'KNX Node'), 'knxnode'], ['number', tr('Objektnummer', 'Object No.')], ['name', tr('Objektname', 'Object Name')], ['groupId', tr('Gruppenadresse', 'Group Address'), 'group'], ['dpt', tr('Datenpunkttyp (optional)', 'Datapoint Type (optional)')], ['direction', tr('Richtung', 'Direction'), 'send|receive|both']],
-});
-export class AutomationDialog{
- private el=document.createElement('div');private source!:Project;private revision='';private entity:AutomationEntity='controllers';private search='';private offset=0;private exchangeRequest=0;private knxOptionRevision='';private knxInput?:{xml:string;name:string};private selectedId?:string;private preview?:Project;private overview=true;private view:'graphic'|'table'='graphic';private issuesOnly=false;private controllerId='';private network='';private groupId='';private issues:AutomationIssue[]=[];private plan:ReturnType<typeof automationPlan>=[];private index!:ProjectIndex;
- private rows:{id:string;cells:string[];binding?:{pageId:string;componentId:string}}[]=[];
- constructor(private getProject:()=>Project,private onApply:(p:Project)=>void,private navigate:(pageId:string,componentId:string)=>void){}
- show(){if(document.getElementById('automationDialog'))return;this.el.id='automationDialog';this.el.className='modal-backdrop';this.el.style.cssText='position:fixed;inset:0;z-index:4200;display:flex;align-items:center;justify-content:center;background:#000a';document.body.append(this.el);bindArticleModalKeys(this.el,()=>this.el.remove());for(const name of ['input','change'])this.el.addEventListener(name,e=>{if((e.target as Element).closest('[data-knx-options]')){const revision=this.knxOptions();if(revision===this.knxOptionRevision)return;this.knxOptionRevision=revision;}if((e.target as Element).closest('[data-editor],[data-knx-options]'))this.exchangeRequest++;if(this.preview&&(e.target as Element).closest('[data-editor],[data-knx-options]')){this.preview=undefined;this.applyButton().disabled=true;this.el.querySelector('[data-preview]')!.textContent=tr('Eingaben geändert. Bitte erneut prüfen.', 'Inputs changed. Please re-check.');}});this.refresh();}
- private applyButton(){return this.el.querySelector<HTMLButtonElement>('[data-apply]')!;}
- private error(e:unknown){this.el.querySelector('[data-error]')!.textContent=e instanceof Error?e.message:String(e);}
- private refresh(){this.knxInput=undefined;this.source=structuredClone(this.getProject());this.revision=projectRevision(this.source);this.index=new ProjectIndex(this.source);this.issues=inspectAutomation(this.source,this.index);this.plan=automationPlan(this.source,{index:this.index,issues:this.issues});this.preview=undefined;this.offset=0;this.render();}
- private buildRows(){const d=automationData(this.source),issues=this.issues,plan=this.plan;const planMap=new Map(plan.map(r=>[JSON.stringify([r.entity,r.id]),r]));
-  this.rows=d[this.entity].map((r:any)=>{const p=planMap.get(JSON.stringify([this.entity,r.id]));let cells:string[];
-   if(this.entity==='controllers')cells=[controllerLabel(r),'CPU','',r.description,''];
-   else if(this.entity==='modules')cells=[r.bmk,(()=>{const c=d.controllers.find(c=>c.id===r.controllerId);return c?controllerLabel(c):'?';})(),r.rack+'/'+r.slot,r.description,''];
-   else if(this.entity==='channels')cells=[r.number,p?.cells[1]+' / '+p?.cells[2],[r.kind,r.dataType,r.address].filter(Boolean).join(' · '),[r.symbolicName,r.signalText].filter(Boolean).join(' · '),[p?.cells[8],p?.cells[9],p?.cells[10],p?.cells[11]].filter(Boolean).join(' · ')];
-   else if(this.entity==='nodes')cells=[r.name,r.network+' / '+r.protocol,[r.address,r.ipAddress].filter(Boolean).join(' / '),p?.cells[7]??'',[p?.cells[8],p?.cells[9]||tr('Nicht zugeordnet','Unassigned')].filter(Boolean).join(' · ')];
-   else if(this.entity==='knxGroups')cells=[r.name,r.network,r.address,r.description??'',r.dpt];
-   else if(this.entity==='knxObjects')cells=[[r.number,r.name].filter(Boolean).join(' · '),d.nodes.find(n=>n.id===r.nodeId)?.name??'?',d.knxGroups.find(g=>g.id===r.groupId)?.address??'?',r.dpt,p?.cells[8]??''];
-   else cells=[d.nodes.find(n=>n.id===r.from)?.name??'?',d.nodes.find(n=>n.id===r.to)?.name??'?',p?.cells[4]??'',p?.cells[8]??'',''];
-   cells.push(issues.filter(i=>i.entity===this.entity&&i.recordId===r.id).map(i=>i.message).join('; '));return {id:r.id,cells,binding:this.entity==='channels'?r.signal:this.entity==='nodes'?r.binding:this.entity==='knxObjects'?d.nodes.find(n=>n.id===r.nodeId)?.binding:undefined};
-  });
- }
- private filtered(){const words=this.search.toLocaleLowerCase().split(/\s+/).filter(Boolean);return this.rows.filter(r=>words.every(w=>r.cells.join(' ').toLocaleLowerCase().includes(w))&&(!this.issuesOnly||!!r.cells[5]));}
- private render(){this.selectedId=undefined;this.exchangeRequest++;this.buildRows();const tmap=titles(),data=automationData(this.source),head=this.overview?tr('Projektübersicht','Project Overview'):tmap[this.entity],hint=this.overview?tr('Steuerungen, Netze und Zuordnungen auf einen Blick.','Controllers, networks, and assignments at a glance.'):['controllers','modules','channels'].includes(this.entity)?tr('Hardwarestruktur und Signalanschlüsse. Karte anklicken, Eigenschaften bearbeiten.','Hardware structure and signal pins. Click a card to edit properties.'):this.entity==='nodes'||this.entity==='links'?tr('Dokumentierte Teilnehmer und Verbindungen. Elemente anklicken für Details.','Documented nodes and links. Click elements for details.'):tr('Gruppenadressen und logische Kommunikationsverknüpfungen.','Group addresses and logical communication links.');
-  const nav=(entity:AutomationEntity)=>`<button class="auto-nav-item" data-entity-nav="${entity}" aria-current="${!this.overview&&this.entity===entity?'page':'false'}">${esc(tmap[entity])}${this.issues.some(i=>i.entity===entity)?`<span class="auto-nav-alert" title="${esc(tr('Konfigurationshinweise','Configuration warnings'))}"></span>`:''}<strong>${data[entity].length}</strong></button>`;
-  this.el.innerHTML=`<section role="dialog" aria-modal="true"><h2>${esc(tr('SPS- und Busprojektierung', 'PLC & Bus Engineering'))}</h2><div class="auto-workspace"><nav class="auto-sidebar" aria-label="${esc(tr('Projektierungsbereiche','Engineering sections'))}"><button class="auto-nav-item" data-overview aria-current="${this.overview?'page':'false'}">${esc(tr('Übersicht','Overview'))}</button><h3>${esc(tr('SPS','PLC'))}</h3>${(['controllers','modules','channels'] as AutomationEntity[]).map(nav).join('')}<h3>${esc(tr('Busnetze','Bus Networks'))}</h3>${(['nodes','links'] as AutomationEntity[]).map(nav).join('')}<h3>KNX</h3>${(['knxGroups','knxObjects'] as AutomationEntity[]).map(nav).join('')}</nav><main class="auto-main"><label class="auto-mobile-nav">${esc(tr('Bereich','Section'))}<select class="form-input" data-entity aria-label="${esc(tr('Bereich','Section'))}"><option value="overview" ${this.overview?'selected':''}>${esc(tr('Übersicht','Overview'))}</option>${Object.entries(tmap).map(([id,title])=>`<option value="${id}" ${!this.overview&&id===this.entity?'selected':''}>${esc(title)}</option>`).join('')}</select></label><div class="auto-workspace-heading"><div><h3>${esc(head)}</h3><p>${esc(hint)}</p></div><details class="eng-tools-menu auto-tools"><summary>${esc(tr('Daten & Berichte','Data & Reports'))}</summary><div class="eng-tools-items"><span class="auto-tools-label">${esc(tr('SPS-Vorlagen','PLC Templates'))}</span><button class="btn" data-aml>AutomationML…</button><span class="auto-tools-label">${esc(this.overview?tr('Steuerungen (Übersicht)','Controllers (Overview)'):tr('Aktueller Bereich / Suchfilter','Current Section / Filter'))}</span><button class="btn" data-exchange-export>${esc(tr('Bearbeitungs-CSV exportieren','Export Editable CSV'))}</button><button class="btn" data-exchange-import>${esc(tr('Bearbeitungs-CSV importieren','Import Editable CSV'))}</button><button class="btn" data-csv>${esc(tr('CSV-Übersicht exportieren','Export CSV Overview'))}</button><button class="btn" data-pdf>${esc(tr('PDF-Übersicht exportieren','Export PDF Overview'))}</button><span class="auto-tools-label">${esc(tr('Projektstand','Project State'))}</span><button class="btn" data-refresh>${esc(tr('Aktualisieren','Refresh'))}</button></div></details><input type="file" data-exchange-file accept=".csv,text/csv" hidden></div><div class="auto-toolbar" ${this.overview?'hidden':''}><input class="form-input" data-search placeholder="${esc(tr('Name, Adresse oder Signaltext suchen…','Search name, address, or signal text…'))}" aria-label="${esc(tr('Projektierungsdaten suchen','Search engineering data'))}" value="${esc(this.search)}"><label class="eng-check"><input type="checkbox" data-only-issues ${this.issuesOnly?'checked':''}> ${esc(tr('Nur Hinweise','Only warnings'))}</label><div class="auto-view-switch" role="group" aria-label="${esc(tr('Darstellung','View'))}"><button data-view="graphic" aria-pressed="${this.view==='graphic'}">${esc(tr('Grafik','Graphic'))}</button><button data-view="table" aria-pressed="${this.view==='table'}">${esc(tr('Liste','Table'))}</button></div><button class="btn" data-new>${esc(tr('Neu','New'))}</button></div>${this.entity==='knxGroups'&&!this.overview?`<details class="auto-knx-exchange"><summary>${esc(tr('KNX-XML austauschen','Exchange KNX XML'))}</summary><fieldset data-knx-tools><legend>${esc(tr('KNX-Gruppenadress-XML','KNX Group Address XML'))}</legend><div data-knx-options style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label>${esc(tr('Zielnetz','Target Network'))} <input class="form-input" data-knx-network list="knxNetworks" value="${esc(this.knxNetworks().length===1?this.knxNetworks()[0]:this.knxNetworks().length?'':'KNX')}"></label><datalist id="knxNetworks">${this.knxNetworks().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist><label><input type="checkbox" data-knx-update> ${esc(tr('Vorhandene Adressen aktualisieren','Update existing addresses'))}</label><label><input type="checkbox" data-knx-ranges checked> ${esc(tr('Bereiche beibehalten (Export)','Preserve ranges (Export)'))}</label></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" data-knx-import>${esc(tr('ETS-XML importieren','Import ETS XML'))}</button><button class="btn" data-knx-check>${esc(tr('Import erneut prüfen','Re-check Import'))}</button><button class="btn" data-knx-export>${esc(tr('ETS-XML exportieren','Export ETS XML'))}</button><input type="file" data-knx-file accept=".xml,application/xml,text/xml" hidden></div><p>${esc(tr('Gruppenadressen, Beschreibungen und XML-Quelldaten. DPT-Sequenzen bleiben erhalten; Geräte und Kommunikationsobjekte werden nicht automatisch angelegt.','Group addresses, descriptions, and XML source data. DPT sequences are preserved; devices and communication objects are not created automatically.'))}</p></fieldset></details>`:''}<div class="auto-content"><div class="auto-primary"><div data-visual ${!this.overview&&this.view==='table'?'hidden':''}></div><div data-list ${this.overview||this.view!=='table'?'hidden':''}><div class="auto-pager"><span data-count role="status"></span><button class="btn" data-prev>${esc(tr('Zurück','Previous'))}</button><button class="btn" data-next>${esc(tr('Weiter','Next'))}</button></div><div class="auto-table-wrap"><table><thead><tr>${[tr('Bezeichnung / Kanal','Name / Channel'),tr('Zuordnung','Assignment'),tr('Adresse / Position','Address / Position'),tr('Signaltext / Beschreibung','Signal Text / Description'),tr('Anschlüsse / Status','Pins / Status'),tr('Hinweise','Warnings'),tr('Aktionen','Actions')].map(s=>`<th>${esc(s)}</th>`).join('')}</tr></thead><tbody data-rows></tbody></table></div></div></div><aside class="auto-properties" hidden><header><h3>${esc(tr('Eigenschaften','Properties'))}</h3><button class="btn" data-editor-close aria-label="${esc(tr('Eigenschaften schließen','Close properties'))}">×</button></header><div data-editor></div></aside></div><div data-preview class="auto-preview" role="status"></div><p data-error role="alert" style="color:#fca5a5;white-space:pre-wrap"></p></main></div><footer><span class="auto-footer-note">${esc(tr('Grafik: gespeicherte Projektierungsdaten · Änderungen erst mit Übernehmen','Graphic: stored engineering data · Changes take effect on Apply'))}</span><button class="btn" data-close>${esc(tr('Schließen','Close'))}</button><button class="btn btn-primary" data-apply disabled>${esc(tr('Übernehmen','Apply'))}</button></footer></section>`;
-  const q=(s:string)=>this.el.querySelector<HTMLElement>(s)!;this.knxOptionRevision=this.knxOptions();
-  q('[data-entity]').onchange=e=>this.go((e.target as HTMLSelectElement).value as AutomationEntity|'overview');for(const button of this.el.querySelectorAll<HTMLButtonElement>('[data-entity-nav]'))button.onclick=()=>this.go(button.dataset.entityNav as AutomationEntity);q('[data-overview]').onclick=()=>this.go('overview');q('[data-search]').oninput=e=>{this.search=(e.target as HTMLInputElement).value;this.offset=0;this.renderRows();this.renderVisuals();};
-  q('[data-new]').onclick=()=>this.editor();q('[data-editor-close]').onclick=()=>this.closeEditor();q('[data-only-issues]').onchange=e=>{this.issuesOnly=(e.target as HTMLInputElement).checked;this.offset=0;this.renderRows();this.renderVisuals();};for(const b of this.el.querySelectorAll<HTMLButtonElement>('[data-view]'))b.onclick=()=>{this.view=b.dataset.view as 'graphic'|'table';q('[data-visual]').hidden=this.view!=='graphic';q('[data-list]').hidden=this.view!=='table';for(const button of this.el.querySelectorAll('[data-view]'))button.setAttribute('aria-pressed',String((button as HTMLElement).dataset.view===this.view));};q('[data-refresh]').onclick=()=>this.refresh();q('[data-close]').onclick=()=>this.el.remove();q('[data-prev]').onclick=()=>{this.offset=Math.max(0,this.offset-100);this.renderRows();};q('[data-next]').onclick=()=>{this.offset+=100;this.renderRows();};
-  const exportRows=()=>{const d=automationData(this.source),visible=new Set(this.filtered().map(r=>r.id));return this.plan.filter(r=>{
-    if(this.entity==='controllers'){if(r.entity==='controllers')return visible.has(r.id);if(r.entity==='modules')return d.modules.some(m=>m.id===r.id&&visible.has(m.controllerId));if(r.entity==='channels')return d.channels.some(c=>c.id===r.id&&d.modules.some(m=>m.id===c.moduleId&&visible.has(m.controllerId)));return false;}
-    if(this.entity==='modules')return r.entity==='modules'?visible.has(r.id):r.entity==='channels'&&d.channels.some(c=>c.id===r.id&&visible.has(c.moduleId));
-    return r.entity===this.entity&&visible.has(r.id);
-  });};
-  if(this.entity==='knxGroups'&&!this.overview){
-   const network=()=> (q('[data-knx-network]') as HTMLInputElement).value;
-   const check=()=>{if(!this.knxInput){this.error(tr('Zuerst eine Gruppenadress-XML-Datei einlesen.', 'Load a group address XML file first.'));return;}this.exchangeRequest++;this.preview=undefined;this.applyButton().disabled=true;try{this.knxPreview(previewKnxGroupXml(this.source,this.knxInput.xml,network(),(q('[data-knx-update]') as HTMLInputElement).checked),this.knxInput.name);this.error('');}catch(e){this.error(e);}};
-   q('[data-knx-import]').onclick=()=>q('[data-knx-file]').click();q('[data-knx-check]').onclick=check;
-   q('[data-knx-file]').onchange=async()=>{const input=q('[data-knx-file]') as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;const generation=++this.exchangeRequest;this.preview=undefined;this.applyButton().disabled=true;q('[data-editor]').innerHTML='';q('[data-editor]').closest('.auto-properties')!.setAttribute('hidden','');q('.auto-content').classList.remove('has-editor');q('[data-preview]').textContent=tr('Gruppenadress-XML wird eingelesen…', 'Reading group address XML…');try{if(file.size>knxXmlMaxBytes)throw new Error(tr('Datei ist größer als 4 MiB.', 'File exceeds 4 MiB.'));const xml=decodeKnxGroupXml(new Uint8Array(await file.arrayBuffer()));if(!this.el.isConnected||generation!==this.exchangeRequest)return;this.knxInput={xml,name:file.name};check();}catch(e){if(this.el.isConnected&&generation===this.exchangeRequest){q('[data-preview]').textContent=tr('XML-Import konnte nicht vorbereitet werden.', 'Could not prepare XML import.');this.error(e);}}};
-   q('[data-knx-export]').onclick=()=>{try{const target=network().trim();if(!target)throw new Error(tr('KNX-Zielnetz für den Export angeben.', 'Specify a target KNX network for export.'));const result=exportKnxGroupXml(this.source,target,new Set(this.filtered().map(r=>r.id)),(q('[data-knx-ranges]') as HTMLInputElement).checked);downloadArticleFile(result.xml,'schematico-knx-gruppenadressen.xml','application/xml;charset=utf-8');this.el.querySelector('[data-error]')!.textContent=result.notes.join('\n');}catch(e){this.error(e);}};
+
+import {PlcHardwareWorkspace} from './automation/PlcHardwareWorkspace';
+import {BusTopologyWorkspace} from './automation/BusTopologyWorkspace';
+import {KnxRouterWorkspace} from './automation/KnxRouterWorkspace';
+
+export type AutomationWorkspaceTab = 'plc' | 'bus' | 'knx';
+
+export class AutomationDialog {
+  private el = document.createElement('div');
+  private workingProject!: Project;
+  private initialRevision = '';
+  private currentRevision = '';
+  private activeTab: AutomationWorkspaceTab = 'plc';
+  private issues: AutomationIssue[] = [];
+  private plan: ReturnType<typeof automationPlan> = [];
+  private index!: ProjectIndex;
+
+  private plcWorkspace?: PlcHardwareWorkspace;
+  private busWorkspace?: BusTopologyWorkspace;
+  private knxWorkspace?: KnxRouterWorkspace;
+
+  constructor(
+    private getProject: () => Project,
+    private onApply: (p: Project) => void,
+    private navigate: (pageId: string, componentId: string) => void
+  ) {}
+
+  show() {
+    if (document.getElementById('automationDialog')) return;
+    this.el.id = 'automationDialog';
+    this.el.className = 'modal-backdrop';
+    this.el.style.cssText = 'position:fixed;inset:0;z-index:4200;display:flex;align-items:center;justify-content:center;background:#000a';
+    document.body.append(this.el);
+
+    bindArticleModalKeys(this.el, () => this.handleClose());
+    this.refresh();
   }
-  q('[data-aml]').onclick=()=>new AutomationMlDialog(this.getProject,this.onApply,()=>{if(this.el.isConnected){this.refresh();focusArticleModal(this.el);}}).show();
-  q('[data-exchange-export]').onclick=async()=>{const generation=this.exchangeRequest;try{const content=await exportAutomationExchange(this.source,this.entity,new Set(this.filtered().map(r=>r.id)));if(this.el.isConnected&&generation===this.exchangeRequest)downloadArticleFile(content,`schematico-bearbeitung-${this.entity}.csv`,'text/csv;charset=utf-8');}catch(e){if(this.el.isConnected&&generation===this.exchangeRequest)this.error(e);}};
-  q('[data-exchange-import]').onclick=()=>q('[data-exchange-file]').click();
-  q('[data-exchange-file]').onchange=async()=>{const input=q('[data-exchange-file]') as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;const generation=++this.exchangeRequest;this.preview=undefined;this.applyButton().disabled=true;q('[data-editor]').innerHTML='';q('[data-editor]').closest('.auto-properties')!.setAttribute('hidden','');q('.auto-content').classList.remove('has-editor');q('[data-preview]').textContent=tr('CSV wird eingelesen und geprüft…', 'Reading and validating CSV…');this.error('');try{if(file.size>automationExchangeMaxBytes)throw new Error(tr('Datei ist größer als 4 MiB.', 'File exceeds 4 MiB.'));const preview=await previewAutomationExchange(this.source,await file.text());if(!this.el.isConnected||generation!==this.exchangeRequest)return;if(preview.entity&&preview.entity!==this.entity){this.entity=preview.entity;this.overview=false;this.render();}this.exchangePreview(preview,file.name);}catch(e){if(this.el.isConnected&&generation===this.exchangeRequest){q('[data-preview]').textContent=tr('Import konnte nicht vorbereitet werden.', 'Could not prepare import.');this.error(e);}}};
-  q('[data-csv]').onclick=()=>downloadArticleFile(automationCsv(exportRows()),'schematico-sps-bus.csv','text/csv;charset=utf-8');q('[data-pdf]').onclick=()=>{try{automationPlanPdf(exportRows(),this.source.name,this.source).save('schematico-sps-bus.pdf');}catch(e){q('[data-error]').textContent=articleError(e);}};
-  q('[data-rows]').onclick=e=>{const button=(e.target as Element).closest<HTMLButtonElement>('[data-edit],[data-remove],[data-jump]');if(!button)return;const row=this.rows[Number(button.dataset.edit??button.dataset.remove??button.dataset.jump)];if(button.hasAttribute('data-jump')&&row.binding){this.el.remove();this.navigate(row.binding.pageId,row.binding.componentId);}else if(button.hasAttribute('data-remove'))this.stage({kind:'remove',entity:this.entity,id:row.id});else this.editor(automationData(this.source)[this.entity].find(r=>r.id===row.id));};
-  q('[data-apply]').onclick=()=>{try{if(!this.preview)return;if(projectRevision(this.getProject())!==this.revision)throw new Error(tr('Projekt wurde geändert. Bitte aktualisieren.', 'Project was modified. Please refresh.'));this.onApply(this.preview);this.refresh();}catch(e){this.error(e);}};
-  this.renderRows();this.renderVisuals();this.bindVisuals();this.el.querySelector('.auto-tools .eng-tools-items')?.addEventListener('click',e=>{if((e.target as Element).closest('button'))(this.el.querySelector('.auto-tools') as HTMLDetailsElement).open=false;});finishEngineeringDialog(this.el,{kind:'automation',description:tr('Hardware, Kanäle und Netze im Überblick', 'Hardware, channels, and networks at a glance'),wide:true,drawing:{project:this.getProject,navigate:this.navigate}});focusArticleModal(this.el);
- }
- private go(section:AutomationEntity|'overview'){this.exchangeRequest++;this.preview=undefined;this.search='';this.offset=0;this.overview=section==='overview';if(section!=='overview')this.entity=section;else this.issuesOnly=false;this.render();}
- private closeEditor(){this.exchangeRequest++;this.preview=undefined;this.applyButton().disabled=true;this.el.querySelector('[data-editor]')!.innerHTML='';this.el.querySelector('[data-preview]')!.innerHTML='';this.el.querySelector('.auto-content')!.classList.remove('has-editor');(this.el.querySelector('.auto-properties') as HTMLElement).hidden=true;this.markSelection();this.error('');}
- private markSelection(id?:string){this.selectedId=id;for(const el of this.el.querySelectorAll('[data-visual-id]'))el.classList.toggle('auto-selected',!!id&&(el as HTMLElement).dataset.visualId===id&&(el as HTMLElement).dataset.visualEntity===this.entity);}
- private renderVisuals(){this.el.querySelector('[data-visual]')!.innerHTML=automationVisuals(this.source,this.issues,{section:this.overview?'overview':this.entity,query:this.search,issuesOnly:this.issuesOnly,controllerId:this.controllerId,network:this.network,groupId:this.groupId});this.markSelection(this.selectedId);}
- private bindVisuals(){const root=this.el.querySelector<HTMLElement>('[data-visual]')!;
-  root.onchange=e=>{const el=e.target as HTMLSelectElement;if(el.hasAttribute('data-plc-controller'))this.controllerId=el.value;else if(el.hasAttribute('data-bus-network'))this.network=el.value;else if(el.hasAttribute('data-knx-group'))this.groupId=el.value;this.renderVisuals();};
-  root.onclick=e=>{const button=(e.target as Element).closest<HTMLElement>('[data-visual-entity],[data-visual-new],[data-workspace-section],[data-visual-network],[data-workspace-issues],[data-visual-knx-group],[data-visual-aml]');if(!button)return;
-   if(button.hasAttribute('data-workspace-section'))this.go(button.dataset.workspaceSection as AutomationEntity);
-   else if(button.hasAttribute('data-workspace-issues')){this.overview=false;this.entity=this.issues[0]?.entity??'controllers';this.issuesOnly=true;this.view='table';this.render();}
-   else if(button.hasAttribute('data-visual-network')){this.network=button.dataset.visualNetwork!;this.go('nodes');}
-   else if(button.hasAttribute('data-visual-knx-group')){this.groupId=button.dataset.visualKnxGroup!;this.go('knxObjects');}
-   else if(button.hasAttribute('data-visual-aml'))this.el.querySelector<HTMLButtonElement>('[data-aml]')!.click();
-   else if(button.hasAttribute('data-visual-new')){this.go(button.dataset.visualNew as AutomationEntity);this.editor();}
-   else {const entity=button.dataset.visualEntity as AutomationEntity,id=button.dataset.visualId!,data=automationData(this.source),matches=data[entity].filter(r=>r.id===id);if(matches.length!==1)return;this.entity=entity;this.overview=false;if(entity==='controllers')this.controllerId=id;else if(entity==='modules')this.controllerId=data.modules.find(m=>m.id===id)?.controllerId??'';else if(entity==='channels')this.controllerId=data.modules.find(m=>m.id===data.channels.find(c=>c.id===id)?.moduleId)?.controllerId??'';this.render();this.editor(matches[0]);}
-  };
-  root.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&(e.target as Element).matches('g[role=button]')){e.preventDefault();(e.target as Element).dispatchEvent(new MouseEvent('click',{bubbles:true}));}};
- }
- private renderRows(){const rows=this.filtered();this.offset=Math.min(this.offset,Math.max(0,Math.floor((rows.length-1)/100)*100));this.el.querySelector('[data-count]')!.textContent=`${rows.length} ${tr('Datensätze','records')} · ${rows.length?this.offset+1:0}–${Math.min(rows.length,this.offset+100)}`;(this.el.querySelector('[data-prev]') as HTMLButtonElement).disabled=!this.offset;(this.el.querySelector('[data-next]') as HTMLButtonElement).disabled=this.offset+100>=rows.length;this.el.querySelector('[data-rows]')!.innerHTML=rows.slice(this.offset,this.offset+100).map(r=>`<tr>${r.cells.map(s=>`<td style="padding:7px;max-width:250px;overflow-wrap:anywhere">${esc(s||'—')}</td>`).join('')}<td><button class="btn" data-edit="${this.rows.indexOf(r)}">${esc(tr('Bearbeiten','Edit'))}</button><button class="btn" data-remove="${this.rows.indexOf(r)}">${esc(tr('Entfernen','Delete'))}</button><button class="btn" data-jump="${this.rows.indexOf(r)}" ${r.binding?'':'disabled'}>${esc(tr('Zur Zeichnung','Go to Drawing'))}</button></td></tr>`).join('')||`<tr><td colspan="7">${esc(tr('Keine Datensätze. Mit „Neu“ beginnen.','No records. Start with "New".'))}</td></tr>`;}
- private stage(edit:AutomationEdit){this.exchangeRequest++;try{const tmap=titles(),smap=schemas();this.preview=editAutomation(this.source,edit);const before=automationData(this.source),after=automationData(this.preview),changed=(Object.keys(tmap) as AutomationEntity[]).filter(e=>before[e].length!==after[e].length),old=before[edit.entity].find(r=>r.id===(edit.kind==='save'?edit.value.id:edit.id)) as any;
-  const label=(type:string|undefined,value:any)=>type?.startsWith('controller')?before.controllers.find(v=>v.id===value)?.bmk??tr('Nicht zugeordnet','Unassigned'):type==='module'?before.modules.find(v=>v.id===value)?.bmk??'?':type==='node'||type==='knxnode'||type==='interface?'?before.nodes.find(v=>v.id===value)?.name??tr('Nicht zugeordnet','Unassigned'):type==='group'?before.knxGroups.find(v=>v.id===value)?.address??'?':type==='check'?value?tr('Ja','Yes'):tr('Nein','No'):value===undefined?'—':String(value);
-  const fields=edit.kind==='save'?smap[edit.entity].filter(([key])=>JSON.stringify(old?.[key])!==JSON.stringify((edit.value as any)[key])):[];
-  const bindText=(v:any)=>{if(!v)return tr('Nicht zugeordnet','Unassigned');const c=this.index.component(v.componentId,v.pageId);return [c?.component.bmk??v.componentId,c?.page.pageNumber?'/'+c.page.pageNumber:'',v.pinId??''].filter(Boolean).join(' · ');};
-  this.el.querySelector('[data-preview]')!.innerHTML=`<h3>${esc(tr('Änderungen prüfen','Review Changes'))}</h3><p>${esc(tr('Geprüfte Vorschau · Erst Übernehmen speichert.','Validated preview · Only Apply saves.'))}</p>`+ (changed.length?`<table><thead><tr><th>${esc(tr('Bereich','Section'))}</th><th>${esc(tr('Vorher','Before'))}</th><th>${esc(tr('Nachher','After'))}</th></tr></thead><tbody>`+changed.map(e=>`<tr><td>${esc(tmap[e])}</td><td>${before[e].length}</td><td>${after[e].length}</td></tr>`).join('')+'</tbody></table>':'')+(edit.kind==='remove'?`<p>${esc(tr('Entfernen einschließlich zugehöriger Kanäle, Busverbindungen bzw. KNX-Objektzuordnungen. Gezeichnete Symbole und Leitungen bleiben erhalten.','Removes associated channels, bus links, or KNX object assignments. Drawn symbols and wires remain intact.'))}</p>`:`<table><thead><tr><th>${esc(tr('Eigenschaft','Property'))}</th><th>${esc(tr('Vorher','Before'))}</th><th>${esc(tr('Nachher','After'))}</th></tr></thead><tbody>`+fields.map(([key,title,type])=>`<tr><td>${esc(title)}</td><td>${esc(label(type,old?.[key]))}</td><td>${esc(label(type,(edit.value as any)[key]))}</td></tr>`).join('')+(['signal','supply','common','binding'] as const).filter(key=>JSON.stringify(old?.[key])!==JSON.stringify((edit.value as any)[key])).map(key=>`<tr><td>${esc(({signal:tr('Signalanschluss','Signal Pin'),supply:tr('Versorgung','Power Supply'),common:tr('Bezug','Common / Reference'),binding:tr('Zeichnungszuordnung','Drawing Assignment')})[key])}</td><td>${esc(bindText(old?.[key]))}</td><td>${esc(bindText((edit.value as any)[key]))}</td></tr>`).join('')+'</tbody></table>');this.applyButton().disabled=false;this.error('');this.el.querySelector('[data-preview]')!.scrollIntoView({block:'nearest'});
- }catch(e){this.preview=undefined;this.applyButton().disabled=true;this.error(e);}}
- private editor(record?:any){if(this.overview){this.overview=false;this.render();}this.el.querySelector('.auto-content')!.classList.add('has-editor');(this.el.querySelector('.auto-properties') as HTMLElement).hidden=false;this.exchangeRequest++;this.preview=undefined;this.applyButton().disabled=true;this.el.querySelector('[data-preview]')!.innerHTML='';const tmap=titles(),smap=schemas(),d=automationData(this.source),root=this.el.querySelector<HTMLElement>('[data-editor]')!;
-  const options=(type:string)=>type.startsWith('controller')?d.controllers.map(c=>[c.id,controllerLabel(c)]):type==='module'?d.modules.map(m=>[m.id,(d.controllers.find(c=>c.id===m.controllerId)?controllerLabel(d.controllers.find(c=>c.id===m.controllerId)!):'?')+' / '+m.bmk+' · '+m.rack+'/'+m.slot]):['node','knxnode','interface?'].includes(type)?d.nodes.filter(n=>type==='node'||(type==='knxnode'?isKnx(n.protocol):n.interfaceRole==='interface'&&n.id!==record?.id)).map(n=>[n.id,n.network+' · '+n.name]):type==='group'?d.knxGroups.map(g=>[g.id,g.network+' · '+g.address+' · '+g.name]):type.split('|').map(v=>[v,({device:tr('Gerät / Extension','Device / Extension'),interface:tr('Schnittstelle / Tree-Zweig','Interface / Tree Branch'),generic:tr('Allgemein (Kapazität laut Datenblatt)','Generic (Capacity per Datasheet)'), 'air-base':tr('Air Base Extension (128 Geräte)','Air Base Extension (128 Devices)'),send:tr('Senden','Send'),receive:tr('Empfangen','Receive'),both:tr('Senden und Empfangen','Send and Receive')} as Record<string,string>)[v]??v]);
-  root.innerHTML=`<fieldset><legend>${esc(record?tr('Bearbeiten','Edit'):tr('Neu','New'))} · ${esc(tmap[this.entity])}</legend><div style="display:flex;gap:8px;flex-wrap:wrap">${smap[this.entity].map(([key,label,type])=>`<label>${esc(label)}${type==='check'?`<input type="checkbox" data-field="${key}" ${record?.[key]?'checked':''}>`:type==='number'?`<input class="form-input" type="number" min="0" step="any" data-field="${key}" value="${esc(String(record?.[key]??''))}">`:type?`<select class="form-input" data-field="${key}">${type.endsWith('?')?`<option value="">${esc(tr('Nicht zugeordnet','Unassigned'))}</option>`:''}${options(type).map(([id,name])=>`<option value="${esc(id)}" ${record?.[key]===id?'selected':''}>${esc(name)}</option>`).join('')}</select>`:(key==='description'||key==='signalText')?`<textarea class="form-input" data-field="${key}" rows="3">${esc(record?.[key]??'')}</textarea>`:`<input class="form-input" data-field="${key}" value="${esc(record?.[key]??'')}">`}</label>`).join('')}</div><p data-protocol-help role="status"></p><div data-bindings></div><button class="btn" data-stage>${esc(tr('Vorschau prüfen','Check Preview'))}</button></fieldset>`;
-  if(this.entity==='channels')for(const [role,label] of [['signal',tr('Signal','Signal')],['supply',tr('Versorgung','Power Supply')],['common',tr('Bezug / Masse','Common / Ground')]])this.binding(root,role,label,record?.[role],true);
-  if(this.entity==='nodes')this.binding(root,'binding',tr('Gerät in der Zeichnung','Device in Drawing'),record?.binding,false);
-  const field=(key:string)=>root.querySelector<HTMLInputElement|HTMLSelectElement>(`[data-field="${key}"]`);
-  const visible=(key:string,show:boolean)=>{const input=field(key);if(input){input.disabled=!show;input.closest('label')!.hidden=!show;}};
-  const protocolFields=()=>{const protocol=field('protocol')?.value??d.nodes.find(n=>n.id===field('from')?.value)?.protocol??'',loxone=isLoxone(protocol),isInterface=field('interfaceRole')?.value==='interface',air=protocol==='Loxone Air';
-   if(this.entity==='nodes'){visible('ipAddress',!loxone);visible('interfaceRole',loxone);visible('interfaceId',loxone&&!isInterface);visible('interfaceProfile',loxone&&isInterface&&air);visible('capacity',loxone&&isInterface);}
-   if(this.entity==='links'){visible('fromPort',!air);visible('toPort',!air);visible('lengthM',!air);}
-   root.querySelector('[data-protocol-help]')!.textContent=this.entity==='nodes'||this.entity==='links'?busProtocolHelp(protocol):this.entity==='knxObjects'?tr('Jede Zeile verknüpft ein Kommunikationsobjekt mit einer Gruppenadresse. Ein Objekt kann mehreren Gruppen zugeordnet sein. Die Richtung dokumentiert die Funktion; sie ersetzt keine ETS-Flags. Datenpunkttypen werden nur auf Schreibweise und explizite Widersprüche geprüft.','Each row links a communication object to a group address. One object can be assigned to multiple groups. Direction documents function and does not replace ETS flags. Datapoint types are only checked for syntax and explicit conflicts.'):'';
-  };for(const key of ['protocol','interfaceRole','from'])field(key)?.addEventListener('change',protocolFields);protocolFields();
-  this.el.querySelector('.auto-properties')!.scrollIntoView({block:'nearest'});root.querySelector<HTMLInputElement|HTMLSelectElement>('input,select,textarea')?.focus({preventScroll:true});
-  this.markSelection(record?.id);root.querySelector<HTMLButtonElement>('[data-stage]')!.onclick=()=>{const value:any={...record,id:record?.id??crypto.randomUUID()};for(const [key,,type]of smap[this.entity]){const input=root.querySelector<HTMLInputElement>(`[data-field="${key}"]`)!;if(input.disabled){if(key==='fromPort'||key==='toPort')value[key]='';else delete value[key];continue;}if(type==='number'){if(input.value.trim())value[key]=Number(input.value);else delete value[key];}else value[key]=type==='check'?input.checked:input.value;}for(const group of root.querySelectorAll<HTMLElement>('[data-binding-role]')){delete value[group.dataset.bindingRole!];if(!group.querySelector<HTMLInputElement>('[data-enabled]')!.checked)continue;const get=(key:string)=>(group.querySelector('[data-'+key+']') as HTMLSelectElement).value;value[group.dataset.bindingRole!]={pageId:get('page'),componentId:get('component'),...(group.querySelector('[data-pin]')?{pinId:get('pin')}:{})};}this.stage({kind:'save',entity:this.entity,value});};
- }
- private knxOptions(){return JSON.stringify(Array.from(this.el.querySelectorAll<HTMLInputElement>('[data-knx-options] input')).map(i=>i.type==='checkbox'?i.checked:i.value));}
- private knxNetworks(){const d=automationData(this.source);return [...new Set([...d.knxGroups.map(g=>g.network),...d.nodes.filter(n=>isKnx(n.protocol)).map(n=>n.network)])].filter(Boolean).sort();}
- private knxPreview(result:KnxXmlPreview,filename:string){this.preview=result.issues.length||!result.changes.length?undefined:result.next;this.applyButton().disabled=!this.preview;const root=this.el.querySelector<HTMLElement>('[data-preview]')!;
-  root.innerHTML=`<h3>KNX-XML · ${esc(filename)}</h3><p>${result.changes.filter(c=>c.kind==='add').length} ${esc(tr('neu','new'))} · ${result.changes.filter(c=>c.kind==='update').length} ${esc(tr('geändert','updated'))} · ${result.unchanged} ${esc(tr('unverändert. Erst Übernehmen speichert; ausgelassene Adressen werden nicht gelöscht.','unchanged. Only Apply saves; omitted addresses are not deleted.'))}</p><button class="btn" data-knx-report>${esc(tr('Vollständigen Importbericht herunterladen','Download Full Import Report'))}</button>${result.issues.length?`<p role="alert">${result.issues.length} ${esc(tr('Fehler: keine Übernahme möglich.','errors: cannot apply.'))}</p><ul>${result.issues.slice(0,100).map(i=>`<li>${i.entry?tr('Eintrag ','Entry ')+i.entry+' · ':''}${esc(i.address??'')}: ${esc(i.message)}</li>`).join('')}</ul>`:!result.changes.length?`<p>${esc(tr('Keine Änderungen erforderlich.','No changes required.'))}</p>`:''}${result.notes.length?`<details><summary>${result.notes.length} ${esc(tr('Hinweise zu Quelldaten und Datenpunkttypen','notes on source data and datapoint types'))}</summary><ul>${result.notes.slice(0,100).map(n=>`<li>${esc(n)}</li>`).join('')}</ul></details>`:''}${result.changes.length?`<div style="max-height:260px;overflow:auto"><table><thead><tr><th>${esc(tr('Adresse','Address'))}</th><th>${esc(tr('Änderung','Change'))}</th><th>${esc(tr('Name vorher / nachher','Name Before / After'))}</th><th>${esc(tr('DPT vorher / nachher','DPT Before / After'))}</th><th>${esc(tr('Beschreibung nachher','Description After'))}</th><th>${esc(tr('Bereich','Range'))}</th></tr></thead><tbody>${result.changes.slice(0,100).map(c=>`<tr><td>${esc(c.address)}</td><td>${esc(c.kind==='add'?tr('Neu','New'):tr('Aktualisieren','Update'))}</td><td>${esc(c.before?.name??'—')}<br>→ ${esc(c.after.name)}</td><td>${esc(c.before?.dpt??'—')}<br>→ ${esc(c.after.dpt||tr('Nicht eindeutig / nicht angegeben','Ambiguous / not specified'))}</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(c.after.description??'')}</td><td>${esc(c.after.xmlSource?.ranges.map(r=>r.attributes.Name).join(' / ')??'')}</td></tr>`).join('')}</tbody></table></div>`:''}<p>${esc(tr('Die Anzeige ist auf 100 Einträge je Liste begrenzt. Der Importbericht enthält alle Änderungen, Hinweise und XML-Quelldaten.','Display is limited to 100 entries per list. The import report contains all changes, notes, and XML source data.'))}</p>`;
-  root.querySelector<HTMLButtonElement>('[data-knx-report]')!.onclick=()=>downloadArticleFile(JSON.stringify({format:'schematico-knx-xml-import',version:1,changes:result.changes,issues:result.issues,notes:result.notes},null,2),'schematico-knx-importbericht.json','application/json');root.scrollIntoView({block:'nearest'});
- }
- private exchangePreview(result:AutomationExchangePreview,filename:string){
-  this.preview=result.issues.length||!result.changes.length?undefined:result.next;this.applyButton().disabled=!this.preview;
-  const tmap=titles(),root=this.el.querySelector<HTMLElement>('[data-preview]')!,changes=result.changes.flatMap(c=>c.fields.map(f=>({c,f}))),add=result.changes.filter(c=>c.kind==='add').length;
-  root.innerHTML=`<h3>${esc(tr('CSV-Import','CSV Import'))} · ${esc(filename)}</h3><p>${esc(result.entity?tmap[result.entity]:tr('Unbekannter Bereich','Unknown Section'))} · ${add} ${esc(tr('neu','new'))} · ${result.changes.length-add} ${esc(tr('geändert','updated'))} · ${result.unchanged} ${esc(tr('unverändert. Fehlende Zeilen löschen keine Datensätze.','unchanged. Missing rows do not delete records.'))}</p>${result.issues.length?`<p role="alert">${result.issues.length} ${esc(tr('Fehler: Der Import kann nicht übernommen werden. Datei korrigieren und erneut einlesen.','errors: Import cannot be applied. Fix the file and re-import.'))}</p><button class="btn" data-import-report>${esc(tr('Fehlerbericht herunterladen','Download Error Report'))}</button><div style="max-height:180px;overflow:auto"><table><thead><tr><th>${esc(tr('CSV-Zeile','CSV Row'))}</th><th>${esc(tr('Datensatz','Record'))}</th><th>${esc(tr('Spalte','Column'))}</th><th>${esc(tr('Fehler','Error'))}</th></tr></thead><tbody>${result.issues.slice(0,100).map(i=>`<tr><td>${i.row||esc(tr('Projektprüfung','Project Check'))}</td><td>${esc(i.id??'')}</td><td>${esc(i.column??'')}</td><td>${esc(i.message)}</td></tr>`).join('')}</tbody></table></div>${result.issues.length>100?`<p>${esc(tr('Weitere Fehler stehen im herunterladbaren Bericht.','Additional errors are included in the downloadable report.'))}</p>`:''}`:result.changes.length?`<p>${esc(tr('Geprüfte Vorschau. Erst „Übernehmen“ speichert alle Änderungen gemeinsam.','Validated preview. Only "Apply" saves all changes together.'))}</p>`:`<p>${esc(tr('Keine Änderungen gegenüber dem aktuellen Stand. Es ist keine Übernahme nötig.','No changes compared to current state. No apply needed.'))}</p>`}${changes.length?`<div style="max-height:240px;overflow:auto"><table><thead><tr><th>${esc(tr('Zeile / Änderung','Row / Change'))}</th><th>${esc(tr('Datensatz','Record'))}</th><th>${esc(tr('Eigenschaft','Property'))}</th><th>${esc(tr('Vorher','Before'))}</th><th>${esc(tr('Nachher','After'))}</th></tr></thead><tbody>${changes.slice(0,200).map(({c,f})=>`<tr><td>${c.row} · ${esc(c.kind==='add'?tr('Neu','New'):tr('Ändern','Update'))}</td><td>${esc(c.id)}</td><td>${esc(f.label)}</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(f.before)||'—'}</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(f.after)||'—'}</td></tr>`).join('')}</tbody></table></div>${changes.length>200?`<p>${changes.length-200} ${esc(tr('weitere Feldänderungen.','more field changes.'))} <button class="btn" data-change-report>${esc(tr('Vollständige Änderungsübersicht herunterladen','Download Full Change Summary'))}</button></p>`:''}`:''}`;
-  root.querySelector<HTMLButtonElement>('[data-import-report]')?.addEventListener('click',()=>downloadArticleFile(automationExchangeIssueReport(result),'schematico-csv-import-fehler.json','application/json'));
-  root.querySelector<HTMLButtonElement>('[data-change-report]')?.addEventListener('click',()=>downloadArticleFile(JSON.stringify(result.changes,null,2),'schematico-csv-aenderungen.json','application/json'));
-  root.scrollIntoView({block:'nearest'});
- }
- private binding(root:HTMLElement,role:string,label:string,current:any,withPin:boolean){const group=document.createElement('fieldset');group.dataset.bindingRole=role;group.innerHTML=`<legend><label><input type="checkbox" data-enabled ${current?'checked':''}> ${esc(label)} ${esc(tr('zuordnen','assign'))}</label></legend><select class="form-input" data-page aria-label="${esc(label)}: ${esc(tr('Blatt','Sheet'))}">${this.source.pages.map(p=>`<option value="${esc(p.id)}" ${current?.pageId===p.id?'selected':''}>${esc(p.pageNumber+' · '+p.title)}</option>`).join('')}</select><select class="form-input" data-component aria-label="${esc(label)}: ${esc(tr('Element','Element'))}"></select>${withPin?`<select class="form-input" data-pin aria-label="${esc(label)}: ${esc(tr('Anschluss','Pin'))}"></select>`:''}`;root.querySelector('[data-bindings]')!.append(group);
-  const page=group.querySelector<HTMLSelectElement>('[data-page]')!,component=group.querySelector<HTMLSelectElement>('[data-component]')!,pin=group.querySelector<HTMLSelectElement>('[data-pin]');
-  const pins=()=>{const e=this.index.component(component.value,page.value);if(pin)pin.innerHTML=(e?this.index.pinsFor(e).filter(p=>p.definition):[]).map(p=>`<option value="${esc(p.id)}" ${current?.pinId===p.id?'selected':''}>${esc(p.label+' ['+p.id+']')}</option>`).join('');};const components=()=>{component.innerHTML=this.index.components.filter(e=>e.page.id===page.value&&(!withPin||e.symbol?.pins.length)).map(e=>`<option value="${esc(e.component.id)}" ${current?.componentId===e.component.id?'selected':''}>${esc(e.component.bmk+' · '+(e.symbol?.name??e.component.id))}</option>`).join('');pins();};page.onchange=components;component.onchange=pins;components();
- }
+
+  private handleClose() {
+    this.el.remove();
+  }
+
+  private refresh() {
+    this.workingProject = structuredClone(this.getProject());
+    this.initialRevision = projectRevision(this.workingProject);
+    this.currentRevision = this.initialRevision;
+    this.updateAnalysis();
+    this.initWorkspaces();
+    this.render();
+  }
+
+  private updateAnalysis() {
+    this.index = new ProjectIndex(this.workingProject);
+    this.issues = inspectAutomation(this.workingProject, this.index);
+    this.plan = automationPlan(this.workingProject, {index: this.index, issues: this.issues});
+    this.currentRevision = projectRevision(this.workingProject);
+  }
+
+  private initWorkspaces() {
+    const callbacks = {
+      onUpdateProject: (p: Project) => {
+        this.workingProject = p;
+        this.updateAnalysis();
+        this.renderWorkspaceOnly();
+        this.updateFooter();
+      },
+      onNavigate: (pageId: string, componentId: string) => {
+        if (this.isDirty()) {
+          this.onApply(this.workingProject);
+        }
+        this.el.remove();
+        this.navigate(pageId, componentId);
+      },
+      onError: (e: unknown) => {
+        this.showError(e);
+      },
+    };
+
+    this.plcWorkspace = new PlcHardwareWorkspace(
+      () => this.workingProject,
+      () => this.issues,
+      () => this.index,
+      callbacks
+    );
+
+    this.busWorkspace = new BusTopologyWorkspace(
+      () => this.workingProject,
+      () => this.issues,
+      () => this.index,
+      callbacks
+    );
+
+    this.knxWorkspace = new KnxRouterWorkspace(
+      () => this.workingProject,
+      () => this.issues,
+      () => this.index,
+      callbacks
+    );
+  }
+
+  private isDirty(): boolean {
+    return this.currentRevision !== this.initialRevision;
+  }
+
+  private showError(e: unknown) {
+    const errEl = this.el.querySelector<HTMLElement>('[data-error]');
+    if (errEl) {
+      errEl.textContent = e instanceof Error ? e.message : String(e);
+      errEl.scrollIntoView({block: 'nearest'});
+    }
+  }
+
+  private clearError() {
+    const errEl = this.el.querySelector<HTMLElement>('[data-error]');
+    if (errEl) errEl.textContent = '';
+  }
+
+  private render() {
+    const d = automationData(this.workingProject);
+    const plcIssues = this.issues.filter(i => ['controllers', 'modules', 'channels'].includes(i.entity));
+    const busIssues = this.issues.filter(i => ['nodes', 'links'].includes(i.entity));
+    const knxIssues = this.issues.filter(i => ['knxGroups', 'knxObjects'].includes(i.entity));
+
+    this.el.innerHTML = `
+      <section role="dialog" aria-modal="true" class="auto-dialog-shell">
+        <!-- Top Dialog Header -->
+        <header class="auto-dialog-header">
+          <div class="auto-header-title">
+            <h2>⚡ ${esc(tr('SPS- & Bus-Navigator', 'PLC & Bus Navigator'))}</h2>
+            <span class="auto-header-sub">${esc(tr('Hardware, Baugruppen, Feldbusse & Gebäudeautomation', 'Hardware, Modules, Fieldbuses & Building Automation'))}</span>
+          </div>
+
+          <!-- 3 Hauptreiter-Navigation -->
+          <nav class="auto-top-tabs" role="tablist">
+            <button class="auto-top-tab ${this.activeTab === 'plc' ? 'is-active' : ''}" 
+                    data-tab-switch="plc" 
+                    role="tab" 
+                    aria-selected="${this.activeTab === 'plc'}">
+              <span class="tab-icon">⚡</span>
+              <span class="tab-label">${esc(tr('SPS & E/A-Hardware', 'PLC & I/O Hardware'))}</span>
+              ${plcIssues.length ? `<span class="tab-alert-badge" title="${plcIssues.length} Hinweise">⚠ ${plcIssues.length}</span>` : ''}
+              <span class="tab-count">${d.controllers.length} CPU · ${d.modules.length} Mod · ${d.channels.length} E/A</span>
+            </button>
+
+            <button class="auto-top-tab ${this.activeTab === 'bus' ? 'is-active' : ''}" 
+                    data-tab-switch="bus" 
+                    role="tab" 
+                    aria-selected="${this.activeTab === 'bus'}">
+              <span class="tab-icon">🌐</span>
+              <span class="tab-label">${esc(tr('Bus- & Netzwerktopologie', 'Bus & Network Topology'))}</span>
+              ${busIssues.length ? `<span class="tab-alert-badge" title="${busIssues.length} Hinweise">⚠ ${busIssues.length}</span>` : ''}
+              <span class="tab-count">${d.nodes.length} Nodes · ${d.links.length} Links</span>
+            </button>
+
+            <button class="auto-top-tab ${this.activeTab === 'knx' ? 'is-active' : ''}" 
+                    data-tab-switch="knx" 
+                    role="tab" 
+                    aria-selected="${this.activeTab === 'knx'}">
+              <span class="tab-icon">🏢</span>
+              <span class="tab-label">${esc(tr('Gebäudeautomation & KNX', 'Building Automation & KNX'))}</span>
+              ${knxIssues.length ? `<span class="tab-alert-badge" title="${knxIssues.length} Hinweise">⚠ ${knxIssues.length}</span>` : ''}
+              <span class="tab-count">${d.knxGroups.length} GA · ${d.knxObjects.length} KO</span>
+            </button>
+          </nav>
+
+          <!-- Dropdown für Tools & Export/Import -->
+          <div class="auto-header-tools">
+            <details class="eng-tools-menu auto-tools">
+              <summary class="btn">${esc(tr('Daten & Export ▾', 'Data & Export ▾'))}</summary>
+              <div class="eng-tools-items">
+                <span class="auto-tools-label">${esc(tr('AutomationML Austausch', 'AutomationML Exchange'))}</span>
+                <button class="btn" data-aml>AutomationML…</button>
+                <span class="auto-tools-label">${esc(tr('Berichte & Dokumente', 'Reports & Documents'))}</span>
+                <button class="btn" data-pdf>${esc(tr('PDF-Übersicht exportieren', 'Export PDF Overview'))}</button>
+                <button class="btn" data-csv>${esc(tr('CSV-Übersicht exportieren', 'Export CSV Overview'))}</button>
+                <span class="auto-tools-label">${esc(tr('Tabellarischer CSV-Austausch', 'Tabular CSV Exchange'))}</span>
+                <button class="btn" data-exchange-export>${esc(tr('Bearbeitungs-CSV exportieren', 'Export Editable CSV'))}</button>
+                <button class="btn" data-exchange-import>${esc(tr('Bearbeitungs-CSV importieren', 'Import Editable CSV'))}</button>
+                <span class="auto-tools-label">${esc(tr('Projektstand', 'Project State'))}</span>
+                <button class="btn" data-refresh>${esc(tr('Neu laden (Verwerfen)', 'Reload (Discard)'))}</button>
+              </div>
+            </details>
+            <input type="file" data-exchange-file accept=".csv,text/csv" hidden>
+            <button class="btn-close" data-close aria-label="${esc(tr('Schließen', 'Close'))}">✕</button>
+          </div>
+        </header>
+
+        <!-- Main Dynamic Workspace Body -->
+        <main class="auto-dialog-main">
+          <div class="auto-active-workspace-container" data-workspace-mount>
+            ${this.renderActiveWorkspaceContent()}
+          </div>
+          <div data-preview class="auto-preview" role="status"></div>
+          <p data-error role="alert" style="color:#fca5a5;white-space:pre-wrap;padding:0 20px"></p>
+        </main>
+
+        <!-- Footer -->
+        <footer class="auto-dialog-footer">
+          <div class="auto-footer-status">
+            ${this.isDirty() ? `
+              <span class="auto-dirty-indicator">● ${esc(tr('Ungespeicherte Änderungen vorhanden', 'Unsaved changes present'))}</span>
+            ` : `
+              <span class="auto-clean-indicator">✓ ${esc(tr('Aktueller Projektstand gespeichert', 'Current state saved'))}</span>
+            `}
+            ${this.issues.length ? `
+              <span class="auto-issues-count">⚠ ${this.issues.length} ${esc(tr('Hinweise / Warnungen', 'Warnings / Issues'))}</span>
+            ` : ''}
+          </div>
+          <div class="auto-footer-buttons">
+            <button class="btn" data-close>${esc(tr('Schließen', 'Close'))}</button>
+            <button class="btn btn-primary" data-apply ${this.isDirty() ? '' : 'disabled'}>
+              ${esc(tr('Übernehmen (Speichern)', 'Apply (Save)'))}
+            </button>
+          </div>
+        </footer>
+      </section>
+    `;
+
+    this.bindEvents();
+    this.bindWorkspaceContent();
+    finishEngineeringDialog(this.el, {
+      kind: 'automation',
+      description: tr('Hardware, Baugruppen und Netze im Überblick', 'Hardware, modules, and networks at a glance'),
+      wide: true,
+      drawing: {project: this.getProject, navigate: this.navigate},
+    });
+    focusArticleModal(this.el);
+  }
+
+  private renderWorkspaceOnly() {
+    const mount = this.el.querySelector<HTMLElement>('[data-workspace-mount]');
+    if (mount) {
+      mount.innerHTML = this.renderActiveWorkspaceContent();
+      this.bindWorkspaceContent();
+    }
+  }
+
+  private updateFooter() {
+    const footerStatus = this.el.querySelector<HTMLElement>('.auto-footer-status');
+    const applyBtn = this.el.querySelector<HTMLButtonElement>('[data-apply]');
+
+    if (footerStatus) {
+      footerStatus.innerHTML = `
+        ${this.isDirty() ? `
+          <span class="auto-dirty-indicator">● ${esc(tr('Ungespeicherte Änderungen vorhanden', 'Unsaved changes present'))}</span>
+        ` : `
+          <span class="auto-clean-indicator">✓ ${esc(tr('Aktueller Projektstand gespeichert', 'Current state saved'))}</span>
+        `}
+        ${this.issues.length ? `
+          <span class="auto-issues-count">⚠ ${this.issues.length} ${esc(tr('Hinweise / Warnungen', 'Warnings / Issues'))}</span>
+        ` : ''}
+      `;
+    }
+
+    if (applyBtn) {
+      applyBtn.disabled = !this.isDirty();
+    }
+  }
+
+  private renderActiveWorkspaceContent(): string {
+    if (this.activeTab === 'plc') {
+      return this.plcWorkspace ? this.plcWorkspace.render() : '';
+    } else if (this.activeTab === 'bus') {
+      return this.busWorkspace ? this.busWorkspace.render() : '';
+    } else {
+      return this.knxWorkspace ? this.knxWorkspace.render() : '';
+    }
+  }
+
+  private bindWorkspaceContent() {
+    const mount = this.el.querySelector<HTMLElement>('[data-workspace-mount]');
+    if (!mount) return;
+
+    if (this.activeTab === 'plc') {
+      this.plcWorkspace?.bind(mount);
+    } else if (this.activeTab === 'bus') {
+      this.busWorkspace?.bind(mount);
+    } else {
+      this.knxWorkspace?.bind(mount);
+    }
+  }
+
+  private bindEvents() {
+    // Tab switching
+    for (const btn of this.el.querySelectorAll<HTMLButtonElement>('[data-tab-switch]')) {
+      btn.onclick = () => {
+        const tab = btn.dataset.tabSwitch as AutomationWorkspaceTab;
+        if (tab !== this.activeTab) {
+          this.activeTab = tab;
+          this.clearError();
+          this.render();
+        }
+      };
+    }
+
+    // Apply button
+    const applyBtn = this.el.querySelector<HTMLButtonElement>('[data-apply]');
+    if (applyBtn) {
+      applyBtn.onclick = () => {
+        try {
+          if (projectRevision(this.getProject()) !== this.initialRevision) {
+            throw new Error(tr('Projekt wurde zwischenzeitlich extern geändert. Bitte aktualisieren.', 'Project was modified externally. Please refresh.'));
+          }
+          this.onApply(this.workingProject);
+          this.initialRevision = projectRevision(this.workingProject);
+          this.currentRevision = this.initialRevision;
+          this.updateFooter();
+        } catch (e) {
+          this.showError(e);
+        }
+      };
+    }
+
+    // Close buttons
+    for (const btn of this.el.querySelectorAll('[data-close]')) {
+      (btn as HTMLElement).onclick = () => this.handleClose();
+    }
+
+    // Refresh
+    const refreshBtn = this.el.querySelector<HTMLButtonElement>('[data-refresh]');
+    if (refreshBtn) {
+      refreshBtn.onclick = () => this.refresh();
+    }
+
+    // AutomationML
+    const amlBtn = this.el.querySelector<HTMLButtonElement>('[data-aml]');
+    if (amlBtn) {
+      amlBtn.onclick = () => {
+        new AutomationMlDialog(
+          () => this.workingProject,
+          p => {
+            this.workingProject = p;
+            this.updateAnalysis();
+            this.render();
+          },
+          () => {
+            if (this.el.isConnected) {
+              this.render();
+              focusArticleModal(this.el);
+            }
+          }
+        ).show();
+      };
+    }
+
+    // PDF Export
+    const pdfBtn = this.el.querySelector<HTMLButtonElement>('[data-pdf]');
+    if (pdfBtn) {
+      pdfBtn.onclick = () => {
+        try {
+          automationPlanPdf(this.plan, this.workingProject.name, this.workingProject).save('schematico-sps-bus.pdf');
+        } catch (e) {
+          this.showError(articleError(e));
+        }
+      };
+    }
+
+    // CSV Overview Export
+    const csvBtn = this.el.querySelector<HTMLButtonElement>('[data-csv]');
+    if (csvBtn) {
+      csvBtn.onclick = () => {
+        try {
+          downloadArticleFile(automationCsv(this.plan), 'schematico-sps-bus.csv', 'text/csv;charset=utf-8');
+        } catch (e) {
+          this.showError(e);
+        }
+      };
+    }
+
+    // CSV Exchange Export
+    const exExportBtn = this.el.querySelector<HTMLButtonElement>('[data-exchange-export]');
+    if (exExportBtn) {
+      exExportBtn.onclick = async () => {
+        try {
+          const content = await exportAutomationExchange(this.workingProject, 'channels', new Set(this.plan.map(r => r.id)));
+          downloadArticleFile(content, 'schematico-bearbeitung-channels.csv', 'text/csv;charset=utf-8');
+        } catch (e) {
+          this.showError(e);
+        }
+      };
+    }
+
+    // CSV Exchange Import
+    const exImportBtn = this.el.querySelector<HTMLButtonElement>('[data-exchange-import]');
+    const exFileInput = this.el.querySelector<HTMLInputElement>('[data-exchange-file]');
+    if (exImportBtn && exFileInput) {
+      exImportBtn.onclick = () => exFileInput.click();
+      exFileInput.onchange = async () => {
+        const file = exFileInput.files?.[0];
+        exFileInput.value = '';
+        if (!file) return;
+
+        try {
+          if (file.size > automationExchangeMaxBytes) {
+            throw new Error(tr('Datei ist größer als 4 MiB.', 'File exceeds 4 MiB.'));
+          }
+          const preview = await previewAutomationExchange(this.workingProject, await file.text());
+          if (preview.next) {
+            this.workingProject = preview.next;
+            this.updateAnalysis();
+            this.render();
+          }
+        } catch (e) {
+          this.showError(e);
+        }
+      };
+    }
+  }
 }

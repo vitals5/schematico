@@ -1,144 +1,333 @@
 #automationDialog [hidden]{display:none!important}
 #automationDialog.engineering-overlay{padding:16px}
-#automationDialog .eng-shell{width:min(1660px,100%);height:min(960px,calc(100dvh - 32px));max-height:calc(100dvh - 32px)}
-#automationDialog .eng-header{padding:18px 22px 14px}
-#automationDialog .eng-eyebrow{display:none}
-#automationDialog .eng-body{padding:0;overflow:hidden;display:flex;min-height:0}
-#automationDialog .auto-workspace{display:grid;grid-template-columns:192px minmax(0,1fr);width:100%;min-height:0}
-#automationDialog .auto-sidebar{background:#121c29;border-right:1px solid var(--eng-line);padding:18px 10px;overflow:auto}
-#automationDialog .auto-sidebar h3{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--eng-muted);padding:14px 12px 4px;margin:0}
-#automationDialog .auto-nav-item{display:flex;align-items:center;gap:8px;width:100%;border:1px solid transparent;background:none;color:#b4c4d7;padding:10px 11px;text-align:left;border-radius:7px;cursor:pointer;font:inherit;font-size:12px;margin:2px 0}
-#automationDialog .auto-nav-item strong{margin-left:auto;font-size:10px;background:#ffffff09;padding:1px 6px;border-radius:10px;color:#9eb2cc;font-weight:500}
-#automationDialog .auto-nav-item:hover{background:#ffffff06;color:white}
-#automationDialog .auto-nav-item[aria-current=page]{background:#459be619;border-color:#539bd145;color:#a8d7ff}
-#automationDialog .auto-nav-alert{width:5px;height:5px;border-radius:50%;background:#f5ba6b;flex:none}
-#automationDialog .auto-main{overflow:auto;min-width:0;padding:20px 22px;scrollbar-width:thin}
-#automationDialog .auto-workspace-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
-#automationDialog .auto-workspace-heading h3{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
-#automationDialog .auto-workspace-heading p{margin:0;color:var(--eng-muted);font-size:12px}
-#automationDialog .auto-tools{margin:0 0 0 auto;flex:none}
-#automationDialog .auto-tools .eng-tools-items{z-index:15;width:285px}
-#automationDialog .auto-tools-label{display:block;padding:7px 10px 2px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#a5bdd9}
-#automationDialog .auto-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
-#automationDialog .auto-toolbar [data-search]{min-width:180px;flex:1;width:auto}
-#automationDialog .auto-toolbar .eng-check{margin:0;font-size:12px;white-space:nowrap}
-#automationDialog .auto-view-switch{display:inline-flex;border:1px solid var(--eng-line);border-radius:7px;padding:3px;background:var(--eng-deep)}
-#automationDialog .auto-view-switch button{border:0;background:none;border-radius:4px;color:var(--eng-muted);font:inherit;font-size:12px;padding:5px 13px;cursor:pointer}
-#automationDialog .auto-view-switch button[aria-pressed=true]{background:#2e4762;color:#d9edff}
-#automationDialog .auto-content{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
-#automationDialog .auto-content.has-editor{grid-template-columns:minmax(0,1fr) 330px}
-#automationDialog .auto-primary{min-width:0}
-#automationDialog .auto-properties{position:sticky;top:0;min-width:0;border:1px solid #4b7094;border-radius:9px;background:#1b2939;overflow:hidden}
-#automationDialog .auto-properties>header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--eng-line)}
-#automationDialog .auto-properties>header h3{margin:0;font-size:13px}
-#automationDialog .auto-properties [data-editor]{padding:12px;max-height:calc(100dvh - 280px);overflow:auto;scrollbar-width:thin}
-#automationDialog .auto-properties [data-editor]>fieldset{border:0;margin:0;padding:0;min-width:0}
-#automationDialog .auto-properties [data-editor]>fieldset>legend{font-size:11px;color:var(--eng-muted);padding:0 0 12px}
-#automationDialog .auto-properties [data-editor] label{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 130px;font-size:11px;color:#a8bed7}
-#automationDialog .auto-properties [data-editor] label:has([type=checkbox]){flex-direction:row;align-items:center;gap:7px}
-#automationDialog .auto-properties .form-input{width:100%;min-width:0;font-size:12px}
-#automationDialog .auto-properties [data-editor] textarea{resize:vertical;min-height:62px}
-#automationDialog .auto-properties [data-bindings] fieldset{display:grid;gap:7px;padding:9px;margin:12px 0}
-#automationDialog .auto-properties [data-stage]{width:100%;margin-top:12px}
-#automationDialog .auto-preview:empty{display:none}
-#automationDialog .auto-preview:not(:empty){margin-top:16px;padding:14px;border:1px solid #407aa4;border-radius:8px;background:#142537;max-height:38vh;overflow:auto}
-#automationDialog [data-error]:not(:empty){margin-top:12px}
-#automationDialog .auto-table-wrap{overflow:auto;max-height:60vh;border:1px solid var(--eng-line);border-radius:8px}
-#automationDialog .auto-pager{display:flex;gap:8px;align-items:center;margin-bottom:9px;color:var(--eng-muted);font-size:11px}
-#automationDialog .auto-pager [data-count]{flex:1}
-#automationDialog .auto-mobile-nav{display:none}
-#automationDialog .auto-footer-note{margin-right:auto;font-size:11px;color:var(--eng-muted)}
-#automationDialog .auto-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
-#automationDialog .auto-kpis>button{display:flex;align-items:center;gap:13px;min-height:105px;border:1px solid var(--eng-line);border-radius:9px;background:#1c2b3c;color:var(--eng-muted);padding:15px;text-align:left;cursor:pointer;font:inherit;font-size:11px}
-#automationDialog .auto-kpis>button:hover{border-color:#5887b0;background:#22364c}
-#automationDialog .auto-kpis strong{display:block;font-size:27px;line-height:1.3;color:#deedff;font-weight:600}
-#automationDialog .auto-kpis svg{width:28px;height:28px;color:#78b8ee;flex:none}
-#automationDialog .auto-kpi-alert{font-size:25px;color:#e4b97b;border:1px solid #b4884f;width:30px;height:30px;text-align:center;border-radius:50%;line-height:30px;flex:none}
-#automationDialog .auto-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-#automationDialog .auto-panel{border:1px solid var(--eng-line);border-radius:9px;background:#172332;padding:15px;min-width:0}
-#automationDialog .auto-panel>header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
-#automationDialog .auto-panel h3{font-size:13px;margin:0;display:flex;align-items:center;gap:8px}
-#automationDialog .auto-panel h3 svg{width:18px;height:18px;color:#83bceb}
-#automationDialog .auto-object{display:flex;flex-direction:column;gap:4px;color:#dce9f9;background:#1b2c3f;border:1px solid #3a5069;border-radius:7px;padding:11px;text-align:left;cursor:pointer;min-width:0;font:inherit}
-#automationDialog .auto-object:hover{border-color:#81bdf0;background:#223c55}
-#automationDialog .auto-object:focus-visible,#automationDialog .auto-network-card:focus-visible{outline:2px solid #9ad5ff;outline-offset:3px}
-#automationDialog .auto-object.auto-selected{border-color:#87c9ff;box-shadow:0 0 0 1px #87c9ff55}
-#automationDialog .auto-object small{font-size:10px;color:#9fb5cf;overflow-wrap:anywhere}
-#automationDialog .auto-summary-object{width:100%;margin-bottom:8px}
-#automationDialog .auto-summary-object>span{font-size:12px;color:#a8bfd8}
-#automationDialog .auto-network-card{display:flex;align-items:center;gap:12px;border:1px solid #30475f;border-radius:7px;background:#1b2c3e;color:#dce9f9;padding:12px;width:100%;margin:8px 0;text-align:left;cursor:pointer;font:inherit}
-#automationDialog .auto-network-card>svg{width:24px;height:24px;color:#83bceb;flex:none}
-#automationDialog .auto-network-card>span:last-child{margin-left:auto;color:#7dbff6}
-#automationDialog .auto-network-card small{display:block;color:#9fb5cf;font-size:11px;margin-top:3px}
-#automationDialog .auto-start{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:18px}
-#automationDialog .auto-start p{color:#9fb5cf;max-width:620px;margin-bottom:0}
-#automationDialog .auto-empty{padding:22px 12px;text-align:center;color:#a7bbd1}
-#automationDialog .auto-empty>svg{width:36px;height:36px;color:#52799c;margin:8px auto}
-#automationDialog .auto-empty .btn{margin-top:8px}
-#automationDialog .auto-visual-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:#a1b4cc}
-#automationDialog .auto-visual-toolbar label{min-width:200px;max-width:100%;margin:0;flex:0 1 410px}
-#automationDialog .auto-legend{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:14px;font-size:10px;color:#9fb5cf}
-#automationDialog .auto-kind-DI{color:#8bc8ff}#automationDialog .auto-kind-DO{color:#c4a9ff}#automationDialog .auto-kind-AI{color:#76d7c6}#automationDialog .auto-kind-AO{color:#efc584}
-#automationDialog .auto-controller{border:1px solid var(--eng-line);border-radius:9px;background:#14202d;margin-bottom:15px;overflow:hidden}
-#automationDialog .auto-controller>header{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#1d2e41;padding:12px 14px;border-bottom:1px solid var(--eng-line)}
-#automationDialog .auto-controller-title{flex-direction:row;align-items:center;gap:12px;background:none;border:0;padding:0;flex:1}
-#automationDialog .auto-controller-title>svg{width:30px;height:30px;color:#80c2f5;flex:none}
-#automationDialog .auto-controller-title strong{display:block;font-size:14px}
-#automationDialog .auto-controller-title small{display:block}
-#automationDialog .auto-channel-progress{font-size:10px;color:#9fb5cf;flex:0 1 200px}
-#automationDialog .auto-channel-progress meter{width:100%;height:7px;display:block;margin-top:6px;accent-color:#71baff}
-#automationDialog .auto-rack{display:flex;gap:13px;padding:15px;overflow:auto;align-items:flex-start;scrollbar-width:thin;background:repeating-linear-gradient(0deg,transparent,transparent 48px,#26415b1a 49px,#26415b1a 51px)}
-#automationDialog .auto-module{flex:0 0 242px;background:#1b2a3a;border:1px solid #3b536b;border-radius:7px;overflow:hidden;border-top:4px solid #6c99c5}
-#automationDialog .auto-module-title{border:0;border-radius:0;width:100%;background:#22364b;position:relative;padding-left:43px;min-height:75px}
-#automationDialog .auto-module-mark{position:absolute;left:11px;top:15px;color:#8cb8de}
-#automationDialog .auto-module-mark svg{width:24px;height:24px}
-#automationDialog .auto-channel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:10px}
-#automationDialog .auto-channel{padding:8px;gap:5px;background:#132334;font-size:10px;min-height:100px;border-color:#334b63}
-#automationDialog .auto-channel>strong{font-family:monospace;font-size:12px;overflow-wrap:anywhere}
-#automationDialog .auto-channel>span:not(.auto-channel-type){font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#automationDialog .auto-channel>small{font-size:9px}
-#automationDialog .auto-channel.has-issues{border-color:#ae8150}
-#automationDialog .auto-badge{font-size:10px;padding:2px 6px;border-radius:8px;white-space:nowrap}
-#automationDialog .auto-badge--warn{background:#ba884822;border:1px solid #d69b4940;color:#f0c38c}
-#automationDialog .auto-more{display:block;padding:0 10px 10px;color:#9fb5cf;font-size:10px}
-#automationDialog .auto-muted{color:#93abc5;font-size:11px;line-height:1.6}
-#automationDialog .auto-graph{overflow:auto;max-height:55vh;border:1px solid var(--eng-line);border-radius:9px;background-color:#111d2a;background-image:radial-gradient(#3d56723d 1px,transparent 1px);background-size:18px 18px;scrollbar-width:thin}
-#automationDialog .auto-graph svg{display:block;max-width:none}
-#automationDialog .auto-graph-node{cursor:pointer;outline:none}
-#automationDialog .auto-graph-node rect{fill:#1c3045;stroke:#496888;stroke-width:1.2}
-#automationDialog .auto-graph-node:hover rect,#automationDialog .auto-graph-node:focus-visible rect,#automationDialog .auto-graph-node.auto-selected rect{stroke:#a4d9ff;stroke-width:2}
-#automationDialog .auto-graph-node circle{fill:#72b6f1}
-#automationDialog .auto-graph-node.has-issues rect{stroke:#c29358}
-#automationDialog .auto-graph-node.has-issues circle{fill:#efb768}
-#automationDialog .auto-graph-node text{fill:#a9bfd6;font:11px sans-serif;pointer-events:none}
-#automationDialog .auto-graph-node .auto-node-name{fill:#e2effc;font-size:12px;font-weight:600}
-#automationDialog .auto-graph-node .auto-node-role{fill:#89a2bd;font-size:10px}
-#automationDialog .auto-edge path{fill:none;stroke:#719fca;stroke-width:2}
-#automationDialog .auto-edge .auto-edge-hit{stroke:transparent;stroke-width:14;pointer-events:stroke}
-#automationDialog .auto-edge--air path:not(.auto-edge-hit){stroke:#c2a2f3;stroke-dasharray:7 5}
-#automationDialog .auto-edge--assignment path:not(.auto-edge-hit){stroke:#7792ab;stroke-dasharray:2 5;stroke-width:1.5}
-#automationDialog .auto-edge{cursor:pointer;outline:none}
-#automationDialog .auto-edge:hover path:not(.auto-edge-hit),#automationDialog .auto-edge:focus-visible path:not(.auto-edge-hit){stroke:#f4cf8a;stroke-width:3}
-#automationDialog .auto-line-key{display:flex;align-items:center;gap:6px}
-#automationDialog .auto-line-key:before{content:'';width:25px;border-top:2px solid #719fca}
-#automationDialog .auto-line-key--air:before{border-color:#c2a2f3;border-top-style:dashed}
-#automationDialog .auto-line-key--assignment:before{border-top:2px dotted #7792ab}
-#automationDialog .auto-knx-groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
-#automationDialog .auto-knx-group{border:1px solid var(--eng-line);background:#182b3c;border-radius:8px;padding:12px}
-#automationDialog .auto-knx-group .auto-object{width:100%;border:0;background:none;align-items:flex-start;padding:0}
-#automationDialog .auto-knx-group svg,#automationDialog .auto-knx-hub svg{width:27px;height:27px;color:#8fbfe8}
-#automationDialog .auto-address{display:block;font:600 23px monospace;color:#a6d8ff;margin:4px 0}
-#automationDialog .auto-knx-group p{font-size:11px;color:#9fb5cf;margin:12px 0}
-#automationDialog .auto-knx-flow{display:grid;grid-template-columns:1fr 210px 1fr;gap:16px;align-items:start}
-#automationDialog .auto-knx-flow h3{font-size:12px;color:#a9c6e4;margin:5px 0 12px}
-#automationDialog .auto-knx-hub{align-self:center;position:relative;border:1px solid #507ba0;border-radius:9px;background:#213c55;padding:14px}
-#automationDialog .auto-knx-hub:before,#automationDialog .auto-knx-hub:after{content:'→';position:absolute;top:45%;color:#84b4dd;font-size:22px}
-#automationDialog .auto-knx-hub:before{left:-18px}#automationDialog .auto-knx-hub:after{right:-18px}
-#automationDialog .auto-knx-hub .auto-object{border:0;background:none;padding:0;width:100%}
-#automationDialog .auto-knx-member{margin-bottom:10px;border:1px solid #344f69;border-radius:7px;background:#182a3c;overflow:hidden}
-#automationDialog .auto-knx-member>.auto-object{border:0;border-radius:0;width:100%}
-#automationDialog .auto-knx-member span{font-size:11px;color:#a6bdd7}
-#automationDialog .auto-member-device{margin:4px 8px 8px;font-size:10px}
-@media(max-width:1100px){#automationDialog .auto-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#automationDialog .auto-knx-flow{grid-template-columns:1fr}#automationDialog .auto-knx-hub:before,#automationDialog .auto-knx-hub:after{display:none}}
-@media(max-width:900px){#automationDialog .auto-workspace{grid-template-columns:1fr}#automationDialog .auto-sidebar{display:none}#automationDialog .auto-mobile-nav{display:block;margin-bottom:12px}#automationDialog .auto-mobile-nav select{width:100%}#automationDialog .auto-main{padding:14px}#automationDialog .auto-content.has-editor{grid-template-columns:1fr}#automationDialog .auto-properties{position:static}#automationDialog .auto-properties [data-editor]{max-height:none}#automationDialog .auto-overview-grid{grid-template-columns:1fr}#automationDialog .auto-start{align-items:flex-start;flex-direction:column}#automationDialog .auto-channel-progress{display:none}}
-@media(max-width:540px){#automationDialog.engineering-overlay{padding:7px}#automationDialog .eng-shell{height:calc(100dvh - 14px);max-height:calc(100dvh - 14px)}#automationDialog .eng-header{padding:12px}#automationDialog .eng-header-mark{display:none}#automationDialog .eng-heading h2{font-size:17px}#automationDialog .auto-kpis{gap:7px}#automationDialog .auto-kpis>button{padding:10px;min-height:90px;gap:9px}#automationDialog .auto-kpis strong{font-size:22px}#automationDialog .auto-tools .eng-tools-items{width:260px;max-width:calc(100vw - 48px)}#automationDialog .auto-workspace-heading{flex-wrap:wrap}#automationDialog .auto-footer-note{display:none}}
+#automationDialog .eng-shell{width:min(1760px,100%);height:min(980px,calc(100dvh - 32px));max-height:calc(100dvh - 32px)}
+#automationDialog .eng-header{display:none}
+#automationDialog .eng-body{padding:0;overflow:hidden;display:flex;min-height:0;height:100%}
+
+/* Dialog Shell Layout */
+#automationDialog .auto-dialog-shell{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;background:#0e1722;color:#d5e2f1}
+#automationDialog .auto-dialog-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#14202e;border-bottom:1px solid #233547;gap:16px;flex-shrink:0}
+#automationDialog .auto-header-title{display:flex;flex-direction:column;gap:2px}
+#automationDialog .auto-header-title h2{font-size:18px;margin:0;letter-spacing:-.02em;color:#e8f2fe}
+#automationDialog .auto-header-sub{font-size:11px;color:#8ca5c0}
+#automationDialog .auto-header-tools{display:flex;align-items:center;gap:10px;margin-left:auto}
+#automationDialog .auto-dialog-main{display:flex;flex-direction:column;flex:1 1 0%;min-height:0;overflow:hidden;position:relative}
+#automationDialog .auto-active-workspace-container{display:flex;flex:1 1 0%;min-height:0;overflow:hidden;position:relative}
+#automationDialog .auto-dialog-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:#14202e;border-top:1px solid #233547;flex-shrink:0}
+#automationDialog .auto-footer-status{display:flex;align-items:center;gap:14px;font-size:12px}
+#automationDialog .auto-footer-buttons{display:flex;align-items:center;gap:10px}
+#automationDialog .auto-dirty-indicator{color:#f59e0b;font-weight:500}
+#automationDialog .auto-clean-indicator{color:#10b981}
+#automationDialog .auto-issues-count{color:#f87171;background:#ef444415;padding:2px 8px;border-radius:12px;border:1px solid #ef444430}
+
+/* 3 Top Tabs Navigation */
+#automationDialog .auto-top-tabs{display:flex;align-items:center;gap:6px;background:#0d1622;padding:4px;border-radius:10px;border:1px solid #25394d}
+#automationDialog .auto-top-tab{display:flex;align-items:center;gap:8px;background:none;border:1px solid transparent;border-radius:7px;padding:8px 14px;cursor:pointer;color:#94a9bf;font:inherit;font-size:13px;transition:all .15s ease}
+#automationDialog .auto-top-tab:hover{background:#ffffff08;color:#d5e5f5}
+#automationDialog .auto-top-tab.is-active{background:#233950;border-color:#3d5e82;color:#ffffff;box-shadow:0 2px 6px #00000030}
+#automationDialog .auto-top-tab .tab-icon{font-size:14px}
+#automationDialog .auto-top-tab .tab-label{font-weight:600}
+#automationDialog .auto-top-tab .tab-count{font-size:10px;background:#ffffff10;padding:2px 6px;border-radius:8px;color:#a2b8cf}
+#automationDialog .auto-top-tab .tab-alert-badge{font-size:10px;background:#f59e0b25;color:#fbbf24;border:1px solid #f59e0b50;padding:1px 6px;border-radius:8px;font-weight:600}
+
+/* WORKSPACE 1: SPS & E/A-HARDWARE */
+#automationDialog .plc-hw-workspace{display:grid;grid-template-columns:240px 1fr 340px;width:100%;height:100%;min-height:0;overflow:hidden}
+#automationDialog .plc-hw-nav{background:#111a26;border-right:1px solid #233547;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#automationDialog .plc-hw-nav-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #233547}
+#automationDialog .plc-hw-nav-header h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8ba5c1}
+#automationDialog .plc-hw-tree{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin}
+#automationDialog .plc-tree-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#a3bad2;user-select:none;transition:background .1s}
+#automationDialog .plc-tree-item:hover{background:#ffffff0a;color:#ffffff}
+#automationDialog .plc-tree-item.is-active-cpu,#automationDialog .plc-tree-item.is-active-rack,#automationDialog .plc-tree-item.is-active-mod{background:#21374e;color:#ffffff;font-weight:600}
+#automationDialog .plc-tree-cpu{font-weight:600;color:#e1effd}
+#automationDialog .plc-tree-racks{padding-left:14px;margin:4px 0}
+#automationDialog .plc-tree-rack-head{font-size:11px;color:#8ca5bf}
+#automationDialog .plc-tree-modules{padding-left:14px;margin:2px 0}
+#automationDialog .plc-slot-bullet{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#2a415a;border-radius:4px;font-size:10px;font-family:monospace;color:#96c5f7}
+#automationDialog .plc-tree-count{margin-left:auto;font-size:10px;background:#ffffff10;padding:1px 5px;border-radius:6px}
+
+/* Center Column */
+#automationDialog .plc-hw-center{display:flex;flex-direction:column;min-height:0;overflow:hidden;background:#0d1520}
+#automationDialog .plc-hw-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#131f2d;border-bottom:1px solid #233547;gap:12px;flex-shrink:0}
+#automationDialog .plc-hw-toolbar-title{display:flex;align-items:center;gap:10px}
+#automationDialog .plc-hw-toolbar-title h3{margin:0;font-size:15px;color:#f0f6fc}
+#automationDialog .plc-rack-badge{font-size:11px;background:#253c54;color:#8ec1f5;padding:2px 8px;border-radius:6px;font-weight:500}
+#automationDialog .plc-hw-toolbar-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+#automationDialog .plc-hw-search{width:240px;font-size:12px}
+
+/* Din Rail Rack Simulator */
+#automationDialog .plc-hw-rack-view{background:#101a26;border-bottom:1px solid #233547;padding:16px;overflow-x:auto;scrollbar-width:thin;flex-shrink:0}
+#automationDialog .plc-rack-container{position:relative;min-width:max-content;padding-bottom:10px}
+#automationDialog .plc-din-rail{position:absolute;top:40px;left:0;right:0;height:42px;background:linear-gradient(180deg,#3a4b5d 0%,#283543 50%,#45576a 100%);border-radius:3px;box-shadow:inset 0 1px 3px #00000080,0 2px 5px #00000050;z-index:1}
+#automationDialog .plc-din-rail-groove{position:absolute;top:14px;left:0;right:0;height:14px;background:#19232e;box-shadow:inset 0 1px 2px #000000}
+#automationDialog .plc-rack-slot-strip{display:flex;gap:10px;position:relative;z-index:2}
+
+/* Module Cards / Faceplates */
+#automationDialog .plc-module-card{width:160px;min-height:210px;background:#1e2d3d;border:1px solid #3d5670;border-radius:6px;display:flex;flex-direction:column;cursor:pointer;user-select:none;box-shadow:0 4px 12px #00000060;transition:transform .12s,border-color .12s}
+#automationDialog .plc-module-card:hover{transform:translateY(-3px);border-color:#6591bd}
+#automationDialog .plc-module-card.is-selected{border:2px solid #5fa5e6;box-shadow:0 0 14px #3b82f640}
+#automationDialog .plc-module-card.has-issues{border-color:#f59e0b}
+#automationDialog .plc-module-header{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#283a4e;border-top-left-radius:5px;border-top-right-radius:5px;border-bottom:1px solid #374e67}
+#automationDialog .plc-slot-badge{font-size:10px;background:#111b27;color:#91badc;padding:1px 5px;border-radius:4px;font-family:monospace}
+#automationDialog .plc-module-bmk{font-size:11px;font-weight:700;color:#ffffff}
+#automationDialog .plc-module-body{padding:8px;flex:1;display:flex;flex-direction:column;gap:6px}
+#automationDialog .plc-module-desc{font-size:10px;color:#a8c0d8;font-weight:600;min-height:26px;line-height:1.3;overflow:hidden;text-overflow:ellipsis}
+#automationDialog .plc-module-footer{padding:6px 8px;background:#182533;border-top:1px solid #2d4157;font-size:10px;color:#85a2bf;border-bottom-left-radius:5px;border-bottom-right-radius:5px}
+
+/* CPU Card */
+#automationDialog .plc-module-cpu{width:180px;background:#1a2b3c;border-color:#4a6d91}
+#automationDialog .plc-cpu-display{background:#0e1722;border:1px solid #2e4359;border-radius:4px;padding:6px;text-align:center;margin-bottom:6px}
+#automationDialog .plc-cpu-title{display:block;font-size:13px;font-weight:bold;color:#70b6f6}
+#automationDialog .plc-cpu-sub{display:block;font-size:10px;color:#8ca5c1}
+#automationDialog .plc-status-leds{display:flex;gap:8px;align-items:center;justify-content:center;margin:4px 0}
+#automationDialog .plc-status-leds.mini{justify-content:flex-start;gap:6px;margin:2px 0}
+#automationDialog .plc-led{font-size:9px;color:#6b8299;display:flex;align-items:center;gap:3px;font-family:monospace}
+#automationDialog .plc-led span{width:6px;height:6px;border-radius:50%;background:#384859;display:inline-block}
+#automationDialog .plc-led-run.on span{background:#10b981;box-shadow:0 0 6px #10b981}
+#automationDialog .plc-led-stop.on span{background:#f59e0b;box-shadow:0 0 6px #f59e0b}
+#automationDialog .plc-led-error.on span{background:#ef4444;box-shadow:0 0 6px #ef4444}
+#automationDialog .plc-cpu-ports{display:flex;gap:6px;margin-top:auto}
+#automationDialog .plc-port{flex:1;background:#121a24;border:1px solid #334960;border-radius:3px;font-size:9px;padding:4px;text-align:center;color:#85a8cc;font-family:monospace}
+
+/* Color Coding for Modules (Industriestandards) */
+#automationDialog .plc-kind-di{border-top:4px solid #3b82f6}
+#automationDialog .plc-kind-do{border-top:4px solid #f59e0b}
+#automationDialog .plc-kind-ai{border-top:4px solid #10b981}
+#automationDialog .plc-kind-ao{border-top:4px solid #8b5cf6}
+
+/* Pin Matrix / LED Status Points on Module */
+#automationDialog .plc-pin-matrix{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;background:#131d28;border-radius:4px;margin-top:auto}
+#automationDialog .plc-pin-dot{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px;border-radius:3px;cursor:pointer}
+#automationDialog .plc-pin-dot:hover{background:#ffffff15}
+#automationDialog .plc-pin-dot.is-selected{background:#3b82f630;outline:1px solid #60a5fa}
+#automationDialog .plc-pin-light{width:7px;height:7px;border-radius:50%;background:#344557}
+#automationDialog .plc-pin-dot.state-bound .plc-pin-light{background:#10b981;box-shadow:0 0 4px #10b981}
+#automationDialog .plc-pin-dot.state-reserve .plc-pin-light{background:#f59e0b;box-shadow:0 0 4px #f59e0b}
+#automationDialog .plc-pin-dot.state-error .plc-pin-light{background:#ef4444;box-shadow:0 0 4px #ef4444}
+#automationDialog .plc-pin-dot.state-unbound .plc-pin-light{background:#4b627a}
+#automationDialog .plc-pin-num{font-size:8px;font-family:monospace;color:#8ba5c1}
+#automationDialog .plc-no-channels{grid-column:1/-1;text-align:center;font-size:9px;color:#6b8299;padding:6px 0}
+
+/* Add Module Card */
+#automationDialog .plc-module-add-card{border:2px dashed #354c64;background:#14202d80;display:flex;align-items:center;justify-content:center}
+#automationDialog .plc-module-add-card:hover{border-color:#5a84ad;background:#1c2d40}
+#automationDialog .plc-add-card-inner{display:flex;flex-direction:column;align-items:center;gap:6px;color:#7e9ebd}
+#automationDialog .plc-add-card-icon{font-size:28px;font-weight:300}
+#automationDialog .plc-add-card-text{font-size:11px;font-weight:600}
+
+/* Template Dropdown Menu */
+#automationDialog .plc-template-dropdown-wrap{position:relative}
+#automationDialog .plc-template-dropdown-menu{position:absolute;top:calc(100% + 6px);right:0;width:280px;background:#1b2a3b;border:1px solid #3b5674;border-radius:8px;box-shadow:0 10px 25px #00000080;z-index:100;display:none;flex-direction:column;padding:6px}
+#automationDialog .plc-template-dropdown-menu.is-open{display:flex}
+#automationDialog .plc-template-dropdown-header{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#8aa4c2;padding:6px 10px 4px}
+#automationDialog .plc-template-item{display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;color:#d5e5f5;padding:8px 10px;border-radius:5px;cursor:pointer;text-align:left;width:100%}
+#automationDialog .plc-template-item:hover{background:#2a415a;color:#ffffff}
+#automationDialog .plc-template-item strong{font-size:12px}
+#automationDialog .plc-template-item small{font-size:10px;color:#8ca5bf}
+#automationDialog .plc-template-divider{height:1px;background:#2b4057;margin:4px 0}
+
+/* Signal Matrix Table */
+#automationDialog .plc-hw-matrix-wrap{flex:1 1 0%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#automationDialog .plc-hw-matrix-header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#111c28;border-bottom:1px solid #233547;flex-shrink:0}
+#automationDialog .plc-hw-matrix-header h4{margin:0;font-size:13px;color:#e1edf8}
+#automationDialog .plc-hw-matrix-count{font-size:11px;color:#8ca5c1}
+#automationDialog .plc-signal-matrix-container{flex:1 1 0%;min-height:0;overflow:auto;scrollbar-width:thin}
+#automationDialog .plc-signal-matrix-table-wrap{min-width:100%}
+#automationDialog .plc-signal-matrix-table{width:100%;border-collapse:collapse;font-size:11px}
+#automationDialog .plc-signal-matrix-table th{background:#152231;color:#8ba3bf;padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid #2b4157;position:sticky;top:0;z-index:5}
+#automationDialog .plc-signal-matrix-table td{padding:5px 8px;border-bottom:1px solid #1a2938}
+#automationDialog .plc-matrix-row:hover{background:#182839}
+#automationDialog .plc-matrix-row.is-selected{background:#20374f}
+#automationDialog .plc-matrix-row.has-issue{background:#3b231920}
+
+#automationDialog .plc-inline-input{background:#101a26;border:1px solid #2e4359;border-radius:4px;color:#d5e5f5;padding:4px 7px;font-size:11px;width:100%}
+#automationDialog .plc-inline-input:focus{outline:none;border-color:#58a2e8;background:#142334}
+#automationDialog .plc-datatype-input{width:65px}
+
+#automationDialog .plc-status-pill{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600}
+#automationDialog .pill-bound{background:#10b98125;color:#34d399;border:1px solid #10b98150}
+#automationDialog .pill-free{background:#6b728025;color:#9ca3af;border:1px solid #6b728050}
+#automationDialog .pill-reserve{background:#f59e0b25;color:#fbbf24;border:1px solid #f59e0b50}
+#automationDialog .pill-error{background:#ef444425;color:#f87171;border:1px solid #ef444450}
+
+#automationDialog .plc-kind-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+#automationDialog .kind-di{background:#3b82f625;color:#60a5fa}
+#automationDialog .kind-do{background:#f59e0b25;color:#fbbf24}
+#automationDialog .kind-ai{background:#10b98125;color:#34d399}
+#automationDialog .kind-ao{background:#8b5cf625;color:#a78bfa}
+
+#automationDialog .plc-binding-wrap{display:flex;align-items:center;gap:6px;justify-content:space-between}
+#automationDialog .plc-binding-text{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+#automationDialog .plc-binding-text.is-bound{color:#79b8f3}
+#automationDialog .plc-binding-text.is-unbound{color:#647c94}
+#automationDialog .plc-binding-actions{display:flex;gap:4px;flex-shrink:0}
+#automationDialog .plc-matrix-empty{padding:40px 20px;text-align:center;color:#8ca5bf}
+#automationDialog .plc-matrix-empty-sub{font-size:11px;color:#647c94}
+
+/* Right Inspector Column */
+#automationDialog .plc-hw-inspector,#automationDialog .bus-topo-inspector{background:#131e2b;border-left:1px solid #233547;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#automationDialog .plc-inspector-header,#automationDialog .bus-inspector-header{padding:12px 14px;border-bottom:1px solid #233547;display:flex;align-items:center;justify-content:space-between}
+#automationDialog .plc-inspector-header h4,#automationDialog .bus-inspector-header h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8ca5c1}
+#automationDialog .plc-inspector-body,#automationDialog .bus-inspector-body{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin}
+#automationDialog .plc-inspector-title,#automationDialog .bus-inspector-title{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #263a4e}
+#automationDialog .plc-inspector-title strong,#automationDialog .bus-inspector-title strong{font-size:14px;color:#ffffff}
+#automationDialog .plc-inspector-title small,#automationDialog .bus-inspector-title small{color:#8ca5bf;margin-left:auto;font-size:11px}
+#automationDialog .plc-inspector-alert{background:#ef444420;border:1px solid #ef444450;color:#fca5a5;padding:6px 10px;border-radius:6px;font-size:11px;margin-bottom:10px}
+#automationDialog .plc-form-group{margin-bottom:10px}
+#automationDialog .plc-form-group label{display:block;font-size:11px;color:#8fa7bf;margin-bottom:4px}
+#automationDialog .plc-form-group-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#automationDialog .plc-inspector-actions{display:flex;gap:8px;margin-top:16px}
+#automationDialog .plc-inspector-divider{border:0;border-top:1px solid #263a4e;margin:14px 0}
+#automationDialog .plc-binding-item{display:flex;align-items:center;gap:8px;background:#0e1722;padding:8px;border-radius:6px;border:1px solid #263b50;margin-bottom:8px}
+#automationDialog .plc-binding-role-label{font-size:10px;color:#8ca5c1;min-width:70px}
+#automationDialog .plc-binding-current{flex:1;font-size:11px;color:#d5e5f5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Binding Modal */
+#automationDialog .plc-binding-modal-backdrop{position:fixed;inset:0;background:#00000088;display:flex;align-items:center;justify-content:center;z-index:4300}
+#automationDialog .plc-binding-modal{width:480px;background:#18283a;border:1px solid #3c5a7a;border-radius:10px;box-shadow:0 20px 40px #00000099;overflow:hidden}
+#automationDialog .plc-binding-modal-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#121f2d;border-bottom:1px solid #2c4258}
+#automationDialog .plc-binding-modal-header h4{margin:0;font-size:14px;color:#ffffff}
+#automationDialog .plc-binding-modal-body{padding:16px}
+#automationDialog .plc-binding-modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:12px 16px;background:#121f2d;border-top:1px solid #2c4258}
+
+/* WORKSPACE 2: BUS- & NETZWERKTOPOLOGIE */
+#automationDialog .bus-topo-workspace{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden;background:#0d1520}
+#automationDialog .bus-topo-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#131f2d;border-bottom:1px solid #233547;gap:14px;flex-shrink:0}
+#automationDialog .bus-topo-toolbar-network{display:flex;align-items:center;gap:8px}
+#automationDialog .bus-topo-toolbar-network label{font-size:12px;color:#8ca5c1;white-space:nowrap}
+#automationDialog .bus-topo-toolbar-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+#automationDialog .bus-search-input{width:220px;font-size:12px}
+#automationDialog .bus-wire-prompt{display:flex;align-items:center;justify-content:space-between;background:#3b82f625;border-bottom:1px solid #3b82f660;color:#93c5fd;padding:8px 16px;font-size:12px}
+#automationDialog .bus-topo-main-area{display:grid;grid-template-columns:1fr 340px;flex:1 1 0%;min-height:0;overflow:hidden}
+#automationDialog .bus-topo-canvas-container{display:flex;flex-direction:column;flex:1 1 0%;min-height:0;overflow:hidden;position:relative}
+#automationDialog .bus-topo-canvas-wrap{flex:1 1 0%;min-height:0;overflow:auto;scrollbar-width:thin;background:#0b121c}
+#automationDialog .bus-topo-svg{display:block;min-width:100%}
+#automationDialog .bus-topo-legend{display:flex;align-items:center;gap:18px;padding:8px 16px;background:#131f2d;border-top:1px solid #233547;font-size:11px;color:#8ca5c1;flex-shrink:0}
+#automationDialog .bus-legend-item{display:flex;align-items:center;gap:6px}
+#automationDialog .bus-legend-item span{width:20px;height:2px;display:inline-block}
+#automationDialog .bus-legend-item .line-wire{background:#719fca}
+#automationDialog .bus-legend-item .line-air{background:#c2a2f3;border-top:2px dashed #c2a2f3}
+#automationDialog .bus-legend-item .line-assign{background:#7792ab;border-top:2px dotted #7792ab}
+#automationDialog .bus-legend-stats{margin-left:auto}
+
+/* Canvas SVG Nodes & Edges */
+#automationDialog .bus-svg-node{cursor:pointer;outline:none}
+#automationDialog .bus-node-box{fill:#1b2d40;stroke:#3d5672;stroke-width:1.5;transition:stroke .12s}
+#automationDialog .bus-svg-node:hover .bus-node-box,#automationDialog .bus-svg-node.is-selected .bus-node-box{stroke:#60a5fa;stroke-width:2}
+#automationDialog .bus-svg-node.has-issues .bus-node-box{stroke:#f59e0b}
+#automationDialog .bus-svg-node.is-pending-source .bus-node-box{stroke:#10b981;stroke-dasharray:4 4}
+#automationDialog .bus-node-status-dot{fill:#38bdf8}
+#automationDialog .bus-node-name{fill:#f1f7fe;font:600 12px sans-serif}
+#automationDialog .bus-node-addr{fill:#94afcb;font:11px monospace}
+#automationDialog .bus-node-meta{fill:#6b8aa8;font:10px sans-serif}
+#automationDialog .bus-port-pin{cursor:pointer}
+#automationDialog .bus-port-bg{fill:#2a415a;stroke:#476587;stroke-width:1}
+#automationDialog .bus-port-pin:hover .bus-port-bg,#automationDialog .bus-port-pin.is-active-port .bus-port-bg{fill:#3b82f6;stroke:#93c5fd}
+#automationDialog .bus-port-text{fill:#ffffff;font:9px monospace;pointer-events:none}
+#automationDialog .bus-svg-edge{cursor:pointer}
+#automationDialog .bus-edge-hit-area{fill:none;stroke:transparent;stroke-width:16}
+#automationDialog .bus-edge-line{fill:none;stroke:#719fca;stroke-width:2}
+#automationDialog .bus-svg-edge:hover .bus-edge-line,#automationDialog .bus-svg-edge.is-selected .bus-edge-line{stroke:#f59e0b;stroke-width:3}
+#automationDialog .bus-svg-edge--air .bus-edge-line{stroke:#c2a2f3;stroke-dasharray:7 5}
+#automationDialog .bus-svg-edge--assign .bus-edge-line{stroke:#7792ab;stroke-dasharray:2 5;stroke-width:1.5}
+#automationDialog .bus-canvas-empty{padding:60px 20px;text-align:center;color:#8ca5bf}
+
+/* WORKSPACE 3: GEBÄUDEAUTOMATION & KNX */
+#automationDialog .knx-router-workspace{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden;background:#0d1520}
+#automationDialog .knx-router-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#131f2d;border-bottom:1px solid #233547;gap:12px;flex-shrink:0}
+#automationDialog .knx-router-toolbar-title{display:flex;align-items:center;gap:10px}
+#automationDialog .knx-router-toolbar-title h3{margin:0;font-size:15px;color:#f0f6fc}
+#automationDialog .knx-stats-badge{font-size:11px;background:#253c54;color:#8ec1f5;padding:2px 8px;border-radius:6px}
+#automationDialog .knx-router-toolbar-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+#automationDialog .knx-search-input{width:220px;font-size:12px}
+#automationDialog .knx-ets-dropdown-wrap{position:relative}
+#automationDialog .knx-ets-dropdown-menu{position:absolute;top:calc(100% + 6px);right:0;width:250px;background:#1b2a3b;border:1px solid #3b5674;border-radius:8px;box-shadow:0 10px 25px #00000080;z-index:100;display:none;flex-direction:column;padding:6px}
+#automationDialog .knx-ets-dropdown-menu.is-open{display:flex}
+#automationDialog .knx-ets-item{display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;color:#d5e5f5;padding:8px 10px;border-radius:5px;cursor:pointer;text-align:left;width:100%}
+#automationDialog .knx-ets-item:hover{background:#2a415a;color:#ffffff}
+#automationDialog .knx-ets-item strong{font-size:12px}
+#automationDialog .knx-ets-item small{font-size:10px;color:#8ca5bf}
+
+/* 3 Column KNX Layout */
+#automationDialog .knx-3col-layout{display:grid;grid-template-columns:300px 1fr 340px;flex:1 1 0%;min-height:0;overflow:hidden}
+#automationDialog .knx-col{display:flex;flex-direction:column;min-height:0;overflow:hidden;border-right:1px solid #233547}
+#automationDialog .knx-col:last-child{border-right:0}
+#automationDialog .knx-col-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111c28;border-bottom:1px solid #233547;flex-shrink:0}
+#automationDialog .knx-col-header h4{margin:0;font-size:12px;color:#8ca5c1}
+#automationDialog .knx-col-count{font-size:10px;background:#ffffff10;padding:1px 6px;border-radius:8px;color:#a2b8cf}
+#automationDialog .knx-tree-body,#automationDialog .knx-router-body,#automationDialog .knx-devices-body{flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin}
+
+/* KNX Tree View */
+#automationDialog .knx-tree-main{margin-bottom:8px}
+#automationDialog .knx-tree-node{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12px;color:#8fa7bf;cursor:pointer}
+#automationDialog .knx-tree-children{padding-left:14px}
+#automationDialog .knx-tree-leaf{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;margin:2px 0;transition:background .1s}
+#automationDialog .knx-tree-leaf:hover{background:#ffffff0a}
+#automationDialog .knx-tree-leaf.is-selected{background:#213952;color:#ffffff;font-weight:600}
+#automationDialog .knx-addr-badge{font-size:11px;background:#121f2d;color:#60a5fa;padding:1px 6px;border-radius:4px}
+#automationDialog .knx-leaf-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#automationDialog .knx-dpt-badge{font-size:9px;background:#10b98120;color:#34d399;padding:1px 5px;border-radius:4px}
+
+/* KNX Router View (Signal Flow) */
+#automationDialog .knx-group-detail-header{background:#152332;border:1px solid #2a4159;border-radius:8px;padding:14px;margin-bottom:16px}
+#automationDialog .knx-group-main-meta{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+#automationDialog .knx-group-addr-hero{font-size:20px;font-weight:bold;color:#60a5fa;background:#0d1824;padding:4px 10px;border-radius:6px;border:1px solid #243c55}
+#automationDialog .knx-group-name-box{flex:1;display:flex;align-items:center;gap:8px}
+#automationDialog .knx-group-name-input{font-size:14px;font-weight:600}
+#automationDialog .knx-network-tag{font-size:10px;background:#24394f;color:#8ca5c1;padding:3px 8px;border-radius:4px}
+#automationDialog .knx-group-sub-meta{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#automationDialog .knx-meta-inline{display:flex;align-items:center;gap:6px;font-size:11px;color:#8ca5c1}
+
+#automationDialog .knx-flow-container{display:grid;grid-template-columns:1fr 40px 1fr;gap:12px;align-items:start}
+#automationDialog .knx-flow-lane{background:#121d2a;border:1px solid #25394d;border-radius:8px;padding:12px;min-height:300px}
+#automationDialog .knx-lane-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #25394d}
+#automationDialog .knx-lane-header h5{margin:0;font-size:12px;color:#d5e5f5}
+#automationDialog .knx-lane-badge{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold}
+#automationDialog .knx-lane-badge.send{background:#3b82f6;color:#ffffff}
+#automationDialog .knx-lane-badge.recv{background:#10b981;color:#ffffff}
+#automationDialog .knx-lane-count{margin-left:auto;font-size:10px;background:#ffffff10;padding:1px 6px;border-radius:8px}
+#automationDialog .knx-flow-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding-top:40px}
+#automationDialog .knx-arrow-badge{font-size:18px;color:#60a5fa}
+#automationDialog .knx-lane-empty{padding:30px 10px;text-align:center;color:#6b8299;font-size:11px}
+
+/* Object Cards */
+#automationDialog .knx-object-card{background:#18283a;border:1px solid #2e4762;border-radius:6px;padding:8px 10px;margin-bottom:8px}
+#automationDialog .knx-obj-top{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+#automationDialog .knx-obj-num{font-size:10px;background:#101a26;color:#8ca5c1;padding:1px 5px;border-radius:4px;font-family:monospace}
+#automationDialog .knx-obj-device{font-size:11px;color:#a3c2e2;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#automationDialog .knx-btn-unlink{color:#f87171;padding:0 5px}
+#automationDialog .knx-obj-name{font-size:12px;font-weight:600;color:#ffffff;margin-bottom:6px}
+#automationDialog .knx-obj-bottom{display:flex;align-items:center;justify-content:space-between;font-size:10px}
+#automationDialog .knx-obj-dir{padding:1px 6px;border-radius:4px}
+#automationDialog .knx-obj-dir.send{background:#3b82f620;color:#60a5fa}
+#automationDialog .knx-obj-dir.receive{background:#10b98120;color:#34d399}
+#automationDialog .knx-obj-dir.both{background:#8b5cf620;color:#a78bfa}
+#automationDialog .knx-obj-dpt{background:#ffffff10;color:#8ca5c1;padding:1px 5px;border-radius:4px;font-family:monospace}
+
+/* KNX Devices & Objects Pool Column */
+#automationDialog .knx-device-card{background:#131f2c;border:1px solid #263c52;border-radius:7px;margin-bottom:10px;overflow:hidden}
+#automationDialog .knx-dev-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#1a2b3d;border-bottom:1px solid #263c52}
+#automationDialog .knx-dev-header strong{font-size:12px;color:#ffffff;display:block}
+#automationDialog .knx-dev-header small{font-size:10px;color:#8ca5c1}
+#automationDialog .knx-dev-objects{padding:6px}
+#automationDialog .knx-dev-obj-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;font-size:11px;margin-bottom:2px}
+#automationDialog .knx-dev-obj-row:hover{background:#ffffff08}
+#automationDialog .knx-dev-obj-row.is-linked-current{background:#10b98115}
+#automationDialog .knx-dev-obj-badge{font-size:9px;background:#101a24;color:#8ca5bf;padding:1px 4px;border-radius:3px}
+#automationDialog .knx-dev-obj-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d5e5f5}
+#automationDialog .knx-linked-badge{font-size:10px;color:#34d399;font-weight:600}
+
+/* Responsive adjustments */
+@media(max-width:1200px){
+  #automationDialog .plc-hw-workspace{grid-template-columns:200px 1fr 280px}
+  #automationDialog .knx-3col-layout{grid-template-columns:240px 1fr 280px}
+}
+@media(max-width:980px){
+  #automationDialog .plc-hw-workspace{grid-template-columns:1fr;overflow-y:auto}
+  #automationDialog .plc-hw-nav{display:none}
+  #automationDialog .plc-hw-inspector{display:none}
+  #automationDialog .bus-topo-main-area{grid-template-columns:1fr}
+  #automationDialog .bus-topo-inspector{display:none}
+  #automationDialog .knx-3col-layout{grid-template-columns:1fr}
+  #automationDialog .knx-col-devices{display:none}
+}
