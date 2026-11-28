@@ -329,6 +329,94 @@
 #automationDialog .knx-dev-obj-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d5e5f5}
 #automationDialog .knx-linked-badge{font-size:10px;color:#34d399;font-weight:600}
 
+/* Real Hardware Roles, Multi-Preset Dropdowns, Bus Status & ETS Multi-Group Styles */
+#automationDialog .plc-cpu-dropdown-wrap,
+#automationDialog .plc-rack-dropdown-wrap,
+#automationDialog .bus-preset-dropdown-wrap,
+#automationDialog .knx-preset-dropdown-wrap{position:relative;display:inline-flex}
+#automationDialog .plc-preset-scroll{max-height:360px;overflow-y:auto;overscroll-behavior:contain;min-width:290px}
+#automationDialog .bus-preset-menu,
+#automationDialog .knx-preset-menu{right:0;left:auto;min-width:310px}
+
+#automationDialog .plc-module-card.plc-role-safety{border-top:3px solid #eab308;background:linear-gradient(180deg,#eab30812 0%,#15212f 32%)}
+#automationDialog .plc-module-card.plc-role-ps{border-top:3px solid #64748b}
+#automationDialog .plc-module-card.plc-role-coupler{border-top:3px solid #06b6d4}
+#automationDialog .plc-module-card.plc-role-comm{border-top:3px solid #3b82f6}
+#automationDialog .plc-safety-pill{display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:#eab308;color:#111827;margin-left:4px;letter-spacing:.03em}
+#automationDialog .plc-kind-mixed{background:linear-gradient(90deg,#3b82f6 0%,#10b981 35%,#f59e0b 70%,#ec4899 100%)!important}
+#automationDialog .plc-sys-faceplate{margin:10px 8px;padding:12px 8px;border-radius:6px;border:1px dashed #334e6b;background:#0e1722;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;color:#9bb5cf;font-size:11px;min-height:90px}
+#automationDialog .plc-sys-faceplate strong{color:#e2eefc;font-size:12px}
+#automationDialog .plc-pin-matrix.is-dense{grid-template-columns:repeat(8,minmax(0,1fr));gap:3px}
+#automationDialog .plc-channel-count{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+
+#automationDialog .bus-topo-toolbar,
+#automationDialog .knx-router-toolbar{flex-wrap:wrap;gap:8px}
+#automationDialog .bus-status-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;background:#0c141d;border-bottom:1px solid #1e3144;font-size:11px}
+#automationDialog .bus-status-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#automationDialog .bus-status-chip{padding:2px 8px;border-radius:999px;font-weight:600;border:1px solid #2b4259;background:#13202f;color:#c7daed}
+#automationDialog .bus-status-chip.is-ok{border-color:#10b98155;background:#10b98118;color:#6ee7b7}
+#automationDialog .bus-status-chip.is-warn{border-color:#ef444466;background:#ef444420;color:#fca5a5}
+#automationDialog .bus-status-chip.is-neutral{color:#9ab4cf}
+#automationDialog .bus-status-help{color:#7f9ab5;font-size:11px}
+#automationDialog .bus-protocol-hint{display:block;max-width:460px;color:#7f9ab5;font-size:11px;margin:4px 0 8px}
+
+#automationDialog .bus-edge-pill{cursor:pointer}
+#automationDialog .bus-edge-pill-bg{fill:#0e1722;stroke:#3b5672;stroke-width:1}
+#automationDialog .bus-svg-edge.is-selected .bus-edge-pill-bg{stroke:#38bdf8;fill:#12283d}
+#automationDialog .bus-svg-edge.has-issue .bus-edge-pill-bg{stroke:#ef4444}
+#automationDialog .bus-edge-pill-text{fill:#cfe0f2;font-size:9px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+#automationDialog .bus-svg-edge.has-issues .bus-edge-line{stroke:#ef4444}
+#automationDialog .knx-obj-issue-text{color:#fca5a5;font-size:10px;margin-top:4px}
+#automationDialog .knx-dev-no-objects{color:#6b8aa8;font-size:11px;padding:6px;text-align:center}
+#automationDialog .bus-port-pin .bus-port-dot{fill:#38bdf8}
+#automationDialog .bus-port-pin.is-active-port .bus-port-dot{fill:#ffffff}
+#automationDialog .bus-node-role-pill{fill:#102235;stroke:#2d4a66;stroke-width:1}
+#automationDialog .bus-node-role-text{fill:#9ac6f0;font:600 9px sans-serif}
+
+#automationDialog .proto-profibus-dp{background:#7e22ce;color:#f3e8ff}
+#automationDialog .proto-io-link{background:#0284c7;color:#e0f2fe}
+#automationDialog .proto-dali{background:#d97706;color:#fef3c7}
+#automationDialog .proto-opc-ua{background:#0f766e;color:#ccfbf1}
+#automationDialog .proto-bacnet-ip{background:#b45309;color:#ffedd5}
+#automationDialog .proto-modbus-tcp,
+#automationDialog .proto-modbus-rtu{background:#0369a1;color:#e0f2fe}
+
+#automationDialog .insp-loxone-box,
+#automationDialog .insp-binding-box{margin-top:12px;padding:10px;border-radius:6px;background:#101a25;border:1px solid #24394e}
+#automationDialog .insp-loxone-title,
+#automationDialog .insp-binding-title{font-size:11px;font-weight:700;color:#d6e6f7;margin-bottom:8px}
+#automationDialog .insp-loxone-air-note{padding:8px 10px;border-radius:6px;background:#0e2538;border:1px solid #1d4e73;color:#bae6fd;font-size:11px;line-height:1.4}
+#automationDialog .insp-binding-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+#automationDialog .insp-help{display:block;font-size:10px;color:#829cb6;margin-top:3px;line-height:1.35}
+#automationDialog .insp-warn{display:block;font-size:10px;color:#fca5a5;margin-top:4px}
+
+#automationDialog .knx-network-select{background:#121f2d;color:#e4effa;border:1px solid #2c4660;border-radius:5px;padding:3px 8px;font-size:12px;font-weight:600}
+#automationDialog .knx-status-banner{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;background:#122b3d;border-bottom:1px solid #1f4f70;color:#bae6fd;font-size:12px}
+#automationDialog .knx-obj-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 74px 96px;gap:4px;margin-top:5px}
+#automationDialog .knx-obj-edit-name,
+#automationDialog .knx-obj-edit-dpt,
+#automationDialog .knx-obj-edit-dir{background:#0c141d;color:#e4effa;border:1px solid #294057;border-radius:4px;padding:3px 5px;font-size:11px;min-width:0}
+#automationDialog .knx-obj-also-in{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;font-size:10px;color:#8ca5c1;align-items:center}
+#automationDialog .knx-obj-also-in span{background:#102235;border:1px solid #27435f;border-radius:3px;padding:0 4px;color:#bae6fd}
+
+#automationDialog .knx-dev-add-row{display:flex;align-items:center;gap:4px}
+#automationDialog .knx-dir-mini{background:#0c141d;color:#d6e6f7;border:1px solid #294057;border-radius:4px;padding:2px 4px;font-size:10px}
+#automationDialog .knx-dev-obj-row{display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 6px;border-radius:4px;font-size:11px;margin-bottom:3px;border:1px solid transparent}
+#automationDialog .knx-dev-obj-row.is-linked-current{background:#10b98115;border-color:#10b98133}
+#automationDialog .knx-dev-obj-main{display:flex;align-items:center;gap:5px;min-width:0}
+#automationDialog .knx-dev-dir-pill{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:#1a2b3d;color:#93c5fd;flex-shrink:0}
+#automationDialog .knx-dev-dir-pill.dir-send{background:#7c2d12;color:#fed7aa}
+#automationDialog .knx-dev-dir-pill.dir-receive{background:#14532d;color:#bbf7d0}
+#automationDialog .knx-dev-obj-dpt{font-size:9px;color:#8ca5c1;background:#0e1824;padding:1px 4px;border-radius:3px;flex-shrink:0}
+#automationDialog .knx-dev-group-chips{display:flex;flex-wrap:wrap;gap:3px;padding-left:20px}
+#automationDialog .knx-dev-group-chip{font-size:9px;padding:1px 5px;border-radius:999px;background:#12202e;border:1px solid #284057;color:#9ab4cf}
+#automationDialog .knx-dev-group-chip.is-active{background:#065f46;border-color:#10b981;color:#ecfdf5;font-weight:700}
+#automationDialog .knx-suggested-list{margin-top:6px;padding-top:6px;border-top:1px dashed #253a50;display:flex;flex-direction:column;gap:3px}
+#automationDialog .knx-suggested-title{font-size:10px;color:#8ca5c1;margin-bottom:2px}
+#automationDialog .knx-suggested-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 6px;border-radius:4px;background:#101d2b;border:1px solid #243b52;color:#cfe2f5;font-size:10px;text-align:left;cursor:pointer}
+#automationDialog .knx-suggested-btn:hover{background:#172a3e;border-color:#38bdf8}
+#automationDialog .knx-suggested-btn small{color:#7fa0be;flex-shrink:0}
+
 /* Responsive adjustments */
 @media(max-width:1200px){
   #automationDialog .plc-hw-workspace{grid-template-columns:200px minmax(0,1fr) 280px}

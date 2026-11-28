@@ -54,7 +54,11 @@ export function inspectAutomation(project:Project,index=new ProjectIndex(project
   if(n.controllerId&&!one(d.controllers,n.controllerId))issue('nodes',n.id,'Zugeordnete CPU fehlt',n.binding);
   if(n.binding&&(!index.component(n.binding.componentId,n.binding.pageId)||index.componentsById.get(n.binding.componentId)?.length!==1))issue('nodes',n.id,'Busgerät in der Zeichnung fehlt oder ist mehrdeutig',n.binding);
   if(n.protocol==='Modbus RTU'&&n.address&&(!/^\d+$/.test(n.address)||Number(n.address)<1||Number(n.address)>247))issue('nodes',n.id,'Modbus-RTU-Adresse muss zwischen 1 und 247 liegen',n.binding);
-  if(d.nodes.some(v=>v.id!==n.id&&v.network===n.network&&(v.protocol===n.protocol||isKnx(v.protocol)&&isKnx(n.protocol))&&((n.address.trim()&&(isKnx(n.protocol)?knxIndividualAddress(v.address)===knxIndividualAddress(n.address):n.protocol==='Modbus RTU'?Number(v.address)===Number(n.address):v.address.trim().toLowerCase()===n.address.trim().toLowerCase()))||v.name===n.name)))issue('nodes',n.id,'Busname oder Adresse im selben Netz ist mehrfach vergeben',n.binding);
+  if(n.protocol==='PROFIBUS DP'&&n.address&&(!/^\d+$/.test(n.address)||Number(n.address)<0||Number(n.address)>126))issue('nodes',n.id,'PROFIBUS-DP-Adresse muss zwischen 0 und 126 liegen (127 ist Broadcast)',n.binding);
+  if(n.protocol==='DALI'&&n.address&&(!/^\d+$/.test(n.address)||Number(n.address)<0||Number(n.address)>63))issue('nodes',n.id,'DALI-Kurzadresse muss zwischen 0 und 63 liegen (IEC 62386)',n.binding);
+  const numericAddr=n.protocol==='Modbus RTU'||n.protocol==='PROFIBUS DP'||n.protocol==='DALI';
+  if(d.nodes.some(v=>v.id!==n.id&&v.network===n.network&&(v.protocol===n.protocol||isKnx(v.protocol)&&isKnx(n.protocol))&&((n.address.trim()&&(isKnx(n.protocol)?knxIndividualAddress(v.address)===knxIndividualAddress(n.address):numericAddr?(/^\d+$/.test(v.address.trim())&&/^\d+$/.test(n.address.trim())&&Number(v.address)===Number(n.address)):v.address.trim().toLowerCase()===n.address.trim().toLowerCase()))||v.name===n.name)))issue('nodes',n.id,'Busname oder Adresse im selben Netz ist mehrfach vergeben',n.binding);
+  if(n.ipAddress?.trim()&&d.nodes.some(v=>v.id!==n.id&&v.network===n.network&&(v.protocol===n.protocol||isKnx(v.protocol)&&isKnx(n.protocol))&&v.ipAddress?.trim()===n.ipAddress!.trim()))issue('nodes',n.id,'IP-Adresse im selben Netz ist mehrfach vergeben',n.binding);
  }
  for(const l of d.links){const a=one(d.nodes,l.from),b=one(d.nodes,l.to);
   if(!a||!b||l.from===l.to)issue('links',l.id,'Busverbindung benötigt zwei eindeutige verschiedene Teilnehmer');

@@ -31,6 +31,7 @@ export function inspectBuildingAutomation(d:AutomationData, issue:Issue):void {
  for(const l of d.links){const a=node(l.from),b=node(l.to);if(!a||!b)continue;
   const fail=(message:string)=>issue('links',l.id,message,a.binding);
   if(l.lengthM!==undefined&&(!Number.isFinite(l.lengthM)||l.lengthM<0))fail('Kabellänge muss eine endliche, nicht negative Zahl sein');
+  if(a.protocol==='IO-Link'&&b.protocol==='IO-Link'&&l.lengthM!==undefined&&l.lengthM>20)fail('IO-Link: maximale Leitungslänge von 20 m pro Punkt-zu-Punkt-Verbindung überschritten (IEC 61131-9)');
   if(isLoxone(a.protocol)&&a.protocol===b.protocol){
    if(!root(a)||root(a)!==root(b))fail('Loxone: Schnittstellen bzw. Tree-Zweige dürfen nicht verbunden werden');
    if(a.protocol==='Loxone Air'){
@@ -40,11 +41,15 @@ export function inspectBuildingAutomation(d:AutomationData, issue:Issue):void {
    if(a.protocol==='Loxone Link')for(const n of [a,b]){const degree=d.links.filter(v=>v.from===n.id||v.to===n.id).length;if(degree>(n.interfaceRole==='interface'?1:2))fail('Loxone Link benötigt eine Linie ab der Schnittstelle, keine Verzweigung');}
   }
  }
- // Forest check for documented physical segments. Ethernet rings are not governed by this rule.
- for(const protocol of ['KNX TP','Loxone Link','Loxone Tree']){
+ // Forest check for documented physical bus segments without loops. Ethernet rings are not governed by this rule.
+ for(const protocol of ['KNX TP','Loxone Link','Loxone Tree','Modbus RTU','PROFIBUS DP','DALI','IO-Link']){
   const parent=new Map<string,string>();const find=(id:string):string=>{let p=id;while(parent.has(p)&&parent.get(p)!==p)p=parent.get(p)!;return p;};
   for(const l of d.links){const a=node(l.from),b=node(l.to);if(!a||!b||a.protocol!==protocol||b.protocol!==protocol||a.network!==b.network||a.id===b.id)continue;const x=find(a.id),y=find(b.id);if(x===y)issue('links',l.id,`${protocol}: geschlossener Ring in der dokumentierten Busverkabelung`);else parent.set(x,y);}
  }
+ // DALI: maximum 300 m total documented bus cable length per network (IEC 62386).
+ const daliNets=new Map<string,{links:typeof d.links;sum:number}>();
+ for(const l of d.links){const a=node(l.from),b=node(l.to);if(!a||!b||a.protocol!=='DALI'||b.protocol!=='DALI'||a.network!==b.network)continue;const entry=daliNets.get(a.network)??{links:[],sum:0};entry.links.push(l);if(l.lengthM!==undefined&&Number.isFinite(l.lengthM)&&l.lengthM>=0)entry.sum+=l.lengthM;daliNets.set(a.network,entry);}
+ for(const entry of daliNets.values())if(entry.sum>300)for(const l of entry.links)issue('links',l.id,'DALI: dokumentierte Gesamtleitungslänge überschreitet 300 m (IEC 62386)',node(l.from)?.binding);
  for(const g of d.knxGroups){
   const fail=(message:string)=>issue('knxGroups',g.id,message);
   const address=knxGroupAddress(g.address);
